@@ -29,7 +29,8 @@ import (
 
 var (
 	cfgFile string
-	Config  config.ClusterConfig
+	// Config represents a desired configuration of the k0s cluster
+	Config config.ClusterConfig
 )
 
 // rootCmd represents the base command when called without any subcommands

@@ -6,7 +6,7 @@ import (
 	// "github.com/k0sproject/rig/client/local"
 )
 
-// Config describes launchpad.yaml configuration
+// ClusterConfig describes k0s.yaml configuration
 type ClusterConfig struct {
 	APIVersion string       `yaml:"apiVersion"`
 	Kind       string       `yaml:"kind"`
