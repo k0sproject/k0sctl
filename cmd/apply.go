@@ -35,6 +35,8 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("apply called")
 		// log.Log.Debugf(spew.Sdump(Config))
+		AddApplySteps()
+		ExecuteSteps()
 	},
 }
 
@@ -42,3 +44,9 @@ func init() {
 	rootCmd.AddCommand(applyCmd)
 
 }
+
+// AddApplySteps just a place holder
+func AddApplySteps() {}
+
+// ExecuteSteps just a place holder
+func ExecuteSteps() {}
