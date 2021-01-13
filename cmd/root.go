@@ -19,14 +19,18 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/k0sproject/k0sctl/config"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
+	Config  config.ClusterConfig
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -38,7 +42,13 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {},
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// initialize configuration
+		err := initConfig()
+		if err != nil {
+			fmt.Printf("err: %v", err)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -51,29 +61,44 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.k0sctl.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.k0sctl.yaml)")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := homedir.Dir()
+func initConfig() error {
+	// look for k0s.yaml in PWD
+	if cfgFile == "" {
+		execFolderPath, err := os.Getwd()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
-
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".k0sctl")
+		cfgFile = filepath.Join(execFolderPath, "k0s.yaml")
 	}
 
+	// check if config file exists
+	if fileExists(cfgFile) {
+		viper.SetConfigFile(cfgFile)
+	}
+
+	// Add env vars to Config
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		viper.ConfigFileUsed()
 	}
+
+	if err := viper.Unmarshal(&Config); err != nil {
+		return fmt.Errorf("error parsing config %s", err)
+	}
+
+	return nil
+}
+
+func fileExists(fileName string) bool {
+	info, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

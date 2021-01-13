@@ -15,8 +15,16 @@ limitations under the License.
 */
 package main
 
-import "github.com/k0sproject/k0sctl/cmd"
+import (
+	"github.com/k0sproject/k0sctl/cmd"
+)
 
+func init() {
+	// TODO: initialize logger or whatever
+	// log.SetOutput(os.Stdout)
+	// log.SetLevel(log.TraceLevel)
+
+}
 func main() {
 	cmd.Execute()
 }
