@@ -1,79 +1,102 @@
-/*
-Copyright 2021 Mirantis, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package cmd
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"runtime"
 
-	"github.com/spf13/cobra"
-
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/spf13/viper"
+	"github.com/k0sproject/rig"
+	"github.com/shiena/ansicolor"
+	log "github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
-var cfgFile string
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "k0sctl",
-	Short: "A tool to manage k0s cluster operations",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {},
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.k0sctl.yaml)")
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+var App = &cli.App{
+	Name:  "k0sctl",
+	Usage: "k0s cluster management tool",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "debug",
+			Usage:   "Enable debug logging",
+			Aliases: []string{"d"},
+			EnvVars: []string{"DEBUG"},
+		},
+		&cli.BoolFlag{
+			Name:    "trace",
+			Usage:   "Enable trace logging",
+			Aliases: []string{"dd"},
+			EnvVars: []string{"TRACE"},
+			Hidden:  true,
+		},
+	},
+	Before: func(ctx *cli.Context) error {
+		if ctx.Bool("debug") {
+			initLogger(log.DebugLevel)
+		} else if ctx.Bool("trace") {
+			initLogger(log.TraceLevel)
+		} else {
+			initLogger(log.InfoLevel)
 		}
 
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".k0sctl")
+		return nil
+	},
+	Commands: []*cli.Command{
+		versionCommand,
+		applyCommand,
+	},
+}
+
+type loghook struct {
+	Writer    io.Writer
+	Formatter log.Formatter
+
+	levels []log.Level
+}
+
+func (h *loghook) SetLevel(level log.Level) {
+	h.levels = []log.Level{}
+	for _, l := range log.AllLevels {
+		if level >= l {
+			h.levels = append(h.levels, l)
+		}
+	}
+}
+
+func (h *loghook) Levels() []log.Level {
+	return h.levels
+}
+
+func (h *loghook) Fire(entry *log.Entry) error {
+	line, err := h.Formatter.Format(entry)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to format log entry: %v", err)
+		return err
+	}
+	_, err = h.Writer.Write(line)
+	return err
+}
+
+func initLogger(level log.Level) {
+	log.SetLevel(log.TraceLevel)
+	log.SetOutput(ioutil.Discard) // Send all logs to nowhere by default
+
+	screen := screenLoggerHook()
+	screen.SetLevel(level)
+	log.AddHook(screen)
+
+	rig.SetLogger(log.StandardLogger())
+}
+
+func screenLoggerHook() *loghook {
+	l := &loghook{Formatter: &log.TextFormatter{DisableTimestamp: true, ForceColors: true}}
+
+	if runtime.GOOS == "windows" {
+		l.Writer = ansicolor.NewAnsiColorWriter(os.Stdout)
+	} else {
+		l.Writer = os.Stdout
 	}
 
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	return l
 }
