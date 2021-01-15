@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/k0sproject/k0sctl/config"
@@ -29,6 +30,7 @@ import (
 
 var (
 	cfgFile string
+	debug   bool
 	// Config represents a desired configuration of the k0s cluster
 	Config config.ClusterConfig
 )
@@ -63,6 +65,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.k0sctl.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Sets log level to DEBUG. Default set to FATAL")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
@@ -75,6 +78,12 @@ func initConfig() error {
 			return err
 		}
 		cfgFile = filepath.Join(execFolderPath, "k0s.yaml")
+	}
+
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
 	}
 
 	// check if config file exists
