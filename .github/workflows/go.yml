@@ -1,0 +1,40 @@
+name: Go
+
+on: [push, pull_request]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      if: github.ref != 'refs/heads/main'
+      with:
+        go-version: 1.15
+          
+    - name: Go modules cache
+      uses: actions/cache@v2
+      if: github.ref != 'refs/heads/main'
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+              
+    - name: Run golangci-lint
+      if: github.ref != 'refs/heads/main'
+      uses: golangci/golangci-lint-action@v2.3.0
+      with:
+        version: v1.35.2
+        skip-go-installation: true
+
+    - name: Build
+      if: github.ref != 'refs/heads/main'
+      run: go build -v ./...
+
+    - name: Test
+      if: github.ref != 'refs/heads/main'
+      run: go test -v ./...
