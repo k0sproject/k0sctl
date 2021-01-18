@@ -17,12 +17,11 @@ type Host struct {
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer
-
-	name string
 }
 
 type configurer interface {
 	CheckPrivilege() error
+	StartService(string) error
 	ServiceIsRunning(string) bool
 	Arch() (string, error)
 	K0sCmdf(string, ...interface{}) string

@@ -9,6 +9,7 @@ type K0s struct {
 
 // K0sMetadata contains gathered information about k0s cluster
 type K0sMetadata struct {
-	ClusterID string
-	JoinToken string
+	ClusterID       string
+	ControllerToken string
+	WorkerToken     string
 }

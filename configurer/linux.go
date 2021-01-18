@@ -19,6 +19,10 @@ func (l *Linux) ServiceIsRunning(s string) bool {
 	return l.Linux.ServiceIsRunning(s)
 }
 
+func (l *Linux) StartService(s string) error {
+	return l.Linux.StartService(s)
+}
+
 func (l *Linux) Arch() (string, error) {
 	arch, err := l.Host.ExecOutput("uname -m")
 	if err != nil {
