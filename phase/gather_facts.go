@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"strings"
+
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,9 +29,16 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	}
 
 	if output, err := h.ExecOutput("k0s version"); err == nil {
-		h.Metadata.K0sVersion = output
+		h.Metadata.K0sVersion = strings.TrimPrefix(output, "v")
 		log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sVersion)
 	}
+
+	output, err := h.Configurer.Arch()
+	if err != nil {
+		return err
+	}
+	h.Metadata.Arch = output
+	log.Infof("%s: architecture is %s", h, h.Metadata.Arch)
 
 	return nil
 }

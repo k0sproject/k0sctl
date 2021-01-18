@@ -35,6 +35,7 @@ var applyCommand = &cli.Command{
 			&phase.Connect{},
 			&phase.DetectOS{},
 			&phase.GatherFacts{},
+			&phase.DownloadK0s{},
 		)
 
 		return manager.Run()

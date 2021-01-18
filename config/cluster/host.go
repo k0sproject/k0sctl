@@ -12,10 +12,8 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role         string            `yaml:"role" validate:"oneof=server worker"`
-	UploadBinary bool              `yaml:"uploadBinary,omitempty"`
-	K0sBinary    string            `yaml:"k0sBinary,omitempty" validate:"omitempty,file"`
-	Environment  map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
+	Role        string            `yaml:"role" validate:"oneof=server worker"`
+	Environment map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer
@@ -26,12 +24,19 @@ type Host struct {
 type configurer interface {
 	CheckPrivilege() error
 	ServiceIsRunning(string) bool
+	Arch() (string, error)
+	K0sCmdf(string, ...interface{}) string
+	K0sBinaryPath() string
+	K0sConfigPath() string
+	K0sJoinTokenPath() string
+	RunK0sDownloader(string) error
 }
 
 // HostMetadata resolved metadata for host
 type HostMetadata struct {
 	K0sVersion string
 	K0sRunning bool
+	Arch       string
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
