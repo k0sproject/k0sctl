@@ -1,0 +1,14 @@
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: cluster
+spec:
+  hosts:
+    - role: server
+      ssh:
+        address: 127.0.0.1
+        port: 9022
+    - role: worker
+      ssh:
+        address: 127.0.0.1
+        port: 9023
+  k0s:
+    version: 0.9.1
