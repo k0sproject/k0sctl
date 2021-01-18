@@ -19,7 +19,7 @@ func (p *GatherFacts) Run() error {
 }
 
 func (p *GatherFacts) investigateHost(h *cluster.Host) error {
-	log.Infof("%s: investigating host")
+	log.Infof("%s: investigating host", h)
 
 	if h.Configurer.ServiceIsRunning("k0s") {
 		h.Metadata.K0sRunning = true
