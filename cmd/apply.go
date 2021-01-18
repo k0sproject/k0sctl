@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/k0sproject/k0sctl/config"
+	"github.com/k0sproject/k0sctl/phase"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
@@ -27,12 +25,18 @@ var applyCommand = &cli.Command{
 			return err
 		}
 
-		fmt.Println(c)
+		if err := c.Validate(); err != nil {
+			return err
+		}
 
-		log.Debugf("Connecting to first host")
-		h := c.Spec.Hosts.First()
-		err := h.Connect()
-		println(err)
-		return err
+		manager := phase.Manager{Config: &c}
+
+		manager.AddPhase(
+			&phase.Connect{},
+			&phase.DetectOS{},
+			&phase.GatherFacts{},
+		)
+
+		return manager.Run()
 	},
 }
