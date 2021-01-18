@@ -3,8 +3,11 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/k0sproject/k0sctl/config"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
 
 var applyCommand = &cli.Command{
@@ -17,14 +20,19 @@ var applyCommand = &cli.Command{
 	},
 	Before: actions(initLogging, initConfig),
 	Action: func(ctx *cli.Context) error {
-		log.Tracef("hello from trace")
-		log.Debugf("hello from debug")
-		log.Infof("hello from info")
-
-		log.Infof("reading config!")
 		content := ctx.String("config")
-		fmt.Println(content)
 
-		return nil
+		c := config.Cluster{}
+		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
+			return err
+		}
+
+		fmt.Println(c)
+
+		log.Debugf("Connecting to first host")
+		h := c.Spec.Hosts.First()
+		err := h.Connect()
+		println(err)
+		return err
 	},
 }
