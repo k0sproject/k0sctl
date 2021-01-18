@@ -1,10 +1,8 @@
-package config
+package cluster
 
-import (
-	"fmt"
-)
+import "fmt"
 
-// Mapping is an alias of map[string]interface{} - which YAML terminology refers to as "mapping"
+// Mapping is a YAML "mapping" ([key]value struct) hosting an embedded raw k0s config
 type Mapping map[string]interface{}
 
 // UnmarshalYAML overridden since by default nested maps would be parsed

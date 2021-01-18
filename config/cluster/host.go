@@ -14,7 +14,7 @@ type Host struct {
 	K0sBinary    string            `yaml:"k0sBinary,omitempty" validate:"omitempty,file"`
 	Environment  map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
 
-	Metadata *HostMetadata `yaml:"-"`
+	Metadata HostMetadata `yaml:"-"`
 
 	name string
 }

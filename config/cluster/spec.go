@@ -3,6 +3,7 @@ package cluster
 // ClusterSpec defines cluster spec
 type Spec struct {
 	Hosts Hosts `yaml:"hosts" validate:"required,dive,min=1"`
+	K0s   K0s
 
 	k0sLeader *Host
 }
