@@ -3,7 +3,6 @@ package phase
 import (
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,20 +28,14 @@ func (p *InstallWorkers) ShouldRun() bool {
 }
 
 func (p *InstallWorkers) Run() error {
-	if p.Config.Spec.K0s.Metadata.WorkerToken == "" {
-		leader := p.Config.Spec.K0sLeader()
-		log.Infof("%s: generating worker join token", leader)
-		output, err := leader.ExecOutput(leader.Configurer.K0sCmdf("token create --role worker"), exec.HideOutput())
-		if err != nil {
-			return err
-		}
-		p.Config.Spec.K0s.Metadata.WorkerToken = output
-	}
-
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
-		log.Infof("%s: installing k0s worker", h)
-		if err := h.Exec(h.Configurer.K0sCmdf("install --role worker")); err != nil {
-			return err
+		if !h.Metadata.K0sRunning {
+			log.Infof("%s: installing k0s worker", h)
+			if err := h.Exec(h.Configurer.K0sCmdf("install --role worker")); err != nil {
+				return err
+			}
+		} else {
+			log.Infof("%s: k0s service already running", h)
 		}
 
 		log.Infof("%s: updating join token", h)
@@ -60,10 +53,19 @@ func (p *InstallWorkers) Run() error {
 			return err
 		}
 
-		log.Infof("%s: starting service", h)
-		if err := h.Configurer.StartService("k0s"); err != nil {
-			return err
+		if !h.Metadata.K0sRunning {
+			log.Infof("%s: starting service", h)
+			if err := h.Configurer.StartService("k0s"); err != nil {
+				return err
+			}
+		} else {
+			log.Infof("%s: restarting service", h)
+			if err := h.Configurer.RestartService("k0s"); err != nil {
+				return err
+			}
 		}
+
+		h.Metadata.K0sRunning = true
 
 		return nil
 	})
