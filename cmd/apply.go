@@ -16,7 +16,7 @@ var applyCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 	},
-	Before: actions(initLogging, initConfig),
+	Before: actions(initLogging, initConfig, displayCopyright),
 	Action: func(ctx *cli.Context) error {
 		content := ctx.String("config")
 

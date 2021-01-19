@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
@@ -71,6 +72,13 @@ func initConfig(ctx *cli.Context) error {
 
 	ctx.Set("config", string(content))
 
+	return nil
+}
+
+func displayCopyright(_ *cli.Context) error {
+	log.Infof("K0sctl %s Copyright 2021, Mirantis Inc.", version.Version)
+	log.Infof("Anonymized telemetry will be sent to Mirantis.")
+	log.Infof("By continuing to use k0sctl you agree to these terms.")
 	return nil
 }
 
