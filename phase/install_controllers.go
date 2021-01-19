@@ -32,7 +32,7 @@ func (p *InstallControllers) ShouldRun() bool {
 func (p *InstallControllers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: installing k0s controller", h)
-		if err := h.Exec(h.Configurer.K0sCmdf("install --role server")); err != nil {
+		if err := h.Exec(h.Configurer.K0sCmdf("install --role server --config %s", h.Configurer.K0sConfigPath())); err != nil {
 			return err
 		}
 

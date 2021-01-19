@@ -48,7 +48,7 @@ func (p *InitializeK0s) Run() error {
 	}
 
 	log.Infof("%s: installing k0s controller", p.host)
-	if err := p.host.Exec(p.host.Configurer.K0sCmdf("install --role server")); err != nil {
+	if err := p.host.Exec(p.host.Configurer.K0sCmdf("install --role server --config %s", p.host.Configurer.K0sConfigPath())); err != nil {
 		return err
 	}
 
