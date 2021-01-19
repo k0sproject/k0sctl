@@ -11,6 +11,7 @@ type Linux struct {
 	os.Linux
 }
 
+// TODO For some reason the rig stock OS functions do not get "inherited" and need to be proxied
 func (l *Linux) CheckPrivilege() error {
 	return l.Linux.CheckPrivilege()
 }
