@@ -40,22 +40,11 @@ func (p *InitializeK0s) Run() error {
 		if err := p.waitK0s(); err != nil {
 			return err
 		}
-		log.Infof("%s: generating worker join token", p.host)
-
-		return retry.Do(
-			func() error {
-				output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role worker"), exec.HideOutput())
-				if err != nil {
-					return err
-				}
-				p.Config.Spec.K0s.Metadata.WorkerToken = output
-				return nil
-			},
-			retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
-			retry.MaxJitter(time.Second*2),
-			retry.Delay(time.Second*3),
-			retry.Attempts(60),
-		)
+		token, err := p.generateToken("worker")
+		if err != nil {
+			return err
+		}
+		p.Config.Spec.K0s.Metadata.WorkerToken = token
 	}
 
 	log.Infof("%s: installing k0s controller", p.host)
@@ -72,19 +61,17 @@ func (p *InitializeK0s) Run() error {
 	p.host.Metadata.K0sRunning = true
 	p.host.Metadata.K0sVersion = p.Config.Spec.K0s.Version
 
-	log.Infof("%s: generating controller join token", p.host)
-	output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role controller"), exec.HideOutput())
+	token, err := p.generateToken("controller")
 	if err != nil {
 		return err
 	}
-	p.Config.Spec.K0s.Metadata.ControllerToken = output
+	p.Config.Spec.K0s.Metadata.ControllerToken = token
 
-	log.Infof("%s: generating worker join token", p.host)
-	output, err = p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role worker"), exec.HideOutput())
+	token, err = p.generateToken("worker")
 	if err != nil {
 		return err
 	}
-	p.Config.Spec.K0s.Metadata.WorkerToken = output
+	p.Config.Spec.K0s.Metadata.WorkerToken = token
 
 	return nil
 }
@@ -103,4 +90,23 @@ func (p *InitializeK0s) waitK0s() error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
+}
+
+func (p *InitializeK0s) generateToken(role string) (token string, err error) {
+	log.Infof("%s: generating worker join token", p.host)
+	err = retry.Do(
+		func() error {
+			output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role worker"), exec.HideOutput())
+			if err != nil {
+				return err
+			}
+			token = output
+			return nil
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+	return
 }
