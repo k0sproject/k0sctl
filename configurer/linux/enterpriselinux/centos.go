@@ -40,9 +40,7 @@ func init() {
 				},
 				EnterpriseLinux: k0slinux.EnterpriseLinux{
 					Linux: configurer.Linux{
-						Linux: os.Linux{
-							Host: h,
-						},
+						Host: h,
 					},
 				},
 			}
