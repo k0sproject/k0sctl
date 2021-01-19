@@ -24,10 +24,18 @@ func (p *InitializeK0s) Prepare(config *config.Cluster) error {
 }
 
 func (p *InitializeK0s) ShouldRun() bool {
-	return p.host != nil && !p.host.Metadata.K0sRunning
+	return p.host != nil
 }
 
 func (p *InitializeK0s) Run() error {
+	if p.host.Metadata.K0sRunning {
+		log.Infof("%s: reloading configuration", p.host)
+		if err := p.host.Configurer.RestartService("k0s"); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	log.Infof("%s: installing k0s controller", p.host)
 	if err := p.host.Exec(p.host.Configurer.K0sCmdf("install --role server")); err != nil {
 		return err
@@ -44,7 +52,6 @@ func (p *InitializeK0s) Run() error {
 	if err != nil {
 		return err
 	}
-
 	p.Config.Spec.K0s.Metadata.ControllerToken = output
 
 	log.Infof("%s: generating worker join token", p.host)
@@ -52,8 +59,7 @@ func (p *InitializeK0s) Run() error {
 	if err != nil {
 		return err
 	}
-
-	p.Config.Spec.K0s.Metadata.ControllerToken = output
+	p.Config.Spec.K0s.Metadata.WorkerToken = output
 
 	return nil
 }

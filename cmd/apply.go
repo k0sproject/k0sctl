@@ -34,11 +34,14 @@ var applyCommand = &cli.Command{
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
+			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.DownloadK0s{},
+			&phase.ConfigureK0s{},
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
+			&phase.Disconnect{},
 		)
 
 		return manager.Run()

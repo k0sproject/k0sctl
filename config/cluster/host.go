@@ -22,6 +22,7 @@ type Host struct {
 type configurer interface {
 	CheckPrivilege() error
 	StartService(string) error
+	RestartService(string) error
 	ServiceIsRunning(string) bool
 	Arch() (string, error)
 	K0sCmdf(string, ...interface{}) string
@@ -29,6 +30,13 @@ type configurer interface {
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
 	RunK0sDownloader(string) error
+	WriteFile(path, data, permissions string) error
+	UpdateEnvironment(map[string]string) error
+	DaemonReload() error
+	ServiceScriptPath(string) (string, error)
+	ReplaceK0sTokenPath() error
+	ReadFile(string) (string, error)
+	FileExist(string) bool
 }
 
 // HostMetadata resolved metadata for host

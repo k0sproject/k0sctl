@@ -34,9 +34,5 @@ func (p *DownloadK0s) Run() error {
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 	log.Infof("%s: downloading k0s", h)
-	if err := h.Configurer.RunK0sDownloader(p.Config.Spec.K0s.Version); err != nil {
-		return err
-	}
-
-	return nil
+	return h.Configurer.RunK0sDownloader(p.Config.Spec.K0s.Version)
 }

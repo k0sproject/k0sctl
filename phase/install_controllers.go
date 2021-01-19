@@ -36,11 +36,20 @@ func (p *InstallControllers) Run() error {
 			return err
 		}
 
-		if err := h.Configurer.StartService("k0s"); err != nil {
+		log.Infof("%s: updating join token", h)
+		if err := h.Configurer.WriteFile(h.Configurer.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
 			return err
 		}
 
-		log.Warnf("put the token somewhere")
+		log.Infof("%s: reloading daemon configuration", h)
+		if err := h.Configurer.DaemonReload(); err != nil {
+			return err
+		}
+
+		log.Infof("%s: starting service", h)
+		if err := h.Configurer.StartService("k0s"); err != nil {
+			return err
+		}
 
 		return nil
 	})

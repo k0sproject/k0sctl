@@ -28,6 +28,22 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 		log.Infof("%s: k0s service is running", h)
 	}
 
+	if h.Role == "server" && h.Configurer.FileExist(h.Configurer.K0sJoinTokenPath()) {
+		token, err := h.Configurer.ReadFile(h.Configurer.K0sJoinTokenPath())
+		if token != "" && err == nil {
+			log.Infof("%s: found an existing controller token", h)
+			p.Config.Spec.K0s.Metadata.ControllerToken = token
+		}
+	}
+
+	if h.Role == "worker" && h.Configurer.FileExist(h.Configurer.K0sJoinTokenPath()) {
+		token, err := h.Configurer.ReadFile(h.Configurer.K0sJoinTokenPath())
+		if token != "" && err == nil {
+			log.Infof("%s: found an existing worker token", h)
+			p.Config.Spec.K0s.Metadata.WorkerToken = token
+		}
+	}
+
 	if output, err := h.ExecOutput("k0s version"); err == nil {
 		h.Metadata.K0sVersion = strings.TrimPrefix(output, "v")
 		log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sVersion)
