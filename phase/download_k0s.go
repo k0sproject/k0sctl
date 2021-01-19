@@ -9,7 +9,7 @@ import (
 // DownloadK0s connects to each of the hosts
 type DownloadK0s struct {
 	GenericPhase
-	hosts []*cluster.Host
+	hosts cluster.Hosts
 }
 
 func (p *DownloadK0s) Title() string {
@@ -29,7 +29,7 @@ func (p *DownloadK0s) ShouldRun() bool {
 }
 
 func (p *DownloadK0s) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(p.downloadK0s)
+	return p.hosts.ParallelEach(p.downloadK0s)
 }
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {

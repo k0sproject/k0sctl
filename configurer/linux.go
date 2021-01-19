@@ -67,6 +67,10 @@ func (l *Linux) Arch() (string, error) {
 	}
 }
 
+func (l *Linux) Chmod(path, chmod string) error {
+	return l.Host.Execf("sudo chmod %s %s", chmod, path)
+}
+
 func (l *Linux) K0sCmdf(template string, args ...interface{}) string {
 	return fmt.Sprintf("sudo %s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
 }

@@ -12,8 +12,10 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role        string            `yaml:"role" validate:"oneof=server worker"`
-	Environment map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
+	Role          string            `yaml:"role" validate:"oneof=server worker"`
+	Environment   map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
+	UploadBinary  bool              `yaml:"uploadBinary"`
+	K0sBinaryPath string            `yaml:"k0sBinaryPath"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer
@@ -37,6 +39,7 @@ type configurer interface {
 	ReplaceK0sTokenPath() error
 	ReadFile(string) (string, error)
 	FileExist(string) bool
+	Chmod(string, string) error
 }
 
 // HostMetadata resolved metadata for host
