@@ -1,42 +1,60 @@
-/*
-Copyright 2020 Mirantis, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package cmd
 
 import (
-	"fmt"
+	"github.com/k0sproject/k0sctl/config"
+	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/k0sctl/version"
+	log "github.com/sirupsen/logrus"
 
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
 
-// applyCmd represents the apply command
-var applyCmd = &cobra.Command{
-	Use:   "apply",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("apply called")
+var applyCommand = &cli.Command{
+	Name:  "apply",
+	Usage: "Apply a k0sctl configuration",
+	Flags: []cli.Flag{
+		configFlag,
+		debugFlag,
+		traceFlag,
 	},
-}
+	Before: actions(initLogging, initConfig, displayCopyright),
+	Action: func(ctx *cli.Context) error {
+		content := ctx.String("config")
 
-func init() {
-	rootCmd.AddCommand(applyCmd)
+		c := config.Cluster{}
+		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
+			return err
+		}
+
+		if err := c.Validate(); err != nil {
+			return err
+		}
+
+		manager := phase.Manager{Config: &c}
+
+		manager.AddPhase(
+			&phase.Connect{},
+			&phase.DetectOS{},
+			&phase.PrepareHosts{},
+			&phase.GatherFacts{},
+			&phase.DownloadBinaries{},
+			&phase.UploadBinaries{},
+			&phase.DownloadK0s{},
+			&phase.ConfigureK0s{},
+			&phase.InitializeK0s{},
+			&phase.InstallControllers{},
+			&phase.InstallWorkers{},
+			&phase.Disconnect{},
+		)
+
+		if err := manager.Run(); err != nil {
+			return err
+		}
+
+		log.Infof("K0s cluster version %s is now installed", version.Version)
+		log.Infof("To access the cluster...") // TODO figure out
+
+		return nil
+	},
 }
