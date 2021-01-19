@@ -5,6 +5,7 @@ go 1.15
 replace github.com/k0sproject/rig => /Users/kimmo/Projects/go/src/github.com/k0sproject/rig
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/creasty/defaults v1.5.1
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/k0sproject/rig v0.0.0-00010101000000-000000000000
