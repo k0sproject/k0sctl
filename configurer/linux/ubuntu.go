@@ -27,9 +27,7 @@ func init() {
 					},
 				},
 				Linux: configurer.Linux{
-					Linux: os.Linux{
-						Host: h,
-					},
+					Host: h,
 				},
 			}
 		},

@@ -35,8 +35,8 @@ type configurer interface {
 	WriteFile(path, data, permissions string) error
 	UpdateEnvironment(map[string]string) error
 	DaemonReload() error
+	ReplaceK0sTokenPath(string) error
 	ServiceScriptPath(string) (string, error)
-	ReplaceK0sTokenPath() error
 	ReadFile(string) (string, error)
 	FileExist(string) bool
 	Chmod(string, string) error

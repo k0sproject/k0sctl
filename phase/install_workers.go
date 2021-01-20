@@ -44,7 +44,11 @@ func (p *InstallWorkers) Run() error {
 		}
 
 		log.Infof("%s: updating service script", h)
-		if err := h.Configurer.ReplaceK0sTokenPath(); err != nil {
+		spath, err := h.Configurer.ServiceScriptPath("k0s")
+		if err != nil {
+			return err
+		}
+		if err := h.Configurer.ReplaceK0sTokenPath(spath); err != nil {
 			return err
 		}
 
