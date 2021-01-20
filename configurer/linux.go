@@ -62,7 +62,7 @@ func (l Linux) TempFile() (string, error) {
 	return l.Host.ExecOutput("mktemp")
 }
 
-// RunK0sDownloader downloads k0s binaries using the online script
+// DownloadK0s performs k0s binary download from github on the host
 func (l Linux) DownloadK0s(version, arch string) error {
 	tmp, err := l.TempFile()
 	if err != nil {
