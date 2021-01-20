@@ -44,7 +44,7 @@ func (l Linux) K0sCmdf(template string, args ...interface{}) string {
 
 // K0sConfigPath returns location of k0s configuration file
 func (l Linux) K0sBinaryPath() string {
-	return "/usr/bin/k0s"
+	return "/usr/local/bin/k0s"
 }
 
 // K0sConfigPath returns location of k0s configuration file
@@ -57,9 +57,25 @@ func (l Linux) K0sJoinTokenPath() string {
 	return "/etc/k0s/k0stoken"
 }
 
+// TempFile returns a temp file path
+func (l Linux) TempFile() (string, error) {
+	return l.Host.ExecOutput("mktemp")
+}
+
 // RunK0sDownloader downloads k0s binaries using the online script
-func (l Linux) RunK0sDownloader(version string) error {
-	return l.Host.Exec(fmt.Sprintf("curl get.k0s.sh | K0S_VERSION=v%s sh", version))
+func (l Linux) DownloadK0s(version, arch string) error {
+	tmp, err := l.TempFile()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = l.Host.Execf(`rm -f "%s"`, tmp) }()
+
+	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
+	if err := l.Host.Execf(`curl -sSLf -o "%s" "%s"`, tmp, url); err != nil {
+		return err
+	}
+
+	return l.Host.Execf(`sudo install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath())
 }
 
 func (l Linux) ReplaceK0sTokenPath(spath string) error {

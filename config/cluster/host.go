@@ -31,7 +31,6 @@ type configurer interface {
 	K0sBinaryPath() string
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
-	RunK0sDownloader(string) error
 	WriteFile(path, data, permissions string) error
 	UpdateEnvironment(map[string]string) error
 	DaemonReload() error
@@ -40,6 +39,7 @@ type configurer interface {
 	ReadFile(string) (string, error)
 	FileExist(string) bool
 	Chmod(string, string) error
+	DownloadK0s(string, string) error
 }
 
 // HostMetadata resolved metadata for host
