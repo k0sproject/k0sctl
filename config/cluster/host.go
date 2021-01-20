@@ -40,6 +40,8 @@ type configurer interface {
 	FileExist(string) bool
 	Chmod(string, string) error
 	DownloadK0s(string, string) error
+	WebRequestPackage() string
+	InstallPackage(...string) error
 }
 
 // HostMetadata resolved metadata for host

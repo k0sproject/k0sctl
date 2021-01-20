@@ -81,3 +81,7 @@ func (l Linux) DownloadK0s(version, arch string) error {
 func (l Linux) ReplaceK0sTokenPath(spath string) error {
 	return l.Host.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
+
+func (l Linux) WebRequestPackage() string {
+	return "curl"
+}
