@@ -7,7 +7,8 @@ require (
 	github.com/creasty/defaults v1.5.1
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/go-playground/validator/v10 v10.4.1
-	github.com/k0sproject/rig v0.0.0-20210119133418-8a7cc6c3900e
+	github.com/hashicorp/go-version v1.2.1
+	github.com/k0sproject/rig v0.2.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18
 	github.com/sirupsen/logrus v1.7.0
