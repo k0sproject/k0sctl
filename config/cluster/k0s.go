@@ -34,7 +34,6 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
 func (k *K0s) SetDefaults() {
-	println("in setdefaults")
 	if defaults.CanUpdate(k.Version) {
 		if latest, err := integration.LatestK0sVersion(version.IsPre()); err == nil {
 			k.Version = latest
