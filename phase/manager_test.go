@@ -49,7 +49,7 @@ func (p *configPhase) Prepare(c *config.Cluster) error {
 	return nil
 }
 
-func (c *configPhase) Run() error {
+func (p *configPhase) Run() error {
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (p *hookedPhase) After(err error) error {
 	return nil
 }
 
-func (c *hookedPhase) Run() error {
+func (p *hookedPhase) Run() error {
 	return fmt.Errorf("run failed")
 }
 
