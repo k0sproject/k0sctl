@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/creasty/defaults v1.5.1
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/k0sproject/rig v0.2.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
