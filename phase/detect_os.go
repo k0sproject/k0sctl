@@ -2,22 +2,27 @@ package phase
 
 import (
 	"github.com/k0sproject/k0sctl/config/cluster"
+	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer"
+	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer/linux"
+	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer/linux/enterpriselinux"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// Connect connects to each of the hosts
+// DetectOS performs remote OS detection
 type DetectOS struct {
 	GenericPhase
 }
 
+// Title for the phase
 func (p *DetectOS) Title() string {
 	return "Detect host operating systems"
 }
 
+// Run the phase
 func (p *DetectOS) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: detecting operating system", h)

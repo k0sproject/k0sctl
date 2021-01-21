@@ -1,6 +1,6 @@
 package cluster
 
-// K0sConfig holds configuration for bootstraping k0s cluster
+// K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
 	Version  string      `yaml:"version" default:"0.9.1"`
 	Config   Mapping     `yaml:"k0s"`
