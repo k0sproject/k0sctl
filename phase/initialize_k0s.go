@@ -11,26 +11,30 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// InitializeK0s connects to each of the hosts
+// InitializeK0s sets up the "initial" k0s controller
 type InitializeK0s struct {
 	GenericPhase
 	host *cluster.Host
 }
 
+// Title for the phase
 func (p *InitializeK0s) Title() string {
 	return "Initialize K0s Cluster"
 }
 
+// Prepare the phase
 func (p *InitializeK0s) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.host = p.Config.Spec.K0sLeader()
 	return nil
 }
 
+// ShouldRun is true when there is a leader host
 func (p *InitializeK0s) ShouldRun() bool {
 	return p.host != nil
 }
 
+// Run the phase
 func (p *InitializeK0s) Run() error {
 	if p.host.Metadata.K0sRunning {
 		log.Infof("%s: reloading configuration", p.host)

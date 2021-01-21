@@ -60,11 +60,10 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	defaults.Set(h)
-
-	return nil
+	return defaults.Set(h)
 }
 
+// ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
 	bf, err := registry.GetOSModuleBuilder(h.OSVersion)
 	if err != nil {

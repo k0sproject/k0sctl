@@ -11,16 +11,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// DownloadBinaries connects to each of the hosts
+// DownloadBinaries downloads k0s binaries to localohost temp files
 type DownloadBinaries struct {
 	GenericPhase
 	hosts []*cluster.Host
 }
 
+// Title for the phase
 func (p *DownloadBinaries) Title() string {
 	return "Download binaries"
 }
 
+// Prepare the phase
 func (p *DownloadBinaries) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
@@ -29,10 +31,12 @@ func (p *DownloadBinaries) Prepare(config *config.Cluster) error {
 	return nil
 }
 
+// ShouldRun is true when the phase should be run
 func (p *DownloadBinaries) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Run the phase
 func (p *DownloadBinaries) Run() error {
 	binaries := make(map[string]string)
 	for _, h := range p.hosts {

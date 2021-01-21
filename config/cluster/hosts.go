@@ -58,12 +58,12 @@ func (hosts *Hosts) WithRole(s string) Hosts {
 	})
 }
 
-// WithRole returns a ltered list of Hosts that have the given role
+// Controllers returns hosts with the role "server"
 func (hosts *Hosts) Controllers() Hosts {
 	return hosts.WithRole("server")
 }
 
-// WithRole returns a ltered list of Hosts that have the given role
+// Workers returns hosts with the role "worker"
 func (hosts *Hosts) Workers() Hosts {
 	return hosts.WithRole("worker")
 }

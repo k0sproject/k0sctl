@@ -6,16 +6,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ConfigureK0s connects to each of the hosts
+// ConfigureK0s writes the k0s configuration to host k0s config dir
 type ConfigureK0s struct {
 	GenericPhase
 	k0sconfig string
 }
 
+// Title returns the phase title
 func (p *ConfigureK0s) Title() string {
 	return "Configure K0s"
 }
 
+// Run the phase
 func (p *ConfigureK0s) Run() error {
 	if len(p.Config.Spec.K0s.Config) == 0 {
 		leader := p.Config.Spec.K0sLeader()

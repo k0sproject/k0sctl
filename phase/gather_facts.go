@@ -7,15 +7,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// GatherFacts connects to each of the hosts
+// GatherFacts gathers information about hosts, such as if k0s is already up and running
 type GatherFacts struct {
 	GenericPhase
 }
 
+// Title for the phase
 func (p *GatherFacts) Title() string {
 	return "Gather host facts"
 }
 
+// Run the phase
 func (p *GatherFacts) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(p.investigateHost)
 }
