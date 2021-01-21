@@ -1,6 +1,9 @@
 package phase
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +17,7 @@ type DownloadK0s struct {
 
 // Title for the phase
 func (p *DownloadK0s) Title() string {
-	return "Download K0s"
+	return "Download K0s on the hosts"
 }
 
 // Prepare the phase
@@ -37,6 +40,22 @@ func (p *DownloadK0s) Run() error {
 }
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
-	log.Infof("%s: downloading k0s", h)
-	return h.Configurer.RunK0sDownloader(p.Config.Spec.K0s.Version)
+	target := p.Config.Spec.K0s.Version
+	log.Infof("%s: downloading k0s %s", h, target)
+	if err := h.Configurer.DownloadK0s(target, h.Metadata.Arch); err != nil {
+		return err
+	}
+
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+	if err != nil {
+		return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
+	}
+	output = strings.TrimPrefix(output, "v")
+	if output != target {
+		return fmt.Errorf("downloaded k0s binary version is %s not %s", output, target)
+	}
+
+	h.Metadata.K0sVersion = target
+
+	return nil
 }

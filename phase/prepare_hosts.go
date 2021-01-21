@@ -9,7 +9,7 @@ import (
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
 	GenericPhase
-	hosts []*cluster.Host
+	hosts cluster.Hosts
 }
 
 // Title for the phase
@@ -20,7 +20,7 @@ func (p *PrepareHosts) Title() string {
 // Prepare the phase
 func (p *PrepareHosts) Prepare(config *config.Cluster) error {
 	for _, h := range config.Spec.Hosts {
-		if len(h.Environment) > 0 {
+		if len(h.Environment) > 0 || !h.UploadBinary {
 			p.hosts = append(p.hosts, h)
 		}
 	}
@@ -34,11 +34,23 @@ func (p *PrepareHosts) ShouldRun() bool {
 
 // Run the phase
 func (p *PrepareHosts) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(p.prepareHost)
+	return p.hosts.ParallelEach(p.prepareHost)
 }
 
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
-	log.Infof("%s: updating environment", h)
+	if len(h.Environment) > 0 {
+		log.Infof("%s: updating environment", h)
+		if err := h.Configurer.UpdateEnvironment(h.Environment); err != nil {
+			return err
+		}
+	}
 
-	return h.Configurer.UpdateEnvironment(h.Environment)
+	if !h.UploadBinary {
+		log.Infof("%s: installing packages", h)
+		if err := h.Configurer.InstallPackage(h.Configurer.WebRequestPackage()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

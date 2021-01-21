@@ -46,7 +46,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 		}
 	}
 
-	if output, err := h.ExecOutput("k0s version"); err == nil {
+	if output, err := h.ExecOutput(h.Configurer.K0sCmdf("version")); err == nil {
 		h.Metadata.K0sVersion = strings.TrimPrefix(output, "v")
 		log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sVersion)
 	}
