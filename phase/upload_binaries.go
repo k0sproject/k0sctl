@@ -6,16 +6,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// UploadBinaries connects to each of the hosts
+// UploadBinaries uploads k0s binaries from localhost to target
 type UploadBinaries struct {
 	GenericPhase
 	hosts cluster.Hosts
 }
 
+// Title for the phase
 func (p *UploadBinaries) Title() string {
 	return "Upload binaries"
 }
 
+// Prepare the phase
 func (p *UploadBinaries) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
@@ -24,10 +26,12 @@ func (p *UploadBinaries) Prepare(config *config.Cluster) error {
 	return nil
 }
 
+// ShouldRun is true when there are hosts that need binary uploading
 func (p *UploadBinaries) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Run the phase
 func (p *UploadBinaries) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(p.uploadBinary)
 }

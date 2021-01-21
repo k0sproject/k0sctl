@@ -70,9 +70,7 @@ func initConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	ctx.Set("config", string(content))
-
-	return nil
+	return ctx.Set("config", string(content))
 }
 
 func displayCopyright(_ *cli.Context) error {
@@ -169,10 +167,6 @@ func (h *loghook) Fire(entry *log.Entry) error {
 	}
 	_, err = h.Writer.Write(line)
 	return err
-}
-
-func initLogger(level log.Level) {
-
 }
 
 func screenLoggerHook() *loghook {

@@ -1,6 +1,6 @@
 package cluster
 
-// ClusterSpec defines cluster spec
+// Spec defines cluster config spec section
 type Spec struct {
 	Hosts Hosts `yaml:"hosts" validate:"required,dive,min=1"`
 	K0s   K0s
@@ -8,6 +8,8 @@ type Spec struct {
 	k0sLeader *Host
 }
 
+// K0sLeader returns a controller host that is selected to be a "leader",
+// or an initial node, a node that creates join tokens for other controllers.
 func (c *Spec) K0sLeader() *Host {
 	controllers := c.Hosts.Controllers()
 

@@ -6,16 +6,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// InstallControllers connects to each of the hosts
+// InstallControllers installs k0s controllers and joins them to the cluster
 type InstallControllers struct {
 	GenericPhase
 	hosts cluster.Hosts
 }
 
+// Title for the phase
 func (p *InstallControllers) Title() string {
 	return "Install controllers"
 }
 
+// Prepare the phase
 func (p *InstallControllers) Prepare(config *config.Cluster) error {
 	p.Config = config
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
@@ -25,10 +27,12 @@ func (p *InstallControllers) Prepare(config *config.Cluster) error {
 	return nil
 }
 
+// ShouldRun is true when there are controllers
 func (p *InstallControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Run the phase
 func (p *InstallControllers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: installing k0s controller", h)

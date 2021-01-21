@@ -19,6 +19,7 @@ type Linux struct {
 // call `l.ServiceScriptPath("kos")`, which was worked around here by getting the
 // path as a parameter.
 
+// Arch returns the host processor architecture in the format k0s expects it
 func (l Linux) Arch() (string, error) {
 	arch, err := l.Host.ExecOutput("uname -m")
 	if err != nil {
@@ -34,25 +35,27 @@ func (l Linux) Arch() (string, error) {
 	}
 }
 
+// Chmod changes file permissions
 func (l Linux) Chmod(path, chmod string) error {
 	return l.Host.Execf("sudo chmod %s %s", chmod, path)
 }
 
+// K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l Linux) K0sCmdf(template string, args ...interface{}) string {
 	return fmt.Sprintf("sudo %s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
 }
 
-// K0sConfigPath returns location of k0s configuration file
+// K0sBinaryPath returns the location of k0s binary
 func (l Linux) K0sBinaryPath() string {
 	return "/usr/bin/k0s"
 }
 
-// K0sConfigPath returns location of k0s configuration file
+// K0sConfigPath returns the location of k0s configuration file
 func (l Linux) K0sConfigPath() string {
 	return "/etc/k0s/k0s.yaml"
 }
 
-// K0sJoinToken returns location of k0s join token file
+// K0sJoinTokenPath returns the location of k0s join token file
 func (l Linux) K0sJoinTokenPath() string {
 	return "/etc/k0s/k0stoken"
 }
@@ -62,6 +65,7 @@ func (l Linux) RunK0sDownloader(version string) error {
 	return l.Host.Exec(fmt.Sprintf("curl get.k0s.sh | K0S_VERSION=v%s sh", version))
 }
 
+// ReplaceK0sTokenPath replaces the config path in the service stub
 func (l Linux) ReplaceK0sTokenPath(spath string) error {
 	return l.Host.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
