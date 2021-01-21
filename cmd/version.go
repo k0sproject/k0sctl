@@ -44,6 +44,7 @@ var versionCommand = &cli.Command{
 				os.Exit(1)
 			}
 			fmt.Println(id)
+			os.Exit(0)
 		}
 
 		return nil
