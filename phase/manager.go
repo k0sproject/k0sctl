@@ -9,8 +9,22 @@ import (
 type phase interface {
 	Run() error
 	Title() string
+}
+
+type withconfig interface {
 	Prepare(*config.Cluster) error
+}
+
+type conditional interface {
 	ShouldRun() bool
+}
+
+type beforehook interface {
+	Before() error
+}
+
+type afterhook interface {
+	After(error) error
 }
 
 // Manager executes phases to construct the cluster
@@ -27,21 +41,38 @@ func (m *Manager) AddPhase(p ...phase) {
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
 	for _, p := range m.phases {
-		log.Debugf("preparing phase '%s'", p.Title())
-		err := p.Prepare(m.Config)
-		if err != nil {
-			return err
+		if p, ok := p.(withconfig); ok {
+			if err := p.Prepare(m.Config); err != nil {
+				return err
+			}
 		}
 
-		if !p.ShouldRun() {
-			log.Debugf("skipping phase '%s'", p.Title())
-			continue
+		if p, ok := p.(conditional); ok {
+			if !p.ShouldRun() {
+				continue
+			}
+		}
+
+		if p, ok := p.(beforehook); ok {
+			if err := p.Before(); err != nil {
+				log.Debugf("before hook failed '%s'", err.Error())
+				return err
+			}
 		}
 
 		text := aurora.Green("==> Running phase: %s").String()
 		log.Infof(text, p.Title())
-		if err := p.Run(); err != nil {
-			return err
+		result := p.Run()
+
+		if p, ok := p.(afterhook); ok {
+			if err := p.After(result); err != nil {
+				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
+				return err
+			}
+		}
+
+		if result != nil {
+			return result
 		}
 	}
 
