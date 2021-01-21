@@ -1,11 +1,25 @@
 package cluster
 
+import "github.com/creasty/defaults"
+
 // Spec defines cluster config spec section
 type Spec struct {
 	Hosts Hosts `yaml:"hosts" validate:"required,dive,min=1"`
-	K0s   K0s
+	K0s   K0s   `yaml:"k0s"`
 
 	k0sLeader *Host
+}
+
+// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
+func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type spec Spec
+	ys := (*spec)(s)
+
+	if err := unmarshal(ys); err != nil {
+		return err
+	}
+
+	return defaults.Set(s)
 }
 
 // K0sLeader returns a controller host that is selected to be a "leader",
