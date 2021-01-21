@@ -28,7 +28,7 @@ You can find the installed executable/binary in `$GOPATH/bin` directory.
 
 ### Install binary from Release Download
 
-Download the desired binary for your platform to the desired location from (here)[https://github.com/k0sproject/k0sctl/tags] 
+Download the desired binary for your platform to the desired location from [here](https://github.com/k0sproject/k0sctl/tags) 
 
 ### Configuring your Path
 
@@ -96,4 +96,5 @@ spec:
     * `enabled` - (bool)
 * `k0s` - this section holds information about desired k0s setup
   * `version` -  (string) version of the k0s binary if not provided k0sctl will pull the latest version. Note: only supports versions =>0.10.0
-  * `config` - k0s specific (configuration)[https://github.com/k0sproject/k0s/blob/main/docs/configuration.md] if not provided k0s will run with default values.
+  * `config` - k0s specific [configuration](https://github.com/k0sproject/k0s/blob/main/docs/configuration.md) if not provided k0s will run with default values.
+
