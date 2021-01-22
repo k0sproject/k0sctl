@@ -1,4 +1,4 @@
-package integration
+package github
 
 import (
 	"encoding/json"
@@ -14,22 +14,22 @@ import (
 
 const timeOut = time.Second * 10
 
-// GithubAsset describes a github asset
-type GithubAsset struct {
+// Asset describes a github asset
+type Asset struct {
 	Name string `json:"name"`
 	URL  string `json:"browser_download_url"`
 }
 
-// GithubRelease describes a github release
-type GithubRelease struct {
-	URL        string        `json:"html_url"`
-	TagName    string        `json:"tag_name"`
-	PreRelease bool          `json:"prerelease"`
-	Assets     []GithubAsset `json:"assets"`
+// Release describes a github release
+type Release struct {
+	URL        string  `json:"html_url"`
+	TagName    string  `json:"tag_name"`
+	PreRelease bool    `json:"prerelease"`
+	Assets     []Asset `json:"assets"`
 }
 
 func LatestK0sBinaryURL(arch, os_kind string, preok bool) (string, error) {
-	r, err := LatestGithubRelease("k0sproject/k0s", preok)
+	r, err := LatestRelease("k0sproject/k0s", preok)
 	if err != nil {
 		return "", err
 	}
@@ -53,21 +53,21 @@ func LatestK0sBinaryURL(arch, os_kind string, preok bool) (string, error) {
 
 // LatestK0sVersion returns the latest k0s version number (without v prefix)
 func LatestK0sVersion(preok bool) (string, error) {
-	r, err := LatestGithubRelease("k0sproject/k0s", preok)
+	r, err := LatestRelease("k0sproject/k0s", preok)
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimPrefix(r.TagName, "v"), nil
 }
 
-// LatestGithubRelease returns the semantically sorted latest version from github releases page for a repo.
+// LatestRelease returns the semantically sorted latest version from github releases page for a repo.
 // Set preok true to allow returning pre-release versions.  Assumes the repository has release tags with
 // semantic version numbers (optionally v-prefixed).
-func LatestGithubRelease(repo string, preok bool) (GithubRelease, error) {
+func LatestRelease(repo string, preok bool) (Release, error) {
 	var gotV bool
-	var releases []GithubRelease
+	var releases []Release
 	if err := unmarshalUrlBody(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=20&page=1", repo), &releases); err != nil {
-		return GithubRelease{}, err
+		return Release{}, err
 	}
 
 	var versions []*version.Version
@@ -93,7 +93,7 @@ func LatestGithubRelease(repo string, preok bool) (GithubRelease, error) {
 		}
 	}
 
-	return GithubRelease{}, fmt.Errorf("failed to get the latest version information")
+	return Release{}, fmt.Errorf("failed to get the latest version information")
 }
 
 func unmarshalUrlBody(url string, o interface{}) error {

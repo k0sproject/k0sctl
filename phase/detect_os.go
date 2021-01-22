@@ -15,6 +15,8 @@ import (
 // DetectOS performs remote OS detection
 type DetectOS struct {
 	GenericPhase
+
+	oses map[string]int
 }
 
 // Title for the phase
@@ -29,7 +31,10 @@ func (p *DetectOS) Run() error {
 		if err := h.ResolveConfigurer(); err != nil {
 			return err
 		}
-		log.Infof("%s: is running %s", h, h.OSVersion.String())
+		os := h.OSVersion.String()
+		p.IncProp(os)
+		log.Infof("%s: is running %s", h, os)
+
 		err := h.Configurer.CheckPrivilege()
 		if err != nil {
 			return err

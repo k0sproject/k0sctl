@@ -19,8 +19,9 @@ type conditional interface {
 	ShouldRun() bool
 }
 
+// beforehook receives the phase title as an argument because of reasons.
 type beforehook interface {
-	Before() error
+	Before(string) error
 }
 
 type afterhook interface {
@@ -41,6 +42,8 @@ func (m *Manager) AddPhase(p ...phase) {
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
 	for _, p := range m.phases {
+		title := p.Title()
+
 		if p, ok := p.(withconfig); ok {
 			if err := p.Prepare(m.Config); err != nil {
 				return err
@@ -54,14 +57,14 @@ func (m *Manager) Run() error {
 		}
 
 		if p, ok := p.(beforehook); ok {
-			if err := p.Before(); err != nil {
+			if err := p.Before(title); err != nil {
 				log.Debugf("before hook failed '%s'", err.Error())
 				return err
 			}
 		}
 
 		text := aurora.Green("==> Running phase: %s").String()
-		log.Infof(text, p.Title())
+		log.Infof(text, title)
 		result := p.Run()
 
 		if p, ok := p.(afterhook); ok {

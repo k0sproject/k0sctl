@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/integration"
+	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/urfave/cli/v2"
 )
@@ -29,7 +29,7 @@ var versionCommand = &cli.Command{
 	},
 	Before: func(ctx *cli.Context) error {
 		if ctx.Bool("k0s") {
-			v, err := integration.LatestK0sVersion(ctx.Bool("pre"))
+			v, err := github.LatestK0sVersion(ctx.Bool("pre"))
 			if err != nil {
 				return err
 			}

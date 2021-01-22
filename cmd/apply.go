@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/version"
@@ -17,8 +18,13 @@ var applyCommand = &cli.Command{
 		configFlag,
 		debugFlag,
 		traceFlag,
+		analyticsFlag,
 	},
-	Before: actions(initLogging, initConfig, displayCopyright),
+	Before: actions(initLogging, initConfig, initAnalytics, displayCopyright),
+	After: func(ctx *cli.Context) error {
+		analytics.Client.Close()
+		return nil
+	},
 	Action: func(ctx *cli.Context) error {
 		content := ctx.String("config")
 
