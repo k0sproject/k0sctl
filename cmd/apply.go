@@ -20,7 +20,7 @@ var applyCommand = &cli.Command{
 		traceFlag,
 		analyticsFlag,
 	},
-	Before: actions(initLogging, initConfig, initAnalytics, displayCopyright),
+	Before: actions(initLogging, initConfig, displayLogo, initAnalytics, displayCopyright),
 	After: func(ctx *cli.Context) error {
 		analytics.Client.Close()
 		return nil

@@ -206,3 +206,8 @@ func screenLoggerHook() *loghook {
 
 	return l
 }
+
+func displayLogo(_ *cli.Context) error {
+	fmt.Println(logo)
+	return nil
+}
