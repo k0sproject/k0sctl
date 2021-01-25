@@ -33,12 +33,12 @@ func (p *InstallWorkers) ShouldRun() bool {
 // Run the phase
 func (p *InstallWorkers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
-		log.Infof("%s: updating join token", h)
-		if err := h.Configurer.WriteFile(h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.WorkerToken, "0640"); err != nil {
-			return err
-		}
-
 		if h.Metadata.K0sRunningVersion == "" {
+			log.Infof("%s: writing worker join token", h)
+			if err := h.Configurer.WriteFile(h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.WorkerToken, "0640"); err != nil {
+				return err
+			}
+
 			log.Infof("%s: installing k0s worker", h)
 			if err := h.Exec(h.K0sInstallCommand()); err != nil {
 				return err
@@ -49,10 +49,7 @@ func (p *InstallWorkers) Run() error {
 			}
 			h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 		} else {
-			log.Infof("%s: k0s service already running, reloading configuration", h)
-			if err := h.Configurer.DaemonReload(); err != nil {
-				return err
-			}
+			log.Infof("%s: k0s worker service already running", h)
 		}
 
 		return nil
