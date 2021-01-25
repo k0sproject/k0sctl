@@ -15,6 +15,7 @@ var Client publisher
 // NullClient is a drop in non-functional analytics publisher
 type NullClient struct{}
 
+// Initialize does nothing
 func (c *NullClient) Initialize() error {
 	return nil
 }
@@ -25,6 +26,7 @@ func (c *NullClient) Publish(event string, props map[string]interface{}) error {
 	return nil
 }
 
+// Close the analytics connection
 func (c *NullClient) Close() {}
 
 func init() {

@@ -12,6 +12,8 @@ import (
 
 // WriteKey for analytics
 var WriteKey = ""
+
+// Verbose controls the verbosity of segment analytics client
 var Verbose bool
 
 var ctx = &segment.Context{
@@ -32,6 +34,7 @@ type Client struct {
 	machineID string
 }
 
+// NewClient returns a new segment analytics client
 func NewClient() (*Client, error) {
 	client, err := segment.NewWithConfig(WriteKey, segment.Config{Verbose: Verbose})
 	if err != nil {
@@ -47,6 +50,7 @@ func NewClient() (*Client, error) {
 	}, nil
 }
 
+// Publish enqueues the sending of a tracking event
 func (c Client) Publish(event string, props map[string]interface{}) error {
 	log.Tracef("segment event %s - properties: %+v", event, props)
 	return c.client.Enqueue(segment.Track{

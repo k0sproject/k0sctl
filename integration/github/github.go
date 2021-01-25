@@ -28,7 +28,8 @@ type Release struct {
 	Assets     []Asset `json:"assets"`
 }
 
-func LatestK0sBinaryURL(arch, os_kind string, preok bool) (string, error) {
+// LatestK0sBinaryURL returns the url for the latest k0s release by arch and os
+func LatestK0sBinaryURL(arch, osKind string, preok bool) (string, error) {
 	r, err := LatestRelease("k0sproject/k0s", preok)
 	if err != nil {
 		return "", err
@@ -40,10 +41,10 @@ func LatestK0sBinaryURL(arch, os_kind string, preok bool) (string, error) {
 		}
 
 		if strings.HasSuffix(a.Name, ".exe") {
-			if os_kind == "windows" {
+			if osKind == "windows" {
 				return a.URL, nil
 			}
-		} else if os_kind != "windows" {
+		} else if osKind != "windows" {
 			return a.URL, nil
 		}
 	}
@@ -66,7 +67,7 @@ func LatestK0sVersion(preok bool) (string, error) {
 func LatestRelease(repo string, preok bool) (Release, error) {
 	var gotV bool
 	var releases []Release
-	if err := unmarshalUrlBody(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=20&page=1", repo), &releases); err != nil {
+	if err := unmarshalURLBody(fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=20&page=1", repo), &releases); err != nil {
 		return Release{}, err
 	}
 
@@ -96,7 +97,7 @@ func LatestRelease(repo string, preok bool) (Release, error) {
 	return Release{}, fmt.Errorf("failed to get the latest version information")
 }
 
-func unmarshalUrlBody(url string, o interface{}) error {
+func unmarshalURLBody(url string, o interface{}) error {
 	client := &http.Client{
 		Timeout: timeOut,
 	}

@@ -86,6 +86,7 @@ func (l Linux) ReplaceK0sTokenPath(spath string) error {
 	return l.Host.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
 
+// WebRequestPackage is the name of a package that can be used to perform web requests (curl, ..)
 func (l Linux) WebRequestPackage() string {
 	return "curl"
 }

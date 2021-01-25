@@ -12,6 +12,7 @@ type Phase struct {
 	propmutex sync.Mutex
 }
 
+// IncProp increases a numeric data point, creating one if it didn't exist
 func (p *Phase) IncProp(key string) {
 	p.propmutex.Lock()
 	defer p.propmutex.Unlock()
@@ -25,6 +26,7 @@ func (p *Phase) IncProp(key string) {
 	p.props[key] = val
 }
 
+// SetProp sets a value to a datapoint by key
 func (p *Phase) SetProp(key string, value interface{}) {
 	p.propmutex.Lock()
 	defer p.propmutex.Unlock()
