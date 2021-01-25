@@ -26,6 +26,9 @@ func (p *Phase) IncProp(key string) {
 }
 
 func (p *Phase) SetProp(key string, value interface{}) {
+	p.propmutex.Lock()
+	defer p.propmutex.Unlock()
+
 	p.props[key] = value
 }
 
