@@ -92,6 +92,11 @@ func initAnalytics(ctx *cli.Context) error {
 		return nil
 	}
 
+	if segment.WriteKey == "" {
+		log.Tracef("segment write key not set, analytics disabled")
+		return nil
+	}
+
 	client, err := segment.NewClient()
 	if err != nil {
 		return err

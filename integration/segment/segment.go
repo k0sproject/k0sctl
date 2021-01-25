@@ -1,6 +1,7 @@
 package segment
 
 import (
+	"os"
 	"runtime"
 
 	"github.com/k0sproject/k0sctl/analytics"
@@ -59,4 +60,10 @@ func (c Client) Publish(event string, props map[string]interface{}) error {
 // Close the analytics connection
 func (c Client) Close() {
 	c.client.Close()
+}
+
+func init() {
+	if WriteKey == "" {
+		WriteKey = os.Getenv("SEGMENT_WRITE_KEY")
+	}
 }
