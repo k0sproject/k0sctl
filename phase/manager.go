@@ -45,7 +45,9 @@ func (m *Manager) AddPhase(p ...phase) {
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
 	start := time.Now()
-	analytics.Client.Publish("apply-start", map[string]interface{}{})
+	if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
+		return err
+	}
 
 	for _, p := range m.phases {
 		title := p.Title()
@@ -81,11 +83,10 @@ func (m *Manager) Run() error {
 		}
 
 		if result != nil {
-			analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title()})
+			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title()})
 			return result
 		}
 	}
 
-	analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start)})
-	return nil
+	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start)})
 }
