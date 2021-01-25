@@ -63,6 +63,23 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return defaults.Set(h)
 }
 
+// Protocol returns host communication protocol
+func (h *Host) Protocol() string {
+	if h.SSH != nil {
+		return "ssh"
+	}
+
+	if h.WinRM != nil {
+		return "winrm"
+	}
+
+	if h.Localhost != nil {
+		return "local"
+	}
+
+	return "nil"
+}
+
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
 	bf, err := registry.GetOSModuleBuilder(h.OSVersion)

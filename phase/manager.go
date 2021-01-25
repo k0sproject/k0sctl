@@ -1,6 +1,9 @@
 package phase
 
 import (
+	"time"
+
+	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
@@ -19,8 +22,9 @@ type conditional interface {
 	ShouldRun() bool
 }
 
+// beforehook receives the phase title as an argument because of reasons.
 type beforehook interface {
-	Before() error
+	Before(string) error
 }
 
 type afterhook interface {
@@ -40,7 +44,14 @@ func (m *Manager) AddPhase(p ...phase) {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
+	start := time.Now()
+	if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
+		return err
+	}
+
 	for _, p := range m.phases {
+		title := p.Title()
+
 		if p, ok := p.(withconfig); ok {
 			if err := p.Prepare(m.Config); err != nil {
 				return err
@@ -54,14 +65,14 @@ func (m *Manager) Run() error {
 		}
 
 		if p, ok := p.(beforehook); ok {
-			if err := p.Before(); err != nil {
+			if err := p.Before(title); err != nil {
 				log.Debugf("before hook failed '%s'", err.Error())
 				return err
 			}
 		}
 
 		text := aurora.Green("==> Running phase: %s").String()
-		log.Infof(text, p.Title())
+		log.Infof(text, title)
 		result := p.Run()
 
 		if p, ok := p.(afterhook); ok {
@@ -72,9 +83,10 @@ func (m *Manager) Run() error {
 		}
 
 		if result != nil {
+			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title()})
 			return result
 		}
 	}
 
-	return nil
+	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start)})
 }

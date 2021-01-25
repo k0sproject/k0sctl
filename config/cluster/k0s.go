@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"github.com/creasty/defaults"
-	"github.com/k0sproject/k0sctl/integration"
+	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
 )
 
@@ -36,7 +36,7 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (k *K0s) SetDefaults() {
 	if defaults.CanUpdate(k.Version) {
 		preok := version.IsPre() || version.Version == "0.0.0"
-		if latest, err := integration.LatestK0sVersion(preok); err == nil {
+		if latest, err := github.LatestK0sVersion(preok); err == nil {
 			k.Version = latest
 		}
 	}

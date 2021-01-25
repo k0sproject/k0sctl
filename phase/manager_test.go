@@ -71,7 +71,7 @@ func (p *hookedPhase) Title() string {
 	return "hooked phase"
 }
 
-func (p *hookedPhase) Before() error {
+func (p *hookedPhase) Before(_ string) error {
 	p.beforeCalled = true
 	return nil
 }

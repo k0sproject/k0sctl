@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/k0sproject/k0sctl/analytics"
+	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
 	"github.com/shiena/ansicolor"
@@ -37,6 +39,11 @@ var (
 		Aliases:   []string{"c"},
 		Value:     "k0sctl.yaml",
 		TakesFile: true,
+	}
+
+	analyticsFlag = &cli.StringFlag{
+		Name:   "--disable-telemetry",
+		Hidden: true,
 	}
 )
 
@@ -77,6 +84,25 @@ func displayCopyright(_ *cli.Context) error {
 	log.Infof("K0sctl %s Copyright 2021, Mirantis Inc.", version.Version)
 	log.Infof("Anonymized telemetry will be sent to Mirantis.")
 	log.Infof("By continuing to use k0sctl you agree to these terms.")
+	return nil
+}
+
+func initAnalytics(ctx *cli.Context) error {
+	if ctx.Bool("disable-telemetry") {
+		return nil
+	}
+
+	if segment.WriteKey == "" {
+		log.Tracef("segment write key not set, analytics disabled")
+		return nil
+	}
+
+	client, err := segment.NewClient()
+	if err != nil {
+		return err
+	}
+	analytics.Client = client
+
 	return nil
 }
 

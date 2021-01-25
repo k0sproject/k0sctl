@@ -27,9 +27,13 @@ func (p *DetectOS) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: detecting operating system", h)
 		if err := h.ResolveConfigurer(); err != nil {
+			p.SetProp("missing-support", h.OSVersion.String())
 			return err
 		}
-		log.Infof("%s: is running %s", h, h.OSVersion.String())
+		os := h.OSVersion.String()
+		p.IncProp(os)
+		log.Infof("%s: is running %s", h, os)
+
 		err := h.Configurer.CheckPrivilege()
 		if err != nil {
 			return err

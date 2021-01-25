@@ -20,6 +20,7 @@ func (p *ConfigureK0s) Title() string {
 // Run the phase
 func (p *ConfigureK0s) Run() error {
 	if len(p.Config.Spec.K0s.Config) == 0 {
+		p.SetProp("default-config", true)
 		leader := p.Config.Spec.K0sLeader()
 		log.Infof("%s: generating default configuration", leader)
 		cfg, err := leader.ExecOutput("k0s default-config")
@@ -28,6 +29,7 @@ func (p *ConfigureK0s) Run() error {
 		}
 		p.k0sconfig = cfg
 	} else {
+		p.SetProp("default-config", false)
 		b, err := yaml.Marshal(p.Config.Spec.K0s.Config)
 		if err != nil {
 			return err
