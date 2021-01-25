@@ -15,8 +15,6 @@ import (
 // DetectOS performs remote OS detection
 type DetectOS struct {
 	GenericPhase
-
-	oses map[string]int
 }
 
 // Title for the phase

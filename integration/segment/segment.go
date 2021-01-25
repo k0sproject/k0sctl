@@ -9,7 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var WriteKey = "9uTKgGzXDVsC97cioQWpiV40GwSlXFEl"
+// WriteKey for analytics
+var WriteKey = ""
 var Verbose bool
 
 var ctx = &segment.Context{
@@ -24,6 +25,7 @@ var ctx = &segment.Context{
 	},
 }
 
+// Client for the Segment.io analytics service
 type Client struct {
 	client    segment.Client
 	machineID string
@@ -45,16 +47,16 @@ func NewClient() (*Client, error) {
 }
 
 func (c Client) Publish(event string, props map[string]interface{}) error {
-	log.Debugf("segment event %s - properties: %+v", event, props)
-	c.client.Enqueue(segment.Track{
+	log.Tracef("segment event %s - properties: %+v", event, props)
+	return c.client.Enqueue(segment.Track{
 		Context:     ctx,
 		AnonymousId: c.machineID,
 		Event:       event,
 		Properties:  props,
 	})
-	return nil
 }
 
+// Close the analytics connection
 func (c Client) Close() {
 	c.client.Close()
 }
