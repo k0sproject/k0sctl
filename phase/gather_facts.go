@@ -7,6 +7,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type k0sstatus struct {
@@ -71,6 +72,16 @@ func (p *GatherFacts) investigateK0s(h *cluster.Host) error {
 		if token != "" && err == nil {
 			log.Infof("%s: found an existing controller token", h)
 			p.Config.Spec.K0s.Metadata.ControllerToken = token
+		}
+	}
+
+	if h.Role == "server" && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h.K0sConfigPath()) {
+		cfg, err := h.Configurer.ReadFile(h.K0sConfigPath())
+		if cfg != "" && err == nil {
+			log.Infof("%s: found existing configuration", h)
+			if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
+				return fmt.Errorf("failed to parse existing configuration: %s", err.Error())
+			}
 		}
 	}
 

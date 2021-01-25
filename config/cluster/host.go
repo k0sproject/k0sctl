@@ -135,3 +135,8 @@ func (h *Host) K0sInstallCommand() string {
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
 }
+
+// IsController returns true for server and server+worker roles
+func (h *Host) IsController() bool {
+	return h.Role == "server" || h.Role == "server+worker"
+}
