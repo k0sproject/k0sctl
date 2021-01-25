@@ -24,6 +24,7 @@ func (p *GatherFacts) Run() error {
 
 func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	log.Infof("%s: investigating host", h)
+	p.IncProp(h.Role)
 
 	if h.Configurer.ServiceIsRunning("k0s") {
 		h.Metadata.K0sRunning = true
@@ -56,6 +57,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 		return err
 	}
 	h.Metadata.Arch = output
+	p.IncProp(h.Metadata.Arch)
 	log.Infof("%s: architecture is %s", h, h.Metadata.Arch)
 
 	return nil

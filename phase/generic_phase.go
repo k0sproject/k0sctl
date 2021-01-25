@@ -11,6 +11,7 @@ type GenericPhase struct {
 	Config *config.Cluster
 }
 
+// GetConfig is an accessor to phase Config
 func (p *GenericPhase) GetConfig() *config.Cluster {
 	return p.Config
 }
