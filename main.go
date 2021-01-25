@@ -11,7 +11,7 @@ import (
 
 func handlepanic() {
 	if err := recover(); err != nil {
-		analytics.Client.Publish("panic", map[string]interface{}{"error": fmt.Sprint(err)})
+		_ = analytics.Client.Publish("panic", map[string]interface{}{"error": fmt.Sprint(err)})
 		log.Fatalf("PANIC: %s", err)
 	}
 }
