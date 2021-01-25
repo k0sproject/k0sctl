@@ -58,9 +58,21 @@ func (hosts *Hosts) WithRole(s string) Hosts {
 	})
 }
 
+// WithAnyRole returns a ltered list of Hosts that match one of the given roles
+func (hosts *Hosts) WithAnyRole(r ...string) Hosts {
+	return hosts.Filter(func(h *Host) bool {
+		for _, s := range r {
+			if h.Role == s {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 // Controllers returns hosts with the role "server"
 func (hosts *Hosts) Controllers() Hosts {
-	return hosts.WithRole("server")
+	return hosts.WithAnyRole("server", "server+worker")
 }
 
 // Workers returns hosts with the role "worker"

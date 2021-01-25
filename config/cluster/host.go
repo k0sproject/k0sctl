@@ -12,10 +12,11 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role          string            `yaml:"role" validate:"oneof=server worker"`
+	Role          string            `yaml:"role" validate:"oneof=server worker server+worker"`
 	Environment   map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
 	UploadBinary  bool              `yaml:"uploadBinary"`
 	K0sBinaryPath string            `yaml:"k0sBinaryPath"`
+	InstallFlags  Flags             `yaml:"installFlags"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer
@@ -42,13 +43,15 @@ type configurer interface {
 	DownloadK0s(string, string) error
 	WebRequestPackage() string
 	InstallPackage(...string) error
+	FileContains(path, substring string) bool
+	MoveFile(src, dst string) error
 }
 
 // HostMetadata resolved metadata for host
 type HostMetadata struct {
-	K0sVersion string
-	K0sRunning bool
-	Arch       string
+	K0sBinaryVersion  string
+	K0sRunningVersion string
+	Arch              string
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -93,4 +96,42 @@ func (h *Host) ResolveConfigurer() error {
 	}
 
 	return fmt.Errorf("unsupported OS")
+}
+
+// K0sJoinTokenPath returns the token file path from install flags or configurer
+func (h *Host) K0sJoinTokenPath() string {
+	if path := h.InstallFlags.GetValue("--token-path"); path != "" {
+		return path
+	}
+
+	return h.Configurer.K0sJoinTokenPath()
+}
+
+// K0sConfigPath returns the config file path from install flags or configurer
+func (h *Host) K0sConfigPath() string {
+	if path := h.InstallFlags.GetValue("--config"); path != "" {
+		return path
+	}
+
+	if path := h.InstallFlags.GetValue("-c"); path != "" {
+		return path
+	}
+
+	return h.Configurer.K0sConfigPath()
+}
+
+// K0sInstallCommand returns a full command that will install k0s service with necessary flags
+func (h *Host) K0sInstallCommand() string {
+	role := h.Role
+	flags := h.InstallFlags
+
+	if role == "server+worker" {
+		role = "server"
+		flags.AddUnlessExist("--enable-worker")
+	}
+
+	flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+	flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
+
+	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
 }

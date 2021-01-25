@@ -36,8 +36,8 @@ func (p *InitializeK0s) ShouldRun() bool {
 
 // Run the phase
 func (p *InitializeK0s) Run() error {
-	if p.host.Metadata.K0sRunning {
-		log.Infof("%s: reloading configuration", p.host)
+	if p.host.Metadata.K0sRunningVersion != "" {
+		log.Infof("%s: k0s already running, reloading configuration", p.host)
 		if err := p.host.Configurer.RestartService("k0s"); err != nil {
 			return err
 		}
@@ -49,10 +49,11 @@ func (p *InitializeK0s) Run() error {
 			return err
 		}
 		p.Config.Spec.K0s.Metadata.WorkerToken = token
+		return nil
 	}
 
 	log.Infof("%s: installing k0s controller", p.host)
-	if err := p.host.Exec(p.host.Configurer.K0sCmdf("install --role server --config %s", p.host.Configurer.K0sConfigPath())); err != nil {
+	if err := p.host.Exec(p.host.K0sInstallCommand()); err != nil {
 		return err
 	}
 
@@ -62,20 +63,24 @@ func (p *InitializeK0s) Run() error {
 	if err := p.waitK0s(); err != nil {
 		return err
 	}
-	p.host.Metadata.K0sRunning = true
-	p.host.Metadata.K0sVersion = p.Config.Spec.K0s.Version
+	p.host.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
+	p.host.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 
-	token, err := p.generateToken("controller")
-	if err != nil {
-		return err
+	if len(p.Config.Spec.Hosts.Controllers()) > 1 {
+		token, err := p.generateToken("controller")
+		if err != nil {
+			return err
+		}
+		p.Config.Spec.K0s.Metadata.ControllerToken = token
 	}
-	p.Config.Spec.K0s.Metadata.ControllerToken = token
 
-	token, err = p.generateToken("worker")
-	if err != nil {
-		return err
+	if len(p.Config.Spec.Hosts.Workers()) > 0 {
+		token, err := p.generateToken("worker")
+		if err != nil {
+			return err
+		}
+		p.Config.Spec.K0s.Metadata.WorkerToken = token
 	}
-	p.Config.Spec.K0s.Metadata.WorkerToken = token
 
 	return nil
 }
@@ -97,10 +102,10 @@ func (p *InitializeK0s) waitK0s() error {
 }
 
 func (p *InitializeK0s) generateToken(role string) (token string, err error) {
-	log.Infof("%s: generating worker join token", p.host)
+	log.Infof("%s: generating %s join token", p.host, role)
 	err = retry.Do(
 		func() error {
-			output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role worker"), exec.HideOutput())
+			output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role %s", role), exec.HideOutput())
 			if err != nil {
 				return err
 			}

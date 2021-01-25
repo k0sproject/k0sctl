@@ -30,7 +30,7 @@ func (s *Spec) K0sLeader() *Host {
 	if s.k0sLeader == nil {
 		// Pick the first server that reports to be running and persist the choice
 		for _, h := range controllers {
-			if h.Metadata.K0sVersion != "" { // TODO && h.InitSystem.ServiceIsRunning("k0s") {
+			if h.Metadata.K0sBinaryVersion != "" { // TODO && h.InitSystem.ServiceIsRunning("k0s") {
 				s.k0sLeader = h
 			}
 		}

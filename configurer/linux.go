@@ -90,3 +90,13 @@ func (l Linux) ReplaceK0sTokenPath(spath string) error {
 func (l Linux) WebRequestPackage() string {
 	return "curl"
 }
+
+// FileContains returns true if a file contains the substring
+func (l Linux) FileContains(path, s string) bool {
+	return l.Host.Execf(`sudo grep -q "%s" "%s"`, s, path) == nil
+}
+
+// MoveFile moves a file on the host
+func (l Linux) MoveFile(src, dst string) error {
+	return l.Host.Execf(`sudo mv "%s" "%s"`, src, dst)
+}

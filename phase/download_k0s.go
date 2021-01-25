@@ -24,7 +24,7 @@ func (p *DownloadK0s) Title() string {
 func (p *DownloadK0s) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.Metadata.K0sVersion != p.Config.Spec.K0s.Version
+		return h.Metadata.K0sBinaryVersion != p.Config.Spec.K0s.Version
 	})
 	return nil
 }
@@ -55,7 +55,7 @@ func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 		return fmt.Errorf("downloaded k0s binary version is %s not %s", output, target)
 	}
 
-	h.Metadata.K0sVersion = target
+	h.Metadata.K0sBinaryVersion = target
 
 	return nil
 }

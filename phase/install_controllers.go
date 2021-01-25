@@ -35,24 +35,25 @@ func (p *InstallControllers) ShouldRun() bool {
 // Run the phase
 func (p *InstallControllers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
-		log.Infof("%s: installing k0s controller", h)
-		if err := h.Exec(h.Configurer.K0sCmdf("install --role server --config %s", h.Configurer.K0sConfigPath())); err != nil {
-			return err
-		}
-
 		log.Infof("%s: updating join token", h)
-		if err := h.Configurer.WriteFile(h.Configurer.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
+		if err := h.Configurer.WriteFile(h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
 			return err
 		}
 
-		log.Infof("%s: reloading daemon configuration", h)
-		if err := h.Configurer.DaemonReload(); err != nil {
-			return err
-		}
-
-		log.Infof("%s: starting service", h)
-		if err := h.Configurer.StartService("k0s"); err != nil {
-			return err
+		if h.Metadata.K0sRunningVersion == "" {
+			log.Infof("%s: installing k0s controller", h)
+			if err := h.Exec(h.K0sInstallCommand()); err != nil {
+				return err
+			}
+			log.Infof("%s: starting service", h)
+			if err := h.Configurer.StartService("k0s"); err != nil {
+				return err
+			}
+		} else {
+			log.Infof("%s: k0s service already running, reloading configuration", h)
+			if err := h.Configurer.DaemonReload(); err != nil {
+				return err
+			}
 		}
 
 		return nil
