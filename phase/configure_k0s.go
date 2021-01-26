@@ -50,7 +50,7 @@ func (p *ConfigureK0s) Run() error {
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 	log.Infof("%s: validating configuration", h)
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf(`validate config -c "%s"`, h.K0sConfigPath))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf(`validate config -c "%s"`, h.K0sConfigPath()))
 	if err != nil {
 		return fmt.Errorf("spec.k0s.config fails validation:\n%s", output)
 	}
