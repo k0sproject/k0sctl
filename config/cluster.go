@@ -45,7 +45,9 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (c *Cluster) Validate() error {
 	validator := validator.New()
 	validator.RegisterStructValidation(validateMinK0sVersion, cluster.K0s{})
-	validator.RegisterValidation("apiversionmatch", validateAPIVersion)
+	if err := validator.RegisterValidation("apiversionmatch", validateAPIVersion); err != nil {
+		return err
+	}
 	return validator.Struct(c)
 }
 
