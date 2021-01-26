@@ -44,7 +44,7 @@ func (p *InstallWorkers) Run() error {
 				return err
 			}
 			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService("k0s" + h.Role); err != nil {
+			if err := h.Configurer.StartService(h.K0sServiceName()); err != nil {
 				return err
 			}
 			h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version

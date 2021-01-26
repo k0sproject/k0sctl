@@ -145,3 +145,11 @@ func (h *Host) K0sInstallCommand() string {
 func (h *Host) IsController() bool {
 	return h.Role == "server" || h.Role == "server+worker"
 }
+
+// K0sServiceName returns correct service name
+func (h *Host) K0sServiceName() string {
+	if h.Role == "server+worker" {
+		return "k0sserver"
+	}
+	return "k0s" + h.Role
+}
