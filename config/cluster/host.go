@@ -102,7 +102,7 @@ func (h *Host) ResolveConfigurer() error {
 
 // K0sJoinTokenPath returns the token file path from install flags or configurer
 func (h *Host) K0sJoinTokenPath() string {
-	if path := h.InstallFlags.GetValue("--token-path"); path != "" {
+	if path := h.InstallFlags.GetValue("--token-file"); path != "" {
 		return path
 	}
 
