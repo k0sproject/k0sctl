@@ -21,11 +21,12 @@ func (p *Connect) Run() error {
 		log.Infof("%s: connecting", h)
 		if err := h.Connect(); err != nil {
 			log.Errorf("%s: failed to connect: %s", h, err.Error())
-			p.IncProp("protocol-" + h.Protocol())
+			p.IncProp("fail-" + h.Protocol())
 			return err
 		}
 		log.Infof("%s: connected", h)
+		p.IncProp("success-" + h.Protocol())
 
-		return h.Connect()
+		return nil
 	})
 }
