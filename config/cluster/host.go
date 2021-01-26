@@ -53,6 +53,7 @@ type HostMetadata struct {
 	K0sBinaryVersion  string
 	K0sRunningVersion string
 	Arch              string
+	IsK0sLeader       bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -122,7 +123,7 @@ func (h *Host) K0sConfigPath() string {
 }
 
 // K0sInstallCommand returns a full command that will install k0s service with necessary flags
-func (h *Host) K0sInstallCommand(isleader bool) string {
+func (h *Host) K0sInstallCommand() string {
 	role := h.Role
 	flags := h.InstallFlags
 
@@ -131,7 +132,7 @@ func (h *Host) K0sInstallCommand(isleader bool) string {
 		flags.AddUnlessExist("--enable-worker")
 	}
 
-	if !isleader {
+	if !h.Metadata.IsK0sLeader {
 		flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
 	}
 
