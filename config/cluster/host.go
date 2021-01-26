@@ -45,6 +45,7 @@ type configurer interface {
 	InstallPackage(...string) error
 	FileContains(path, substring string) bool
 	MoveFile(src, dst string) error
+	CommandExist(string) bool
 }
 
 // HostMetadata resolved metadata for host
