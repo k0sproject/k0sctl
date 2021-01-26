@@ -13,8 +13,6 @@ type ClusterMetadata struct {
 	Name string `yaml:"name" validate:"required"`
 }
 
-const minVersion = "0.10.0-beta1"
-
 // Cluster describes launchpad.yaml configuration
 type Cluster struct {
 	APIVersion string           `yaml:"apiVersion" validate:"eq=k0sctl.k0sproject.io/v1beta1"`
@@ -43,23 +41,23 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // Validate performs a configuration sanity check
 func (c *Cluster) Validate() error {
 	validator := validator.New()
-	validator.RegisterStructValidation(validateMinVersion, cluster.K0s{})
+	validator.RegisterStructValidation(validateMinK0sVersion, cluster.K0s{})
 	return validator.Struct(c)
 }
 
-func validateMinVersion(sl validator.StructLevel) {
+func validateMinK0sVersion(sl validator.StructLevel) {
 	if k0s, ok := sl.Current().Interface().(cluster.K0s); ok {
 		v, err := version.NewVersion(k0s.Version)
 		if err != nil {
 			sl.ReportError(k0s.Version, "version", "", "invalid version", "")
 			return
 		}
-		min, err := version.NewVersion(minVersion)
+		min, err := version.NewVersion(cluster.K0sMinVersion)
 		if err != nil {
 			panic("invalid k0s minversion")
 		}
 		if v.LessThan(min) {
-			sl.ReportError(k0s.Version, "version", "", fmt.Sprintf("minimum k0s version is %s", minVersion), "")
+			sl.ReportError(k0s.Version, "version", "", fmt.Sprintf("minimum k0s version is %s", cluster.K0sMinVersion), "")
 		}
 	}
 }
