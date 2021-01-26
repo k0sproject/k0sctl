@@ -54,11 +54,6 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 }
 
 func (p *GatherFacts) investigateK0s(h *cluster.Host) error {
-	if !h.Configurer.ServiceIsRunning("k0s") {
-		log.Infof("%s: k0s service is not running", h)
-		return nil
-	}
-
 	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
 	if err != nil {
 		return nil

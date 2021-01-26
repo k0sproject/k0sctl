@@ -103,5 +103,5 @@ func (l Linux) MoveFile(src, dst string) error {
 
 // CommandExist returns true if the command exists
 func (l Linux) CommandExist(s string) bool {
-	return l.Host.Execf("sudo command -v %s", s) == nil
+	return l.Host.Execf("command -v %s", s) == nil
 }
