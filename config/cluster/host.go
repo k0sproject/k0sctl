@@ -131,7 +131,9 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddUnlessExist("--enable-worker")
 	}
 
-	flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+	if h.Role == "worker" {
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+	}
 	flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())

@@ -57,7 +57,7 @@ func (p *InitializeK0s) Run() error {
 		return err
 	}
 
-	if err := p.host.Configurer.StartService("k0s"); err != nil {
+	if err := p.host.Configurer.StartService("k0s" + p.host.Role); err != nil {
 		return err
 	}
 	if err := p.waitK0s(); err != nil {
@@ -89,7 +89,7 @@ func (p *InitializeK0s) waitK0s() error {
 	return retry.Do(
 		func() error {
 			log.Infof("%s: waiting for k0s service to start", p.host)
-			if !p.host.Configurer.ServiceIsRunning("k0s") {
+			if !p.host.Configurer.ServiceIsRunning("k0s" + p.host.Role) {
 				return fmt.Errorf("not running")
 			}
 			return nil
