@@ -21,7 +21,7 @@ func (p *UploadBinaries) Title() string {
 func (p *UploadBinaries) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.K0sBinaryPath != "" && h.Metadata.K0sVersion != p.Config.Spec.K0s.Version
+		return h.K0sBinaryPath != "" && h.Metadata.K0sBinaryVersion != p.Config.Spec.K0s.Version
 	})
 	return nil
 }
@@ -46,7 +46,7 @@ func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 		return err
 	}
 
-	h.Metadata.K0sVersion = p.Config.Spec.K0s.Version
+	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 
 	return nil
 }

@@ -60,7 +60,7 @@ func (hosts *Hosts) WithRole(s string) Hosts {
 
 // Controllers returns hosts with the role "server"
 func (hosts *Hosts) Controllers() Hosts {
-	return hosts.WithRole("server")
+	return hosts.Filter(func(h *Host) bool { return h.IsController() })
 }
 
 // Workers returns hosts with the role "worker"

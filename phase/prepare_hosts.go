@@ -45,7 +45,7 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
-	if !h.UploadBinary {
+	if !h.UploadBinary && !h.Configurer.CommandExist("curl") {
 		log.Infof("%s: installing packages", h)
 		if err := h.Configurer.InstallPackage(h.Configurer.WebRequestPackage()); err != nil {
 			return err
