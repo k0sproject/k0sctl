@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"strings"
+
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
@@ -40,4 +42,6 @@ func (k *K0s) SetDefaults() {
 			k.Version = latest
 		}
 	}
+
+	k.Version = strings.TrimPrefix(k.Version, "v")
 }
