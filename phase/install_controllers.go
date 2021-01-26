@@ -42,7 +42,7 @@ func (p *InstallControllers) Run() error {
 			}
 
 			log.Infof("%s: installing k0s controller", h)
-			if err := h.Exec(h.K0sInstallCommand()); err != nil {
+			if err := h.Exec(h.K0sInstallCommand(false)); err != nil {
 				return err
 			}
 			log.Infof("%s: starting service", h)

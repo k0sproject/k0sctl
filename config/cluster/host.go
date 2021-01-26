@@ -122,7 +122,7 @@ func (h *Host) K0sConfigPath() string {
 }
 
 // K0sInstallCommand returns a full command that will install k0s service with necessary flags
-func (h *Host) K0sInstallCommand() string {
+func (h *Host) K0sInstallCommand(isleader bool) string {
 	role := h.Role
 	flags := h.InstallFlags
 
@@ -131,7 +131,10 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddUnlessExist("--enable-worker")
 	}
 
-	flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+	if !isleader {
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+	}
+
 	flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())

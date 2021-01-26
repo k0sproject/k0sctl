@@ -53,7 +53,7 @@ func (p *InitializeK0s) Run() error {
 	}
 
 	log.Infof("%s: installing k0s controller", p.host)
-	if err := p.host.Exec(p.host.K0sInstallCommand()); err != nil {
+	if err := p.host.Exec(p.host.K0sInstallCommand(true)); err != nil {
 		return err
 	}
 
