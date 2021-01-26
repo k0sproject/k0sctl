@@ -46,7 +46,7 @@ func (p *InstallControllers) Run() error {
 				return err
 			}
 			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService("k0s"); err != nil {
+			if err := h.Configurer.StartService(h.K0sServiceName()); err != nil {
 				return err
 			}
 		} else {
