@@ -100,8 +100,9 @@ func (p *GatherFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
-	if status.Version == "" || status.Role == "" {
-		return fmt.Errorf("host was configured as a k0s %s but is already running as %s", h.Role, status.Role)
+	if status.Version == "" || status.Role == "" || status.Pid == 0 {
+		log.Infof("%s: k0s is not running", h)
+		return nil
 	}
 
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
