@@ -36,6 +36,7 @@ func (p *InitializeK0s) ShouldRun() bool {
 
 // Run the phase
 func (p *InitializeK0s) Run() error {
+	p.host.Metadata.IsK0sLeader = true
 	if p.host.Metadata.K0sRunningVersion != "" {
 		log.Infof("%s: k0s already running, reloading configuration", p.host)
 		if err := p.host.Configurer.RestartService("k0s"); err != nil {

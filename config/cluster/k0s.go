@@ -8,6 +8,8 @@ import (
 	"github.com/k0sproject/k0sctl/version"
 )
 
+const K0sMinVersion = "0.10.0-beta2"
+
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
 	Version  string      `yaml:"version" validate:"required"`
