@@ -8,6 +8,9 @@ import (
 	"github.com/k0sproject/k0sctl/config/cluster"
 )
 
+// APIVersion is the current api version
+const APIVersion = "k0sctl.k0sproject.io/v1beta1"
+
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
 	Name string `yaml:"name" validate:"required"`
@@ -15,8 +18,8 @@ type ClusterMetadata struct {
 
 // Cluster describes launchpad.yaml configuration
 type Cluster struct {
-	APIVersion string           `yaml:"apiVersion" validate:"eq=k0sctl.k0sproject.io/v1beta1"`
-	Kind       string           `yaml:"kind" validate:"eq=cluster"`
+	APIVersion string           `yaml:"apiVersion" validate:"required,apiversionmatch"`
+	Kind       string           `yaml:"kind" validate:"required,eq=cluster"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
 }
@@ -42,7 +45,12 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (c *Cluster) Validate() error {
 	validator := validator.New()
 	validator.RegisterStructValidation(validateMinK0sVersion, cluster.K0s{})
+	validator.RegisterValidation("apiversionmatch", validateAPIVersion)
 	return validator.Struct(c)
+}
+
+func validateAPIVersion(fl validator.FieldLevel) bool {
+	return fl.Field().String() == APIVersion
 }
 
 func validateMinK0sVersion(sl validator.StructLevel) {
