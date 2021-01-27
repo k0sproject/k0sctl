@@ -44,6 +44,8 @@ var applyCommand = &cli.Command{
 			&phase.DetectOS{},
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
+			&phase.ValidateHosts{},
+			&phase.GatherK0sFacts{},
 			&phase.DownloadBinaries{},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},

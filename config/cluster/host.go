@@ -46,6 +46,7 @@ type configurer interface {
 	FileContains(path, substring string) bool
 	MoveFile(src, dst string) error
 	CommandExist(string) bool
+	Hostname() string
 }
 
 // HostMetadata resolved metadata for host
@@ -54,6 +55,7 @@ type HostMetadata struct {
 	K0sRunningVersion string
 	Arch              string
 	IsK0sLeader       bool
+	Hostname          string
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml

@@ -34,11 +34,6 @@ func (p *DetectOS) Run() error {
 		p.IncProp(os)
 		log.Infof("%s: is running %s", h, os)
 
-		err := h.Configurer.CheckPrivilege()
-		if err != nil {
-			return err
-		}
-
 		return nil
 	})
 }
