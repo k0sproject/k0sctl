@@ -8,6 +8,7 @@ import (
 	"github.com/k0sproject/k0sctl/version"
 )
 
+// K0sMinVersion is the minimum k0s version supported
 const K0sMinVersion = "0.10.0-beta2"
 
 // K0s holds configuration for bootstraping a k0s cluster

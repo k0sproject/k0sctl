@@ -68,9 +68,9 @@ func (hosts *Hosts) Workers() Hosts {
 	return hosts.WithRole("worker")
 }
 
-// ParallelEach runs a function on every Host parallelly.
+// ParallelEach runs a function (or multiple functions chained) on every Host parallelly.
 // Any errors will be concatenated and returned.
-func (hosts *Hosts) ParallelEach(filter func(h *Host) error) error {
+func (hosts *Hosts) ParallelEach(filter ...func(h *Host) error) error {
 	var wg sync.WaitGroup
 	var errors []string
 	type erritem struct {
@@ -79,24 +79,26 @@ func (hosts *Hosts) ParallelEach(filter func(h *Host) error) error {
 	}
 	ec := make(chan erritem, 1)
 
-	wg.Add(len(*hosts))
+	for _, f := range filter {
+		wg.Add(len(*hosts))
 
-	for _, h := range *hosts {
-		go func(h *Host) {
-			ec <- erritem{h.String(), filter(h)}
-		}(h)
-	}
-
-	go func() {
-		for e := range ec {
-			if e.err != nil {
-				errors = append(errors, fmt.Sprintf("%s: %s", e.address, e.err.Error()))
-			}
-			wg.Done()
+		for _, h := range *hosts {
+			go func(h *Host) {
+				ec <- erritem{h.String(), f(h)}
+			}(h)
 		}
-	}()
 
-	wg.Wait()
+		go func() {
+			for e := range ec {
+				if e.err != nil {
+					errors = append(errors, fmt.Sprintf("%s: %s", e.address, e.err.Error()))
+				}
+				wg.Done()
+			}
+		}()
+
+		wg.Wait()
+	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("failed on %d hosts:\n - %s", len(errors), strings.Join(errors, "\n - "))
