@@ -4,7 +4,6 @@ import (
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
@@ -60,8 +59,8 @@ var applyCommand = &cli.Command{
 			return err
 		}
 
-		log.Infof("K0s cluster version %s is now installed", version.Version)
-		log.Infof("To access the cluster...") // TODO figure out
+		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)
+		log.Infof("To access the cluster you can get the admin kubeconfig with 'k0sctl kubeconfig'")
 
 		return nil
 	},
