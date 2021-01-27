@@ -43,16 +43,16 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
 	log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.Role == "server" && h.Configurer.FileExist(h.K0sJoinTokenPath()) {
-		token, err := h.Configurer.ReadFile(h.K0sJoinTokenPath())
+	if h.Role == "server" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
+		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
 		if token != "" && err == nil {
 			log.Infof("%s: found an existing controller token", h)
 			p.Config.Spec.K0s.Metadata.ControllerToken = token
 		}
 	}
 
-	if h.Role == "server" && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h.K0sConfigPath()) {
-		cfg, err := h.Configurer.ReadFile(h.K0sConfigPath())
+	if h.Role == "server" && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
+		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)
 			if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
@@ -61,8 +61,8 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
-	if h.Role == "worker" && h.Configurer.FileExist(h.K0sJoinTokenPath()) {
-		token, err := h.Configurer.ReadFile(h.K0sJoinTokenPath())
+	if h.Role == "worker" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
+		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
 		if token != "" && err == nil {
 			log.Infof("%s: found an existing worker token", h)
 			p.Config.Spec.K0s.Metadata.WorkerToken = token
@@ -88,6 +88,12 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
 	log.Infof("%s: is running a k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+
+	ready, err := p.Config.Spec.K0sLeader().KubeNodeReady(h)
+	if err != nil {
+		log.Debugf("%s: failed to get ready status: %s", h, err.Error())
+	}
+	h.Metadata.Ready = ready
 
 	return nil
 }

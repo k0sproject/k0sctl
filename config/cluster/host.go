@@ -1,10 +1,14 @@
 package cluster
 
 import (
+	"encoding/json"
 	"fmt"
+	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
 )
 
@@ -23,30 +27,36 @@ type Host struct {
 }
 
 type configurer interface {
-	CheckPrivilege() error
-	StartService(string) error
-	RestartService(string) error
-	ServiceIsRunning(string) bool
-	Arch() (string, error)
+	CheckPrivilege(os.Host) error
+	StartService(os.Host, string) error
+	StopService(os.Host, string) error
+	RestartService(os.Host, string) error
+	ServiceIsRunning(os.Host, string) bool
+	Arch(os.Host) (string, error)
 	K0sCmdf(string, ...interface{}) string
 	K0sBinaryPath() string
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
-	WriteFile(path, data, permissions string) error
-	UpdateEnvironment(map[string]string) error
-	DaemonReload() error
-	ReplaceK0sTokenPath(string) error
-	ServiceScriptPath(string) (string, error)
-	ReadFile(string) (string, error)
-	FileExist(string) bool
-	Chmod(string, string) error
-	DownloadK0s(string, string) error
+	WriteFile(os.Host, string, string, string) error
+	UpdateEnvironment(os.Host, map[string]string) error
+	DaemonReload(os.Host) error
+	ReplaceK0sTokenPath(os.Host, string) error
+	ServiceScriptPath(os.Host, string) (string, error)
+	ReadFile(os.Host, string) (string, error)
+	FileExist(os.Host, string) bool
+	Chmod(os.Host, string, string) error
+	DownloadK0s(os.Host, string, string) error
 	WebRequestPackage() string
-	InstallPackage(...string) error
-	FileContains(path, substring string) bool
-	MoveFile(src, dst string) error
-	CommandExist(string) bool
-	Hostname() string
+	InstallPackage(os.Host, ...string) error
+	FileContains(os.Host, string, string) bool
+	MoveFile(os.Host, string, string) error
+	CommandExist(os.Host, string) bool
+	Hostname(os.Host) string
+	InstallKubectl(os.Host) error
+	KubectlCmdf(string, ...interface{}) string
+	KubeconfigPath() string
+	IsContainer(os.Host) bool
+	FixContainer(os.Host) error
 }
 
 // HostMetadata resolved metadata for host
@@ -56,6 +66,7 @@ type HostMetadata struct {
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
+	Ready             bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -93,7 +104,8 @@ func (h *Host) ResolveConfigurer() error {
 	if err != nil {
 		return err
 	}
-	if c, ok := bf(h).(configurer); ok {
+
+	if c, ok := bf().(configurer); ok {
 		h.Configurer = c
 
 		return nil
@@ -154,4 +166,56 @@ func (h *Host) K0sServiceName() string {
 		return "k0sserver"
 	}
 	return "k0s" + h.Role
+}
+
+type kubeNodeStatus struct {
+	Items []struct {
+		Status struct {
+			Conditions []struct {
+				Status string `json:"status"`
+				Type   string `json:"type"`
+			} `json:"conditions"`
+		} `json:"status"`
+	} `json:"items"`
+}
+
+// KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
+func (h *Host) KubeNodeReady(node *Host) (bool, error) {
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname))
+	if err != nil {
+		return false, err
+	}
+	status := kubeNodeStatus{}
+	if err := json.Unmarshal([]byte(output), &status); err != nil {
+		return false, fmt.Errorf("failed to decode kubectl output: %s", err.Error())
+	}
+	for _, i := range status.Items {
+		for _, c := range i.Status.Conditions {
+			if c.Type == "Ready" {
+				return c.Status == "True", nil
+			}
+		}
+	}
+
+	return false, fmt.Errorf("failed to parse status from kubectl output")
+}
+
+// WaitKubeNodeReady blocks until node becomes ready. TODO should probably use Context
+func (h *Host) WaitKubeNodeReady(node *Host) error {
+	return retry.Do(
+		func() error {
+			status, err := h.KubeNodeReady(node)
+			if err != nil {
+				return err
+			}
+			if !status {
+				return fmt.Errorf("%s: node %s did not become ready", h, node.Metadata.Hostname)
+			}
+			return nil
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
 }

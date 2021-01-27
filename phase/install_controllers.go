@@ -37,7 +37,7 @@ func (p *InstallControllers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
 		if h.Metadata.K0sRunningVersion == "" {
 			log.Infof("%s: writing join token", h)
-			if err := h.Configurer.WriteFile(h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
+			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
 				return err
 			}
 
@@ -46,7 +46,7 @@ func (p *InstallControllers) Run() error {
 				return err
 			}
 			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService(h.K0sServiceName()); err != nil {
+			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
 		} else {

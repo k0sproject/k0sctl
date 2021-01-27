@@ -46,7 +46,7 @@ func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
 
 func (p *ValidateHosts) validateSudo(h *cluster.Host) error {
 	log.Infof("%s: validating administrative privileges", h)
-	if err := h.Configurer.CheckPrivilege(); err != nil {
+	if err := h.Configurer.CheckPrivilege(h); err != nil {
 		return err
 	}
 
