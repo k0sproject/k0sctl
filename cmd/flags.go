@@ -108,23 +108,38 @@ func initAnalytics(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
+	initLogger(logLevelFromCtx(ctx, log.InfoLevel))
+	return nil
+}
+
+// initLogging initializes the logger in silent mode
+func initSilentLogging(ctx *cli.Context) error {
+	initLogger(logLevelFromCtx(ctx, log.FatalLevel))
+	return nil
+}
+
+func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
+	if ctx.Bool("debug") {
+		return log.DebugLevel
+	} else if ctx.Bool("trace") {
+		return log.TraceLevel
+	} else {
+		return defaultLevel
+	}
+}
+
+func initLogger(lvl log.Level) {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(ioutil.Discard) // Send all logs to nowhere by default
 
 	screen := screenLoggerHook()
-	if ctx.Bool("debug") {
-		screen.SetLevel(log.DebugLevel)
-	} else if ctx.Bool("trace") {
-		screen.SetLevel(log.TraceLevel)
-	} else {
-		screen.SetLevel(log.InfoLevel)
-	}
+
+	screen.SetLevel(lvl)
 
 	log.AddHook(screen)
 
 	rig.SetLogger(log.StandardLogger())
 
-	return nil
 }
 
 func configReader(f string) (io.ReadCloser, error) {
