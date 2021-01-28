@@ -8,11 +8,8 @@ import (
 	"github.com/k0sproject/rig/os/registry"
 )
 
-type riglinux os.Linux
-
 // Ubuntu provides OS support for Ubuntu systems
 type Ubuntu struct {
-	riglinux
 	linux.Ubuntu
 	configurer.Linux
 }
