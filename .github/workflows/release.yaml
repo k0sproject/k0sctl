@@ -31,6 +31,7 @@ jobs:
       - name: Build bins
         id: build_bins
         env:
+          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         run: |
           make build-all
