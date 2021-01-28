@@ -60,7 +60,8 @@ var applyCommand = &cli.Command{
 		}
 
 		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)
-		log.Infof("To access the cluster you can get the admin kubeconfig with 'k0sctl kubeconfig'")
+		log.Infof("To access the cluster you can get the admin kubeconfig with:")
+		log.Infof("  k0sctl kubeconfig")
 
 		return nil
 	},
