@@ -33,9 +33,16 @@ func (p *InstallWorkers) ShouldRun() bool {
 // Run the phase
 func (p *InstallWorkers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
+		if !h.Metadata.Ready && h.Metadata.K0sRunningVersion != "" {
+			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
+			h.Metadata.K0sRunningVersion = ""
+		}
+
 		if h.Metadata.K0sRunningVersion == "" {
 			log.Infof("%s: writing worker join token", h)
-			if err := h.Configurer.WriteFile(h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.WorkerToken, "0640"); err != nil {
+			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.WorkerToken, "0640"); err != nil {
 				return err
 			}
 
@@ -44,7 +51,11 @@ func (p *InstallWorkers) Run() error {
 				return err
 			}
 			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService(h.K0sServiceName()); err != nil {
+			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
+			log.Infof("%s: waiting for node to become ready", h)
+			if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
 				return err
 			}
 			h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
