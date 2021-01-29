@@ -3,9 +3,10 @@ package phase
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 
+	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
@@ -38,70 +39,115 @@ func (p *DownloadBinaries) ShouldRun() bool {
 
 // Run the phase
 func (p *DownloadBinaries) Run() error {
-	binaries := make(map[string]string)
+	var bins binaries
+
 	for _, h := range p.hosts {
-		if binaries[h.Metadata.Arch] == "" {
-			var found string
-			for _, b := range p.Config.Spec.Hosts {
-				if b.Metadata.Arch == h.Metadata.Arch && b.K0sBinaryPath != "" {
-					log.Infof("%s: using binary %s for %s", h, b.K0sBinaryPath, b.Metadata.Arch)
-					found = b.K0sBinaryPath
-					break
-				}
-			}
-			binaries[h.Metadata.Arch] = found
+		if bin := bins.find(h.Configurer.Kind(), h.Metadata.Arch); bin != nil {
+			continue
 		}
+
+		bin := &binary{arch: h.Metadata.Arch, os: h.Configurer.Kind(), version: p.Config.Spec.K0s.Version}
+
+		// find configuration defined binpaths and use instead of downloading a new one
+		for _, v := range p.hosts {
+			if v.Metadata.Arch == bin.arch && v.Configurer.Kind() == bin.os && v.K0sBinaryPath != "" {
+				bin.path = h.K0sBinaryPath
+			}
+		}
+
+		bins = append(bins, bin)
 	}
 
-	for k, v := range binaries {
-		if v == "" {
-			path, err := p.download(k)
-			if err != nil {
-				return err
-			}
-			binaries[k] = path
+	for _, bin := range bins {
+		if bin.path != "" {
+			continue
+		}
+		if err := bin.download(); err != nil {
+			return err
 		}
 	}
 
 	for _, h := range p.hosts {
 		if h.K0sBinaryPath == "" {
-			h.K0sBinaryPath = binaries[h.Metadata.Arch]
+			if bin := bins.find(h.Configurer.Kind(), h.Metadata.Arch); bin != nil {
+				h.K0sBinaryPath = bin.path
+			}
 		}
 	}
 
 	return nil
 }
 
-func (p *DownloadBinaries) download(arch string) (string, error) {
-	log.Infof("downloading k0s binary for %s", arch)
+type binary struct {
+	arch    string
+	os      string
+	version string
+	path    string
+}
 
-	version := p.Config.Spec.K0s.Version
-	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
-
-	resp, err := http.Get(url)
+func (b *binary) download() error {
+	path, err := cache.GetOrCreate(b.downloadTo, "k0s", b.os, b.arch, "k0s-"+b.version+b.ext())
 	if err != nil {
-		return "", err
+		return err
+	}
+
+	b.path = path
+	log.Infof("using k0s binary from %s for %s-%s", b.path, b.os, b.arch)
+
+	return nil
+}
+
+func (b binary) ext() string {
+	if b.os == "windows" {
+		return ".exe"
+	}
+	return ""
+}
+
+func (b binary) url() string {
+	return fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s%s", b.version, b.version, b.arch, b.ext())
+}
+
+func (b binary) downloadTo(path string) error {
+	log.Infof("downloading k0s version %s binary for %s-%s", b.version, b.os, b.arch)
+
+	resp, err := http.Get(b.url())
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		if err == nil {
-			return "", fmt.Errorf("Failed to get k0s binary (%d)", resp.StatusCode)
+			return fmt.Errorf("Failed to get k0s binary (%d)", resp.StatusCode)
 		}
-		return "", err
+		return err
 	}
 
-	out, err := ioutil.TempFile("", "k0s")
+	out, err := os.Create(path)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to create file %s (%s)", path, err.Error())
 	}
+	defer out.Close()
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	fmt.Println(out.Close())
+	log.Infof("cached k0s binary to %s", path)
 
-	return out.Name(), nil
+	return nil
+}
+
+type binaries []*binary
+
+func (b binaries) find(os, arch string) *binary {
+	for _, v := range b {
+		if v.arch == arch && v.os == os {
+			return v
+		}
+	}
+	return nil
 }

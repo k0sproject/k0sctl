@@ -1,7 +1,6 @@
 package phase
 
 import (
-	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,16 +16,6 @@ func (p *PrepareHosts) Title() string {
 	return "Prepare hosts"
 }
 
-// Prepare the phase
-func (p *PrepareHosts) Prepare(config *config.Cluster) error {
-	for _, h := range config.Spec.Hosts {
-		if len(h.Environment) > 0 || !h.UploadBinary || h.Configurer.IsContainer(h) {
-			p.hosts = append(p.hosts, h)
-		}
-	}
-	return nil
-}
-
 // ShouldRun is true when there are hosts to be prepared
 func (p *PrepareHosts) ShouldRun() bool {
 	return len(p.hosts) > 0
@@ -34,7 +23,7 @@ func (p *PrepareHosts) ShouldRun() bool {
 
 // Run the phase
 func (p *PrepareHosts) Run() error {
-	return p.hosts.ParallelEach(p.prepareHost)
+	return p.Config.Spec.Hosts.ParallelEach(p.prepareHost)
 }
 
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
@@ -45,8 +34,8 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
-	if h.Role == "worker" && !h.UploadBinary && !h.Configurer.CommandExist(h, "curl") {
-		log.Infof("%s: installing packages", h)
+	if h.IsController() || (h.Role == "worker" && !h.UploadBinary) {
+		log.Infof("%s: installing %s", h, h.Configurer.WebRequestPackage())
 		if err := h.Configurer.InstallPackage(h, h.Configurer.WebRequestPackage()); err != nil {
 			return err
 		}
