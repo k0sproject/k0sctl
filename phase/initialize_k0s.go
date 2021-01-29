@@ -36,10 +36,11 @@ func (p *InitializeK0s) ShouldRun() bool {
 
 // Run the phase
 func (p *InitializeK0s) Run() error {
-	p.host.Metadata.IsK0sLeader = true
-	if p.host.Metadata.K0sRunningVersion != "" {
-		log.Infof("%s: k0s already running, reloading configuration", p.host)
-		if err := p.host.Configurer.RestartService(p.host.K0sServiceName()); err != nil {
+	h := p.host
+	h.Metadata.IsK0sLeader = true
+	if h.Metadata.K0sRunningVersion != "" {
+		log.Infof("%s: k0s already running, reloading configuration", h)
+		if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
 			return err
 		}
 		if err := p.waitK0s(); err != nil {
@@ -53,19 +54,19 @@ func (p *InitializeK0s) Run() error {
 		return nil
 	}
 
-	log.Infof("%s: installing k0s controller", p.host)
-	if err := p.host.Exec(p.host.K0sInstallCommand()); err != nil {
+	log.Infof("%s: installing k0s controller", h)
+	if err := h.Exec(h.K0sInstallCommand()); err != nil {
 		return err
 	}
 
-	if err := p.host.Configurer.StartService(p.host.K0sServiceName()); err != nil {
+	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
 	if err := p.waitK0s(); err != nil {
 		return err
 	}
-	p.host.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
-	p.host.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
+	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
+	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 
 	if len(p.Config.Spec.Hosts.Controllers()) > 1 {
 		token, err := p.generateToken("controller")
@@ -83,14 +84,15 @@ func (p *InitializeK0s) Run() error {
 		p.Config.Spec.K0s.Metadata.WorkerToken = token
 	}
 
-	return nil
+	log.Infof("%s: installing kubectl", h)
+	return h.Configurer.InstallKubectl(h)
 }
 
 func (p *InitializeK0s) waitK0s() error {
 	return retry.Do(
 		func() error {
 			log.Infof("%s: waiting for k0s service to start", p.host)
-			if !p.host.Configurer.ServiceIsRunning(p.host.K0sServiceName()) {
+			if !p.host.Configurer.ServiceIsRunning(p.host, p.host.K0sServiceName()) {
 				return fmt.Errorf("not running")
 			}
 			return nil

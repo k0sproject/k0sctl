@@ -7,9 +7,7 @@ import (
 )
 
 // Linux is a base module for various linux OS support packages
-type Linux struct {
-	Host os.Host
-}
+type Linux struct{}
 
 // NOTE The Linux struct does not embed rig/os.Linux because it will confuse
 // go as the distro-configurers' parents embed it too. This means you can't
@@ -20,8 +18,8 @@ type Linux struct {
 // path as a parameter.
 
 // Arch returns the host processor architecture in the format k0s expects it
-func (l Linux) Arch() (string, error) {
-	arch, err := l.Host.ExecOutput("uname -m")
+func (l Linux) Arch(h os.Host) (string, error) {
+	arch, err := h.ExecOutput("uname -m")
 	if err != nil {
 		return "", err
 	}
@@ -36,8 +34,8 @@ func (l Linux) Arch() (string, error) {
 }
 
 // Chmod changes file permissions
-func (l Linux) Chmod(path, chmod string) error {
-	return l.Host.Execf("sudo chmod %s %s", chmod, path)
+func (l Linux) Chmod(h os.Host, path, chmod string) error {
+	return h.Execf("sudo chmod %s %s", chmod, path)
 }
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
@@ -61,29 +59,29 @@ func (l Linux) K0sJoinTokenPath() string {
 }
 
 // TempFile returns a temp file path
-func (l Linux) TempFile() (string, error) {
-	return l.Host.ExecOutput("mktemp")
+func (l Linux) TempFile(h os.Host) (string, error) {
+	return h.ExecOutput("mktemp")
 }
 
 // DownloadK0s performs k0s binary download from github on the host
-func (l Linux) DownloadK0s(version, arch string) error {
-	tmp, err := l.TempFile()
+func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
+	tmp, err := l.TempFile(h)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = l.Host.Execf(`rm -f "%s"`, tmp) }()
+	defer func() { _ = h.Execf(`rm -f "%s"`, tmp) }()
 
 	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
-	if err := l.Host.Execf(`curl -sSLf -o "%s" "%s"`, tmp, url); err != nil {
+	if err := h.Execf(`curl -sSLf -o "%s" "%s"`, tmp, url); err != nil {
 		return err
 	}
 
-	return l.Host.Execf(`sudo install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath())
+	return h.Execf(`sudo install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath())
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
-func (l Linux) ReplaceK0sTokenPath(spath string) error {
-	return l.Host.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
+func (l Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
+	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
 
 // WebRequestPackage is the name of a package that can be used to perform web requests (curl, ..)
@@ -92,16 +90,21 @@ func (l Linux) WebRequestPackage() string {
 }
 
 // FileContains returns true if a file contains the substring
-func (l Linux) FileContains(path, s string) bool {
-	return l.Host.Execf(`sudo grep -q "%s" "%s"`, s, path) == nil
+func (l Linux) FileContains(h os.Host, path, s string) bool {
+	return h.Execf(`sudo grep -q "%s" "%s"`, s, path) == nil
 }
 
 // MoveFile moves a file on the host
-func (l Linux) MoveFile(src, dst string) error {
-	return l.Host.Execf(`sudo mv "%s" "%s"`, src, dst)
+func (l Linux) MoveFile(h os.Host, src, dst string) error {
+	return h.Execf(`sudo mv "%s" "%s"`, src, dst)
 }
 
-// CommandExist returns true if the command exists
-func (l Linux) CommandExist(s string) bool {
-	return l.Host.Execf("command -v %s", s) == nil
+// KubeconfigPath returns the path to a kubeconfig on the host
+func (l Linux) KubeconfigPath() string {
+	return "/var/lib/k0s/pki/admin.conf"
+}
+
+// KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
+func (l Linux) KubectlCmdf(s string, args ...interface{}) string {
+	return fmt.Sprintf(`sudo kubectl --kubeconfig "%s" %s`, l.KubeconfigPath(), fmt.Sprintf(s, args...))
 }

@@ -37,16 +37,7 @@ func (c mockconfigurer) K0sCmdf(s string, args ...interface{}) string {
 
 func TestK0sJoinTokenPath(t *testing.T) {
 	h := Host{}
-	h.Configurer = &mockconfigurer{
-		Linux: cfg.Linux{
-			Host: &h,
-		},
-		Ubuntu: linux.Ubuntu{
-			Linux: cfg.Linux{
-				Host: &h,
-			},
-		},
-	}
+	h.Configurer = &mockconfigurer{}
 
 	require.Equal(t, "from-configurer", h.K0sJoinTokenPath())
 
@@ -56,16 +47,7 @@ func TestK0sJoinTokenPath(t *testing.T) {
 
 func TestK0sConfigPath(t *testing.T) {
 	h := Host{}
-	h.Configurer = &mockconfigurer{
-		Linux: cfg.Linux{
-			Host: &h,
-		},
-		Ubuntu: linux.Ubuntu{
-			Linux: cfg.Linux{
-				Host: &h,
-			},
-		},
-	}
+	h.Configurer = &mockconfigurer{}
 
 	require.Equal(t, "from-configurer", h.K0sConfigPath())
 
@@ -78,16 +60,7 @@ func TestK0sConfigPath(t *testing.T) {
 
 func TestK0sInstallCommand(t *testing.T) {
 	h := Host{Role: "worker"}
-	h.Configurer = &mockconfigurer{
-		Linux: cfg.Linux{
-			Host: &h,
-		},
-		Ubuntu: linux.Ubuntu{
-			Linux: cfg.Linux{
-				Host: &h,
-			},
-		},
-	}
+	h.Configurer = &mockconfigurer{}
 
 	require.Equal(t, `k0s install worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
 

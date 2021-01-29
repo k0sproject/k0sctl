@@ -60,14 +60,14 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 
 func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	path := h.K0sConfigPath()
-	if h.Configurer.FileExist(path) && !h.Configurer.FileContains(path, " generated-by-k0sctl") {
+	if h.Configurer.FileExist(h, path) && !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
 		newpath := path + ".old"
 		log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
-		if err := h.Configurer.MoveFile(path, newpath); err != nil {
+		if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
 			return err
 		}
 	}
 
 	log.Infof("%s: writing k0s config", h)
-	return h.Configurer.WriteFile(h.K0sConfigPath(), p.k0sconfig, "0700")
+	return h.Configurer.WriteFile(h, h.K0sConfigPath(), p.k0sconfig, "0700")
 }

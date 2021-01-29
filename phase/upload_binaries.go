@@ -42,7 +42,7 @@ func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 		return err
 	}
 
-	if err := h.Configurer.Chmod(h.Configurer.K0sBinaryPath(), "0700"); err != nil {
+	if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
 		return err
 	}
 

@@ -20,7 +20,7 @@ func (p *PrepareHosts) Title() string {
 // Prepare the phase
 func (p *PrepareHosts) Prepare(config *config.Cluster) error {
 	for _, h := range config.Spec.Hosts {
-		if len(h.Environment) > 0 || !h.UploadBinary {
+		if len(h.Environment) > 0 || !h.UploadBinary || h.Configurer.IsContainer(h) {
 			p.hosts = append(p.hosts, h)
 		}
 	}
@@ -40,14 +40,21 @@ func (p *PrepareHosts) Run() error {
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating environment", h)
-		if err := h.Configurer.UpdateEnvironment(h.Environment); err != nil {
+		if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {
 			return err
 		}
 	}
 
-	if !h.UploadBinary && !h.Configurer.CommandExist("curl") {
+	if h.Role == "worker" && !h.UploadBinary && !h.Configurer.CommandExist(h, "curl") {
 		log.Infof("%s: installing packages", h)
-		if err := h.Configurer.InstallPackage(h.Configurer.WebRequestPackage()); err != nil {
+		if err := h.Configurer.InstallPackage(h, h.Configurer.WebRequestPackage()); err != nil {
+			return err
+		}
+	}
+
+	if h.Configurer.IsContainer(h) {
+		log.Infof("%s: is a container, applying fix", h)
+		if err := h.Configurer.FixContainer(h); err != nil {
 			return err
 		}
 	}

@@ -10,12 +10,27 @@ jobs:
     name: release
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        
       # Ugly hack to get the tag name
       # github.ref gives the full reference like refs.tags.v0.0.1-beta1
       - name: Branch name
         id: branch_name
         run: |
           echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
+      
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Build bins
+        id: build_bins
+        env:
+          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
+          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
+        run: make build-all
       
       - name: Create Release in Github
         id: create_release
@@ -28,19 +43,10 @@ jobs:
           draft: true # So we can manually edit before publishing
           prerelease: ${{ contains(github.ref, '-') }} # v0.1.2-beta1, 1.2.3-rc1
       
-      - name: Build bins
-        id: build_bins
-        env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
-        run: |
-          make build-all
-      
       - name: Upload artifacts
         id: upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
-        run: |
-          make upload
+        run: make upload
           
