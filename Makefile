@@ -9,10 +9,7 @@ ENVIRONMENT ?= "development"
 LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/k0sproject/k0sctl/integration/segment.WriteKey=$(SEGMENT_WRITE_KEY) -X github.com/k0sproject/k0sctl/version.GitCommit=$(GIT_COMMIT) -X github.com/k0sproject/k0sctl/version.Version=$(K0SCTL_VERSION)
 BUILD_FLAGS = -trimpath -a -tags "netgo static_build" -installsuffix netgo -ldflags "$(LD_FLAGS) -extldflags '-static'"
 
-github_release := $(shell which github-release)
-ifeq ($(github_release),)
-github_release := go get github.com/github-release/github-release/...@v0.10.0 && "${GOPATH}/bin/github-release"
-endif
+
 
 bin/k0sctl-linux-x64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
@@ -40,7 +37,15 @@ k0sctl: $(GO_SRCS)
 clean:
 	rm -rf bin/
 
-upload-%: bin/%
+github_release := $(shell which github-release)
+ifeq ($(github_release),)
+github_release := $(shell go env GOPATH)/bin/github-release
+endif
+
+$(github_release):
+	go get github.com/github-release/github-release/...@v0.10.0
+
+upload-%: bin/% $(github_release)
 	$(github_release) upload \
 		--user k0sproject \
 		--repo k0sctl \
