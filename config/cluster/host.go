@@ -57,6 +57,7 @@ type configurer interface {
 	KubeconfigPath() string
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
+	HTTPStatus(os.Host, string) (int, error)
 }
 
 // HostMetadata resolved metadata for host
@@ -212,6 +213,32 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 				return fmt.Errorf("%s: node %s did not become ready", h, node.Metadata.Hostname)
 			}
 			return nil
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+}
+
+// CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
+func (h *Host) CheckHTTPStatus(url string, expected int) error {
+	status, err := h.Configurer.HTTPStatus(h, url)
+	if err != nil {
+		return err
+	}
+
+	if status != expected {
+		return fmt.Errorf("expected response code %d but received %d", expected, status)
+	}
+
+	return nil
+}
+
+func (h *Host) WaitHTTPStatus(url string, expected int) error {
+	return retry.Do(
+		func() error {
+			return h.CheckHTTPStatus(url, expected)
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),

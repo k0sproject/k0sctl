@@ -2,6 +2,7 @@ package configurer
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/k0sproject/rig/os"
 )
@@ -107,4 +108,18 @@ func (l Linux) KubeconfigPath() string {
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
 func (l Linux) KubectlCmdf(s string, args ...interface{}) string {
 	return fmt.Sprintf(`sudo kubectl --kubeconfig "%s" %s`, l.KubeconfigPath(), fmt.Sprintf(s, args...))
+}
+
+// HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
+func (l Linux) HTTPStatus(h os.Host, url string) (int, error) {
+	output, err := h.ExecOutput(fmt.Sprintf(`curl -kso /dev/null -w "%%{http_code}" "%s"`, url))
+	if err != nil {
+		return -1, err
+	}
+	status, err := strconv.Atoi(output)
+	if err != nil {
+		return -1, fmt.Errorf("invalid response: %s", err.Error())
+	}
+
+	return status, nil
 }
