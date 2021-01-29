@@ -254,6 +254,7 @@ func (h *Host) CheckHTTPStatus(url string, expected int) error {
 	return nil
 }
 
+// WaitHTTPStatus waits until http status received for a GET from the URL is the expected one
 func (h *Host) WaitHTTPStatus(url string, expected int) error {
 	return retry.Do(
 		func() error {

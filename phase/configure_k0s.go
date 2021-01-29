@@ -12,7 +12,6 @@ import (
 // ConfigureK0s writes the k0s configuration to host k0s config dir
 type ConfigureK0s struct {
 	GenericPhase
-	k0sconfig string
 }
 
 // Title returns the phase title
