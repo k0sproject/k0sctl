@@ -23,6 +23,7 @@ type Host struct {
 }
 
 type configurer interface {
+	Kind() string
 	CheckPrivilege() error
 	StartService(string) error
 	RestartService(string) error

@@ -18,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
+	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/client-go v0.19.3
 )
