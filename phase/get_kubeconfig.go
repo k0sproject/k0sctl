@@ -19,7 +19,7 @@ func (p *GetKubeconfig) Title() string {
 // Run the phase
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.Hosts.Controllers()[0]
-	output, err := h.Configurer.ReadFile("/var/lib/k0s/pki/admin.conf")
+	output, err := h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath())
 	if err != nil {
 		return err
 	}
