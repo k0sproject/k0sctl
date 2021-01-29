@@ -26,7 +26,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	log.Infof("%s: investigating host", h)
 	p.IncProp(h.Role)
 
-	output, err := h.Configurer.Arch()
+	output, err := h.Configurer.Arch(h)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	p.IncProp(h.Metadata.Arch)
 	log.Infof("%s: cpu architecture is %s", h, h.Metadata.Arch)
 
-	h.Metadata.Hostname = h.Configurer.Hostname()
+	h.Metadata.Hostname = h.Configurer.Hostname(h)
 
 	return nil
 }

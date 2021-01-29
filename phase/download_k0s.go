@@ -42,7 +42,7 @@ func (p *DownloadK0s) Run() error {
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 	target := p.Config.Spec.K0s.Version
 	log.Infof("%s: downloading k0s %s", h, target)
-	if err := h.Configurer.DownloadK0s(target, h.Metadata.Arch); err != nil {
+	if err := h.Configurer.DownloadK0s(h, target, h.Metadata.Arch); err != nil {
 		return err
 	}
 
