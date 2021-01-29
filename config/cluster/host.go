@@ -27,6 +27,7 @@ type Host struct {
 }
 
 type configurer interface {
+	Kind() string
 	CheckPrivilege(os.Host) error
 	StartService(os.Host, string) error
 	StopService(os.Host, string) error
