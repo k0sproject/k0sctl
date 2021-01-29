@@ -16,21 +16,15 @@ func EnsureDir(dir string) error {
 	return err
 }
 
-func File(parts ...string) (string, error) {
+// File returns a path to a file in the cache dir
+func File(parts ...string) string {
 	parts = append([]string{Dir()}, parts...)
-	fpath := path.Join(parts...)
-	dir := path.Dir(fpath)
-	if err := EnsureDir(dir); err != nil {
-		return "", err
-	}
-	return fpath, nil
+	return path.Join(parts...)
 }
 
+// GetFile returns a file from the cache directory if it exists
 func GetFile(parts ...string) (string, error) {
-	fpath, err := File(parts...)
-	if err != nil {
-		return "", err
-	}
+	fpath := File(parts...)
 
 	stat, err := os.Stat(fpath)
 	if os.IsNotExist(err) {
@@ -44,6 +38,7 @@ func GetFile(parts ...string) (string, error) {
 	return fpath, nil
 }
 
+// GetOrCreate generates a path and runs the provided function if the file does not exist
 func GetOrCreate(create func(string) error, parts ...string) (string, error) {
 	fpath, err := GetFile(parts...)
 	if err != nil {

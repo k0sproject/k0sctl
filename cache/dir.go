@@ -1,4 +1,5 @@
 // +build !windows
+
 package cache
 
 import (
@@ -7,7 +8,7 @@ import (
 	"runtime"
 )
 
-// Directory where k0sctl temporary files should be stored
+// Dir returns the directory where k0sctl temporary files should be stored
 func Dir() string {
 	switch runtime.GOOS {
 	case "linux":
