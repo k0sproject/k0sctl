@@ -30,14 +30,12 @@ func (p *ConfigureK0s) Run() error {
 		if err != nil {
 			return err
 		}
-		p.k0sconfig = fmt.Sprintf("# generated-by-k0sctl %s\n%s", time.Now().Format(time.RFC3339), cfg)
-	} else {
-		p.SetProp("default-config", false)
-		b, err := yaml.Marshal(p.Config.Spec.K0s.Config)
-		if err != nil {
+
+		if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
 			return err
 		}
-		p.k0sconfig = fmt.Sprintf("# generated-by-k0sctl %s\n%s", time.Now().Format(time.RFC3339), b)
+	} else {
+		p.SetProp("default-config", false)
 	}
 
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
@@ -69,5 +67,74 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	}
 
 	log.Infof("%s: writing k0s config", h)
-	return h.Configurer.WriteFile(h, h.K0sConfigPath(), p.k0sconfig, "0700")
+	cfg, err := p.configFor(h)
+	if err != nil {
+		return err
+	}
+	return h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700")
+}
+
+func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
+	var addr string
+	if h.PrivateAddress != "" {
+		addr = h.PrivateAddress
+	} else {
+		addr = h.Address()
+	}
+
+	cfg := p.Config.Spec.K0s.Config
+
+	// ...ok then....
+	spec, ok := cfg["spec"].(cluster.Mapping)
+	if !ok {
+		spec = cluster.Mapping{}
+		cfg["spec"] = &spec
+	}
+
+	api, ok := spec["api"].(cluster.Mapping)
+	if !ok {
+		api = cluster.Mapping{}
+		spec["api"] = &api
+	}
+
+	api["address"] = addr
+	sans, ok := api["sans"].(*[]string)
+	if !ok {
+		sans = &[]string{}
+		api["sans"] = sans
+	}
+
+	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
+	for _, c := range controllers {
+		var caddr string
+		if c.PrivateAddress != "" {
+			caddr = c.PrivateAddress
+		} else {
+			caddr = c.Address()
+		}
+
+		var found bool
+		for _, s := range *sans {
+			if s == caddr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			*sans = append(*sans, caddr)
+		}
+	}
+	*sans = append(*sans, "127.0.0.1")
+
+	if storage, ok := spec["storage"].(cluster.Mapping); ok {
+		if etcd, ok := storage["etcd"].(cluster.Mapping); ok {
+			etcd["peerAddress"] = addr
+		}
+	}
+
+	c, err := yaml.Marshal(p.Config.Spec.K0s.Config)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("# generated-by-k0sctl %s\n%s", time.Now().Format(time.RFC3339), c), nil
 }

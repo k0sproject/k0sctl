@@ -8,6 +8,7 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
 )
@@ -16,11 +17,13 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role          string            `yaml:"role" validate:"oneof=server worker server+worker"`
-	Environment   map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
-	UploadBinary  bool              `yaml:"uploadBinary"`
-	K0sBinaryPath string            `yaml:"k0sBinaryPath"`
-	InstallFlags  Flags             `yaml:"installFlags"`
+	Role             string            `yaml:"role" validate:"oneof=server worker server+worker"`
+	PrivateInterface string            `yaml:"privateInterface,omitempty"`
+	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
+	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
+	UploadBinary     bool              `yaml:"uploadBinary"`
+	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
+	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer
@@ -59,6 +62,8 @@ type configurer interface {
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
 	HTTPStatus(os.Host, string) (int, error)
+	PrivateInterface(os.Host) (string, error)
+	PrivateAddress(os.Host, string, string) (string, error)
 }
 
 // HostMetadata resolved metadata for host
@@ -81,6 +86,19 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return defaults.Set(h)
+}
+
+// Address returns an address for the host
+func (h *Host) Address() string {
+	if h.SSH != nil {
+		return h.SSH.Address
+	}
+
+	if h.WinRM != nil {
+		return h.WinRM.Address
+	}
+
+	return "127.0.0.1"
 }
 
 // Protocol returns host communication protocol
@@ -183,7 +201,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady(node *Host) (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname))
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput())
 	if err != nil {
 		return false, err
 	}

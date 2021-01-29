@@ -27,7 +27,7 @@ func init() {
 
 // InstallKubectl installs kubectl using the gcloud kubernetes repo
 func (c Ubuntu) InstallKubectl(h os.Host) error {
-	if err := c.InstallPackage(h, "apt-transport-https", "gnupg2", "curl"); err != nil {
+	if err := c.InstallPackage(h, "apt-transport-https", "gnupg2"); err != nil {
 		return err
 	}
 

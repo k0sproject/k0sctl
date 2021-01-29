@@ -2,7 +2,9 @@ package configurer
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/k0sproject/rig/os"
 )
@@ -122,4 +124,45 @@ func (l Linux) HTTPStatus(h os.Host, url string) (int, error) {
 	}
 
 	return status, nil
+}
+
+const sbinPath = `PATH=/usr/local/sbin:/usr/sbin:/sbin:$PATH`
+
+// PrivateInterface tries to find a private network interface
+func (l Linux) PrivateInterface(h os.Host) (string, error) {
+	output, err := h.ExecOutput(fmt.Sprintf(`%s; (ip route list scope global | grep -P "\b(172|10|192\.168)\.") || (ip route list | grep -m1 default)`, sbinPath))
+	if err == nil {
+		re := regexp.MustCompile(`\bdev (\w+)`)
+		match := re.FindSubmatch([]byte(output))
+		if len(match) > 0 {
+			return string(match[1]), nil
+		}
+		err = fmt.Errorf("can't find 'dev' in output")
+	}
+
+	return "", fmt.Errorf("failed to detect a private network interface, define the host privateInterface manually (%s)", err.Error())
+}
+
+// PrivateAddress resolves internal ip from private interface
+func (l Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error) {
+	output, err := h.ExecOutput(fmt.Sprintf("%s ip -o addr show dev %s scope global", sbinPath, iface))
+	if err != nil {
+		return "", fmt.Errorf("failed to find private interface with name %s: %s. Make sure you've set correct 'privateInterface' for the host in config", iface, output)
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		items := strings.Fields(line)
+		if len(items) < 4 {
+			continue
+		}
+		addr := items[3][:strings.Index(items[3], "/")]
+		if len(strings.Split(addr, ".")) == 4 {
+			if publicip != addr {
+				return addr, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("not found")
 }
