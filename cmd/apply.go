@@ -84,5 +84,3 @@ var applyCommand = &cli.Command{
 		return nil
 	},
 }
-
-func formatDuration(s int) {}
