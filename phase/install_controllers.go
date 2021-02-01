@@ -53,6 +53,11 @@ func (p *InstallControllers) Run() error {
 			log.Infof("%s: k0s server already running", h)
 		}
 
-		return nil
+		return p.waitJoined(h)
 	})
+}
+
+func (p *InstallControllers) waitJoined(h *cluster.Host) error {
+	log.Infof("%s: waiting for kubernetes api to respond", h)
+	return h.WaitHTTPStatus("https://localhost:6443/version", 200)
 }
