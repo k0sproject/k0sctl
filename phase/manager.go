@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var NoWait bool
+
 type phase interface {
 	Run() error
 	Title() string

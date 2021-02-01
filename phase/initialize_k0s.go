@@ -84,6 +84,10 @@ func (p *InitializeK0s) Run() error {
 		p.Config.Spec.K0s.Metadata.WorkerToken = token
 	}
 
+	if NoWait {
+		return nil
+	}
+
 	log.Infof("%s: installing kubectl", h)
 	return h.Configurer.InstallKubectl(h)
 }
