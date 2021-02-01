@@ -78,8 +78,8 @@ var applyCommand = &cli.Command{
 		log.Infof(aurora.Green(text).String())
 
 		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)
-		log.Infof("To access the cluster you can get the admin kubeconfig with:")
-		log.Infof("  " + aurora.Cyan("k0sctl kubeconfig").String())
+		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
+		log.Infof("     " + aurora.Cyan("k0sctl kubeconfig").String())
 
 		return nil
 	},

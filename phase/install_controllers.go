@@ -36,12 +36,11 @@ func (p *InstallControllers) ShouldRun() bool {
 func (p *InstallControllers) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
 		if h.Metadata.K0sRunningVersion == "" {
-			log.Infof("%s: writing join token", h)
 			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.ControllerToken, "0640"); err != nil {
 				return err
 			}
 
-			log.Infof("%s: installing k0s controller", h)
+			log.Infof("%s: installing k0s server", h)
 			if err := h.Exec(h.K0sInstallCommand()); err != nil {
 				return err
 			}

@@ -41,7 +41,6 @@ func (p *InstallWorkers) Run() error {
 		}
 
 		if h.Metadata.K0sRunningVersion == "" {
-			log.Infof("%s: writing worker join token", h)
 			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), p.Config.Spec.K0s.Metadata.WorkerToken, "0640"); err != nil {
 				return err
 			}

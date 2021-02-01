@@ -41,7 +41,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
-	log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
+	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
 	if h.Role == "server" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
 		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
@@ -80,7 +80,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	if status.Version == "" || status.Role == "" || status.Pid == 0 {
-		log.Infof("%s: k0s is not running", h)
+		log.Debugf("%s: k0s is not running", h)
 		return nil
 	}
 

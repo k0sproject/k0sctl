@@ -68,6 +68,6 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		}
 	}
 
-	log.Infof("%s: writing k0s config", h)
+	log.Debugf("%s: writing k0s config", h)
 	return h.Configurer.WriteFile(h, h.K0sConfigPath(), p.k0sconfig, "0700")
 }
