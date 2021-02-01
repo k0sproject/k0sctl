@@ -15,6 +15,10 @@ var applyCommand = &cli.Command{
 	Usage: "Apply a k0sctl configuration",
 	Flags: []cli.Flag{
 		configFlag,
+		&cli.BoolFlag{
+			Name:  "no-wait",
+			Usage: "Do not wait for nodes to become ready",
+		},
 		debugFlag,
 		traceFlag,
 		analyticsFlag,
@@ -36,6 +40,7 @@ var applyCommand = &cli.Command{
 			return err
 		}
 
+		phase.NoWait = ctx.Bool("no-wait")
 		manager := phase.Manager{Config: &c}
 
 		manager.AddPhase(

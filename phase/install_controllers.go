@@ -53,6 +53,11 @@ func (p *InstallControllers) Run() error {
 			log.Infof("%s: k0s server already running", h)
 		}
 
+		if NoWait {
+			log.Debugf("%s: not waiting because --no-wait given", h)
+			return nil
+		}
+
 		return p.waitJoined(h)
 	})
 }
