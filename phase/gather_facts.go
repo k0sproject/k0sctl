@@ -2,7 +2,6 @@ package phase
 
 import (
 	"github.com/k0sproject/k0sctl/config/cluster"
-	log "github.com/sirupsen/logrus"
 )
 
 // Note: Passwordless sudo has not yet been confirmed when this runs
@@ -23,7 +22,6 @@ func (p *GatherFacts) Run() error {
 }
 
 func (p *GatherFacts) investigateHost(h *cluster.Host) error {
-	log.Infof("%s: investigating host", h)
 	p.IncProp(h.Role)
 
 	output, err := h.Configurer.Arch(h)
@@ -32,7 +30,6 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	}
 	h.Metadata.Arch = output
 	p.IncProp(h.Metadata.Arch)
-	log.Infof("%s: cpu architecture is %s", h, h.Metadata.Arch)
 
 	h.Metadata.Hostname = h.Configurer.Hostname(h)
 

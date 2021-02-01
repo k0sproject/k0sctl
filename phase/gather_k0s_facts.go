@@ -46,7 +46,6 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	if h.Role == "server" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
 		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
 		if token != "" && err == nil {
-			log.Infof("%s: found an existing controller token", h)
 			p.Config.Spec.K0s.Metadata.ControllerToken = token
 		}
 	}
@@ -64,7 +63,6 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	if h.Role == "worker" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
 		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
 		if token != "" && err == nil {
-			log.Infof("%s: found an existing worker token", h)
 			p.Config.Spec.K0s.Metadata.WorkerToken = token
 		}
 	}
@@ -87,7 +85,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
-	log.Infof("%s: is running a k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 
 	ready, err := p.Config.Spec.K0sLeader().KubeNodeReady(h)
 	if err != nil {
