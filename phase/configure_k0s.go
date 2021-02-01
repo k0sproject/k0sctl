@@ -73,6 +73,19 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	return h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700")
 }
 
+func addUnlessExist(slice *[]string, s string) {
+	var found bool
+	for _, v := range *slice {
+		if v == s {
+			found = true
+			break
+		}
+	}
+	if !found {
+		*slice = append(*slice, s)
+	}
+}
+
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	var addr string
 	if h.PrivateAddress != "" {
@@ -83,24 +96,15 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 
 	cfg := p.Config.Spec.K0s.Config
 
-	// ...ok then....
-	spec, ok := cfg["spec"].(cluster.Mapping)
-	if !ok {
-		spec = cluster.Mapping{}
-		cfg["spec"] = &spec
-	}
-
-	api, ok := spec["api"].(cluster.Mapping)
-	if !ok {
-		api = cluster.Mapping{}
-		spec["api"] = &api
-	}
-
-	api["address"] = addr
-	sans, ok := api["sans"].(*[]string)
-	if !ok {
-		sans = &[]string{}
-		api["sans"] = sans
+	cfg.DeepSet([]string{"spec", "api", "address"}, addr)
+	var sans []string
+	oldsans, ok := cfg.Dig("spec", "api", "sans").([]interface{})
+	if ok {
+		for _, v := range oldsans {
+			if s, ok := v.(string); ok {
+				addUnlessExist(&sans, s)
+			}
+		}
 	}
 
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
@@ -111,24 +115,13 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		} else {
 			caddr = c.Address()
 		}
-
-		var found bool
-		for _, s := range *sans {
-			if s == caddr {
-				found = true
-				break
-			}
-		}
-		if !found {
-			*sans = append(*sans, caddr)
-		}
+		addUnlessExist(&sans, caddr)
 	}
-	*sans = append(*sans, "127.0.0.1")
+	addUnlessExist(&sans, "127.0.0.1")
+	cfg.DeepSet([]string{"spec", "api", "sans"}, sans)
 
-	if storage, ok := spec["storage"].(cluster.Mapping); ok {
-		if etcd, ok := storage["etcd"].(cluster.Mapping); ok {
-			etcd["peerAddress"] = addr
-		}
+	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil {
+		cfg.DeepSet([]string{"spec", "storage", "etcd", "peerAddress"}, addr)
 	}
 
 	c, err := yaml.Marshal(p.Config.Spec.K0s.Config)
