@@ -2,6 +2,7 @@ package phase
 
 import (
 	"github.com/k0sproject/k0sctl/config/cluster"
+	log "github.com/sirupsen/logrus"
 )
 
 // Note: Passwordless sudo has not yet been confirmed when this runs
