@@ -87,11 +87,13 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 
-	ready, err := p.Config.Spec.K0sLeader().KubeNodeReady(h)
-	if err != nil {
-		log.Debugf("%s: failed to get ready status: %s", h, err.Error())
+	if !h.IsController() {
+		ready, err := p.Config.Spec.K0sLeader().KubeNodeReady(h)
+		if err != nil {
+			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
+		}
+		h.Metadata.Ready = ready
 	}
-	h.Metadata.Ready = ready
 
 	return nil
 }

@@ -33,5 +33,23 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 
 	h.Metadata.Hostname = h.Configurer.Hostname(h)
 
+	if h.IsController() {
+		if h.PrivateAddress == "" {
+			if h.PrivateInterface == "" {
+				if iface, err := h.Configurer.PrivateInterface(h); err == nil {
+					h.PrivateInterface = iface
+					log.Infof("%s: discovered %s as private interface", h, iface)
+				}
+			}
+
+			if h.PrivateInterface != "" {
+				if addr, err := h.Configurer.PrivateAddress(h, h.PrivateInterface, h.Address()); err == nil {
+					h.PrivateAddress = addr
+					log.Infof("%s: discovered %s as private address", h, addr)
+				}
+			}
+		}
+	}
+
 	return nil
 }

@@ -9,6 +9,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// NoWait is used by various phases to decide if node ready state should be waited for or not
+var NoWait bool
+
 type phase interface {
 	Run() error
 	Title() string

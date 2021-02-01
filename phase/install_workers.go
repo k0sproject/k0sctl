@@ -53,9 +53,13 @@ func (p *InstallWorkers) Run() error {
 			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
-			log.Infof("%s: waiting for node to become ready", h)
-			if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
-				return err
+			if NoWait {
+				log.Debugf("%s: not waiting because --no-wait given", h)
+			} else {
+				log.Infof("%s: waiting for node to become ready", h)
+				if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
+					return err
+				}
 			}
 			h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 		} else {
