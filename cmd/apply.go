@@ -69,17 +69,8 @@ var applyCommand = &cli.Command{
 			return err
 		}
 
-		duration := int(time.Since(start).Seconds())
-		mins := duration / 60
-		secs := duration % 60
-
-		var text string
-		if mins == 0 {
-			text = fmt.Sprintf("==> Finished in %d seconds", secs)
-		} else {
-			text = fmt.Sprintf("==> Finished in %d minutes and %d seconds", mins, secs)
-		}
-
+		duration := time.Since(start).Truncate(time.Second)
+		text := fmt.Sprintf("==> Finished in %s", duration)
 		log.Infof(aurora.Green(text).String())
 
 		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)

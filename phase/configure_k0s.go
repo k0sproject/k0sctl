@@ -129,5 +129,4 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("# generated-by-k0sctl %s\n%s", time.Now().Format(time.RFC3339), c), nil
->>>>>>> main
 }
