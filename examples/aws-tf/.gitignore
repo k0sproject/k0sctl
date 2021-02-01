@@ -1,0 +1,6 @@
+terraform.tfvars
+.terraform
+terraform.tfstate*
+aws_private.pem
+.terraform.lock.hcl
+kubeconfig
