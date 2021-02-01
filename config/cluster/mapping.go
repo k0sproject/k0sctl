@@ -47,29 +47,23 @@ func (m *Mapping) DigString(keys ...string) string {
 	return val
 }
 
-// DeepSet sets a value deep in a nested mapping, creating new levels of mappings as it goes unless they exist
-func (m *Mapping) DeepSet(keys []string, value interface{}) {
+// DigMapping always returns a mapping, creating missing or overwriting non-mapping branches in between
+func (m *Mapping) DigMapping(keys ...string) Mapping {
 	k := keys[0]
 	cur := (*m)[k]
 	switch v := cur.(type) {
-	case nil:
-		if len(keys) > 1 {
-			n := Mapping{}
-			(*m)[k] = n
-			n.DeepSet(keys[1:], value)
-		} else {
-			(*m)[k] = value
-		}
 	case Mapping:
 		if len(keys) > 1 {
-			v.DeepSet(keys[1:], value)
-		} else {
-			(*m)[k] = value
+			return v.DigMapping(keys[1:]...)
 		}
+		return v
 	default:
-		if len(keys) == 1 {
-			(*m)[k] = value
+		n := Mapping{}
+		(*m)[k] = n
+		if len(keys) > 1 {
+			return n.DigMapping(keys[1:]...)
 		}
+		return n
 	}
 }
 

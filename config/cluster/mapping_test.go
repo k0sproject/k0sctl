@@ -19,21 +19,21 @@ func TestDig(t *testing.T) {
 	assert.Nil(t, m.Dig("foo", "non-existing", "key"))
 }
 
-func TestDeepSet(t *testing.T) {
+func TestDigMapping(t *testing.T) {
 	m := Mapping{
 		"foo": Mapping{
 			"bar": "foobar",
 		},
 	}
 
-	m.DeepSet([]string{"bar", "baz", "dog"}, 1)
+	assert.Equal(t, "foobar", m.DigMapping("foo")["bar"])
+
+	m.DigMapping("bar", "baz")["dog"] = 1
 	assert.Equal(t, 1, m.Dig("bar", "baz", "dog"))
-
-	m.DeepSet([]string{"foo", "baz", "dog"}, "hello")
-	assert.Equal(t, "hello", m.Dig("foo", "baz", "dog"))
+	// Make sure foo.bar was left intact
 	assert.Equal(t, "foobar", m.Dig("foo", "bar"))
 
-	m.DeepSet([]string{"foo", "bar", "baz"}, "hello")
-	assert.Nil(t, m.Dig("foo", "bar", "baz"))
-	assert.Equal(t, "foobar", m.Dig("foo", "bar"))
+	// Overwrite foo.bar with a new mapping
+	m.DigMapping("foo", "bar")["baz"] = "hello"
+	assert.Equal(t, "hello", m.Dig("foo", "bar", "baz"))
 }

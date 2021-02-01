@@ -96,7 +96,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 
 	cfg := p.Config.Spec.K0s.Config
 
-	cfg.DeepSet([]string{"spec", "api", "address"}, addr)
+	cfg.DigMapping("spec", "api")["address"] = addr
 	var sans []string
 	oldsans, ok := cfg.Dig("spec", "api", "sans").([]interface{})
 	if ok {
@@ -118,10 +118,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		addUnlessExist(&sans, caddr)
 	}
 	addUnlessExist(&sans, "127.0.0.1")
-	cfg.DeepSet([]string{"spec", "api", "sans"}, sans)
+	cfg.DigMapping("spec", "api")["sans"] = sans
 
 	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil {
-		cfg.DeepSet([]string{"spec", "storage", "etcd", "peerAddress"}, addr)
+		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
 
 	c, err := yaml.Marshal(p.Config.Spec.K0s.Config)
