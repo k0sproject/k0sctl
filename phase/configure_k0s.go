@@ -1,7 +1,10 @@
 package phase
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
@@ -57,11 +60,20 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 
 func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	path := h.K0sConfigPath()
-	if h.Configurer.FileExist(h, path) && !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
-		newpath := path + ".old"
-		log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
-		if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
+	var oldcfg string
+	if h.Configurer.FileExist(h, path) {
+		c, err := h.Configurer.ReadFile(h, path)
+		if err != nil {
 			return err
+		}
+		oldcfg = c
+
+		if h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
+			newpath := path + ".old"
+			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
+			if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -70,7 +82,41 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	if err != nil {
 		return err
 	}
-	return h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700")
+
+	if err := h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700"); err != nil {
+		return err
+	}
+
+	if !equalConfig(oldcfg, cfg) {
+		log.Infof("%s: configuration was changed", h)
+		if h.Metadata.K0sRunningVersion != "" {
+			log.Infof("%s: restarting the k0s service", h)
+			if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
+
+			log.Infof("%s: waiting for the k0s service to start", h)
+			return h.WaitK0sServiceRunning()
+		}
+	}
+
+	return nil
+}
+
+func equalConfig(a, b string) bool {
+	return removeComment(a) == removeComment(b)
+}
+
+func removeComment(in string) string {
+	var out bytes.Buffer
+	scanner := bufio.NewScanner(strings.NewReader(in))
+	for scanner.Scan() {
+		row := scanner.Text()
+		if !strings.HasPrefix(row, "#") {
+			fmt.Fprintln(&out, row)
+		}
+	}
+	return out.String()
 }
 
 func addUnlessExist(slice *[]string, s string) {

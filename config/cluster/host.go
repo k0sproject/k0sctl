@@ -267,3 +267,18 @@ func (h *Host) WaitHTTPStatus(url string, expected int) error {
 		retry.Attempts(60),
 	)
 }
+
+func (h *Host) WaitK0sServiceRunning() error {
+	return retry.Do(
+		func() error {
+			if !h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+				return fmt.Errorf("not running")
+			}
+			return h.Exec(h.Configurer.K0sCmdf("status"))
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+}
