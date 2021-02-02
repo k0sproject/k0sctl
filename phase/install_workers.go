@@ -42,8 +42,8 @@ func (p *InstallWorkers) Run() error {
 	log.Infof("%s: generating token", p.leader)
 	token, err := p.Config.Spec.K0s.GenerateToken(
 		p.leader,
-		"controller",
-		time.Duration(5*len(p.hosts))*time.Minute,
+		"worker",
+		time.Duration(10*len(p.hosts))*time.Minute,
 	)
 	if err != nil {
 		return err
@@ -55,15 +55,24 @@ func (p *InstallWorkers) Run() error {
 			return err
 		}
 
+		if sp, err := h.Configurer.ServiceScriptPath(h, h.K0sServiceName()); err == nil {
+			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+				log.Infof("%s: stopping service", h)
+				if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+					return err
+				}
+			}
+			if h.Configurer.FileExist(h, sp) {
+				err := h.Configurer.DeleteFile(h, sp)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		log.Infof("%s: installing k0s worker", h)
 		if err := h.Exec(h.K0sInstallCommand()); err != nil {
 			return err
-		}
-		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
-			log.Infof("%s: stopping service", h)
-			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
-				return err
-			}
 		}
 
 		log.Infof("%s: starting service", h)

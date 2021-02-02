@@ -102,6 +102,11 @@ func (l Linux) MoveFile(h os.Host, src, dst string) error {
 	return h.Execf(`sudo mv "%s" "%s"`, src, dst)
 }
 
+// DeleteFile deletes a file on the host
+func (l Linux) DeleteFile(h os.Host, path string) error {
+	return h.Execf(`sudo rm -f "%s"`, path)
+}
+
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (l Linux) KubeconfigPath() string {
 	return "/var/lib/k0s/pki/admin.conf"
