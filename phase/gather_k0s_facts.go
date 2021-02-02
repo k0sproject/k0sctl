@@ -43,14 +43,6 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
 	log.Infof("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.Role == "server" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
-		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
-		if token != "" && err == nil {
-			log.Infof("%s: found an existing controller token", h)
-			p.Config.Spec.K0s.Metadata.ControllerToken = token
-		}
-	}
-
 	if h.Role == "server" && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
 		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
@@ -58,14 +50,6 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 			if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
 				return fmt.Errorf("failed to parse existing configuration: %s", err.Error())
 			}
-		}
-	}
-
-	if h.Role == "worker" && h.Configurer.FileExist(h, h.K0sJoinTokenPath()) {
-		token, err := h.Configurer.ReadFile(h, h.K0sJoinTokenPath())
-		if token != "" && err == nil {
-			log.Infof("%s: found an existing worker token", h)
-			p.Config.Spec.K0s.Metadata.WorkerToken = token
 		}
 	}
 

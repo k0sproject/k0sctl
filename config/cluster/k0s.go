@@ -2,10 +2,13 @@ package cluster
 
 import (
 	"strings"
+	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
+	"github.com/k0sproject/rig/exec"
 )
 
 // K0sMinVersion is the minimum k0s version supported
@@ -20,9 +23,7 @@ type K0s struct {
 
 // K0sMetadata contains gathered information about k0s cluster
 type K0sMetadata struct {
-	ClusterID       string
-	ControllerToken string
-	WorkerToken     string
+	ClusterID string
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -47,4 +48,23 @@ func (k *K0s) SetDefaults() {
 	}
 
 	k.Version = strings.TrimPrefix(k.Version, "v")
+}
+
+// GenerateToken runs the k0s token create command
+func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token string, err error) {
+	err = retry.Do(
+		func() error {
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --role %s --expiry %s", role, expiry.String()), exec.HideOutput())
+			if err != nil {
+				return err
+			}
+			token = output
+			return nil
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+	return
 }

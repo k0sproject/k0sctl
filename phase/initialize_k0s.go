@@ -7,7 +7,6 @@ import (
 	retry "github.com/avast/retry-go"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,11 +45,6 @@ func (p *InitializeK0s) Run() error {
 		if err := p.waitK0s(); err != nil {
 			return err
 		}
-		token, err := p.generateToken("worker")
-		if err != nil {
-			return err
-		}
-		p.Config.Spec.K0s.Metadata.WorkerToken = token
 		return nil
 	}
 
@@ -67,26 +61,6 @@ func (p *InitializeK0s) Run() error {
 	}
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
-
-	if len(p.Config.Spec.Hosts.Controllers()) > 1 {
-		token, err := p.generateToken("controller")
-		if err != nil {
-			return err
-		}
-		p.Config.Spec.K0s.Metadata.ControllerToken = token
-	}
-
-	if len(p.Config.Spec.Hosts.Workers()) > 0 {
-		token, err := p.generateToken("worker")
-		if err != nil {
-			return err
-		}
-		p.Config.Spec.K0s.Metadata.WorkerToken = token
-	}
-
-	if NoWait {
-		return nil
-	}
 
 	log.Infof("%s: installing kubectl", h)
 	return h.Configurer.InstallKubectl(h)
@@ -106,23 +80,4 @@ func (p *InitializeK0s) waitK0s() error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
-}
-
-func (p *InitializeK0s) generateToken(role string) (token string, err error) {
-	log.Infof("%s: generating %s join token", p.host, role)
-	err = retry.Do(
-		func() error {
-			output, err := p.host.ExecOutput(p.host.Configurer.K0sCmdf("token create --role %s", role), exec.HideOutput())
-			if err != nil {
-				return err
-			}
-			token = output
-			return nil
-		},
-		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
-		retry.MaxJitter(time.Second*2),
-		retry.Delay(time.Second*3),
-		retry.Attempts(60),
-	)
-	return
 }

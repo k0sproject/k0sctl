@@ -17,7 +17,7 @@ var applyCommand = &cli.Command{
 		configFlag,
 		&cli.BoolFlag{
 			Name:  "no-wait",
-			Usage: "Do not wait for nodes to become ready",
+			Usage: "Do not wait for worker nodes to join",
 		},
 		debugFlag,
 		traceFlag,
