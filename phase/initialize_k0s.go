@@ -37,19 +37,18 @@ func (p *InitializeK0s) Run() error {
 	h := p.leader
 	h.Metadata.IsK0sLeader = true
 
-	go func() {
-		log.Infof("%s: installing kubectl", h)
-		if err := p.leader.Configurer.InstallKubectl(p.leader); err != nil {
-			log.Errorf("%s: failed to install kubectl: %s", p.leader, err.Error())
-		}
-	}()
-
 	log.Infof("%s: installing k0s controller", h)
 	if err := h.Exec(h.K0sInstallCommand()); err != nil {
 		return err
 	}
 
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		return err
+	}
+
+	// Do this while waiting
+	log.Infof("%s: installing kubectl", h)
+	if err := p.leader.Configurer.InstallKubectl(p.leader); err != nil {
 		return err
 	}
 
