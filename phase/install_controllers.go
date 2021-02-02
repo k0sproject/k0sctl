@@ -39,17 +39,17 @@ func (p *InstallControllers) ShouldRun() bool {
 
 // Run the phase
 func (p *InstallControllers) Run() error {
-	log.Infof("%s: generating token", p.leader)
-	token, err := p.Config.Spec.K0s.GenerateToken(
-		p.leader,
-		"controller",
-		time.Duration(10*len(p.hosts))*time.Minute,
-	)
-	if err != nil {
-		return err
-	}
-
 	for _, h := range p.hosts {
+		log.Infof("%s: generating token", p.leader)
+		token, err := p.Config.Spec.K0s.GenerateToken(
+			p.leader,
+			"controller",
+			time.Duration(10)*time.Minute,
+		)
+		if err != nil {
+			return err
+		}
+
 		log.Infof("%s: writing join token", h)
 		if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), token, "0640"); err != nil {
 			return err
