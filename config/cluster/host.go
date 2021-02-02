@@ -268,6 +268,7 @@ func (h *Host) WaitHTTPStatus(url string, expected int) error {
 	)
 }
 
+// WaitK0sServiceRunning blocks until the k0s service is running on the host
 func (h *Host) WaitK0sServiceRunning() error {
 	return retry.Do(
 		func() error {
