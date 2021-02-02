@@ -54,7 +54,7 @@ func (k *K0s) SetDefaults() {
 func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token string, err error) {
 	err = retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --role %s --expiry %s", role, expiry.String()), exec.HideOutput())
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String()), exec.HideOutput())
 			if err != nil {
 				return err
 			}
