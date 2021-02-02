@@ -43,7 +43,7 @@ func (p *InstallWorkers) Run() error {
 	token, err := p.Config.Spec.K0s.GenerateToken(
 		p.leader,
 		"controller",
-		time.Duration(10*len(p.hosts))*time.Second,
+		time.Duration(5*len(p.hosts))*time.Minute,
 	)
 	if err != nil {
 		return err
