@@ -28,7 +28,7 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
-	if h.IsController() || (h.Role == "worker" && !h.UploadBinary) {
+	if (h.IsController() || (h.Role == "worker" && !h.UploadBinary)) && !h.Configurer.CommandExist(h, h.Configurer.WebRequestPackage()) {
 		log.Infof("%s: installing %s", h, h.Configurer.WebRequestPackage())
 		if err := h.Configurer.InstallPackage(h, h.Configurer.WebRequestPackage()); err != nil {
 			return err
