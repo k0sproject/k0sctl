@@ -8,17 +8,11 @@ import (
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
 	GenericPhase
-	hosts cluster.Hosts
 }
 
 // Title for the phase
 func (p *PrepareHosts) Title() string {
 	return "Prepare hosts"
-}
-
-// ShouldRun is true when there are hosts to be prepared
-func (p *PrepareHosts) ShouldRun() bool {
-	return len(p.hosts) > 0
 }
 
 // Run the phase
@@ -41,7 +35,7 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
-	if h.IsController() {
+	if h.IsController() && !h.Configurer.CommandExist(h, "kubectl") {
 		log.Infof("%s: installing kubectl", h)
 		if err := h.Configurer.InstallKubectl(h); err != nil {
 			return err
