@@ -46,12 +46,6 @@ func (p *InitializeK0s) Run() error {
 		return err
 	}
 
-	// Do this while waiting
-	log.Infof("%s: installing kubectl", h)
-	if err := p.leader.Configurer.InstallKubectl(p.leader); err != nil {
-		return err
-	}
-
 	log.Infof("%s: waiting for the k0s service to start", h)
 	if err := h.WaitK0sServiceRunning(); err != nil {
 		return err
