@@ -54,6 +54,7 @@ type configurer interface {
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error
+	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
 	InstallKubectl(os.Host) error
