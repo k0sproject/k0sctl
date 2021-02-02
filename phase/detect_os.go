@@ -25,7 +25,6 @@ func (p *DetectOS) Title() string {
 // Run the phase
 func (p *DetectOS) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
-		log.Infof("%s: detecting operating system", h)
 		if err := h.ResolveConfigurer(); err != nil {
 			p.SetProp("missing-support", h.OSVersion.String())
 			return err

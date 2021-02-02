@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
-	log "github.com/sirupsen/logrus"
 
 	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer"
@@ -36,7 +35,6 @@ func (p *ValidateHosts) Run() error {
 }
 
 func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
-	log.Infof("%s: validating hostname uniqueness", h)
 	if p.hncount[h.Metadata.Hostname] > 1 {
 		return fmt.Errorf("hostname is not unique: %s", h.Metadata.Hostname)
 	}
@@ -45,7 +43,6 @@ func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
 }
 
 func (p *ValidateHosts) validateSudo(h *cluster.Host) error {
-	log.Infof("%s: validating administrative privileges", h)
 	if err := h.Configurer.CheckPrivilege(h); err != nil {
 		return err
 	}

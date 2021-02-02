@@ -65,7 +65,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		}
 	}
 
-	log.Infof("%s: writing k0s config", h)
+	log.Debugf("%s: writing k0s config", h)
 	cfg, err := p.configFor(h)
 	if err != nil {
 		return err
