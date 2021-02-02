@@ -40,12 +40,13 @@ func (p *ConfigureK0s) Run() error {
 		p.SetProp("default-config", false)
 	}
 
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
-	if err := controllers.ParallelEach(p.configureK0s); err != nil {
-		return err
+	for _, h := range p.Config.Spec.Hosts.Controllers() {
+		if err := p.configureK0s(h); err != nil {
+			return err
+		}
 	}
 
-	return p.validateConfig(p.Config.Spec.K0sLeader())
+	return nil
 }
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
@@ -77,13 +78,17 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		}
 	}
 
-	log.Infof("%s: writing k0s config", h)
+	log.Debugf("%s: writing k0s configuration", h)
 	cfg, err := p.configFor(h)
 	if err != nil {
 		return err
 	}
 
 	if err := h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700"); err != nil {
+		return err
+	}
+
+	if err := p.validateConfig(h); err != nil {
 		return err
 	}
 
