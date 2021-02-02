@@ -69,7 +69,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		}
 		oldcfg = c
 
-		if h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
+		if !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
 			newpath := path + ".old"
 			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
 			if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
