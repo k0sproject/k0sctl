@@ -5,18 +5,18 @@ import (
 	"github.com/k0sproject/rig/os/registry"
 )
 
-// Ubuntu provides OS support for Ubuntu systems
-type Ubuntu struct {
-	Debian
+// OpenSUSE provides OS support for OpenSUSE
+type OpenSUSE struct {
+	SLES
 }
 
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
-			return os.ID == "ubuntu"
+			return os.ID == "opensuse"
 		},
 		func() interface{} {
-			return &Ubuntu{}
+			return OpenSUSE{}
 		},
 	)
 }
