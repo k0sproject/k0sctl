@@ -50,7 +50,6 @@ type configurer interface {
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string) error
 	DownloadK0s(os.Host, string, string) error
-	WebRequestPackage() string
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error
@@ -266,4 +265,40 @@ func (h *Host) WaitHTTPStatus(url string, expected int) error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
+}
+
+// WaitK0sServiceRunning blocks until the k0s service is running on the host
+func (h *Host) WaitK0sServiceRunning() error {
+	return retry.Do(
+		func() error {
+			if !h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+				return fmt.Errorf("not running")
+			}
+			return h.Exec(h.Configurer.K0sCmdf("status"))
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+}
+
+// NeedCurl returns true when the curl package is needed on the host
+func (h *Host) NeedCurl() bool {
+	// Windows does not need any packages for web requests
+	if h.Configurer.Kind() == "windows" {
+		return true
+	}
+
+	// Controllers always need curl
+	if h.IsController() {
+		return !h.Configurer.CommandExist(h, "curl")
+	}
+
+	// Workers only need curl if they're going to use the direct downloading
+	if !h.UploadBinary {
+		return !h.Configurer.CommandExist(h, "curl")
+	}
+
+	return false
 }

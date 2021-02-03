@@ -22,6 +22,7 @@ type k0sstatus struct {
 // GatherK0sFacts gathers information about hosts, such as if k0s is already up and running
 type GatherK0sFacts struct {
 	GenericPhase
+	leader *cluster.Host
 }
 
 // Title for the phase
@@ -31,7 +32,13 @@ func (p *GatherK0sFacts) Title() string {
 
 // Run the phase
 func (p *GatherK0sFacts) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(p.investigateK0s)
+	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
+	if err := controllers.ParallelEach(p.investigateK0s); err != nil {
+		return err
+	}
+	p.leader = p.Config.Spec.K0sLeader()
+	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
+	return workers.ParallelEach(p.investigateK0s)
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
@@ -74,7 +81,8 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 
 	if !h.IsController() {
-		ready, err := p.Config.Spec.K0sLeader().KubeNodeReady(h)
+		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
+		ready, err := p.leader.KubeNodeReady(h)
 		if err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
 		}

@@ -36,7 +36,7 @@ func (c Ubuntu) InstallKubectl(h os.Host) error {
 		return err
 	}
 
-	err = h.Exec(`echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list`)
+	err = h.Exec(`sudo test -e /etc/apt/sources.list.d/kubernetes.list || (echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list)`)
 	if err != nil {
 		return err
 	}

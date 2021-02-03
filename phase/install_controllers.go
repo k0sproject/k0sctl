@@ -65,6 +65,11 @@ func (p *InstallControllers) Run() error {
 			return err
 		}
 
+		log.Infof("%s: waiting for the k0s service to start", h)
+		if err := h.WaitK0sServiceRunning(); err != nil {
+			return err
+		}
+
 		if err := p.waitJoined(h); err != nil {
 			return err
 		}

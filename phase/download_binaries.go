@@ -27,7 +27,7 @@ func (p *DownloadBinaries) Title() string {
 func (p *DownloadBinaries) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.UploadBinary
+		return h.UploadBinary && h.Metadata.K0sBinaryVersion != config.Spec.K0s.Version
 	})
 	return nil
 }

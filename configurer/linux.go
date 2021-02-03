@@ -87,11 +87,6 @@ func (l Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
 	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
 
-// WebRequestPackage is the name of a package that can be used to perform web requests (curl, ..)
-func (l Linux) WebRequestPackage() string {
-	return "curl"
-}
-
 // FileContains returns true if a file contains the substring
 func (l Linux) FileContains(h os.Host, path, s string) bool {
 	return h.Execf(`sudo grep -q "%s" "%s"`, s, path) == nil
@@ -170,4 +165,9 @@ func (l Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error)
 	}
 
 	return "", fmt.Errorf("not found")
+}
+
+// CommandExist returns true if the command exists
+func (l Linux) CommandExist(h os.Host, cmd string) bool {
+	return h.Execf(`sudo -i command -v "%s"`, cmd) == nil
 }
