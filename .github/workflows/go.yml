@@ -48,6 +48,11 @@ jobs:
 
     
   smoke-basic:
+    strategy:
+      matrix:
+        image:
+          - quay.io/footloose/ubuntu18.04
+          - quay.io/footloose/centos7
     name: Basic 1+1 smoke
     needs: build
     runs-on: ubuntu-latest
@@ -59,7 +64,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
-          
+
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
@@ -69,4 +74,6 @@ jobs:
           key: build-${{ github.run_id }}
       
       - name: run basic smoke
+        env:
+          LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-basic
