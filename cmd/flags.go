@@ -132,9 +132,7 @@ func initLogger(lvl log.Level) {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(ioutil.Discard) // Send all logs to nowhere by default
 
-	screen := screenLoggerHook()
-
-	screen.SetLevel(lvl)
+	screen := screenLoggerHook(lvl)
 
 	log.AddHook(screen)
 
@@ -210,14 +208,16 @@ func (h *loghook) Fire(entry *log.Entry) error {
 	return err
 }
 
-func screenLoggerHook() *loghook {
-	l := &loghook{Formatter: &log.TextFormatter{DisableTimestamp: true, ForceColors: true}}
+func screenLoggerHook(lvl log.Level) *loghook {
+	l := &loghook{Formatter: &log.TextFormatter{DisableTimestamp: lvl < log.DebugLevel, ForceColors: true}}
 
 	if runtime.GOOS == "windows" {
 		l.Writer = ansicolor.NewAnsiColorWriter(os.Stdout)
 	} else {
 		l.Writer = os.Stdout
 	}
+
+	l.SetLevel(lvl)
 
 	return l
 }
