@@ -51,7 +51,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/footloose/ubuntu20.04
+          - quay.io/footloose/ubuntu18.04
           - quay.io/footloose/centos7
           - quay.io/footloose/amazonlinux2
           - quay.io/footloose/debian10
