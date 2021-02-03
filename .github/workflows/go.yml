@@ -1,7 +1,11 @@
 name: Go
 
-on: [push, pull_request]
-
+on:
+  push:
+    branches-ignore:
+      - "main"
+  pull_request:
+    
 jobs:
 
   build:
@@ -11,13 +15,11 @@ jobs:
 
     - name: Set up Go
       uses: actions/setup-go@v2
-      if: github.ref != 'refs/heads/main'
       with:
         go-version: 1.15
           
     - name: Go modules cache
       uses: actions/cache@v2
-      if: github.ref != 'refs/heads/main'
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -25,16 +27,53 @@ jobs:
           ${{ runner.os }}-go-
               
     - name: Run golangci-lint
-      if: github.ref != 'refs/heads/main'
       uses: golangci/golangci-lint-action@v2.3.0
       with:
         version: v1.35.2
         skip-go-installation: true
 
     - name: Build
-      if: github.ref != 'refs/heads/main'
-      run: go build -v ./...
-
+      run: make k0sctl
+    
     - name: Test
-      if: github.ref != 'refs/heads/main'
       run: go test -v ./...
+    
+    - name: Cache compiled binary for further testing
+      uses: actions/cache@v2
+      id: cache-compiled-binary
+      with:
+        path: |
+          k0sctl
+        key: build-${{ github.run_id }}
+
+    
+  smoke-basic:
+    strategy:
+      matrix:
+        image:
+          - quay.io/footloose/ubuntu18.04
+          - quay.io/footloose/centos7
+    name: Basic 1+1 smoke
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Restore compiled binary for smoke testing
+        uses: actions/cache@v2
+        id: restore-compiled-binary
+        with:
+          path: |
+            k0sctl
+          key: build-${{ github.run_id }}
+      
+      - name: run basic smoke
+        env:
+          LINUX_IMAGE: ${{ matrix.image }}
+        run: make smoke-basic
