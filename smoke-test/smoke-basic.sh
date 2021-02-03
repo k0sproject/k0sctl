@@ -7,4 +7,4 @@ trap cleanup EXIT
 
 deleteCluster
 createCluster
-../k0sctl apply --config k0sctl.yaml
+../k0sctl apply --config k0sctl.yaml --debug
