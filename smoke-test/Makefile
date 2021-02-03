@@ -4,6 +4,11 @@ ifeq ($(footloose),)
 footloose := $(shell go env GOPATH)/bin/footloose
 endif
 
+envsubst := $(shell which envsubst)
+ifeq ($(envsubst),)
+$(error 'envsubst' NOT found in path, please install it and re-run)
+endif
+
 $(footloose):
 	go get github.com/weaveworks/footloose/...@0.6.3
 
