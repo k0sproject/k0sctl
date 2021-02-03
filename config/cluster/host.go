@@ -50,7 +50,6 @@ type configurer interface {
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string) error
 	DownloadK0s(os.Host, string, string) error
-	WebRequestPackage() string
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error
@@ -282,4 +281,24 @@ func (h *Host) WaitK0sServiceRunning() error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
+}
+
+// NeedCurl returns true when the curl package is needed on the host
+func (h *Host) NeedCurl() bool {
+	// Windows does not need any packages for web requests
+	if h.Configurer.Kind() == "windows" {
+		return true
+	}
+
+	// Controllers always need curl
+	if h.IsController() {
+		return !h.Configurer.CommandExist(h, "curl")
+	}
+
+	// Workers only need curl if they're going to use the direct downloading
+	if !h.UploadBinary {
+		return !h.Configurer.CommandExist(h, "curl")
+	}
+
+	return false
 }
