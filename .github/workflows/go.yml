@@ -76,7 +76,7 @@ jobs:
             k0sctl
           key: build-${{ github.run_id }}
 
-      - name: run basic smoke
+      - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-basic
