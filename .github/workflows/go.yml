@@ -47,7 +47,7 @@ jobs:
         key: build-${{ github.run_id }}
 
     - name: Build windows
-      run: make k0sctl-win-x64.exe
+      run: make bin/k0sctl-win-x64.exe
 
   smoke-basic:
     strategy:
