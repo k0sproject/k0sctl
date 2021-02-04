@@ -52,6 +52,10 @@ func (p *InitializeK0s) Run() error {
 	}
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
+	if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
+		p.Config.Spec.K0s.Metadata.ClusterID = id
+		p.SetProp("clusterID", id)
+	}
 
 	return nil
 }

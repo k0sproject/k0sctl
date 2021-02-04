@@ -21,7 +21,7 @@ type Cluster struct {
 	APIVersion string           `yaml:"apiVersion" validate:"required,apiversionmatch"`
 	Kind       string           `yaml:"kind" validate:"required,eq=cluster"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
-	Spec       *cluster.Spec    `yaml:"spec"`
+	Spec       *cluster.Spec    `yaml:"spec" validate:"required"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
