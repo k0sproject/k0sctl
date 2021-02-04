@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/k0sproject/k0sctl/config"
+	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +29,7 @@ func (p *conditionalPhase) Run() error {
 }
 
 func TestConditionalPhase(t *testing.T) {
-	m := Manager{}
+	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
 	p := &conditionalPhase{}
 	m.AddPhase(p)
 	require.NoError(t, m.Run())
@@ -54,7 +55,7 @@ func (p *configPhase) Run() error {
 }
 
 func TestConfigPhase(t *testing.T) {
-	m := Manager{Config: &config.Cluster{}}
+	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
 	p := &configPhase{}
 	m.AddPhase(p)
 	require.NoError(t, m.Run())
@@ -87,7 +88,7 @@ func (p *hookedPhase) Run() error {
 }
 
 func TestHookedPhase(t *testing.T) {
-	m := Manager{}
+	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
 	p := &hookedPhase{}
 	m.AddPhase(p)
 	require.Error(t, m.Run())
