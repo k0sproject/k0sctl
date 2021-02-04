@@ -302,3 +302,8 @@ func (h *Host) NeedCurl() bool {
 
 	return false
 }
+
+// WaitKubeAPIReady blocks until the local kube api responds to /version
+func (h *Host) WaitKubeAPIReady() error {
+	return h.WaitHTTPStatus("https://localhost:6443/version", 200)
+}

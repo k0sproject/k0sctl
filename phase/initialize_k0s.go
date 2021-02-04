@@ -50,8 +50,15 @@ func (p *InitializeK0s) Run() error {
 	if err := h.WaitK0sServiceRunning(); err != nil {
 		return err
 	}
+
+	log.Infof("%s: waiting for kubernetes api to respond", h)
+	if err := h.WaitKubeAPIReady(); err != nil {
+		return err
+	}
+
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
+
 	if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
 		p.Config.Spec.K0s.Metadata.ClusterID = id
 		p.SetProp("clusterID", id)

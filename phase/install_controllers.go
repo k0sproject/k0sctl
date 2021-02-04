@@ -80,5 +80,5 @@ func (p *InstallControllers) Run() error {
 
 func (p *InstallControllers) waitJoined(h *cluster.Host) error {
 	log.Infof("%s: waiting for kubernetes api to respond", h)
-	return h.WaitHTTPStatus("https://localhost:6443/version", 200)
+	return h.WaitKubeAPIReady()
 }
