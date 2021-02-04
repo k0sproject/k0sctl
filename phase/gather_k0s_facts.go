@@ -37,6 +37,12 @@ func (p *GatherK0sFacts) Run() error {
 		return err
 	}
 	p.leader = p.Config.Spec.K0sLeader()
+
+	if id, err := p.Config.Spec.K0s.GetClusterID(p.leader); err == nil {
+		p.Config.Spec.K0s.Metadata.ClusterID = id
+		p.SetProp("clusterID", id)
+	}
+
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	return workers.ParallelEach(p.investigateK0s)
 }

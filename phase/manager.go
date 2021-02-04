@@ -34,6 +34,10 @@ type afterhook interface {
 	After(error) error
 }
 
+type propsetter interface {
+	SetProp(string, interface{})
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases []phase
@@ -71,6 +75,12 @@ func (m *Manager) Run() error {
 			if err := p.Before(title); err != nil {
 				log.Debugf("before hook failed '%s'", err.Error())
 				return err
+			}
+		}
+
+		if p, ok := p.(propsetter); ok {
+			if m.Config.Spec.K0s.Metadata.ClusterID != "" {
+				p.SetProp("clusterID", m.Config.Spec.K0s.Metadata.ClusterID)
 			}
 		}
 

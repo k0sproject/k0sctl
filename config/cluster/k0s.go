@@ -68,3 +68,8 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token st
 	)
 	return
 }
+
+// GetClusterID uses kubectl to fetch the kube-system namespace uid
+func (k K0s) GetClusterID(h *Host) (string, error) {
+	return h.ExecOutput(h.Configurer.KubectlCmdf("get -n kube-system namespace kube-system -o template={{.metadata.uid}}"))
+}
