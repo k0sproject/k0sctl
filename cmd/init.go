@@ -43,10 +43,11 @@ var initCommand = &cli.Command{
 			},
 		}
 
-		defaults.Set(&cfg)
+		if err := defaults.Set(&cfg); err != nil {
+			return err
+		}
 
 		encoder := yaml.NewEncoder(os.Stdout)
-		encoder.Encode(&cfg)
-		return nil
+		return encoder.Encode(&cfg)
 	},
 }
