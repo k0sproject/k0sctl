@@ -96,10 +96,10 @@ func (m *Manager) Run() error {
 		}
 
 		if result != nil {
-			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title()})
+			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title(), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 			return result
 		}
 	}
 
-	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start)})
+	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 }
