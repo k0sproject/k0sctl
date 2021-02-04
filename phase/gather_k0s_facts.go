@@ -83,6 +83,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
+	if status.Role != h.Role {
+		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
+	}
+
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 
