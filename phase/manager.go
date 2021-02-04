@@ -34,6 +34,10 @@ type afterhook interface {
 	After(error) error
 }
 
+type propsetter interface {
+	SetProp(string, interface{})
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases []phase
@@ -74,6 +78,12 @@ func (m *Manager) Run() error {
 			}
 		}
 
+		if p, ok := p.(propsetter); ok {
+			if m.Config.Spec.K0s.Metadata.ClusterID != "" {
+				p.SetProp("clusterID", m.Config.Spec.K0s.Metadata.ClusterID)
+			}
+		}
+
 		text := aurora.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
 		result := p.Run()
@@ -86,10 +96,10 @@ func (m *Manager) Run() error {
 		}
 
 		if result != nil {
-			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title()})
+			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title(), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 			return result
 		}
 	}
 
-	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start)})
+	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 }
