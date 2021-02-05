@@ -19,7 +19,7 @@ type ClusterMetadata struct {
 // Cluster describes launchpad.yaml configuration
 type Cluster struct {
 	APIVersion string           `yaml:"apiVersion" validate:"required,apiversionmatch"`
-	Kind       string           `yaml:"kind" validate:"required,eq=cluster"`
+	Kind       string           `yaml:"kind" validate:"required,oneof=cluster Cluster"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
 }
