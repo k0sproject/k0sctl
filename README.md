@@ -89,16 +89,16 @@ spec:
 
 * `hosts` List of target hosts
   * `role` One of `server`, `worker` or if you want the server to run workloads, use `server+worker`
-  * `uploadBinary` When set to `true`, instead of having the hosts download the k0s binaries from the internet, k0sctl will download them to the local storage and upload to the target hosts.
-  * `k0sBinaryPath` Use a k0s binary from a local path on the host, useful for example to run a locally compiled development version.
-  * `installFlags` a list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details.
+  * `uploadBinary` When set to `true`, instead of having the hosts download the k0s binaries from the internet, k0sctl will download them to the local storage and upload to the target hosts
+  * `k0sBinaryPath` Upload a k0s binary from a local path to the host, useful for running a locally compiled development version
+  * `installFlags` a list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details
   * `ssh` SSH connection parameters
     * `address` IP address or hostname of the remote host
     * `port` SSH port, default is 22.
     * `keyPath` Path to a SSH private key file, default is `~/.ssh/id_rsa`
     * `user` Username to connect as, the default is `root`
-  * `localhost` You can use the local host that is running k0sctl as a node in the host
-    * `enabled` Set this to true to enable the localhost connection. You can leave out the SSH configuration.
+  * `localhost` You can use the local host that is running k0sctl as a cluster node
+    * `enabled` Set this to true to enable the localhost connection. You can leave out the SSH configuration
 * `k0s` K0s options
-  * `version` Target k0s version. Default is to use the latest released version.
-  * `config` An embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
+  * `version` Target k0s version. Default is to use the latest released version
+  * `config` An embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details
