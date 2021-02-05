@@ -87,11 +87,12 @@ spec:
 
 ### Configuration file `spec` fields
 
-* `hosts` List of target hosts
+* `hosts` A list of target hosts
   * `role` One of `server`, `worker` or if you want the server to run workloads, use `server+worker`
   * `uploadBinary` When set to `true`, instead of having the hosts download the k0s binaries from the internet, k0sctl will download them to the local storage and upload to the target hosts
   * `k0sBinaryPath` Upload a k0s binary from a local path to the host, useful for running a locally compiled development version
-  * `installFlags` a list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details
+  * `installFlags` A list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details
+  * `environment` A mapping of `string: value` pairs for setting the host's environment variables
   * `ssh` SSH connection parameters
     * `address` IP address or hostname of the remote host
     * `port` SSH port, default is 22.
