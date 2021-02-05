@@ -1,6 +1,6 @@
 # k0sctl
 
-*A bootstrapping and management command-line tool for [k0s zero friction kubernetes](https://https://k0sproject.io/) clusters.*
+*A command-line bootstrapping and management tool for [k0s zero friction kubernetes](https://https://k0sproject.io/) clusters.*
 
 ## Installation
 
