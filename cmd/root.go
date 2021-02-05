@@ -16,5 +16,6 @@ var App = &cli.App{
 		versionCommand,
 		applyCommand,
 		kubeconfigCommand,
+		initCommand,
 	},
 }

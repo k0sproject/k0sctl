@@ -21,12 +21,12 @@ type Host struct {
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
-	UploadBinary     bool              `yaml:"uploadBinary"`
+	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 
 	Metadata   HostMetadata `yaml:"-"`
-	Configurer configurer
+	Configurer configurer   `yaml:"-"`
 }
 
 type configurer interface {
