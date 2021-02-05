@@ -1,100 +1,104 @@
+# k0sctl
 
-- [k0sctl - k0s tool](#k0sctl---k0s-tool)
-- [Installation](#installation)
-    - [Install binary from Source](#install-binary-from-source)
-    - [Install binary from Release Download](#install-binary-from-release-download)
-    - [Configuring your Path](#configuring-your-path)
-  - [Linux and MacOs](#linux-and-macos)
-  - [Windows](#windows)
-  - [Running k0sctl](#running-k0sctl)
+*A bootstrapping and management command-line tool for [k0s zero friction kubernetes](https://https://k0sproject.io/) clusters.*
 
+## Installation
 
-# k0sctl - k0s tool
+### Install from the released binaries
 
-k0sctl is k0s tool that allows users to easily deploy and manage k0s cluster.
+Download the desired version for your operating system and processor architecture from the [k0sctl releases page](https://github.com/k0sproject/k0sctl/releases). Make the file executable and place it in a directory available in your `$PATH`.
 
-# Installation
+As the released binaries aren't signed yet, on macOS and Windows, you must first run the executable via "Open" in the context menu and allow running it.
 
-### Install binary from Source
+### Install from the sources
 
-Download the appropriate package, build and install them. Type the following in your terminal:
+If you have a working Go toolchain, you can use `go get` to install k0sctl to your `$GOPATH/bin`.
 
 ```
-GO111MODULE=on go get github.com/k0sproject/k0sctl
+$ GO111MODULE=on go get github.com/k0sproject/k0sctl
 ```
 
-You can find the installed executable/binary in `$GOPATH/bin` directory.
+### Package managers
 
+Scripts for installation via popular package managers such as Homebrew, Scoop or SnapCraft will be added later.
 
-### Install binary from Release Download
+## Development status
 
-Download the desired binary for your platform to the desired location from [here](https://github.com/k0sproject/k0sctl/tags) 
+K0sctl is still in an early stage of development. Missing major features include at least:
 
-### Configuring your Path
+* Cluster upgrades are not yet possible
+* Windows targets are not yet supported
+* The released binaries have not been signed
+* Cluster uninstall and host clean up after failure is not there yet
+* Cluster backup and restore are not available yet
 
-If the directory where your binaries were installed is not already in your `PATH` environment variable, then it will need to be added.
-Choose the steps to follow for your platform to add directory to `PATH`.
+## Usage
 
+The main function of k0sctl is the `k0sctl apply` subcommand. Provided a configuration file, k0sctl will connect to the listed hosts and install k0s on them.
 
-## Linux and MacOs
-
-If you want to run k0sctl in a shell on Linux and placed the binary in `/home/YOUR-USER-NAME/k0sctl`, then type the following into your terminal:
-
-```
-export PATH=$PATH:/home/$USER/k0sctl
-```
-
-## Windows
-
-If you want to run k0sctlPowerShell on Windows and placed the binary in `c:\k0sctl`, then type the following into PowerShell:
+The default location for the configuration file is `k0sctl.yaml` in the current working directory. To load a configuration from a different location, use:
 
 ```
-$env:Path += ";c:\k0sctl"
+$ k0sctl apply --config path/to/k0sctl.yaml
 ```
 
-## Running k0sctl 
+## Configuration file syntax
 
-k0sctl allows users to bootstrap k0s cluster based on provided configuration. 
-Example:
+To generate a simple skeleton configuration file, you can use the `k0sctl init` subcommand:
 
 ```
+$ k0sctl init > k0sctl.yaml
+```
+
+### Example configuration
+
+```yaml
 apiVersion: k0sctl.k0sproject.io/v1beta1
-kind: cluster
+kind: Cluster
+metadata:
+  name: my-k0s-cluster
 spec:
   hosts:
-    - role: server
-      ssh:
-        address: 127.0.0.1
-        port: 9022
-    - role: worker
-      ssh:
-        address: 127.0.0.1
-        port: 9023
+  - role: server
+    ssh:
+      address: 10.0.0.1
+      user: root
+      port: 22
+      keyPath: ~/.ssh/id_rsa
+  - role: worker
+    ssh:
+      address: 10.0.0.2
+      user: root
   k0s:
     version: 0.10.0
+    instalFlags:
+    - --debug
+    config:
+      apiVersion: k0s.k0sproject.io/v1beta1
+      kind: Cluster
+      metadata:
+        name: my-k0s-cluster
+      images:
+        calico:
+          cni:
+            image: calico/cni
+            version: v3.16.2
 ```
 
-* `hosts` - information about remote hosts where k0s will be installed
-  * `role` - (string) sets role of the k0s nodes possible roles are server or worker
-  * `ssh` - parameters needed to establish secure shell connection for the given host
-    * `address` - (string) IP address of the remote host
-    * `port` - (integer) ssh port
-    * `keyPath` - (string) path to the RSA key
-    * `user` - (string) user name
-  * `winRM` - parameters needed to establis winRM session
-    * `address` - (string) IP address of the remote host
-    * `port` - (integrer) winRM port
-    * `keyPath` - (string) path to the RSA key
-    * `user` - (string) user name
-    * `useHTTPS` - (bool)
-    * `insecure` - (bool)
-    * `useNTLM` - (bool)
-    * `caCertPath` - (string)
-    * `certPath` - (string)
-    * `tlsServerName` - (string)
-  * `localhost` 
-    * `enabled` - (bool)
-* `k0s` - this section holds information about desired k0s setup
-  * `version` -  (string) version of the k0s binary if not provided k0sctl will pull the latest version. Note: only supports versions =>0.10.0
-  * `config` - k0s specific [configuration](https://github.com/k0sproject/k0s/blob/main/docs/configuration.md) if not provided k0s will run with default values.
+### Configuration file `spec` fields
 
+* `hosts` List of target hosts
+  * `role` One of `server`, `worker` or if you want the server to run workloads, use `server+worker`
+  * `uploadBinary` When set to `true`, instead of having the hosts download the k0s binaries from the internet, k0sctl will download them to the local storage and upload to the target hosts.
+  * `k0sBinaryPath` Use a k0s binary from a local path on the host, useful for example to run a locally compiled development version.
+  * `installFlags` a list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details.
+  * `ssh` SSH connection parameters
+    * `address` IP address or hostname of the remote host
+    * `port` SSH port, default is 22.
+    * `keyPath` Path to a SSH private key file, default is `~/.ssh/id_rsa`
+    * `user` Username to connect as, the default is `root`
+  * `localhost` You can use the local host that is running k0sctl as a node in the host
+    * `enabled` Set this to true to enable the localhost connection. You can leave out the SSH configuration.
+* `k0s` K0s options
+  * `version` Target k0s version. Default is to use the latest released version.
+  * `config` An embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
