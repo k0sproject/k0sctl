@@ -14,7 +14,7 @@ type AmazonLinux struct {
 	configurer.Linux
 }
 
-func (a AmazonLinux) Hostname(h os.Host) string {
+func (l AmazonLinux) Hostname(h os.Host) string {
 	hostname, _ := h.ExecOutput("hostname")
 
 	return hostname
