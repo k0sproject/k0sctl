@@ -90,7 +90,7 @@ var initCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		cfg := config.Cluster{
 			APIVersion: config.APIVersion,
-			Kind:       "cluster",
+			Kind:       "Cluster",
 			Metadata:   &config.ClusterMetadata{},
 			Spec: &cluster.Spec{
 				Hosts: cluster.Hosts{
