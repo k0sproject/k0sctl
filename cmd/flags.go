@@ -81,9 +81,10 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(_ *cli.Context) error {
-	log.Infof("K0sctl %s Copyright 2021, Mirantis Inc.", version.Version)
+	log.Infof("k0sctl %s Copyright 2021, Mirantis Inc.", version.Version)
 	log.Infof("Anonymized telemetry will be sent to Mirantis.")
-	log.Infof("By continuing to use k0sctl you agree to these terms.")
+	log.Infof("By continuing to use k0sctl you agree to these terms:")
+	log.Infof("https://k0sproject.io/licenses/eula")
 	return nil
 }
 
