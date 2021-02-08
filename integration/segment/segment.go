@@ -1,9 +1,12 @@
 package segment
 
 import (
+	"crypto/rand"
+	"fmt"
 	"os"
 	"runtime"
 
+	externalip "github.com/glendc/go-external-ip"
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/version"
 	segment "github.com/segmentio/analytics-go"
@@ -42,8 +45,19 @@ func NewClient() (*Client, error) {
 	}
 	id, err := analytics.MachineID()
 	if err != nil {
-		return nil, err
+		log.Tracef("error getting machine ID: %s", err.Error())
+		b := make([]byte, 8)
+		rand.Read(b)
+		id = fmt.Sprintf("%x", b)
+		log.Tracef("generated a random machine ID: %s", id)
 	}
+
+	consensus := externalip.DefaultConsensus(nil, nil)
+	if ip, err := consensus.ExternalIP(); err == nil {
+		log.Tracef("using %s as analytics ip", ip.String())
+		ctx.IP = ip
+	}
+
 	return &Client{
 		client:    client,
 		machineID: id,
@@ -70,4 +84,5 @@ func init() {
 	if WriteKey == "" {
 		WriteKey = os.Getenv("SEGMENT_WRITE_KEY")
 	}
+
 }

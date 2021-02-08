@@ -7,6 +7,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/creasty/defaults v1.5.1
 	github.com/denisbrodbeck/machineid v1.0.1
+	github.com/glendc/go-external-ip v0.0.0-20200601212049-c872357d968e
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/hashicorp/go-version v1.2.1
 	github.com/k0sproject/rig v0.3.1
