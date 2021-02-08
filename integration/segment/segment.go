@@ -47,7 +47,7 @@ func NewClient() (*Client, error) {
 	if err != nil {
 		log.Tracef("error getting machine ID: %s", err.Error())
 		b := make([]byte, 8)
-		rand.Read(b)
+		_, _ = rand.Read(b)
 		id = fmt.Sprintf("%x", b)
 		log.Tracef("generated a random machine ID: %s", id)
 	}
