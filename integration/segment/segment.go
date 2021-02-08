@@ -3,6 +3,7 @@ package segment
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/version"
 	segment "github.com/segmentio/analytics-go"
-	log "github.com/sirupsen/logrus"
+	logrus "github.com/sirupsen/logrus"
 )
 
 // WriteKey for analytics
@@ -45,17 +46,22 @@ func NewClient() (*Client, error) {
 	}
 	id, err := analytics.MachineID()
 	if err != nil {
-		log.Tracef("error getting machine ID: %s", err.Error())
+		logrus.Tracef("error getting machine ID: %s", err.Error())
 		b := make([]byte, 8)
 		_, _ = rand.Read(b)
 		id = fmt.Sprintf("%x", b)
-		log.Tracef("generated a random machine ID: %s", id)
+		logrus.Tracef("generated a random machine ID: %s", id)
 	}
-	log.Tracef("using %s as machine ID", id)
+	logrus.Tracef("using %s as machine ID", id)
 
-	consensus := externalip.DefaultConsensus(nil, nil)
+	var l *log.Logger
+	if Verbose {
+		l = externalip.NewLogger(os.Stdout)
+	}
+
+	consensus := externalip.DefaultConsensus(nil, l)
 	if ip, err := consensus.ExternalIP(); err == nil {
-		log.Tracef("using %s as analytics ip", ip.String())
+		logrus.Tracef("using %s as analytics ip", ip.String())
 		ctx.IP = ip
 	}
 
@@ -67,7 +73,7 @@ func NewClient() (*Client, error) {
 
 // Publish enqueues the sending of a tracking event
 func (c Client) Publish(event string, props map[string]interface{}) error {
-	log.Tracef("segment event %s - properties: %+v", event, props)
+	logrus.Tracef("segment event %s - properties: %+v", event, props)
 	return c.client.Enqueue(segment.Track{
 		Context:     ctx,
 		AnonymousId: c.machineID,
@@ -85,5 +91,7 @@ func init() {
 	if WriteKey == "" {
 		WriteKey = os.Getenv("SEGMENT_WRITE_KEY")
 	}
-
+	if os.Getenv("SEGMENT_VERBOSE") != "" {
+		Verbose = true
+	}
 }
