@@ -140,17 +140,19 @@ func addUnlessExist(slice *[]string, s string) {
 }
 
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
+	cfg := p.Config.Spec.K0s.Config
+
+	var sans []string
+
 	var addr string
 	if h.PrivateAddress != "" {
 		addr = h.PrivateAddress
 	} else {
 		addr = h.Address()
 	}
-
-	cfg := p.Config.Spec.K0s.Config
-
 	cfg.DigMapping("spec", "api")["address"] = addr
-	var sans []string
+	addUnlessExist(&sans, addr)
+
 	oldsans, ok := cfg.Dig("spec", "api", "sans").([]interface{})
 	if ok {
 		for _, v := range oldsans {
@@ -162,13 +164,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	for _, c := range controllers {
-		var caddr string
+		addUnlessExist(&sans, c.Address())
 		if c.PrivateAddress != "" {
-			caddr = c.PrivateAddress
-		} else {
-			caddr = c.Address()
+			addUnlessExist(&sans, c.PrivateAddress)
 		}
-		addUnlessExist(&sans, caddr)
 	}
 	addUnlessExist(&sans, "127.0.0.1")
 	cfg.DigMapping("spec", "api")["sans"] = sans
