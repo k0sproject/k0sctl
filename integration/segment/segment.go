@@ -51,6 +51,7 @@ func NewClient() (*Client, error) {
 		id = fmt.Sprintf("%x", b)
 		log.Tracef("generated a random machine ID: %s", id)
 	}
+	log.Tracef("using %s as machine ID", id)
 
 	consensus := externalip.DefaultConsensus(nil, nil)
 	if ip, err := consensus.ExternalIP(); err == nil {
