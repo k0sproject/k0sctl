@@ -135,8 +135,8 @@ github.com/json-iterator/go v1.1.10 h1:Kz6Cvnvv2wGdaG/V8yMvfkmNiXq9Ya2KUv4rouJJr
 github.com/json-iterator/go v1.1.10/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/uOdHXbAo4=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
-github.com/k0sproject/rig v0.3.1 h1:rhIhqpfZA84RI3gp2DxGy/861aVOZXF0aMk4Z9cRoTc=
-github.com/k0sproject/rig v0.3.1/go.mod h1:2FBHQkR4t9VveNzFF4iNuMGx9T171kKPNuS2PFunASI=
+github.com/k0sproject/rig v0.3.2 h1:R4/DKsVHDPmDVQyZ68YK8/NZ5eh77u2wOuKqXtKLr3Y=
+github.com/k0sproject/rig v0.3.2/go.mod h1:2FBHQkR4t9VveNzFF4iNuMGx9T171kKPNuS2PFunASI=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51/go.mod h1:CzGEWj7cYgsdH8dAjBGEr58BoE7ScuLd+fwFZ44+/x8=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=

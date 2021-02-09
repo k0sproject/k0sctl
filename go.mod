@@ -9,7 +9,7 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/hashicorp/go-version v1.2.1
-	github.com/k0sproject/rig v0.3.1
+	github.com/k0sproject/rig v0.3.2
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/segmentio/analytics-go v3.1.0+incompatible
 	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
