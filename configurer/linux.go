@@ -166,8 +166,3 @@ func (l Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error)
 
 	return "", fmt.Errorf("not found")
 }
-
-// CommandExist returns true if the command exists
-func (l Linux) CommandExist(h os.Host, cmd string) bool {
-	return h.Execf(`sudo -i command -v "%s"`, cmd) == nil
-}
