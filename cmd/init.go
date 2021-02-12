@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/creasty/defaults"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/k0sproject/rig"
@@ -120,7 +121,7 @@ var initCommand = &cli.Command{
 		}
 
 		if ctx.Bool("k0s") {
-			cfg.Spec.K0s.Config = cluster.Mapping{}
+			cfg.Spec.K0s.Config = dig.Mapping{}
 			if err := yaml.Unmarshal(DefaultK0sYaml, &cfg.Spec.K0s.Config); err != nil {
 				return err
 			}
