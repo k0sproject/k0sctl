@@ -6,6 +6,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
@@ -17,7 +18,7 @@ const K0sMinVersion = "0.10.0-beta2"
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
 	Version  string      `yaml:"version" validate:"required"`
-	Config   Mapping     `yaml:"config,omitempty"`
+	Config   dig.Mapping `yaml:"config,omitempty"`
 	Metadata K0sMetadata `yaml:"-"`
 }
 
