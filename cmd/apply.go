@@ -66,6 +66,11 @@ var applyCommand = &cli.Command{
 		)
 
 		if err := manager.Run(); err != nil {
+			if lf, err := LogFile(); err == nil {
+				if ln, ok := lf.(interface{ Name() string }); ok {
+					log.Errorf("apply failed - log file saved to %s", ln.Name())
+				}
+			}
 			return err
 		}
 
