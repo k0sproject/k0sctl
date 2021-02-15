@@ -84,10 +84,10 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(_ *cli.Context) error {
-	fmt.Println(fmt.Sprintf("k0sctl %s Copyright 2021, Mirantis Inc.", version.Version))
-	fmt.Println(fmt.Sprintf("Anonymized telemetry will be sent to Mirantis."))
-	fmt.Println(fmt.Sprintf("By continuing to use k0sctl you agree to these terms:"))
-	fmt.Println(fmt.Sprintf("https://k0sproject.io/licenses/eula"))
+	fmt.Printf("k0sctl %s Copyright 2021, Mirantis Inc.\n", version.Version)
+	fmt.Println("Anonymized telemetry will be sent to Mirantis.")
+	fmt.Println("By continuing to use k0sctl you agree to these terms:")
+	fmt.Println("https://k0sproject.io/licenses/eula")
 	return nil
 }
 
