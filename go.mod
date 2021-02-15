@@ -12,7 +12,7 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/hashicorp/go-version v1.2.1
 	github.com/k0sproject/dig v0.1.0
-	github.com/k0sproject/rig v0.3.7
+	github.com/k0sproject/rig v0.3.8
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/segmentio/analytics-go v3.1.0+incompatible
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18
