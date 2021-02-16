@@ -83,6 +83,13 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
+	switch status.Role {
+	case "server":
+		status.Role = "controller"
+	case "server+worker":
+		status.Role = "controller+worker"
+	}
+
 	if status.Role != h.Role {
 		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
 	}
