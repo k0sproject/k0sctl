@@ -60,3 +60,15 @@ smoketests := smoke-basic
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
+
+golint := $(shell which golangci-lint)
+ifeq ($(golint),)
+golint := $(shell go env GOPATH)/bin/golangci-lint
+endif
+
+$(golint):
+	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
+
+.PHONY: lint
+lint: $(golint)
+	$(golint) run ./...
