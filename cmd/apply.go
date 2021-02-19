@@ -62,6 +62,8 @@ var applyCommand = &cli.Command{
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
+			&phase.UpgradeControllers{},
+			&phase.UpgradeWorkers{},
 			&phase.Disconnect{},
 		)
 

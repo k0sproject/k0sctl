@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -74,6 +75,7 @@ type HostMetadata struct {
 	IsK0sLeader       bool
 	Hostname          string
 	Ready             bool
+	NeedsUpgrade      bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -188,6 +190,33 @@ func (h *Host) K0sServiceName() string {
 	return "k0s" + h.Role
 }
 
+// UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
+func (h *Host) UpdateK0sBinary(version string) error {
+	if h.K0sBinaryPath != "" {
+		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()); err != nil {
+			return err
+		}
+		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
+			return err
+		}
+	} else {
+		if err := h.Configurer.DownloadK0s(h, version, h.Metadata.Arch); err != nil {
+			return err
+		}
+
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+		if err != nil {
+			return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
+		}
+		output = strings.TrimPrefix(output, "v")
+		if output != version {
+			return fmt.Errorf("downloaded k0s binary version is %s not %s", output, version)
+		}
+	}
+	h.Metadata.K0sBinaryVersion = version
+	return nil
+}
+
 type kubeNodeStatus struct {
 	Items []struct {
 		Status struct {
@@ -238,6 +267,24 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
+}
+
+// DrainNode drains the given node
+func (h *Host) DrainNode(node *Host) error {
+	_, err := h.ExecOutput(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.HideOutput())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// UncordonNode marks the node schedulable again
+func (h *Host) UncordonNode(node *Host) error {
+	_, err := h.ExecOutput(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.HideOutput())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

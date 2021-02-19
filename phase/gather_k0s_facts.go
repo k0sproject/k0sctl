@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -83,11 +84,17 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
+<<<<<<< HEAD
 	switch status.Role {
 	case "server":
 		status.Role = "controller"
 	case "server+worker":
 		status.Role = "controller+worker"
+=======
+	// Legacy role change
+	if status.Role == "server" {
+		status.Role = "controller"
+>>>>>>> 489e103... Initial upgrade with server->controller migration
 	}
 
 	if status.Role != h.Role {
@@ -95,11 +102,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
-	if p.Config.Spec.K0s.Version != h.Metadata.K0sRunningVersion {
-		return fmt.Errorf("%s: is running k0s %s version %s but target is %s - upgrade is not yet supported", h, h.Role, h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
-	}
+	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+	log.Infof("%s: need upgrade: %t", h, h.Metadata.NeedsUpgrade)
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
@@ -111,4 +117,15 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	return nil
+}
+
+func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
+	c, err := semver.NewConstraint(fmt.Sprintf("< %s", p.Config.Spec.K0s.Version))
+	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
+	if err != nil {
+		log.Warnf("%s: failed to parse version info: %s", h, err.Error())
+		return false
+	}
+
+	return c.Check(current)
 }
