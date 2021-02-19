@@ -49,7 +49,9 @@ func (p *UpgradeControllers) Run() error {
 				return err
 			}
 		} else {
-			h.Configurer.StopService(h, h.K0sServiceName())
+			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
 		}
 		if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
 			return err
@@ -66,21 +68,9 @@ func (p *UpgradeControllers) Run() error {
 	return nil
 }
 
-func (p *UpgradeControllers) needsUpgrade(h *cluster.Host) bool {
-	log.Debugf("%s: checking need for upgrade")
-	c, err := semver.NewConstraint(fmt.Sprintf("< %s", p.Config.Spec.K0s.Version))
-	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
-	if err != nil {
-		log.Warnf("%s: failed to parse version info: %s", h, err.Error())
-		return false
-	}
-
-	return c.Check(current)
-}
-
 func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
 	log.Debugf("%s: checking need for 0.10 --> 0.11 migration", h)
-	c, err := semver.NewConstraint("< 0.11")
+	c, _ := semver.NewConstraint("< 0.11")
 	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
 	if err != nil {
 		log.Warnf("%s: failed to parse version info: %s", h, err.Error())
@@ -93,7 +83,9 @@ func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
 func (p *UpgradeControllers) migrateService(h *cluster.Host) error {
 
 	log.Infof("%s: Running with legacy service name, migrating...", h)
-	h.Configurer.StopService(h, "k0sserver")
+	if err := h.Configurer.StopService(h, "k0sserver"); err != nil {
+		return err
+	}
 	sp, err := h.Configurer.ServiceScriptPath(h, "k0sserver")
 	if err != nil {
 		return err
