@@ -13,7 +13,7 @@ import (
 )
 
 // K0sMinVersion is the minimum k0s version supported
-const K0sMinVersion = "0.11.0-beta.1"
+const K0sMinVersion = "0.11.0-beta.2"
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
