@@ -122,7 +122,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	c, err := semver.NewConstraint(fmt.Sprintf("< %s", p.Config.Spec.K0s.Version))
 	if err != nil {
-		log.Warnf("%s: failed to parse version contraint: %s", h, err.Error())
+		log.Warnf("%s: failed to parse version constraint: %s", h, err.Error())
 		return false
 	}
 	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
