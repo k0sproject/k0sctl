@@ -63,6 +63,9 @@ func (p *UpgradeControllers) Run() error {
 		if err := h.WaitK0sServiceRunning(); err != nil {
 			return err
 		}
+		if err := h.WaitKubeAPIReady(); err != nil {
+			return err
+		}
 
 	}
 	return nil
