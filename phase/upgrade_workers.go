@@ -14,6 +14,8 @@ import (
 type UpgradeWorkers struct {
 	GenericPhase
 
+	NoDrain bool
+
 	hosts  cluster.Hosts
 	leader *cluster.Host
 }
@@ -72,11 +74,14 @@ func (p *UpgradeWorkers) Run() error {
 
 func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	log.Infof("%s: upgrade starting", h)
-	log.Debugf("%s: draining...", h)
-	if err := p.leader.DrainNode(h); err != nil {
-		return err
+
+	if !p.NoDrain {
+		log.Debugf("%s: draining...", h)
+		if err := p.leader.DrainNode(h); err != nil {
+			return err
+		}
+		log.Debugf("%s: draining complete", h)
 	}
-	log.Debugf("%s: draining complete", h)
 
 	log.Debugf("%s: Update and restart service", h)
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
@@ -88,9 +93,20 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
-	log.Debugf("%s: marking node schedulable again", h)
-	if err := p.leader.UncordonNode(h); err != nil {
-		return err
+	if !p.NoDrain {
+		log.Debugf("%s: marking node schedulable again", h)
+		if err := p.leader.UncordonNode(h); err != nil {
+			return err
+		}
+	}
+	if NoWait {
+		log.Debugf("%s: not waiting because --no-wait given", h)
+	} else {
+		log.Infof("%s: waiting for node to become ready again", h)
+		if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
+			return err
+		}
+		h.Metadata.Ready = true
 	}
 	log.Infof("%s: upgrade successful", h)
 	return nil

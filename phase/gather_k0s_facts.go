@@ -84,17 +84,11 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
-<<<<<<< HEAD
 	switch status.Role {
 	case "server":
 		status.Role = "controller"
 	case "server+worker":
 		status.Role = "controller+worker"
-=======
-	// Legacy role change
-	if status.Role == "server" {
-		status.Role = "controller"
->>>>>>> 489e103... Initial upgrade with server->controller migration
 	}
 
 	if status.Role != h.Role {
