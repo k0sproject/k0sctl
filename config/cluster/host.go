@@ -350,6 +350,21 @@ func (h *Host) NeedCurl() bool {
 	return false
 }
 
+// NeedIPTables returns true when the iptables package is needed on the host
+func (h *Host) NeedIPTables() bool {
+	// Windows does not need any packages iptables
+	if h.Configurer.Kind() == "windows" {
+		return false
+	}
+
+	// Controllers do not need iptables
+	if h.IsController() {
+		return false
+	}
+
+	return !h.Configurer.CommandExist(h, "iptables")
+}
+
 // WaitKubeAPIReady blocks until the local kube api responds to /version
 func (h *Host) WaitKubeAPIReady() error {
 	return h.WaitHTTPStatus("https://localhost:6443/version", 200)
