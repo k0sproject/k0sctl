@@ -85,7 +85,7 @@ func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
 
 func (p *UpgradeControllers) migrateService(h *cluster.Host) error {
 
-	log.Infof("%s: Running with legacy service name, migrating...", h)
+	log.Infof("%s: updating legacy 'k0sserver' service to '%s'", h, h.K0sServiceName())
 	if err := h.Configurer.StopService(h, "k0sserver"); err != nil {
 		return err
 	}
