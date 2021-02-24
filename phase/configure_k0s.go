@@ -96,7 +96,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		log.Debugf("%s: configuration did not change", h)
 	} else {
 		log.Infof("%s: configuration was changed", h)
-		if h.Metadata.K0sRunningVersion != "" {
+		if h.Metadata.K0sRunningVersion != "" && !h.Metadata.NeedsUpgrade {
 			log.Infof("%s: restarting the k0s service", h)
 			if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
 				return err
