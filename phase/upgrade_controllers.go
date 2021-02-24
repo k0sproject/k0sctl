@@ -73,7 +73,7 @@ func (p *UpgradeControllers) Run() error {
 
 func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
 	log.Debugf("%s: checking need for 0.10 --> 0.11 migration", h)
-	c, _ := semver.NewConstraint("< 0.11")
+	c, _ := semver.NewConstraint("< 0.11-0")
 	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
 	if err != nil {
 		log.Warnf("%s: failed to parse version info: %s", h, err.Error())
