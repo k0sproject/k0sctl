@@ -17,7 +17,7 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role             string            `yaml:"role" validate:"oneof=server worker server+worker"`
+	Role             string            `yaml:"role" validate:"oneof=controller worker controller+worker"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
@@ -161,8 +161,8 @@ func (h *Host) K0sInstallCommand() string {
 	role := h.Role
 	flags := h.InstallFlags
 
-	if role == "server+worker" {
-		role = "server"
+	if role == "controller+worker" {
+		role = "controller"
 		flags.AddUnlessExist("--enable-worker")
 	}
 
@@ -175,15 +175,15 @@ func (h *Host) K0sInstallCommand() string {
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
 }
 
-// IsController returns true for server and server+worker roles
+// IsController returns true for controller and controller+worker roles
 func (h *Host) IsController() bool {
-	return h.Role == "server" || h.Role == "server+worker"
+	return h.Role == "controller" || h.Role == "controller+worker"
 }
 
 // K0sServiceName returns correct service name
 func (h *Host) K0sServiceName() string {
-	if h.Role == "server+worker" {
-		return "k0sserver"
+	if h.Role == "controller+worker" {
+		return "k0scontroller"
 	}
 	return "k0s" + h.Role
 }

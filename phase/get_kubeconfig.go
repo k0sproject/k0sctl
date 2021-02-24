@@ -23,7 +23,7 @@ func (p *GetKubeconfig) Run() error {
 	if err != nil {
 		return err
 	}
-	// the server admin.conf is aways pointing to localhost, thus we need to change the address
+	// the controller admin.conf is aways pointing to localhost, thus we need to change the address
 	// something usable from outside
 	a := p.Config.Spec.K0s.Config.DigString("spec", "api", "externalAddress")
 	if a == "" {

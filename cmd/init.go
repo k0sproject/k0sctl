@@ -101,7 +101,7 @@ var initCommand = &cli.Command{
 								Address: "10.0.0.1",
 							},
 						},
-						Role: "server",
+						Role: "controller",
 					},
 					&cluster.Host{
 						Connection: rig.Connection{
