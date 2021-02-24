@@ -99,7 +99,9 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
-	log.Infof("%s: need upgrade: %t", h, h.Metadata.NeedsUpgrade)
+	if h.Metadata.NeedsUpgrade {
+		log.Warnf("%s: k0s will be upgraded", h)
+	}
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)

@@ -271,20 +271,12 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	_, err := h.ExecOutput(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.HideOutput())
-	if err != nil {
-		return err
-	}
-	return nil
+	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	_, err := h.ExecOutput(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.HideOutput())
-	if err != nil {
-		return err
-	}
-	return nil
+	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -352,7 +344,7 @@ func (h *Host) NeedCurl() bool {
 
 // NeedIPTables returns true when the iptables package is needed on the host
 func (h *Host) NeedIPTables() bool {
-	// Windows does not need any packages iptables
+	// Windows does not need iptables 
 	if h.Configurer.Kind() == "windows" {
 		return false
 	}
