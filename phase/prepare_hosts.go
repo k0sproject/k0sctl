@@ -35,6 +35,13 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
+	// TODO: combine with above using a slice of packages as each  InstallPackage call triggers an apt/zypper/etc update.
+	if h.NeedIPTables() {
+		if err := h.Configurer.InstallPackage(h, "iptables"); err != nil {
+			return err
+		}
+	}
+
 	if h.IsController() && !h.Configurer.CommandExist(h, "kubectl") {
 		log.Infof("%s: installing kubectl", h)
 		if err := h.Configurer.InstallKubectl(h); err != nil {

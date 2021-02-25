@@ -18,3 +18,6 @@ id_rsa_k0s:
 
 smoke-basic: $(footloose) id_rsa_k0s
 	./smoke-basic.sh
+
+smoke-upgrade: $(footloose) id_rsa_k0s
+	./smoke-upgrade.sh

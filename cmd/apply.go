@@ -23,6 +23,10 @@ var applyCommand = &cli.Command{
 			Name:  "no-wait",
 			Usage: "Do not wait for worker nodes to join",
 		},
+		&cli.BoolFlag{
+			Name:  "no-drain",
+			Usage: "Do not drain worker nodes when upgrading",
+		},
 		debugFlag,
 		traceFlag,
 		analyticsFlag,
@@ -46,6 +50,7 @@ var applyCommand = &cli.Command{
 		}
 
 		phase.NoWait = ctx.Bool("no-wait")
+
 		manager := phase.Manager{Config: &c}
 
 		manager.AddPhase(
@@ -62,6 +67,10 @@ var applyCommand = &cli.Command{
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
+			&phase.UpgradeControllers{},
+			&phase.UpgradeWorkers{
+				NoDrain: ctx.Bool("no-drain"),
+			},
 			&phase.Disconnect{},
 		)
 
