@@ -42,7 +42,9 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 
 	if len(pkgs) > 0 {
 		log.Infof("%s: installing packages (%s)", h, strings.Join(pkgs, ", "))
-		h.Configurer.InstallPackage(h, pkgs...)
+		if err := h.Configurer.InstallPackage(h, pkgs...); err != nil {
+			return err
+		}
 	}
 
 	if h.IsController() && !h.Configurer.CommandExist(h, "kubectl") {
