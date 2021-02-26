@@ -26,6 +26,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: K0sctl cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          /var/cache/k0sctl
+          ~/.k0sctl/cache
+          !*.log
+        key: k0sctl-cache
+
+    - name: Docker Layer Caching For Footloose
+      uses: satackey/action-docker-layer-caching@v0.0.11
+      continue-on-error: true
+
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v2.3.0
       with:

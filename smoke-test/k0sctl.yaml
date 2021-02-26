@@ -3,11 +3,13 @@ kind: cluster
 spec:
   hosts:
     - role: controller
+      uploadBinary: true
       ssh:
         address: "127.0.0.1"
         port: 9022
         keyPath: ./id_rsa_k0s
     - role: worker
+      uploadBinary: true
       ssh:
         address: "127.0.0.1"
         port: 9023
