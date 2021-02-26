@@ -18,5 +18,5 @@ createCluster
 
 # k0sctl 0.4.0 does not fall back from /var/cache/k0sctl, so this needs sudo.
 sudo ~/.cache/k0sctl_040 apply --config k0sctl_legacy.yaml --debug
-../k0sctl apply --config k0sctl.yaml --debug
-../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
+k0sctl apply --config k0sctl.yaml --debug
+k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"

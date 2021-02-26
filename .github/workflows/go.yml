@@ -21,7 +21,11 @@ jobs:
     - name: Go modules cache
       uses: actions/cache@v2
       with:
-        path: ~/go/pkg/mod
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
@@ -33,7 +37,7 @@ jobs:
         skip-go-installation: true
 
     - name: Build
-      run: make k0sctl
+      run: make k0sctl && sudo make install
 
     - name: Test
       run: go test -v ./...
@@ -42,8 +46,7 @@ jobs:
       uses: actions/cache@v2
       id: cache-compiled-binary
       with:
-        path: |
-          k0sctl
+        path: /usr/local/bin/k0sctl
         key: build-${{ github.run_id }}
 
     - name: Build windows
@@ -63,19 +66,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.15
-
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
         with:
-          path: |
-            k0sctl
+          path: /usr/local/bin/k0sctl
           key: build-${{ github.run_id }}
 
       - name: K0sctl cache
@@ -110,19 +105,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.15
-
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
         with:
-          path: |
-            k0sctl
+          path: /usr/local/bin/k0sctl
           key: build-${{ github.run_id }}
 
       - name: K0sctl cache
