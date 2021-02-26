@@ -11,7 +11,7 @@ function downloadOldK0sctl() {
 . ./smoke.common.sh
 trap cleanup EXIT
 
-downloadOldK0sctl
+[ -f ~/.cache/k0sctl_040 ] || downloadOldK0sctl
 
 deleteCluster
 createCluster
