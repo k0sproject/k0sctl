@@ -59,7 +59,7 @@ metadata:
   name: my-k0s-cluster
 spec:
   hosts:
-  - role: server
+  - role: controller
     ssh:
       address: 10.0.0.1
       user: root
@@ -88,7 +88,7 @@ spec:
 ### Configuration file `spec` fields
 
 * `hosts` A list of target hosts
-  * `role` One of `server`, `worker` or if you want the server to run workloads, use `server+worker`
+  * `role` One of `controller`, `worker` or if you want the controller to run workloads, use `controller+worker`
   * `uploadBinary` When set to `true`, instead of having the hosts download the k0s binaries from the internet, k0sctl will download them to the local storage and upload to the target hosts
   * `k0sBinaryPath` Upload a k0s binary from a local path to the host, useful for running a locally compiled development version
   * `installFlags` A list of extra arguments passed to the `k0s install` command. See [k0s install command documentation](https://docs.k0sproject.io/main/cli/k0s_install/) for details

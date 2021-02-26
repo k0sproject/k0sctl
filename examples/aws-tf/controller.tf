@@ -4,7 +4,7 @@ resource "aws_instance" "cluster-controller" {
   instance_type = var.cluster_flavor
 
   tags = {
-    Name = "server"
+    Name = "controller"
   }
   key_name                    = aws_key_pair.cluster-key.key_name
   vpc_security_group_ids      = [aws_security_group.cluster_allow_ssh.id]

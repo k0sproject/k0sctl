@@ -28,7 +28,7 @@ func (s *Spec) K0sLeader() *Host {
 	if s.k0sLeader == nil {
 		controllers := s.Hosts.Controllers()
 
-		// Pick the first server that reports to be running and persist the choice
+		// Pick the first controller that reports to be running and persist the choice
 		for _, h := range controllers {
 			if h.Metadata.K0sBinaryVersion != "" && h.Metadata.K0sRunningVersion != "" {
 				s.k0sLeader = h
@@ -36,7 +36,7 @@ func (s *Spec) K0sLeader() *Host {
 			}
 		}
 
-		// Still nil?  Fall back to first "server" host, do not persist selection.
+		// Still nil?  Fall back to first "controller" host, do not persist selection.
 		if s.k0sLeader == nil {
 			return controllers.First()
 		}

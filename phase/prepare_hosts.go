@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"strings"
+
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,9 +30,19 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
+	var pkgs []string
+
 	if h.NeedCurl() {
-		log.Infof("%s: installing curl", h)
-		if err := h.Configurer.InstallPackage(h, "curl"); err != nil {
+		pkgs = append(pkgs, "curl")
+	}
+
+	if h.NeedIPTables() {
+		pkgs = append(pkgs, "iptables")
+	}
+
+	if len(pkgs) > 0 {
+		log.Infof("%s: installing packages (%s)", h, strings.Join(pkgs, ", "))
+		if err := h.Configurer.InstallPackage(h, pkgs...); err != nil {
 			return err
 		}
 	}

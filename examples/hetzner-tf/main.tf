@@ -26,11 +26,11 @@ variable "image" {
     default = "ubuntu-18.04"
 }
 
-variable "server_type" {
+variable "controller_type" {
     default = "cx31"
 }
 
-variable "server_count" {
+variable "controller_count" {
     default = 1
 }
 
@@ -42,17 +42,17 @@ variable "worker_type" {
     default = "cx31"
 }
 
-resource "hcloud_server" "server" {
-    count = var.server_count
-    name = "${var.cluster_name}-server-${count.index}"
+resource "hcloud_server" "controller" {
+    count = var.controller_count
+    name = "${var.cluster_name}-controller-${count.index}"
     image = var.image
-    server_type = var.server_type
+    server_type = var.controller_type
     ssh_keys = var.ssh_keys
     location = var.location
     labels = {
-        role = "server"
+        role = "controller"
     }
-    
+
 }
 
 resource "hcloud_server" "worker" {
@@ -73,7 +73,7 @@ locals {
         kind = "cluster"
         spec = {
             hosts = [
-                for host in concat(hcloud_server.server, hcloud_server.worker) : {
+                for host in concat(hcloud_server.controller, hcloud_server.worker) : {
                     ssh = {
                         address = host.ipv4_address
                         user = "root"

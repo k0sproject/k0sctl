@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -56,7 +57,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.Role == "server" && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
+	if h.IsController() && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
 		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)
@@ -83,16 +84,24 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
+	switch status.Role {
+	case "server":
+		status.Role = "controller"
+	case "server+worker":
+		status.Role = "controller+worker"
+	}
+
 	if status.Role != h.Role {
 		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
 	}
 
 	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
-	if p.Config.Spec.K0s.Version != h.Metadata.K0sRunningVersion {
-		return fmt.Errorf("%s: is running k0s %s version %s but target is %s - upgrade is not yet supported", h, h.Role, h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
-	}
+	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+	if h.Metadata.NeedsUpgrade {
+		log.Warnf("%s: k0s will be upgraded", h)
+	}
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
@@ -104,4 +113,19 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	return nil
+}
+
+func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
+	target, err := semver.NewVersion(p.Config.Spec.K0s.Version)
+	if err != nil {
+		log.Warnf("%s: failed to parse target version: %s", h, err.Error())
+		return false
+	}
+	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
+	if err != nil {
+		log.Warnf("%s: failed to parse running version: %s", h, err.Error())
+		return false
+	}
+
+	return target.GreaterThan(current)
 }

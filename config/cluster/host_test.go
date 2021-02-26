@@ -12,10 +12,10 @@ import (
 func TestHostK0sServiceName(t *testing.T) {
 	h := Host{Role: "worker"}
 	require.Equal(t, "k0sworker", h.K0sServiceName())
-	h.Role = "server"
-	require.Equal(t, "k0sserver", h.K0sServiceName())
-	h.Role = "server+worker"
-	require.Equal(t, "k0sserver", h.K0sServiceName())
+	h.Role = "controller"
+	require.Equal(t, "k0scontroller", h.K0sServiceName())
+	h.Role = "controller+worker"
+	require.Equal(t, "k0scontroller", h.K0sServiceName())
 }
 
 type mockconfigurer struct {
@@ -64,15 +64,15 @@ func TestK0sInstallCommand(t *testing.T) {
 
 	require.Equal(t, `k0s install worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
 
-	h.Role = "server"
+	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
-	require.Equal(t, `k0s install server --config "from-configurer"`, h.K0sInstallCommand())
+	require.Equal(t, `k0s install controller --config "from-configurer"`, h.K0sInstallCommand())
 	h.Metadata.IsK0sLeader = false
-	require.Equal(t, `k0s install server --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+	require.Equal(t, `k0s install controller --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
 
-	h.Role = "server+worker"
+	h.Role = "controller+worker"
 	h.Metadata.IsK0sLeader = true
-	require.Equal(t, `k0s install server --enable-worker --config "from-configurer"`, h.K0sInstallCommand())
+	require.Equal(t, `k0s install controller --enable-worker --config "from-configurer"`, h.K0sInstallCommand())
 	h.Metadata.IsK0sLeader = false
-	require.Equal(t, `k0s install server --enable-worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+	require.Equal(t, `k0s install controller --enable-worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
 }

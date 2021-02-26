@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -17,7 +18,7 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role             string            `yaml:"role" validate:"oneof=server worker server+worker"`
+	Role             string            `yaml:"role" validate:"oneof=controller worker controller+worker"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
@@ -74,6 +75,7 @@ type HostMetadata struct {
 	IsK0sLeader       bool
 	Hostname          string
 	Ready             bool
+	NeedsUpgrade      bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -161,8 +163,8 @@ func (h *Host) K0sInstallCommand() string {
 	role := h.Role
 	flags := h.InstallFlags
 
-	if role == "server+worker" {
-		role = "server"
+	if role == "controller+worker" {
+		role = "controller"
 		flags.AddUnlessExist("--enable-worker")
 	}
 
@@ -175,17 +177,44 @@ func (h *Host) K0sInstallCommand() string {
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
 }
 
-// IsController returns true for server and server+worker roles
+// IsController returns true for controller and controller+worker roles
 func (h *Host) IsController() bool {
-	return h.Role == "server" || h.Role == "server+worker"
+	return h.Role == "controller" || h.Role == "controller+worker"
 }
 
 // K0sServiceName returns correct service name
 func (h *Host) K0sServiceName() string {
-	if h.Role == "server+worker" {
-		return "k0sserver"
+	if h.Role == "controller+worker" {
+		return "k0scontroller"
 	}
 	return "k0s" + h.Role
+}
+
+// UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
+func (h *Host) UpdateK0sBinary(version string) error {
+	if h.K0sBinaryPath != "" {
+		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()); err != nil {
+			return err
+		}
+		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
+			return err
+		}
+	} else {
+		if err := h.Configurer.DownloadK0s(h, version, h.Metadata.Arch); err != nil {
+			return err
+		}
+
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+		if err != nil {
+			return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
+		}
+		output = strings.TrimPrefix(output, "v")
+		if output != version {
+			return fmt.Errorf("downloaded k0s binary version is %s not %s", output, version)
+		}
+	}
+	h.Metadata.K0sBinaryVersion = version
+	return nil
 }
 
 type kubeNodeStatus struct {
@@ -238,6 +267,16 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
 	)
+}
+
+// DrainNode drains the given node
+func (h *Host) DrainNode(node *Host) error {
+	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname))
+}
+
+// UncordonNode marks the node schedulable again
+func (h *Host) UncordonNode(node *Host) error {
+	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -301,6 +340,21 @@ func (h *Host) NeedCurl() bool {
 	}
 
 	return false
+}
+
+// NeedIPTables returns true when the iptables package is needed on the host
+func (h *Host) NeedIPTables() bool {
+	// Windows does not need iptables 
+	if h.Configurer.Kind() == "windows" {
+		return false
+	}
+
+	// Controllers do not need iptables
+	if h.IsController() {
+		return false
+	}
+
+	return !h.Configurer.CommandExist(h, "iptables")
 }
 
 // WaitKubeAPIReady blocks until the local kube api responds to /version

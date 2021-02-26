@@ -6,7 +6,7 @@ machines:
   backend: ignite
   spec:
     image: weaveworks/ignite-ubuntu:18.04
-    name: server%d
+    name: controller%d
     privileged: true
     volumes:
     - type: bind
@@ -16,6 +16,7 @@ machines:
       destination: /var/lib/k0s
     portMappings:
     - containerPort: 22
+      hostPort: 9022
     - containerPort: 443
     - containerPort: 6443
 - count: 1
@@ -32,4 +33,5 @@ machines:
       destination: /var/lib/k0s
     portMappings:
     - containerPort: 22
+      hostPort: 9022
     - containerPort: 6443
