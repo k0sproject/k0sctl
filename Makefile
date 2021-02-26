@@ -9,8 +9,6 @@ ENVIRONMENT ?= "development"
 LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/k0sproject/k0sctl/integration/segment.WriteKey=$(SEGMENT_WRITE_KEY) -X github.com/k0sproject/k0sctl/version.GitCommit=$(GIT_COMMIT) -X github.com/k0sproject/k0sctl/version.Version=$(K0SCTL_VERSION)
 BUILD_FLAGS = -trimpath -a -tags "netgo static_build" -installsuffix netgo -ldflags "$(LD_FLAGS) -extldflags '-static'"
 
-GOPATH = $(shell go env GOPATH)
-
 bin/k0sctl-linux-x64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
 
@@ -39,7 +37,7 @@ clean:
 
 github_release := $(shell which github-release)
 ifeq ($(github_release),)
-github_release := $(GOPATH)/bin/github-release
+github_release := $(shell go env GOPATH)/bin/github-release
 endif
 
 $(github_release):
@@ -63,7 +61,7 @@ $(smoketests): k0sctl
 
 golint := $(shell which golangci-lint)
 ifeq ($(golint),)
-golint := $(GOPATH)/bin/golangci-lint
+golint := $(shell go env GOPATH)/bin/golangci-lint
 endif
 
 $(golint):

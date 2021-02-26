@@ -65,6 +65,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
@@ -104,6 +107,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
