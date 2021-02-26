@@ -37,12 +37,6 @@ build-all: $(addprefix bin/,$(bins) $(checksums))
 k0sctl: $(GO_SRCS)
 	go build $(BUILD_FLAGS) -o k0sctl main.go
 
-.PHONY: install
-install:
-	[ -f $(GOPATH)/bin/main ] && mv $(GOPATH)/bin/main $(GOPATH)/bin/main.old || true
-	go install main.go
-	mv $(GOPATH)/bin/main $(GOPATH)/bin/k0sctl
-
 .PHONY: clean
 clean:
 	rm -rf bin/
