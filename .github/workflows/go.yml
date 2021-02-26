@@ -68,6 +68,11 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
@@ -109,6 +114,12 @@ jobs:
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
 
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
