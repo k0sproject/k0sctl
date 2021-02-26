@@ -14,6 +14,8 @@ downloadOldK0sctl
 
 deleteCluster
 createCluster
+
+sudo mkdir /var/cache/k0sctl
 ./k0sctl_040 apply --config k0sctl_legacy.yaml --debug
 ../k0sctl apply --config k0sctl.yaml --debug
 ../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
