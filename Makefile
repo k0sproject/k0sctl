@@ -13,6 +13,7 @@ ifeq ($(PREFIX),)
     PREFIX := /usr/local
 endif
 
+GOPATH = $(shell go env GOPATH)
 
 bin/k0sctl-linux-x64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
@@ -36,8 +37,11 @@ build-all: $(addprefix bin/,$(bins) $(checksums))
 k0sctl: $(GO_SRCS)
 	go build $(BUILD_FLAGS) -o k0sctl main.go
 
-install: k0sctl
-	install -m 0755 k0sctl $(PREFIX)/bin/k0sctl
+.PHONY: install
+install:
+	[ -f $(GOPATH)/bin/main ] && mv $(GOPATH)/bin/main $(GOPATH)/bin/main.old || true
+	go install main.go
+	mv $(GOPATH)/bin/main $(GOPATH)/bin/k0sctl
 
 .PHONY: clean
 clean:
@@ -45,7 +49,7 @@ clean:
 
 github_release := $(shell which github-release)
 ifeq ($(github_release),)
-github_release := $(shell go env GOPATH)/bin/github-release
+github_release := $(GOPATH)/bin/github-release
 endif
 
 $(github_release):
@@ -69,7 +73,7 @@ $(smoketests): k0sctl
 
 golint := $(shell which golangci-lint)
 ifeq ($(golint),)
-golint := $(shell go env GOPATH)/bin/golangci-lint
+golint := $(GOPATH)/bin/golangci-lint
 endif
 
 $(golint):

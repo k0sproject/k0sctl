@@ -37,16 +37,16 @@ jobs:
         skip-go-installation: true
 
     - name: Build
-      run: make k0sctl && sudo make install
+      run: make install
 
     - name: Test
       run: go test -v ./...
 
     - name: Cache compiled binary for further testing
       uses: actions/cache@v2
-      id: cache-compiled-binary
+      id: cache-compiled-binaries
       with:
-        path: /usr/local/bin/k0sctl
+        path: ~/go/bin
         key: build-${{ github.run_id }}
 
     - name: Build windows
@@ -68,9 +68,9 @@ jobs:
     steps:
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
-        id: restore-compiled-binary
+        id: restore-compiled-binaries
         with:
-          path: /usr/local/bin/k0sctl
+          path: ~/go/bin
           key: build-${{ github.run_id }}
 
       - name: K0sctl cache
@@ -107,9 +107,9 @@ jobs:
     steps:
       - name: Restore compiled binary for smoke testing
         uses: actions/cache@v2
-        id: restore-compiled-binary
+        id: restore-compiled-binaries
         with:
-          path: /usr/local/bin/k0sctl
+          path: ~/go/bin
           key: build-${{ github.run_id }}
 
       - name: K0sctl cache
