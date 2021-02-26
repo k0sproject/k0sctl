@@ -26,19 +26,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: K0sctl cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          /var/cache/k0sctl
-          ~/.k0sctl/cache
-          !*.log
-        key: k0sctl-cache
-
-    - name: Docker Layer Caching For Footloose
-      uses: satackey/action-docker-layer-caching@v0.0.11
-      continue-on-error: true
-
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v2.3.0
       with:
@@ -91,6 +78,19 @@ jobs:
             k0sctl
           key: build-${{ github.run_id }}
 
+      - name: K0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/k0sctl
+            ~/.k0sctl/cache
+            !*.log
+          key: k0sctl-cache
+
+      - name: Docker Layer Caching For Footloose
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -124,6 +124,26 @@ jobs:
           path: |
             k0sctl
           key: build-${{ github.run_id }}
+
+      - name: K0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/k0sctl
+            ~/.k0sctl/cache
+            !*.log
+          key: k0sctl-cache
+
+      - name: Old k0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: k0sctl-040-cache
+
+      - name: Docker Layer Caching For Footloose
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
 
       - name: Run smoke tests
         env:
