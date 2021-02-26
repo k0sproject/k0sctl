@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-
-	"golang.org/x/sys/unix"
 )
 
 // EnsureDir makes a directory if it doesn't exist
@@ -13,9 +11,7 @@ func EnsureDir(dir string) error {
 	err := os.MkdirAll(dir, 0755)
 
 	if err == nil || os.IsExist(err) {
-		if unix.Access(dir, unix.W_OK) != nil {
-			return fmt.Errorf("not writable: %s", dir)
-		}
+		return nil
 	}
 
 	return err

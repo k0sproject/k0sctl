@@ -6,25 +6,17 @@ import (
 	"os"
 	"path"
 	"runtime"
+
+	"golang.org/x/sys/unix"
 )
 
 // Dir returns the directory where k0sctl temporary files should be stored. The directory will be created if it does not exist.
 func Dir() string {
 	d := defaultdir()
-	if err := EnsureDir(d); err != nil {
-		// Fall back to ~/.k0sctl/cache
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return ""
-		}
-		fb := path.Join(home, ".k0sctl", "cache")
-		if err := EnsureDir(fb); err != nil {
-			return ""
-		}
-		return fb
+	if EnsureDir(d) == nil && unix.Access(d, unix.W_OK) == nil {
+		return d
 	}
-
-	return d
+	return fallbackdir()
 }
 
 func defaultdir() string {
@@ -37,4 +29,16 @@ func defaultdir() string {
 	default:
 		return path.Join(os.TempDir(), "k0sctl")
 	}
+}
+
+func fallbackdir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	fb := path.Join(home, ".k0sctl", "cache")
+	if err := EnsureDir(fb); err != nil {
+		return ""
+	}
+	return fb
 }
