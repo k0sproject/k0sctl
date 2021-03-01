@@ -52,10 +52,6 @@ func (m *Manager) AddPhase(p ...phase) {
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
 	start := time.Now()
-	if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
-		return err
-	}
-
 	for _, p := range m.phases {
 		title := p.Title()
 
@@ -95,11 +91,4 @@ func (m *Manager) Run() error {
 			}
 		}
 
-		if result != nil {
-			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title(), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
-			return result
-		}
-	}
-
-	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 }

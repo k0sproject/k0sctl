@@ -74,9 +74,16 @@ var applyCommand = &cli.Command{
 			&phase.Disconnect{},
 		)
 
-		if err := manager.Run(); err != nil {
+		if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
 			return err
 		}
+
+		if err := manager.Run(); err != nil {
+			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+			return err
+		}
+
+		_ = analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
