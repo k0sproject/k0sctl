@@ -47,7 +47,7 @@ var resetCommand = &cli.Command{
 			}
 			survey.AskOne(prompt, &confirmed)
 			if !confirmed {
-				return fmt.Errorf("Confirmation or --force required to proceed")
+				return fmt.Errorf("confirmation or --force required to proceed")
 			}
 		}
 
