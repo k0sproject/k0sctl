@@ -48,6 +48,9 @@ func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 
 	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
 	if err != nil {
+		if err := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); err != nil {
+			log.Warnf("%s: failed to remove %s: %s", h, h.Configurer.K0sBinaryPath(), err.Error())
+		}
 		return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
 	}
 	output = strings.TrimPrefix(output, "v")
