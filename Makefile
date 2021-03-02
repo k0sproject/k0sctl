@@ -56,7 +56,7 @@ upload-%: bin/% $(github_release)
 .PHONY: upload
 upload: $(addprefix upload-,$(bins) $(checksums))
 
-smoketests := smoke-basic smoke-upgrade
+smoketests := smoke-basic smoke-upgrade smoke-reset
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
