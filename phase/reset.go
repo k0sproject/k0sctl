@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Reseet uninstalls k0s from the hosts
+// Reset uninstalls k0s from the hosts
 type Reset struct {
 	GenericPhase
 	hosts cluster.Hosts
