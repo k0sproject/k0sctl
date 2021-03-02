@@ -116,6 +116,7 @@ jobs:
         env:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-upgrade
+
   smoke-reset:
     strategy:
       matrix:
