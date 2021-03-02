@@ -1,9 +1,6 @@
 package phase
 
 import (
-	"time"
-
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
@@ -51,7 +48,6 @@ func (m *Manager) AddPhase(p ...phase) {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
-	start := time.Now()
 	for _, p := range m.phases {
 		title := p.Title()
 
@@ -91,4 +87,10 @@ func (m *Manager) Run() error {
 			}
 		}
 
+		if result != nil {
+			return result
+		}
+	}
+
+	return nil
 }
