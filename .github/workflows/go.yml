@@ -21,7 +21,11 @@ jobs:
     - name: Go modules cache
       uses: actions/cache@v2
       with:
-        path: ~/go/pkg/mod
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
@@ -30,7 +34,6 @@ jobs:
       uses: golangci/golangci-lint-action@v2.3.0
       with:
         version: v1.35.2
-        skip-go-installation: true
 
     - name: Build
       run: make k0sctl
@@ -38,7 +41,7 @@ jobs:
     - name: Test
       run: go test -v ./...
 
-    - name: Cache compiled binary for further testing
+    - name: Cache the compiled binary for further testing
       uses: actions/cache@v2
       id: cache-compiled-binary
       with:
@@ -65,18 +68,32 @@ jobs:
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
-      - name: Restore compiled binary for smoke testing
+      - name: Restore the compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
         with:
           path: |
             k0sctl
           key: build-${{ github.run_id }}
+
+      - name: K0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/k0sctl
+            ~/.k0sctl/cache
+            !*.log
+          key: k0sctl-cache
+
+      - name: Docker Layer Caching For Footloose
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
 
       - name: Run smoke tests
         env:
@@ -99,18 +116,39 @@ jobs:
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.15
 
-      - name: Restore compiled binary for smoke testing
+      - name: Restore the compiled binary for smoke testing
         uses: actions/cache@v2
         id: restore-compiled-binary
         with:
           path: |
             k0sctl
           key: build-${{ github.run_id }}
+
+      - name: K0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/k0sctl
+            ~/.k0sctl/cache
+            !*.log
+          key: k0sctl-cache
+
+      - name: Old k0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: k0sctl-040-cache
+
+      - name: Docker Layer Caching For Footloose
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
 
       - name: Run smoke tests
         env:
