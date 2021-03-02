@@ -60,6 +60,7 @@ var applyCommand = &cli.Command{
 			&phase.GatherFacts{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
+			&phase.ValidateFacts{},
 			&phase.DownloadBinaries{},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
