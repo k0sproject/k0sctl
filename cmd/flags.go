@@ -5,10 +5,13 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
+	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
@@ -81,10 +84,10 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(_ *cli.Context) error {
-	log.Infof("k0sctl %s Copyright 2021, Mirantis Inc.", version.Version)
-	log.Infof("Anonymized telemetry will be sent to Mirantis.")
-	log.Infof("By continuing to use k0sctl you agree to these terms:")
-	log.Infof("https://k0sproject.io/licenses/eula")
+	fmt.Printf("k0sctl %s Copyright 2021, Mirantis Inc.\n", version.Version)
+	fmt.Println("Anonymized telemetry will be sent to Mirantis.")
+	fmt.Println("By continuing to use k0sctl you agree to these terms:")
+	fmt.Println("https://k0sproject.io/licenses/eula")
 	return nil
 }
 
@@ -109,14 +112,21 @@ func initAnalytics(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	initLogger(logLevelFromCtx(ctx, log.InfoLevel))
-	return nil
+	log.SetLevel(log.TraceLevel)
+	log.SetOutput(ioutil.Discard)
+	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
+	rig.SetLogger(log.StandardLogger())
+	return initFileLogger()
 }
 
-// initLogging initializes the logger in silent mode
+// initSilentLogging initializes the logger in silent mode
+// TODO too similar to initLogging
 func initSilentLogging(ctx *cli.Context) error {
-	initLogger(logLevelFromCtx(ctx, log.FatalLevel))
-	return nil
+	log.SetLevel(log.TraceLevel)
+	log.SetOutput(ioutil.Discard)
+	initScreenLogger(logLevelFromCtx(ctx, log.FatalLevel))
+	rig.SetLogger(log.StandardLogger())
+	return initFileLogger()
 }
 
 func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
@@ -129,16 +139,34 @@ func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
 	}
 }
 
-func initLogger(lvl log.Level) {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(ioutil.Discard) // Send all logs to nowhere by default
+func initScreenLogger(lvl log.Level) {
+	log.AddHook(screenLoggerHook(lvl))
+}
 
-	screen := screenLoggerHook(lvl)
+func initFileLogger() error {
+	lf, err := LogFile()
+	if err != nil {
+		return err
+	}
+	log.AddHook(fileLoggerHook(lf))
+	return nil
+}
 
-	log.AddHook(screen)
+func LogFile() (io.Writer, error) {
+	logDir := cache.Dir()
+	if err := cache.EnsureDir(logDir); err != nil {
+		return nil, fmt.Errorf("error while creating log directory %s: %s", logDir, err.Error())
+	}
 
-	rig.SetLogger(log.StandardLogger())
+	fn := path.Join(logDir, "k0sctl.log")
+	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to open log %s: %s", fn, err.Error())
+	}
 
+	_, _ = fmt.Fprintf(logFile, "time=\"%s\" level=info msg=\"###### New session ######\"\n", time.Now().Format(time.RFC822))
+
+	return logFile, nil
 }
 
 func configReader(f string) (io.ReadCloser, error) {
@@ -219,6 +247,21 @@ func screenLoggerHook(lvl log.Level) *loghook {
 	}
 
 	l.SetLevel(lvl)
+
+	return l
+}
+
+func fileLoggerHook(logFile io.Writer) *loghook {
+	l := &loghook{
+		Formatter: &log.TextFormatter{
+			FullTimestamp:          true,
+			TimestampFormat:        time.RFC822,
+			DisableLevelTruncation: true,
+		},
+		Writer: logFile,
+	}
+
+	l.SetLevel(log.DebugLevel)
 
 	return l
 }

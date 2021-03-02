@@ -80,6 +80,11 @@ var applyCommand = &cli.Command{
 
 		if err := manager.Run(); err != nil {
 			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+			if lf, err := LogFile(); err == nil {
+				if ln, ok := lf.(interface{ Name() string }); ok {
+					log.Errorf("apply failed - log file saved to %s", ln.Name())
+				}
+			}
 			return err
 		}
 

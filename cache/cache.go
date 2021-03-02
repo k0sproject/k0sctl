@@ -13,6 +13,7 @@ func EnsureDir(dir string) error {
 	if err == nil || os.IsExist(err) {
 		return nil
 	}
+
 	return err
 }
 
