@@ -3,6 +3,7 @@ package phase
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -111,6 +112,11 @@ func (b binary) url() string {
 func (b binary) downloadTo(path string) error {
 	log.Infof("downloading k0s version %s binary for %s-%s", b.version, b.os, b.arch)
 
+	f, err := ioutil.TempFile("", "k0s")
+	if err != nil {
+		return err
+	}
+
 	resp, err := http.Get(b.url())
 	if err != nil {
 		return err
@@ -124,15 +130,17 @@ func (b binary) downloadTo(path string) error {
 		return err
 	}
 
-	out, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s (%s)", path, err.Error())
-	}
-	defer out.Close()
-
 	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(f, resp.Body)
 	if err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(f.Name(), path); err != nil {
 		return err
 	}
 
