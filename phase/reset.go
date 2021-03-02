@@ -26,7 +26,7 @@ func (p *Reset) Prepare(config *config.Cluster) error {
 	var hosts cluster.Hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		return h.Metadata.K0sBinaryVersion != ""
 	})
-	min, _ := semver.NewVersion("0.11.0")
+	c, _ := semver.NewConstraint("< 0.11-0")
 
 	for _, h := range hosts {
 		running, err := semver.NewVersion(h.Metadata.K0sBinaryVersion)
@@ -34,7 +34,7 @@ func (p *Reset) Prepare(config *config.Cluster) error {
 			return err
 		}
 
-		if running.LessThan(min) {
+		if c.Check(running) {
 			return fmt.Errorf("reset is only supported on k0s >= 0.11.0")
 		}
 	}
