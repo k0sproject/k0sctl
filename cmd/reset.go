@@ -69,7 +69,7 @@ var resetCommand = &cli.Command{
 			&phase.Connect{},
 			&phase.DetectOS{},
 			&phase.PrepareHosts{},
-			&phase.GatherFacts{},
+			&phase.GatherK0sFacts{},
 			&phase.Reset{},
 			&phase.Disconnect{},
 		)

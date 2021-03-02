@@ -15,6 +15,7 @@ type phase interface {
 }
 
 type withconfig interface {
+	Title() string
 	Prepare(*config.Cluster) error
 }
 
@@ -52,6 +53,7 @@ func (m *Manager) Run() error {
 		title := p.Title()
 
 		if p, ok := p.(withconfig); ok {
+			log.Debugf("Preparing phase '%s'", p.Title())
 			if err := p.Prepare(m.Config); err != nil {
 				return err
 			}
