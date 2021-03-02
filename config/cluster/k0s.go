@@ -24,7 +24,8 @@ type K0s struct {
 
 // K0sMetadata contains gathered information about k0s cluster
 type K0sMetadata struct {
-	ClusterID string
+	ClusterID        string
+	VersionDefaulted bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -45,6 +46,7 @@ func (k *K0s) SetDefaults() {
 		preok := version.IsPre() || version.Version == "0.0.0"
 		if latest, err := github.LatestK0sVersion(preok); err == nil {
 			k.Version = latest
+			k.Metadata.VersionDefaulted = true
 		}
 	}
 

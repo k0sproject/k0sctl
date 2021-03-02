@@ -45,7 +45,11 @@ func (p *GatherK0sFacts) Run() error {
 	}
 
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
-	return workers.ParallelEach(p.investigateK0s)
+	if err := workers.ParallelEach(p.investigateK0s); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {

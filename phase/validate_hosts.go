@@ -4,13 +4,6 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
-
-	// anonymous import is needed to load the os configurers
-	_ "github.com/k0sproject/k0sctl/configurer"
-	// anonymous import is needed to load the os configurers
-	_ "github.com/k0sproject/k0sctl/configurer/linux"
-	// anonymous import is needed to load the os configurers
-	_ "github.com/k0sproject/k0sctl/configurer/linux/enterpriselinux"
 )
 
 // ValidateHosts performs remote OS detection
