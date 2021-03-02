@@ -7,6 +7,6 @@ trap cleanup EXIT
 
 deleteCluster
 createCluster
-./k0sctl init
-./k0sctl apply --config k0sctl.yaml --debug
-./k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
+../k0sctl init
+../k0sctl apply --config k0sctl.yaml --debug
+../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
