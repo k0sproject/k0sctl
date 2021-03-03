@@ -23,10 +23,10 @@ INFO ==> Running phase: Gather host facts
 INFO [ssh] 10.0.0.1:22: discovered 10.12.18.133 as private address
 INFO ==> Running phase: Validate hosts
 INFO ==> Running phase: Gather k0s facts
-INFO ==> Running phase: Download k0s on the hosts
+INFO ==> Running phase: Download k0s binaries on hosts
 INFO ==> Running phase: Configure k0s
 INFO [ssh] 10.0.0.1:22: validating configuration
-INFO ==> Running phase: Initialize k0s Cluster
+INFO ==> Running phase: Initialize the k0s cluster
 INFO [ssh] 10.0.0.1:22: installing k0s controller
 INFO [ssh] 10.0.0.1:22: waiting for the k0s service to start
 INFO [ssh] 10.0.0.1:22: waiting for kubernetes api to respond
