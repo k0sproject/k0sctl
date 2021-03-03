@@ -3,6 +3,7 @@
 *A command-line bootstrapping and management tool for [k0s zero friction kubernetes](https://k0sproject.io/) clusters.*
 
 Example output of k0sctl deploying a k0s cluster:
+
 ```sh
 $ k0sctl apply
 
@@ -103,15 +104,13 @@ NAME      STATUS     ROLES    AGE   VERSION
 worker0   NotReady   <none>   10s   v1.20.2-k0s1
 ```
 
-## Configuration file syntax
+## Configuration file
 
-To generate a simple skeleton configuration file, you can use the `k0sctl init` subcommand:
+The configuration file is in YAML format and loosely resembles the syntax used in Kubernetes. YAML anchors and aliases can be used.
 
-```sh
-$ k0sctl init > k0sctl.yaml
-```
+To generate a simple skeleton configuration file, you can use the `k0sctl init` subcommand.
 
-### Example configuration
+Configuration example:
 
 ```yaml
 apiVersion: k0sctl.k0sproject.io/v1beta1
@@ -145,29 +144,34 @@ spec:
             version: v3.16.2
 ```
 
-### Configuration file
+### Top level fields
 
-The configuration file is in YAML format and loosely resembles the syntax used in Kubernetes. YAML anchors and aliases can be used.
-
-#### `apiVersion` &lt;string&gt; (required)
+* `apiVersion` &lt;string&gt; (required)
 
 The configuration file syntax version. Currently the only supported version is `k0sctl.k0sproject.io/v1beta1`.
 
-#### `kind` &lt;string&gt; (required)
+* `kind` &lt;string&gt; (required)
 
 In the future, some of the configuration APIs can support multiple types of objects. For now, the only supported kind is `Cluster`.
 
-### `metadata` &lt;mapping&gt; (optional)
+* `metadata` &lt;mapping&gt; (optional)
 
 Information that can be used to uniquely identify the object.
 
-#### `metadata.name` &lt;string&gt; (optional) (default: `k0s-cluster`)
+Example:
 
-### `spec` &lt;mapping&gt; (required)
+```yaml
+metadata:
+  name: k0s-cluster-name
+```
 
-The object description.
+* `spec` &lt;mapping&gt; (required)
 
-### `spec.hosts` &lt;sequence&gt; (required)
+The main object definition.
+
+### Spec
+
+##### `spec.hosts` &lt;sequence&gt; (required)
 
 A list of cluster hosts. Host requirements:
 
@@ -175,24 +179,24 @@ A list of cluster hosts. Host requirements:
 * The user must either be root or have passwordless `sudo` access.
 * The host must fulfill k0s system requirements
 
-#### `spec.hosts[*].role` &lt;string&gt; (required)
+###### `spec.hosts[*].role` &lt;string&gt; (required)
 
 One of `controller`, `worker` or to set up a controller that can also run workloads, use `controller+worker`.
 
-#### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
+###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
 
 When `true`, the k0s binaries for target host will be downloaded and cached on the local host and uploaded to the target.
 When `false`, the k0s binary downloading is performed on the target host itself
 
-#### `spec.hosts[*].k0sBinaryPath` &lt;string&gt; (optional)
+###### `spec.hosts[*].k0sBinaryPath` &lt;string&gt; (optional)
 
 A path to a file on the local host that contains a k0s binary to be uploaded to the host. Can be used to test drive a custom development build of k0s.
 
-#### `spec.hosts[*].installFlags` &lt;sequence&gt; (optional)
+###### `spec.hosts[*].installFlags` &lt;sequence&gt; (optional)
 
 Extra flags passed to the `k0s install` command on the target host. See `k0s install --help` for a list of options.
 
-#### `spec.hosts[*].environment` &lt;mapping&gt; (optional)
+###### `spec.hosts[*].environment` &lt;mapping&gt; (optional)
 
 List of key-value pairs to set to the target host's environment variables.
 
@@ -203,43 +207,43 @@ environment:
   HTTP_PROXY: 10.0.0.1:443
 ```
 
-#### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
+##### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
 
 SSH connection options.
 
-##### `spec.hosts[*].ssh.address` &lt;string&gt; (required)
+###### `spec.hosts[*].ssh.address` &lt;string&gt; (required)
 
 IP address of the host
 
-##### `spec.hosts[*].ssh.user` &lt;string&gt; (optional) (default: `root`)
+###### `spec.hosts[*].ssh.user` &lt;string&gt; (optional) (default: `root`)
 
 Username to log in as.
 
-##### `spec.hosts[*].ssh.port` &lt;string&gt; (required)
+###### `spec.hosts[*].ssh.port` &lt;string&gt; (required)
 
 TCP port of the SSH service on the host.
 
-##### `spec.hosts[*].ssh.keyPath` &lt;string&gt; (optional) (default: `~/.ssh/id_rsa`)
+###### `spec.hosts[*].ssh.keyPath` &lt;string&gt; (optional) (default: `~/.ssh/id_rsa`)
 
 Path to a SSH private key file.
 
-#### `spec.hosts[*].localhost` &lt;mapping&gt; (optional)
+##### `spec.hosts[*].localhost` &lt;mapping&gt; (optional)
 
 Localhost connection options. Can be used to use the local host running k0sctl as a node in the cluster.
 
-##### `spec.hosts[*].localhost.enabled` &lt;boolean&gt; (optional) (default: `false`)
+###### `spec.hosts[*].localhost.enabled` &lt;boolean&gt; (optional) (default: `false`)
 
 This must be set `true` to enable the localhost connection.
 
-### `spec.k0s` &lt;mapping&gt; (optional)
+#### `spec.k0s` &lt;mapping&gt; (optional)
 
 Settings related to the k0s cluster.
 
-#### `spec.k0s.version` &lt;string&gt; (optional) (default: auto-discovery)
+##### `spec.k0s.version` &lt;string&gt; (optional) (default: auto-discovery)
 
 The version of k0s to deploy. When left out, k0sctl will default to using the latest released version of k0s or the version already running on the cluster.
 
-#### `spec.k0s.config` &lt;mapping&gt; &lt;optional&gt; (default: auto-generated)
+##### `spec.k0s.config` &lt;mapping&gt; (optional) (default: auto-generated)
 
 Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
 
