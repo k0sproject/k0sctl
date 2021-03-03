@@ -12,6 +12,7 @@ import (
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
+	log "github.com/sirupsen/logrus"
 )
 
 // Host contains all the needed details to work with hosts
@@ -234,6 +235,7 @@ func (h *Host) KubeNodeReady(node *Host) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	log.Tracef("node status output:\n%s\n", output)
 	status := kubeNodeStatus{}
 	if err := json.Unmarshal([]byte(output), &status); err != nil {
 		return false, fmt.Errorf("failed to decode kubectl output: %s", err.Error())
@@ -265,7 +267,7 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
-		retry.Attempts(60),
+		retry.Attempts(120),
 	)
 }
 
@@ -344,7 +346,7 @@ func (h *Host) NeedCurl() bool {
 
 // NeedIPTables returns true when the iptables package is needed on the host
 func (h *Host) NeedIPTables() bool {
-	// Windows does not need iptables 
+	// Windows does not need iptables
 	if h.Configurer.Kind() == "windows" {
 		return false
 	}
