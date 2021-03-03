@@ -14,7 +14,7 @@ type InitializeK0s struct {
 
 // Title for the phase
 func (p *InitializeK0s) Title() string {
-	return "Initialize K0s Cluster"
+	return "Initialize a k0s cluster"
 }
 
 // Prepare the phase

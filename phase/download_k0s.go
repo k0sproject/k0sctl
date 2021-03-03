@@ -17,7 +17,7 @@ type DownloadK0s struct {
 
 // Title for the phase
 func (p *DownloadK0s) Title() string {
-	return "Download K0s on the hosts"
+	return "Download k0s on hosts"
 }
 
 // Prepare the phase

@@ -19,7 +19,7 @@ type ConfigureK0s struct {
 
 // Title returns the phase title
 func (p *ConfigureK0s) Title() string {
-	return "Configure K0s"
+	return "Configure k0s"
 }
 
 // Run the phase
