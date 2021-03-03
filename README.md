@@ -144,7 +144,7 @@ spec:
             version: v3.16.2
 ```
 
-### Header fields
+### Configuration Header Fields
 
 ###### `apiVersion` &lt;string&gt; (required)
 
@@ -169,7 +169,7 @@ metadata:
   name: k0s-cluster-name
 ```
 
-### Configuration `spec`
+### Spec Fields
 
 ##### `spec.hosts` &lt;sequence&gt; (required)
 
@@ -178,6 +178,16 @@ A list of cluster hosts. Host requirements:
 * Currently only linux targets are supported
 * The user must either be root or have passwordless `sudo` access.
 * The host must fulfill the k0s system requirements
+
+See [host object documentation](#host-fields) below.
+
+##### `spec.k0s` &lt;mapping&gt; (optional)
+
+Settings related to the k0s cluster.
+
+See [k0s object documentation](#spec-fields) below.
+
+### Host Fields
 
 ###### `spec.hosts[*].role` &lt;string&gt; (required)
 
@@ -235,9 +245,7 @@ Localhost connection options. Can be used to use the local host running k0sctl a
 
 This must be set `true` to enable the localhost connection.
 
-#### `spec.k0s` &lt;mapping&gt; (optional)
-
-Settings related to the k0s cluster.
+### K0s Fields
 
 ##### `spec.k0s.version` &lt;string&gt; (optional) (default: auto-discovery)
 
