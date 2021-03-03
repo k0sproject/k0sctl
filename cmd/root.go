@@ -17,5 +17,6 @@ var App = &cli.App{
 		applyCommand,
 		kubeconfigCommand,
 		initCommand,
+		resetCommand,
 	},
 }

@@ -1,9 +1,6 @@
 package phase
 
 import (
-	"time"
-
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
@@ -18,6 +15,7 @@ type phase interface {
 }
 
 type withconfig interface {
+	Title() string
 	Prepare(*config.Cluster) error
 }
 
@@ -51,15 +49,11 @@ func (m *Manager) AddPhase(p ...phase) {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
-	start := time.Now()
-	if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
-		return err
-	}
-
 	for _, p := range m.phases {
 		title := p.Title()
 
 		if p, ok := p.(withconfig); ok {
+			log.Debugf("Preparing phase '%s'", p.Title())
 			if err := p.Prepare(m.Config); err != nil {
 				return err
 			}
@@ -96,10 +90,9 @@ func (m *Manager) Run() error {
 		}
 
 		if result != nil {
-			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"phase": p.Title(), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
 			return result
 		}
 	}
 
-	return analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": m.Config.Spec.K0s.Metadata.ClusterID})
+	return nil
 }
