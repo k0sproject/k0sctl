@@ -83,9 +83,11 @@ func initConfig(ctx *cli.Context) error {
 	return ctx.Set("config", string(content))
 }
 
-func displayCopyright(_ *cli.Context) error {
-	fmt.Printf("k0sctl %s Copyright 2021, Mirantis Inc.\n", version.Version)
-	fmt.Println("Anonymized telemetry will be sent to Mirantis.")
+func displayCopyright(ctx *cli.Context) error {
+	fmt.Printf("k0sctl %s Copyright 2021, k0sctl authors.\n", version.Version)
+	if !ctx.Bool("disable-telemetry") {
+		fmt.Println("Anonymized telemetry of usage will be sent to the authors.")
+	}
 	fmt.Println("By continuing to use k0sctl you agree to these terms:")
 	fmt.Println("https://k0sproject.io/licenses/eula")
 	return nil

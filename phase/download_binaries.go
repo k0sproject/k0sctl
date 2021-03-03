@@ -21,7 +21,7 @@ type DownloadBinaries struct {
 
 // Title for the phase
 func (p *DownloadBinaries) Title() string {
-	return "Download binaries"
+	return "Download k0s binaries to local host"
 }
 
 // Prepare the phase

@@ -14,7 +14,7 @@ type UploadBinaries struct {
 
 // Title for the phase
 func (p *UploadBinaries) Title() string {
-	return "Upload binaries"
+	return "Upload k0s binaries to hosts"
 }
 
 // Prepare the phase
