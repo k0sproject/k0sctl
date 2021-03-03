@@ -58,7 +58,7 @@ jobs:
         image:
           - quay.io/footloose/ubuntu18.04
           - quay.io/footloose/centos7
-          - quay.io/footloose/amazonlinux2
+            #- quay.io/footloose/amazonlinux2
           - quay.io/footloose/debian10
           - quay.io/footloose/fedora29
     name: Basic 1+1 smoke
@@ -154,3 +154,34 @@ jobs:
         env:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-upgrade
+
+  smoke-reset:
+    strategy:
+      matrix:
+        image:
+          - quay.io/footloose/ubuntu18.04
+          - quay.io/footloose/centos7
+    name: Apply + reset
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Restore compiled binary for smoke testing
+        uses: actions/cache@v2
+        id: restore-compiled-binary
+        with:
+          path: |
+            k0sctl
+          key: build-${{ github.run_id }}
+
+      - name: Run smoke tests
+        env:
+          LINUX_IMAGE: ${{ matrix.image }}
+        run: make smoke-reset

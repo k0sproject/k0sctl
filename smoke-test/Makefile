@@ -21,3 +21,6 @@ smoke-basic: $(footloose) id_rsa_k0s
 
 smoke-upgrade: $(footloose) id_rsa_k0s
 	./smoke-upgrade.sh
+
+smoke-reset: $(footloose) id_rsa_k0s
+	./smoke-reset.sh

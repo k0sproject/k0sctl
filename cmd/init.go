@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// DefaultK0sYaml is pretty much what "k0s default-config" outputs
 var DefaultK0sYaml = []byte(`apiVersion: k0s.k0sproject.io/v1beta1
 kind: Cluster
 metadata:
