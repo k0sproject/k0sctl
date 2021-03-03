@@ -144,17 +144,17 @@ spec:
             version: v3.16.2
 ```
 
-### Top level fields
+### Header fields
 
-* `apiVersion` &lt;string&gt; (required)
+###### `apiVersion` &lt;string&gt; (required)
 
 The configuration file syntax version. Currently the only supported version is `k0sctl.k0sproject.io/v1beta1`.
 
-* `kind` &lt;string&gt; (required)
+###### `kind` &lt;string&gt; (required)
 
 In the future, some of the configuration APIs can support multiple types of objects. For now, the only supported kind is `Cluster`.
 
-* `metadata` &lt;mapping&gt; (optional)
+###### `metadata` &lt;mapping&gt; (optional)
 
 Information that can be used to uniquely identify the object.
 
@@ -165,11 +165,11 @@ metadata:
   name: k0s-cluster-name
 ```
 
-* `spec` &lt;mapping&gt; (required)
+###### `spec` &lt;mapping&gt; (required)
 
-The main object definition.
+The main object definition, see below
 
-### Spec
+### Configuration spec
 
 ##### `spec.hosts` &lt;sequence&gt; (required)
 
@@ -177,7 +177,7 @@ A list of cluster hosts. Host requirements:
 
 * Currently only linux targets are supported
 * The user must either be root or have passwordless `sudo` access.
-* The host must fulfill k0s system requirements
+* The host must fulfill the k0s system requirements
 
 ###### `spec.hosts[*].role` &lt;string&gt; (required)
 
