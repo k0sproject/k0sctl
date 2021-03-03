@@ -154,6 +154,10 @@ The configuration file syntax version. Currently the only supported version is `
 
 In the future, some of the configuration APIs can support multiple types of objects. For now, the only supported kind is `Cluster`.
 
+###### `spec` &lt;mapping&gt; (required)
+
+The main object definition, see [below](#configuration-spec)
+
 ###### `metadata` &lt;mapping&gt; (optional)
 
 Information that can be used to uniquely identify the object.
@@ -165,11 +169,7 @@ metadata:
   name: k0s-cluster-name
 ```
 
-###### `spec` &lt;mapping&gt; (required)
-
-The main object definition, see below
-
-### Configuration spec
+### Configuration `spec`
 
 ##### `spec.hosts` &lt;sequence&gt; (required)
 
