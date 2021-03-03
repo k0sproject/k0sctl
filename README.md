@@ -2,6 +2,7 @@
 
 *A command-line bootstrapping and management tool for [k0s zero friction kubernetes](https://k0sproject.io/) clusters.*
 
+Example output of k0sctl deploying a k0s cluster:
 ```sh
 $ k0sctl apply
 
@@ -18,7 +19,6 @@ INFO ==> Running phase: Detect host operating systems
 INFO [ssh] 10.0.0.1:22: is running Ubuntu 20.10
 INFO [ssh] 10.0.0.2:22: is running Ubuntu 20.10
 INFO ==> Running phase: Prepare hosts
-INFO [ssh] 10.0.0.1:22: installing kubectl
 INFO ==> Running phase: Gather host facts
 INFO [ssh] 10.0.0.1:22: discovered 10.12.18.133 as private address
 INFO ==> Running phase: Validate hosts
@@ -28,13 +28,9 @@ INFO ==> Running phase: Configure k0s
 INFO [ssh] 10.0.0.1:22: validating configuration
 INFO ==> Running phase: Initialize the k0s cluster
 INFO [ssh] 10.0.0.1:22: installing k0s controller
-INFO [ssh] 10.0.0.1:22: waiting for the k0s service to start
-INFO [ssh] 10.0.0.1:22: waiting for kubernetes api to respond
 INFO ==> Running phase: Install workers
 INFO [ssh] 10.0.0.1:22: generating token
-INFO [ssh] 10.0.0.2:22: writing join token
 INFO [ssh] 10.0.0.2:22: installing k0s worker
-INFO [ssh] 10.0.0.2:22: starting service
 INFO [ssh] 10.0.0.2:22: waiting for node to become ready
 INFO ==> Running phase: Disconnect from hosts
 INFO ==> Finished in 2m2s
