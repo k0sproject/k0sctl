@@ -15,4 +15,4 @@ spec:
         port: 9023
         keyPath: ./id_rsa_k0s
   k0s:
-    version: "0.11.0-beta.2"
+    version: "0.11.0"
