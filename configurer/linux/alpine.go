@@ -9,8 +9,11 @@ import (
 	"github.com/k0sproject/rig/os/registry"
 )
 
+type riglinux os.Linux
+
 // Alpine provides OS support for Alpine Linux
 type Alpine struct {
+	riglinux
 	configurer.Linux
 }
 
