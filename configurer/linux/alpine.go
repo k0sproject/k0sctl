@@ -9,11 +9,12 @@ import (
 	"github.com/k0sproject/rig/os/registry"
 )
 
-type riglinux os.Linux
+// RigLinux is a reference to rig's linux struct, renamed to not overlap with configurer.Linux
+type RigLinux os.Linux
 
 // Alpine provides OS support for Alpine Linux
 type Alpine struct {
-	riglinux
+	RigLinux
 	configurer.Linux
 }
 

@@ -11,7 +11,7 @@ import (
 
 // Slackware provides OS support for Slackware Linux
 type Slackware struct {
-	riglinux
+	RigLinux
 	configurer.Linux
 }
 
