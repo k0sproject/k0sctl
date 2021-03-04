@@ -17,7 +17,7 @@ type Alpine struct {
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
-			return os.ID == "slackware"
+			return os.ID == "alpine"
 		},
 		func() interface{} {
 			return Alpine{}
