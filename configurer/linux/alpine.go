@@ -50,13 +50,18 @@ func init() {
 
 // InstallPackage installs packages via slackpkg
 func (l Alpine) InstallPackage(h os.Host, pkg ...string) error {
-	return h.Execf("sudo apk add -U -t k0sctl %s", strings.Join(pkg, " "))
+	return h.Execf("sudo apk add --update %s", strings.Join(pkg, " "))
+}
+
+// InstallKubectl installs kubectl using the alpine edge/testing repo
+func (l Alpine) InstallKubectl(h os.Host) error {
+	return l.InstallPackage(h, "--repository https://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl")
 }
 
 func (l Alpine) Prepare(h os.Host) error {
 	if !l.CommandExist(h, "sudo") {
-		return h.Exec("apk add -u -t k0sctl sudo")
+		return h.Exec("apk add --update sudo")
 	}
 
-	return nil
+	return l.InstallPackage(h, "findutils", "coreutils")
 }
