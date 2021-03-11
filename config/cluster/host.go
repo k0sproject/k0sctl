@@ -173,7 +173,9 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
 	}
 
-	flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
+	if h.IsController() {
+		flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
+	}
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
 }
