@@ -62,7 +62,7 @@ func TestK0sInstallCommand(t *testing.T) {
 	h := Host{Role: "worker"}
 	h.Configurer = &mockconfigurer{}
 
-	require.Equal(t, `k0s install worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+	require.Equal(t, `k0s install worker --token-file "from-configurer"`, h.K0sInstallCommand())
 
 	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
