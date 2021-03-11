@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/os"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,7 +23,17 @@ func (p *PrepareHosts) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(p.prepareHost)
 }
 
+type prepare interface {
+	Prepare(os.Host) error
+}
+
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
+	if c, ok := h.Configurer.(prepare); ok {
+		if err := c.Prepare(h); err != nil {
+			return err
+		}
+	}
+
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating environment", h)
 		if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {

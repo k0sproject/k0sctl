@@ -3,7 +3,6 @@ package linux
 import (
 	"strings"
 
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -11,7 +10,8 @@ import (
 
 // Slackware provides OS support for Slackware Linux
 type Slackware struct {
-	configurer.Linux
+	BaseLinux
+	os.Linux
 }
 
 func init() {

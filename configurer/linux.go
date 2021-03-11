@@ -130,7 +130,7 @@ const sbinPath = `PATH=/usr/local/sbin:/usr/sbin:/sbin:$PATH`
 
 // PrivateInterface tries to find a private network interface
 func (l Linux) PrivateInterface(h os.Host) (string, error) {
-	output, err := h.ExecOutput(fmt.Sprintf(`%s; (ip route list scope global | grep -P "\b(172|10|192\.168)\.") || (ip route list | grep -m1 default)`, sbinPath))
+	output, err := h.ExecOutput(fmt.Sprintf(`%s; (ip route list scope global | grep -E "\b(172|10|192\.168)\.") || (ip route list | grep -m1 default)`, sbinPath))
 	if err == nil {
 		re := regexp.MustCompile(`\bdev (\w+)`)
 		match := re.FindSubmatch([]byte(output))
