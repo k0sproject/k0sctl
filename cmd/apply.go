@@ -64,6 +64,7 @@ var applyCommand = &cli.Command{
 			&phase.DownloadBinaries{},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
+			&phase.UploadFiles{},
 			&phase.ConfigureK0s{},
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},

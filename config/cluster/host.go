@@ -26,6 +26,7 @@ type Host struct {
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
+	Files            []UploadFile      `yaml:"files,omitempty"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer   `yaml:"-"`
