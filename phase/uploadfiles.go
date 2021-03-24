@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"path/filepath"
+
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 
@@ -41,27 +43,29 @@ func (p *UploadFiles) Run() error {
 
 func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 	for _, f := range h.Files {
+		log.Infof("%s: starting to upload %s", h, f.Name)
 		files, err := f.Resolve()
 		if err != nil {
 			return err
 		}
 
+		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermMode); err != nil {
+			return err
+		}
+
 		for _, file := range files {
-			log.Infof("%s: uploading %s to %s", h, file.Source, file.Destination)
+			log.Debugf("%s: uploading %s to %s", h, file, f.DestinationDir)
+			destination := filepath.Join(f.DestinationDir, filepath.Base(file))
 
-			if err := h.Execf("mkdir -p $(dirname %s)", f.Destination); err != nil {
+			if err := h.Upload(file, destination); err != nil {
 				return err
 			}
 
-			if err := h.Upload(file.Source, file.Destination); err != nil {
-				return err
-			}
-
-			if err := h.Configurer.Chmod(h, file.Destination, f.PermMode); err != nil {
+			if err := h.Configurer.Chmod(h, destination, f.PermMode); err != nil {
 				return err
 			}
 		}
-
+		log.Infof("%s: %s upload done", h, f.Name)
 	}
 	return nil
 }

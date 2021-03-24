@@ -217,6 +217,24 @@ environment:
   HTTP_PROXY: 10.0.0.1:443
 ```
 
+###### `spec.hosts[*].files` &lt;sequence&gt; (optional)
+
+List of files to be uploaded to the host. 
+
+Example:
+
+```yaml
+- name: image-bundle
+  src: airgap-images.tgz
+  dstDir: /var/lib/k0s/images/
+  perm: 0700
+```
+
+* `name`: name of the file "bundle", used only for logging purposes (optional)
+* `src`: [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded
+* `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host.
+* `perm`: File permission mode for uploaded file(s) and created directories
+
 ##### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
 
 SSH connection options.
