@@ -27,3 +27,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/client-go v0.19.3
 )
+
+// To be removed once rig has the needed stuff merged&released
+replace github.com/k0sproject/rig => github.com/jnummelin/rig v0.3.13-0.20210325122717-fead5f37de2c

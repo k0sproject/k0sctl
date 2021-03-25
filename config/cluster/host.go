@@ -38,6 +38,7 @@ type configurer interface {
 	StopService(os.Host, string) error
 	RestartService(os.Host, string) error
 	ServiceIsRunning(os.Host, string) bool
+	ServiceStatus(os.Host, string) (string, error)
 	Arch(os.Host) (string, error)
 	K0sCmdf(string, ...interface{}) string
 	K0sBinaryPath() string

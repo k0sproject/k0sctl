@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -85,6 +86,11 @@ func (p *InstallWorkers) Run() error {
 		} else {
 			log.Infof("%s: waiting for node to become ready", h)
 			if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
+				log.Errorf("%s: node not ready within timelimit", h)
+				status, _ := h.Configurer.ServiceStatus(h, h.K0sServiceName())
+				log.Errorf("%s: service status: %s", h, status)
+				op, _ := p.Config.Spec.K0sLeader().ExecOutput(h.Configurer.KubectlCmdf("describe node,pod -A"), exec.HideOutput())
+				log.Errorf("%s: node status: %s", h, op)
 				return err
 			}
 			h.Metadata.Ready = true
