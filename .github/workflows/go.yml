@@ -57,10 +57,10 @@ jobs:
       matrix:
         image:
           - quay.io/footloose/ubuntu18.04
-          - quay.io/footloose/centos7
-            #- quay.io/footloose/amazonlinux2
-          - quay.io/footloose/debian10
-          - quay.io/footloose/fedora29
+          # - quay.io/footloose/centos7
+          #   #- quay.io/footloose/amazonlinux2
+          # - quay.io/footloose/debian10
+          # - quay.io/footloose/fedora29
     name: Basic 1+1 smoke
     needs: build
     runs-on: ubuntu-latest
@@ -91,97 +91,97 @@ jobs:
             !*.log
           key: k0sctl-cache
 
-      - name: Docker Layer Caching For Footloose
-        uses: satackey/action-docker-layer-caching@v0.0.11
-        continue-on-error: true
+      # - name: Docker Layer Caching For Footloose
+      #   uses: satackey/action-docker-layer-caching@v0.0.11
+      #   continue-on-error: true
 
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-basic
 
-  smoke-upgrade:
-    strategy:
-      matrix:
-        image:
-          - quay.io/footloose/ubuntu18.04
-          - quay.io/footloose/centos7
-          #- quay.io/footloose/amazonlinux2
-          #- quay.io/footloose/debian10
-          #- quay.io/footloose/fedora29
-    name: Upgrade 0.10 --> 0.11
-    needs: build
-    runs-on: ubuntu-latest
+  # smoke-upgrade:
+  #   strategy:
+  #     matrix:
+  #       image:
+  #         - quay.io/footloose/ubuntu18.04
+  #         - quay.io/footloose/centos7
+  #         #- quay.io/footloose/amazonlinux2
+  #         #- quay.io/footloose/debian10
+  #         #- quay.io/footloose/fedora29
+  #   name: Upgrade 0.10 --> 0.11
+  #   needs: build
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+  #   steps:
+  #     - name: Check out code into the Go module directory
+  #       uses: actions/checkout@v2
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.15
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: 1.15
 
-      - name: Restore the compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
-        with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+  #     - name: Restore the compiled binary for smoke testing
+  #       uses: actions/cache@v2
+  #       id: restore-compiled-binary
+  #       with:
+  #         path: |
+  #           k0sctl
+  #         key: build-${{ github.run_id }}
 
-      - name: K0sctl cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            /var/cache/k0sctl
-            ~/.k0sctl/cache
-            !*.log
-          key: k0sctl-cache
+  #     - name: K0sctl cache
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           /var/cache/k0sctl
+  #           ~/.k0sctl/cache
+  #           !*.log
+  #         key: k0sctl-cache
 
-      - name: Old k0sctl cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache
-          key: k0sctl-040-cache
+  #     - name: Old k0sctl cache
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ~/.cache
+  #         key: k0sctl-040-cache
 
-      - name: Docker Layer Caching For Footloose
-        uses: satackey/action-docker-layer-caching@v0.0.11
-        continue-on-error: true
+  #     - name: Docker Layer Caching For Footloose
+  #       uses: satackey/action-docker-layer-caching@v0.0.11
+  #       continue-on-error: true
 
-      - name: Run smoke tests
-        env:
-          LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-upgrade
+  #     - name: Run smoke tests
+  #       env:
+  #         LINUX_IMAGE: ${{ matrix.image }}
+  #       run: make smoke-upgrade
 
-  smoke-reset:
-    strategy:
-      matrix:
-        image:
-          - quay.io/footloose/ubuntu18.04
-          - quay.io/footloose/centos7
-    name: Apply + reset
-    needs: build
-    runs-on: ubuntu-latest
+  # smoke-reset:
+  #   strategy:
+  #     matrix:
+  #       image:
+  #         - quay.io/footloose/ubuntu18.04
+  #         - quay.io/footloose/centos7
+  #   name: Apply + reset
+  #   needs: build
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.15
+  #   steps:
+  #     - name: Check out code into the Go module directory
+  #       uses: actions/checkout@v2
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v2
+  #       with:
+  #         go-version: 1.15
 
-      - name: Restore compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
-        with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+  #     - name: Restore compiled binary for smoke testing
+  #       uses: actions/cache@v2
+  #       id: restore-compiled-binary
+  #       with:
+  #         path: |
+  #           k0sctl
+  #         key: build-${{ github.run_id }}
 
-      - name: Run smoke tests
-        env:
-          LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-reset
+  #     - name: Run smoke tests
+  #       env:
+  #         LINUX_IMAGE: ${{ matrix.image }}
+  #       run: make smoke-reset

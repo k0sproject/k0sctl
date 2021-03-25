@@ -96,6 +96,8 @@ func (p *InstallWorkers) Run() error {
 				op, _ = h.ExecOutput("sudo journalctl -u k0sworker --no-pager --full", exec.HideOutput())
 				log.Errorf("%s: full worker service journal logs:\n %s", h, op)
 
+				op, _ = p.Config.Spec.K0sLeader().ExecOutput("sudo journalctl -u k0scontroller --no-pager --full", exec.HideOutput())
+				log.Errorf("%s: full controller service journal logs:\n %s", h, op)
 				return err
 			}
 			h.Metadata.Ready = true
