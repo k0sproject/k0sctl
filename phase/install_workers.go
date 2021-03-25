@@ -90,7 +90,12 @@ func (p *InstallWorkers) Run() error {
 				status, _ := h.Configurer.ServiceStatus(h, h.K0sServiceName())
 				log.Errorf("%s: service status: %s", h, status)
 				op, _ := p.Config.Spec.K0sLeader().ExecOutput(h.Configurer.KubectlCmdf("describe node,pod -A"), exec.HideOutput())
-				log.Errorf("%s: node status: %s", h, op)
+				log.Errorf("%s: node and pod status: %s", h, op)
+
+				// FIXME: Needs to be handle in portable way, just for CI debugging purposes for now
+				op, _ = h.ExecOutput("sudo journalctl -u k0sworker --no-pager --full", exec.HideOutput())
+				log.Errorf("%s: full worker service journal logs:\n %s", h, op)
+
 				return err
 			}
 			h.Metadata.Ready = true
