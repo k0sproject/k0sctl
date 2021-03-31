@@ -1,3 +1,11 @@
+terraform {
+  required_providers {
+      hcloud = {
+          source = "hetznercloud/hcloud"
+          version = "~> 1.24"
+      }
+  }
+}
 variable "hcloud_token" {
     description = "Hetzner API token"
 }
@@ -67,6 +75,45 @@ resource "hcloud_server" "worker" {
     }
 }
 
+resource "hcloud_load_balancer" "load_balancer" {
+  name       = "${var.cluster_name}-balancer"
+  load_balancer_type = "lb11"
+  location   = var.location
+}
+
+resource "hcloud_load_balancer_target" "load_balancer_target" {
+  type             = "label_selector"
+  load_balancer_id = hcloud_load_balancer.load_balancer.id
+  label_selector = "role=controller"
+}
+
+resource "hcloud_load_balancer_service" "load_balancer_service_6443" {
+    load_balancer_id = hcloud_load_balancer.load_balancer.id
+    protocol = "tcp"
+    listen_port = 6443
+    destination_port = 6443
+}
+
+resource "hcloud_load_balancer_service" "load_balancer_service_9443" {
+    load_balancer_id = hcloud_load_balancer.load_balancer.id
+    protocol = "tcp"
+    listen_port = 9443
+    destination_port = 9443
+}
+
+resource "hcloud_load_balancer_service" "load_balancer_service_8132" {
+    load_balancer_id = hcloud_load_balancer.load_balancer.id
+    protocol = "tcp"
+    listen_port = 8132
+    destination_port = 8132
+}
+
+resource "hcloud_load_balancer_service" "load_balancer_service_8133" {
+    load_balancer_id = hcloud_load_balancer.load_balancer.id
+    protocol = "tcp"
+    listen_port = 8133
+    destination_port = 8133
+}
 locals {
     k0s_tmpl = {
         apiVersion = "k0sctl.k0sproject.io/v1beta1"
@@ -82,7 +129,20 @@ locals {
                 }
             ]
             k0s = {
-                version = "0.10.0-beta2"
+                version = "0.12.1"
+                "config" = {
+                    "apiVersion" = "k0s.k0sproject.io/v1beta1"
+                    "kind" =  "Cluster"
+                    "metadata" = {
+                        "name" = var.cluster_name
+                    }
+                    "spec" = {
+                        "api" = {
+                            "externalAddress" = hcloud_load_balancer.load_balancer.ipv4
+                            "sans" = [hcloud_load_balancer.load_balancer.ipv4]
+                        }
+                    }
+                }
             }
         }
     }

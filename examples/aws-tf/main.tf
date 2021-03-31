@@ -83,7 +83,7 @@ locals {
         }
       ]
       k0s = {
-        version = "0.10.0-beta2"
+        version = "0.12.1"
       }
     }
   }
