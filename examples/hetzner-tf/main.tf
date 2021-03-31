@@ -129,7 +129,7 @@ locals {
                 }
             ]
             k0s = {
-                version = "0.12.0"
+                version = "0.12.1"
                 "config" = {
                     "apiVersion" = "k0s.k0sproject.io/v1beta1"
                     "kind" =  "Cluster"
