@@ -1,6 +1,6 @@
 module github.com/k0sproject/k0sctl
 
-go 1.15
+go 1.16
 
 replace github.com/segmentio/analytics-go v3.1.0+incompatible => github.com/kke/analytics-go v1.2.1-0.20210209122110-10364370169e
 
