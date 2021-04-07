@@ -19,7 +19,7 @@ bin/k0sctl-darwin-x64: $(GO_SRCS)
 	GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-x64 main.go
 
 bin/%.sha256: bin/%
-	sha256sum -b $< > $@.tmp
+	sha256sum -b $< | sed 's/bin\///' > $@.tmp
 	mv $@.tmp $@
 
 bins := k0sctl-linux-x64 k0sctl-win-x64.exe k0sctl-darwin-x64
