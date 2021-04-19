@@ -251,7 +251,7 @@ spec:
         keyPath: ~/.ssh/id_rsa
 ```
 
-To tunnel connections through a bastion host. The bastion configuration has all the same fields as any SSH connection:
+It's also possible to tunnel connections through a bastion host. The bastion configuration has all the same fields as any SSH connection:
 
 ```yaml
 spec:
