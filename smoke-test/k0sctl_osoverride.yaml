@@ -10,7 +10,7 @@ spec:
         keyPath: ./id_rsa_k0s
     - role: worker
       uploadBinary: true
-      osIdOverride: ubuntu
+      os: ubuntu
       ssh:
         address: "127.0.0.1"
         port: 9023
