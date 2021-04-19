@@ -219,7 +219,7 @@ environment:
 
 ###### `spec.hosts[*].files` &lt;sequence&gt; (optional)
 
-List of files to be uploaded to the host. 
+List of files to be uploaded to the host.
 
 Example:
 
@@ -238,6 +238,51 @@ Example:
 ##### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
 
 SSH connection options.
+
+Example:
+
+```yaml
+spec:
+  hosts:
+    - role: controller
+      ssh:
+        address: 10.0.0.2
+        user: ubuntu
+        keyPath: ~/.ssh/id_rsa
+```
+
+To tunnel connections through a bastion host. The bastion configuration has all the same fields as any SSH connection:
+
+```yaml
+spec:
+  hosts:
+    - role: controller
+      ssh:
+        address: 10.0.0.2
+        user: ubuntu
+        keyPath: ~/.ssh/id_rsa
+        bastion:
+          address: 10.0.0.1
+          user: root
+          keyPath: ~/.ssh/id_rsa2
+```
+
+SSH agent and auth forwarding are also supported, a host without a keyfile:
+
+```yaml
+spec:
+  hosts:
+    - role: controller
+      ssh:
+        address: 10.0.0.2
+        user: ubuntu
+```
+
+```
+$ ssh-add ~/.ssh/aws.pem
+$ ssh -A user@jumphost
+user@jumphost ~ $ k0sctl apply
+```
 
 ###### `spec.hosts[*].ssh.address` &lt;string&gt; (required)
 
