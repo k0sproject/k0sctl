@@ -27,6 +27,7 @@ type Host struct {
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []UploadFile      `yaml:"files,omitempty"`
+	OSIDOverride     string            `yaml:"os"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer   `yaml:"-"`

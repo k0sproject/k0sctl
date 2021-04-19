@@ -2,6 +2,7 @@ package phase
 
 import (
 	"github.com/k0sproject/k0sctl/config/cluster"
+
 	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer"
 	// anonymous import is needed to load the os configurers
@@ -25,6 +26,10 @@ func (p *DetectOS) Title() string {
 // Run the phase
 func (p *DetectOS) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
+		if h.OSIDOverride != "" {
+			log.Infof("%s: overriding OS to %s", h, h.OSIDOverride)
+			h.OSVersion.ID = h.OSIDOverride
+		}
 		if err := h.ResolveConfigurer(); err != nil {
 			p.SetProp("missing-support", h.OSVersion.String())
 			return err
