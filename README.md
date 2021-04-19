@@ -235,6 +235,16 @@ Example:
 * `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host.
 * `perm`: File permission mode for uploaded file(s) and created directories
 
+##### `spec.hosts[*].os` &lt;string&gt; (optional) (default: ``)
+
+Override auto-detected OS distro. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl`to use Debian based functionality for the node with:
+```yaml
+  - role: worker
+    os: debian
+    ssh:
+      address: 10.0.0.2
+```
+
 ##### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
 
 SSH connection options.
