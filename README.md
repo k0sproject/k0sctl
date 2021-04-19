@@ -237,7 +237,7 @@ Example:
 
 ##### `spec.hosts[*].os` &lt;string&gt; (optional) (default: ``)
 
-Override auto-detected OS distro. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl`to use Debian based functionality for the node with:
+Override auto-detected OS distro. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl` to use Debian based functionality for the node with:
 ```yaml
   - role: worker
     os: debian
