@@ -130,7 +130,7 @@ spec:
       address: 10.0.0.2
   k0s:
     version: 0.10.0
-    instalFlags:
+    installFlags:
     - --debug
     config:
       apiVersion: k0s.k0sproject.io/v1beta1
