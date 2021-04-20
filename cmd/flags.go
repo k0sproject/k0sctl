@@ -45,7 +45,7 @@ var (
 	}
 
 	analyticsFlag = &cli.StringFlag{
-		Name:   "--disable-telemetry",
+		Name:   "disable-telemetry",
 		Hidden: true,
 	}
 )
