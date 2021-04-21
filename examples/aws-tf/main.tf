@@ -3,7 +3,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-1"
+  region = "eu-north-1"
 }
 
 resource "tls_private_key" "k0sctl" {
@@ -83,7 +83,7 @@ locals {
         }
       ]
       k0s = {
-        version = "0.12.1"
+        version = "0.13.1"
       }
     }
   }
