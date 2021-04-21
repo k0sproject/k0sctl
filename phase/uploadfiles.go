@@ -49,7 +49,7 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 			return err
 		}
 
-		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermMode); err != nil {
+		if err := h.Execf("sudo install -d %s -m %s", f.DestinationDir, f.PermMode); err != nil {
 			return err
 		}
 
