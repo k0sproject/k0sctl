@@ -44,9 +44,10 @@ var (
 		TakesFile: true,
 	}
 
-	analyticsFlag = &cli.StringFlag{
-		Name:   "--disable-telemetry",
-		Hidden: true,
+	analyticsFlag = &cli.BoolFlag{
+		Name:    "disable-telemetry",
+		EnvVars: []string{"DISABLE_TELEMETRY"},
+		Hidden:  true,
 	}
 )
 
@@ -95,6 +96,7 @@ func displayCopyright(ctx *cli.Context) error {
 
 func initAnalytics(ctx *cli.Context) error {
 	if ctx.Bool("disable-telemetry") {
+		log.Tracef("disabling telemetry")
 		return nil
 	}
 

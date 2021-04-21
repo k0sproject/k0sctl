@@ -2,6 +2,7 @@ FOOTLOOSE_TEMPLATE=${FOOTLOOSE_TEMPLATE:-"footloose.yaml.tpl"}
 
 export LINUX_IMAGE=${LINUX_IMAGE:-"quay.io/footloose/ubuntu18.04"}
 export PRESERVE_CLUSTER=${PRESERVE_CLUSTER:-""}
+export DISABLE_TELEMETRY=true
 
 
 function createCluster() {
