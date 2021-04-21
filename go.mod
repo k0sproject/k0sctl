@@ -15,6 +15,7 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/hashicorp/go-version v1.2.1
 	github.com/k0sproject/dig v0.1.1
+	// We need to bump up rig version once https://github.com/k0sproject/rig/pull/23 is merged
 	github.com/k0sproject/rig v0.3.15
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-isatty v0.0.12
