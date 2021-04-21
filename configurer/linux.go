@@ -111,7 +111,7 @@ func (l Linux) KubeconfigPath() string {
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
 func (l Linux) KubectlCmdf(s string, args ...interface{}) string {
-	return fmt.Sprintf(`sudo kubectl --kubeconfig "%s" %s`, l.KubeconfigPath(), fmt.Sprintf(s, args...))
+	return l.K0sCmdf(`kubectl --kubeconfig "%s" %s`, l.KubeconfigPath(), fmt.Sprintf(s, args...))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error

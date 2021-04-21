@@ -58,13 +58,6 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		}
 	}
 
-	if h.IsController() && !h.Configurer.CommandExist(h, "kubectl") {
-		log.Infof("%s: installing kubectl", h)
-		if err := h.Configurer.InstallKubectl(h); err != nil {
-			return err
-		}
-	}
-
 	if h.Configurer.IsContainer(h) {
 		log.Infof("%s: is a container, applying a fix", h)
 		if err := h.Configurer.FixContainer(h); err != nil {

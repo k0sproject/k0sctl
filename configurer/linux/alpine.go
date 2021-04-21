@@ -21,16 +21,6 @@ var kubectlInstallScript = []string{
 	`sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl`,
 }
 
-// InstallKubectl installs kubectl using the curl method
-func (l BaseLinux) InstallKubectl(h os.Host) error {
-	for _, c := range kubectlInstallScript {
-		if err := h.Exec(c); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Alpine provides OS support for Alpine Linux
 type Alpine struct {
 	os.Linux
@@ -51,11 +41,6 @@ func init() {
 // InstallPackage installs packages via slackpkg
 func (l Alpine) InstallPackage(h os.Host, pkg ...string) error {
 	return h.Execf("sudo apk add --update %s", strings.Join(pkg, " "))
-}
-
-// InstallKubectl installs kubectl using the alpine edge/testing repo
-func (l Alpine) InstallKubectl(h os.Host) error {
-	return l.InstallPackage(h, "--repository https://dl-cdn.alpinelinux.org/alpine/edge/testing kubectl")
 }
 
 func (l Alpine) Prepare(h os.Host) error {

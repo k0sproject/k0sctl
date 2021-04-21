@@ -60,7 +60,6 @@ type configurer interface {
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
-	InstallKubectl(os.Host) error
 	KubectlCmdf(string, ...interface{}) string
 	KubeconfigPath() string
 	IsContainer(os.Host) bool
