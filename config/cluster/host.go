@@ -285,24 +285,27 @@ func (h *Host) UncordonNode(node *Host) error {
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
-func (h *Host) CheckHTTPStatus(url string, expected int) error {
+func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
 	status, err := h.Configurer.HTTPStatus(h, url)
 	if err != nil {
 		return err
 	}
 
-	if status != expected {
-		return fmt.Errorf("expected response code %d but received %d", expected, status)
+	for _, e := range expected {
+		if status == e {
+			return nil
+		}
 	}
 
-	return nil
+	return fmt.Errorf("expected response code %d but received %d", expected, status)
+
 }
 
 // WaitHTTPStatus waits until http status received for a GET from the URL is the expected one
-func (h *Host) WaitHTTPStatus(url string, expected int) error {
+func (h *Host) WaitHTTPStatus(url string, expected ...int) error {
 	return retry.Do(
 		func() error {
-			return h.CheckHTTPStatus(url, expected)
+			return h.CheckHTTPStatus(url, expected...)
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),
@@ -364,5 +367,7 @@ func (h *Host) NeedIPTables() bool {
 
 // WaitKubeAPIReady blocks until the local kube api responds to /version
 func (h *Host) WaitKubeAPIReady() error {
-	return h.WaitHTTPStatus("https://localhost:6443/version", 200)
+	// If the anon-auth is disabled on kube api the version endpoint will give 401
+	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
+	return h.WaitHTTPStatus("https://localhost:6443/version", 200, 401)
 }
