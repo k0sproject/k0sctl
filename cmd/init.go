@@ -199,9 +199,7 @@ var initCommand = &cli.Command{
 		}
 
 		// Read addresses from args
-		for _, a := range ctx.Args().Slice() {
-			addresses = append(addresses, a)
-		}
+		addresses = append(addresses, ctx.Args().Slice()...)
 
 		role := "controller"
 		for i, a := range addresses {
