@@ -138,7 +138,37 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 		host.SSH.KeyPath = keypath
 	}
 
+	defaults.Set(host)
+
 	return host
+}
+
+func buildHosts(addresses []string, ccount int, user, keypath string) cluster.Hosts {
+	var hosts cluster.Hosts
+	role := "controller"
+	for _, a := range addresses {
+		// strip trailing comments
+		if idx := strings.Index(a, "#"); idx > 0 {
+			a = a[:idx]
+		}
+		a = strings.TrimSpace(a)
+		if a == "" || strings.HasPrefix(a, "#") {
+			// skip empty and comment lines
+			continue
+		}
+
+		if len(hosts) >= ccount {
+			role = "worker"
+		}
+
+		hosts = append(hosts, hostFromAddress(a, role, user, keypath))
+	}
+
+	if len(hosts) == 0 {
+		return defaultHosts
+	}
+
+	return hosts
 }
 
 var initCommand = &cli.Command{
@@ -175,8 +205,6 @@ var initCommand = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-
-		var hosts cluster.Hosts
 		var addresses []string
 
 		// Read addresses from stdin
@@ -201,30 +229,12 @@ var initCommand = &cli.Command{
 		// Read addresses from args
 		addresses = append(addresses, ctx.Args().Slice()...)
 
-		role := "controller"
-		for i, a := range addresses {
-			a = strings.TrimSpace(a)
-			if a == "" {
-				continue
-			}
-
-			if i > ctx.Int("controller-count")-1 {
-				role = "worker"
-			}
-
-			hosts = append(hosts, hostFromAddress(a, role, ctx.String("user"), ctx.String("key-path")))
-		}
-
-		if len(hosts) == 0 {
-			hosts = defaultHosts
-		}
-
 		cfg := config.Cluster{
 			APIVersion: config.APIVersion,
 			Kind:       "Cluster",
 			Metadata:   &config.ClusterMetadata{Name: ctx.String("cluster-name")},
 			Spec: &cluster.Spec{
-				Hosts: hosts,
+				Hosts: buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path")),
 				K0s:   cluster.K0s{},
 			},
 		}

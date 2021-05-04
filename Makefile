@@ -9,17 +9,30 @@ ENVIRONMENT ?= "development"
 LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/k0sproject/k0sctl/integration/segment.WriteKey=$(SEGMENT_WRITE_KEY) -X github.com/k0sproject/k0sctl/version.GitCommit=$(GIT_COMMIT) -X github.com/k0sproject/k0sctl/version.Version=$(K0SCTL_VERSION)
 BUILD_FLAGS = -trimpath -a -tags "netgo static_build" -installsuffix netgo -ldflags "$(LD_FLAGS) -extldflags '-static'"
 
+BUILDER_IMAGE = k0sctl-builder
+GO = docker run --rm -v "$(CURDIR)":/go/src/github.com/k0sproject/k0sctl \
+	-w "/go/src/github.com/k0sproject/k0sctl" \
+	-e GOPATH\
+	-e GOOS \
+	-e GOARCH \
+	-e GOEXE \
+	$(BUILDER_IMAGE)
+gosrc = $(wildcard *.go */*.go */*/*.go */*/*/*.go)
+
+builder:
+	docker build -t $(BUILDER_IMAGE) -f Dockerfile.builder .
+
 bin/k0sctl-linux-x64: $(GO_SRCS)
-	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
+	GOOS=linux GOARCH=amd64 $(GO) build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
 
 bin/k0sctl-win-x64.exe: $(GO_SRCS)
-	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-x64.exe main.go
+	GOOS=windows GOARCH=amd64 $(GO) build $(BUILD_FLAGS) -o bin/k0sctl-win-x64.exe main.go
 
-bin/k0sctl-darwin-x64: $(GO_SRCS)
-	GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-x64 main.go
+bin/k0sctl-darwin-x64: builder
+	GOOS=darwin GOARCH=amd64 $(GO) go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-x64 main.go
 
-bin/k0sctl-darwin-arm64: $(GO_SRCS)
-	GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
+bin/k0sctl-darwin-arm64: builder
+	GOOS=darwin GOARCH=arm64 $(GO) go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
 
 bin/%.sha256: bin/%
 	sha256sum -b $< | sed 's/bin\///' > $@.tmp
@@ -32,7 +45,7 @@ checksums := $(addsuffix .sha256,$(bins))
 build-all: $(addprefix bin/,$(bins) $(checksums))
 
 k0sctl: $(GO_SRCS)
-	go build $(BUILD_FLAGS) -o k0sctl main.go
+	$(GO) build $(BUILD_FLAGS) -o k0sctl main.go
 
 .PHONY: clean
 clean:
@@ -57,7 +70,7 @@ upload-%: bin/% $(github_release)
 .PHONY: upload
 upload: $(addprefix upload-,$(bins) $(checksums))
 
-smoketests := smoke-basic smoke-upgrade smoke-reset smoke-os-override
+smoketests := smoke-basic smoke-upgrade smoke-reset smoke-os-override smoke-init
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
