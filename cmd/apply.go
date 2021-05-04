@@ -39,6 +39,7 @@ var applyCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
 		content := ctx.String("config")
+		log.Debugf("Loaded configuration:\n%s", content)
 
 		c := config.Cluster{}
 		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
