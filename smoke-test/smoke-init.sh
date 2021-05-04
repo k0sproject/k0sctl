@@ -7,4 +7,4 @@ trap cleanup EXIT
 
 deleteCluster
 createCluster
-footloose status | grep -v NAME | awk '{print $5 ":" $4}'|sed 's/}//' | ../k0sctl init --key-path ./id_rsa_k0s | ../k0sctl apply --config - --debug
+../k0sctl init --key-path ./id_rsa_k0s 127.0.0.1:9022 root@127.0.0.1:9023 | ../k0sctl apply --config - --debug
