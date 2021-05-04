@@ -85,7 +85,25 @@ If the configuration cluster version `spec.k0s.version` is greater than the vers
 
 ### `k0sctl init`
 
-Generate a configuration template. Use `--k0s` to include an example `spec.k0s.config` k0s configuration block.
+Generate a configuration template. Use `--k0s` to include an example `spec.k0s.config` k0s configuration block. You can also supply a list of host addresses via arguments or stdin.
+
+Output a minimal configuration template:
+
+```sh
+$ k0sctl init > k0sctl.yaml
+```
+
+Output an example configuration with a default k0s config:
+
+```sh
+$ kosctl init --k0s > k0sctl.yaml
+```
+
+Create a configuration from a list of host addresses and pipe it to k0sctl apply:
+
+```sh
+$ k0sctl init 10.0.0.1 10.0.0.2 ubuntu@10.0.0.3:8022 | k0sctl apply --config -
+```
 
 ### `k0sctl reset`
 
