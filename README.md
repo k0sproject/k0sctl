@@ -96,7 +96,7 @@ $ k0sctl init > k0sctl.yaml
 Output an example configuration with a default k0s config:
 
 ```sh
-$ kosctl init --k0s > k0sctl.yaml
+$ k0sctl init --k0s > k0sctl.yaml
 ```
 
 Create a configuration from a list of host addresses and pipe it to k0sctl apply:
