@@ -2,8 +2,6 @@ module github.com/k0sproject/k0sctl
 
 go 1.16
 
-replace github.com/segmentio/analytics-go v3.1.0+incompatible => github.com/kke/analytics-go v1.2.1-0.20210209122110-10364370169e
-
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.8
 	github.com/Masterminds/semver v1.5.0
@@ -19,10 +17,12 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-isatty v0.0.12
 	github.com/segmentio/analytics-go v3.1.0+incompatible
+	github.com/segmentio/backo-go v0.0.0-20200129164019-23eae7c10bd3 // indirect
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/client-go v0.19.3
