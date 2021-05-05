@@ -26,7 +26,7 @@ var ctx = &segment.Context{
 	OS: segment.OSInfo{
 		Name: runtime.GOOS + " " + runtime.GOARCH,
 	},
-	Direct: true,
+	Extra: map[string]interface{}{"Direct": true},
 }
 
 // Client for the Segment.io analytics service
