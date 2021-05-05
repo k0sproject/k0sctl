@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
@@ -80,40 +83,159 @@ telemetry:
   enabled: true
 `)
 
+var defaultHosts = cluster.Hosts{
+	&cluster.Host{
+		Connection: rig.Connection{
+			SSH: &rig.SSH{
+				Address: "10.0.0.1",
+			},
+		},
+		Role: "controller",
+	},
+	&cluster.Host{
+		Connection: rig.Connection{
+			SSH: &rig.SSH{
+				Address: "10.0.0.2",
+			},
+		},
+		Role: "worker",
+	},
+}
+
+func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
+	port := 22
+
+	if idx := strings.Index(addr, "@"); idx > 0 {
+		user = addr[:idx]
+		addr = addr[idx+1:]
+	}
+
+	if idx := strings.Index(addr, ":"); idx > 0 {
+		pstr := addr[idx+1:]
+		if p, err := strconv.Atoi(pstr); err == nil {
+			port = p
+		}
+		addr = addr[:idx]
+	}
+
+	host := &cluster.Host{
+		Connection: rig.Connection{
+			SSH: &rig.SSH{
+				Address: addr,
+				Port:    port,
+			},
+		},
+	}
+	if role != "" {
+		host.Role = role
+	} else {
+		host.Role = "worker"
+	}
+	if user != "" {
+		host.SSH.User = user
+	}
+	if keypath != "" {
+		host.SSH.KeyPath = keypath
+	}
+
+	_ = defaults.Set(host)
+
+	return host
+}
+
+func buildHosts(addresses []string, ccount int, user, keypath string) cluster.Hosts {
+	var hosts cluster.Hosts
+	role := "controller"
+	for _, a := range addresses {
+		// strip trailing comments
+		if idx := strings.Index(a, "#"); idx > 0 {
+			a = a[:idx]
+		}
+		a = strings.TrimSpace(a)
+		if a == "" || strings.HasPrefix(a, "#") {
+			// skip empty and comment lines
+			continue
+		}
+
+		if len(hosts) >= ccount {
+			role = "worker"
+		}
+
+		hosts = append(hosts, hostFromAddress(a, role, user, keypath))
+	}
+
+	if len(hosts) == 0 {
+		return defaultHosts
+	}
+
+	return hosts
+}
+
 var initCommand = &cli.Command{
-	Name:  "init",
-	Usage: "Create a configuration template",
+	Name:        "init",
+	Usage:       "Create a configuration template",
+	Description: "Outputs a new k0sctl configuration. When a list of addresses are provided, hosts are generated into the configuration. The list of addresses can also be provided via stdin.",
+	ArgsUsage:   "[[user@]address[:port] ...]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "k0s",
 			Usage: "Include a skeleton k0s config section",
 		},
+		&cli.StringFlag{
+			Name:    "cluster-name",
+			Usage:   "Cluster name",
+			Aliases: []string{"n"},
+			Value:   "k0s-cluster",
+		},
+		&cli.IntFlag{
+			Name:    "controller-count",
+			Usage:   "The number of controllers to create when addresses are given",
+			Aliases: []string{"C"},
+			Value:   1,
+		},
+		&cli.StringFlag{
+			Name:    "user",
+			Usage:   "Host user when addresses given",
+			Aliases: []string{"u"},
+		},
+		&cli.StringFlag{
+			Name:    "key-path",
+			Usage:   "Host key path when addresses given",
+			Aliases: []string{"i"},
+		},
 	},
 	Action: func(ctx *cli.Context) error {
+		var addresses []string
+
+		// Read addresses from stdin
+		stat, err := os.Stdin.Stat()
+		if err == nil {
+			if (stat.Mode() & os.ModeCharDevice) == 0 {
+				rd := bufio.NewReader(os.Stdin)
+				for {
+					row, _, err := rd.ReadLine()
+					if err != nil {
+						break
+					}
+					addresses = append(addresses, string(row))
+				}
+				if err != nil {
+					return err
+				}
+
+			}
+		}
+
+		// Read addresses from args
+		addresses = append(addresses, ctx.Args().Slice()...)
+
 		cfg := config.Cluster{
 			APIVersion: config.APIVersion,
 			Kind:       "Cluster",
-			Metadata:   &config.ClusterMetadata{},
+			Metadata:   &config.ClusterMetadata{Name: ctx.String("cluster-name")},
 			Spec: &cluster.Spec{
-				Hosts: cluster.Hosts{
-					&cluster.Host{
-						Connection: rig.Connection{
-							SSH: &rig.SSH{
-								Address: "10.0.0.1",
-							},
-						},
-						Role: "controller",
-					},
-					&cluster.Host{
-						Connection: rig.Connection{
-							SSH: &rig.SSH{
-								Address: "10.0.0.2",
-							},
-						},
-						Role: "worker",
-					},
-				},
-				K0s: cluster.K0s{},
+				Hosts: buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path")),
+				K0s:   cluster.K0s{},
 			},
 		}
 
