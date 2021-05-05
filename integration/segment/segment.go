@@ -11,7 +11,7 @@ import (
 )
 
 // WriteKey for analytics
-var WriteKey = ""
+var WriteKey = "9uTKgGzXDVsC97cioQWpiV40GwSlXFEl"
 
 // Verbose controls the verbosity of segment analytics client
 var Verbose bool
@@ -26,7 +26,7 @@ var ctx = &segment.Context{
 	OS: segment.OSInfo{
 		Name: runtime.GOOS + " " + runtime.GOARCH,
 	},
-	Extra: map[string]interface{}{"Direct": true},
+	Extra: map[string]interface{}{"direct": true},
 }
 
 // Client for the Segment.io analytics service
