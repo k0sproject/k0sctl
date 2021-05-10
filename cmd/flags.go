@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -76,7 +75,7 @@ func initConfig(ctx *cli.Context) error {
 	}
 	defer file.Close()
 
-	content, err := ioutil.ReadAll(file)
+	content, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}
@@ -117,7 +116,7 @@ func initAnalytics(ctx *cli.Context) error {
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger()
@@ -127,7 +126,7 @@ func initLogging(ctx *cli.Context) error {
 // TODO too similar to initLogging
 func initSilentLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 	initScreenLogger(logLevelFromCtx(ctx, log.FatalLevel))
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger()
