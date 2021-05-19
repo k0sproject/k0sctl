@@ -3,7 +3,7 @@ package github
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -115,7 +115,7 @@ func unmarshalURLBody(url string, o interface{}) error {
 		return fmt.Errorf("backend returned http %d for %s", resp.StatusCode, url)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
