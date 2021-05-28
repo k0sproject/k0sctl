@@ -20,67 +20,64 @@ import (
 var DefaultK0sYaml = []byte(`apiVersion: k0s.k0sproject.io/v1beta1
 kind: Cluster
 metadata:
-  name: k0s-cluster
-images:
-  konnectivity:
-    image: us.gcr.io/k8s-artifacts-prod/kas-network-proxy/proxy-agent
-    version: v0.0.13
-  metricsserver:
-    image: gcr.io/k8s-staging-metrics-server/metrics-server
-    version: v0.3.7
-  kubeproxy:
-    image: k8s.gcr.io/kube-proxy
-    version: v1.20.2
-  coredns:
-    image: docker.io/coredns/coredns
-    version: 1.7.0
-  calico:
-    cni:
-      image: calico/cni
-      version: v3.16.2
-    flexvolume:
-      image: calico/pod2daemon-flexvol
-      version: v3.16.2
-    node:
-      image: calico/node
-      version: v3.16.2
-    kubecontrollers:
-      image: calico/kube-controllers
-      version: v3.16.2
-installConfig:
-  users:
-    etcdUser: etcd
-    kineUser: kube-apiserver
-    konnectivityUser: konnectivity-server
-    kubeAPIserverUser: kube-apiserver
-    kubeSchedulerUser: kube-scheduler
+  name: k0s
 spec:
   api:
-    address: 172.17.0.2
-    sans:
-    - 172.17.0.2
+    port: 6443
+    k0sApiPort: 9443
   storage:
     type: etcd
-    etcd:
-      peerAddress: 172.17.0.2
   network:
     podCIDR: 10.244.0.0/16
     serviceCIDR: 10.96.0.0/12
-    provider: calico
-    calico:
-      mode: vxlan
-      vxlanPort: 4789
-      vxlanVNI: 4096
-      mtu: 1450
-      wireguard: false
-      flexVolumeDriverPath: /usr/libexec/k0s/kubelet-plugins/volume/exec/nodeagent~uds
-      withWindowsNodes: false
-      overlay: Always
+    provider: kuberouter
+    kuberouter:
+      autoMTU: true
   podSecurityPolicy:
     defaultPolicy: 00-k0s-privileged
-telemetry:
-  interval: 10m0s
-  enabled: true
+  telemetry:
+    enabled: true
+  installConfig:
+    users:
+      etcdUser: etcd
+      kineUser: kube-apiserver
+      konnectivityUser: konnectivity-server
+      kubeAPIserverUser: kube-apiserver
+      kubeSchedulerUser: kube-scheduler
+  images:
+    konnectivity:
+      image: us.gcr.io/k8s-artifacts-prod/kas-network-proxy/proxy-agent
+      version: v0.0.16
+    metricsserver:
+      image: gcr.io/k8s-staging-metrics-server/metrics-server
+      version: v0.3.7
+    kubeproxy:
+      image: k8s.gcr.io/kube-proxy
+      version: v1.21.1
+    coredns:
+      image: docker.io/coredns/coredns
+      version: 1.7.0
+    calico:
+      cni:
+        image: docker.io/calico/cni
+        version: v3.18.1
+      node:
+        image: docker.io/calico/node
+        version: v3.18.1
+      kubecontrollers:
+        image: docker.io/calico/kube-controllers
+        version: v3.18.1
+    kuberouter:
+      cni:
+        image: docker.io/cloudnativelabs/kube-router
+        version: v1.2.1
+      cniInstaller:
+        image: quay.io/k0sproject/cni-node
+        version: 0.1.0
+    default_pull_policy: IfNotPresent
+  konnectivity:
+    agentPort: 8132
+    adminPort: 8133
 `)
 
 var defaultHosts = cluster.Hosts{
