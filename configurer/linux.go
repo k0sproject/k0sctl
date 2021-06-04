@@ -68,6 +68,11 @@ func (l Linux) TempFile(h os.Host) (string, error) {
 	return h.ExecOutput("mktemp")
 }
 
+// TempDir returns a temp dir path
+func (l Linux) TempDir(h os.Host) (string, error) {
+	return h.ExecOutput("mktemp -d")
+}
+
 // DownloadK0s performs k0s binary download from github on the host
 func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 	tmp, err := l.TempFile(h)
