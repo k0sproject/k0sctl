@@ -138,18 +138,20 @@ metadata:
 spec:
   hosts:
   - role: controller
+    installFlags:
+    - --debug
     ssh:
       address: 10.0.0.1
       user: root
       port: 22
       keyPath: ~/.ssh/id_rsa
   - role: worker
+    installFlags:
+    - --debug
     ssh:
       address: 10.0.0.2
   k0s:
     version: 0.10.0
-    installFlags:
-    - --debug
     config:
       apiVersion: k0s.k0sproject.io/v1beta1
       kind: Cluster
