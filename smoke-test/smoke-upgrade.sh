@@ -1,23 +1,23 @@
 #!/bin/bash
 
-set -e
+K0SCTL_TEMPLATE=${K0SCTL_TEMPLATE:-"k0sctl.yaml.tpl"}
 
-function downloadOldK0sctl() {
-    mkdir -p ~/.cache
-    curl -sSfL https://github.com/k0sproject/k0sctl/releases/download/v0.4.0/k0sctl-linux-x64 -o ~/.cache/k0sctl_040
-    chmod +x ~/.cache/k0sctl_040
-}
+set -e
 
 . ./smoke.common.sh
 trap cleanup EXIT
 
-[ -f ~/.cache/k0sctl_040 ] || downloadOldK0sctl
 
 deleteCluster
 createCluster
 
-# k0sctl 0.4.0 does not fall back from /var/cache/k0sctl, so this needs sudo.
-sudo ~/.cache/k0sctl_040 apply --config k0sctl_legacy.yaml --debug
-# We need to upgrade with calico specific config as the previous version defaulted to calico
-../k0sctl apply --config k0sctl-calico.yaml --debug
-../k0sctl kubeconfig --config k0sctl-calico.yaml | grep -v -- "-data"
+# Create config with older version and apply
+K0S_VERSION="1.20.6+k0s.0"
+envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
+../k0sctl apply --config k0sctl.yaml --debug
+
+# Create config with newer version and apply as upgrade
+K0S_VERSION="1.21.1+k0s.0"
+envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
+../k0sctl apply --config k0sctl.yaml --debug
+../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
