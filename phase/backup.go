@@ -63,7 +63,7 @@ func (p *Backup) Run() error {
 		return err
 	}
 
-	localFile, err := filepath.Abs(fmt.Sprintf("k0s_backup_%s.tar.gz", time.Now().Format(time.RFC3339)))
+	localFile, err := filepath.Abs(fmt.Sprintf("k0s_backup_%d.tar.gz", time.Now().Unix()))
 	if err != nil {
 		return err
 	}
