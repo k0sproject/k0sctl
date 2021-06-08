@@ -67,6 +67,7 @@ type configurer interface {
 	HTTPStatus(os.Host, string) (int, error)
 	PrivateInterface(os.Host) (string, error)
 	PrivateAddress(os.Host, string, string) (string, error)
+	TempDir(os.Host) (string, error)
 }
 
 // HostMetadata resolved metadata for host
@@ -179,6 +180,11 @@ func (h *Host) K0sInstallCommand() string {
 	}
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+}
+
+// K0sBackupCommand returns a full command to be used as run k0s backup
+func (h *Host) K0sBackupCommand(targetDir string) string {
+	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir)
 }
 
 // IsController returns true for controller and controller+worker roles
