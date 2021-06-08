@@ -30,3 +30,6 @@ smoke-reset: $(footloose) id_rsa_k0s
 
 smoke-os-override: $(footloose) id_rsa_k0s
 	FOOTLOOSE_TEMPLATE=footloose.yaml.osoverride.tpl OS_RELEASE_PATH=$(realpath os-release) OS_OVERRIDE="ubuntu" ./smoke-basic.sh
+
+smoke-backup-restore: $(footloose) id_rsa_k0s
+	./smoke-backup-restore.sh
