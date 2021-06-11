@@ -27,6 +27,11 @@ var applyCommand = &cli.Command{
 			Name:  "no-drain",
 			Usage: "Do not drain worker nodes when upgrading",
 		},
+		&cli.StringFlag{
+			Name:      "restore-from",
+			Usage:     "Path to cluster backup archive to restore the state from",
+			TakesFile: true,
+		},
 		debugFlag,
 		traceFlag,
 		analyticsFlag,
@@ -67,6 +72,9 @@ var applyCommand = &cli.Command{
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{},
 			&phase.ConfigureK0s{},
+			&phase.Restore{
+				RestoreFrom: ctx.String("restore-from"),
+			},
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},

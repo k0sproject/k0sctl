@@ -105,6 +105,24 @@ Create a configuration from a list of host addresses and pipe it to k0sctl apply
 $ k0sctl init 10.0.0.1 10.0.0.2 ubuntu@10.0.0.3:8022 | k0sctl apply --config -
 ```
 
+### `k0sctl backup & restore`
+
+Takes a [backup](https://docs.k0sproject.io/main/backup/) of the cluster control plane state into the current working directory.
+
+The files are currently named with a running (unix epoch) timestamp, e.g. `k0s_backup_1623220591.tar.gz`.
+
+Restoring a backup can be done as part of the [k0sctl apply](#k0sctl-apply) command using `--restore-from k0s_backup_1623220591.tar.gz` flag.
+
+Restoring the cluster state is a full restoration of the cluster control plane state, including:
+- Etcd datastore content
+- Certificates
+- Keys
+
+In general restore is intended to be used as a disaster recovery mechanism and thus it expects that no k0s components actually exist on the controllers.
+
+Known limitations in the current restore process:
+- The control plane address (`externalAddress`) needs to remain the same between backup and restore. This is caused by the fact that all worker node components connect to this address and cannot currently be re-configured.
+
 ### `k0sctl reset`
 
 Uninstall k0s from the hosts listed in the configuration.
