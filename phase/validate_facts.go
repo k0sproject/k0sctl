@@ -10,7 +10,7 @@ import (
 // ValidateFacts performs remote OS detection
 type ValidateFacts struct {
 	GenericPhase
-	SkipSemverCheck bool
+	SkipDowngradeCheck bool
 }
 
 // Title for the phase
