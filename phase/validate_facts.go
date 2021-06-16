@@ -32,7 +32,7 @@ func (p *ValidateFacts) Run() error {
 }
 
 func (p *ValidateFacts) validateDowngrade() error {
-	if p.SkipSemverCheck {
+	if p.SkipDowngradeCheck {
 		return nil
 	}
 	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == "" {
