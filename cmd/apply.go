@@ -32,6 +32,11 @@ var applyCommand = &cli.Command{
 			Usage:     "Path to cluster backup archive to restore the state from",
 			TakesFile: true,
 		},
+		&cli.BoolFlag{
+			Name:   "disable-downgrade-check",
+			Usage:  "Allows users to override semver check",
+			Hidden: true,
+		},
 		debugFlag,
 		traceFlag,
 		analyticsFlag,
@@ -70,7 +75,7 @@ var applyCommand = &cli.Command{
 			&phase.UploadFiles{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
-			&phase.ValidateFacts{},
+			&phase.ValidateFacts{SkipSemverCheck: ctx.Bool("disable-downgrade-check")},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),

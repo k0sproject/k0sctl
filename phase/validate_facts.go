@@ -10,6 +10,7 @@ import (
 // ValidateFacts performs remote OS detection
 type ValidateFacts struct {
 	GenericPhase
+	SkipSemverCheck bool
 }
 
 // Title for the phase
@@ -31,6 +32,9 @@ func (p *ValidateFacts) Run() error {
 }
 
 func (p *ValidateFacts) validateDowngrade() error {
+	if p.SkipSemverCheck {
+		return nil
+	}
 	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == "" {
 		return nil
 	}
