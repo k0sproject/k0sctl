@@ -34,7 +34,7 @@ var applyCommand = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:   "disable-downgrade-check",
-			Usage:  "Allows users to override semver check",
+			Usage:  "Skip downgrade check",
 			Hidden: true,
 		},
 		debugFlag,
