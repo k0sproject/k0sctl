@@ -12,9 +12,9 @@ spec:
       hooks:
         apply:
           before:
-            - "date > /before-apply.hook"
+            - "echo hello > apply.hook"
           after:
-            - "date > /after-apply.hook"
+            - "grep -q hello apply.hook"
     - role: worker
       uploadBinary: true
       os: "$OS_OVERRIDE"
