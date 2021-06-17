@@ -30,6 +30,11 @@ func (p *Restore) Prepare(config *config.Cluster) error {
 	log.Debugf("restore from: %s", p.RestoreFrom)
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
+
+	if p.leader.Exec(p.leader.Configurer.K0sCmdf("restore --help")) != nil {
+		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
+	}
+
 	log.Debugf("restore leader: %s", p.leader)
 	log.Debugf("restore leader state: %+v", p.leader.Metadata)
 	return nil
