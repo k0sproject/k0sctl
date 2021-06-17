@@ -76,6 +76,7 @@ var applyCommand = &cli.Command{
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
+			&phase.RunHooks{Stage: "before", Action: "apply"},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),
@@ -87,6 +88,7 @@ var applyCommand = &cli.Command{
 			&phase.UpgradeWorkers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
+			&phase.RunHooks{Stage: "after", Action: "apply"},
 			&phase.Disconnect{},
 		)
 

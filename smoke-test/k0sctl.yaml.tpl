@@ -9,6 +9,12 @@ spec:
         address: "127.0.0.1"
         port: 9022
         keyPath: ./id_rsa_k0s
+      hooks:
+        apply:
+          before:
+            - "date > /before-apply.hook"
+          after:
+            - "date > /after-apply.hook"
     - role: worker
       uploadBinary: true
       os: "$OS_OVERRIDE"

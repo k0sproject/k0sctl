@@ -28,6 +28,7 @@ type Host struct {
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []UploadFile      `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
+	Hooks            Hooks             `yaml:"hooks,omitempty"`
 
 	Metadata   HostMetadata `yaml:"-"`
 	Configurer configurer   `yaml:"-"`
