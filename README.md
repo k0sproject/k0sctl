@@ -273,9 +273,36 @@ Example:
 * `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host.
 * `perm`: File permission mode for uploaded file(s) and created directories
 
+###### `spec.hosts[*].hooks` &lt;mapping&gt; (optional)
+
+Run a set of commands on the remote host during k0sctl operations.
+
+Example:
+
+```yaml
+hooks:
+  apply:
+    before:
+      - date > k0sctl-apply.log
+    after:
+      - echo "apply success" > k0sctl-apply.log
+```
+
+The currently available "hook points" are:
+
+* `apply`: Runs during `k0sctl apply`
+    - `before`: Runs after configuration and host validation, right before configuring k0s on the host
+    - `after`: Runs before disconnecting from the hosts after a successful apply operation
+* `backup`: Runs during `k0s backup`
+    - `before`: Runs before k0sctl runs the `k0s backup` command
+    - `after`: Runs before disconnecting from the hosts after successfully taking a backup
+* `reset`: Runs during `k0sctl reset`
+    - `before`: Runs after gathering information about the cluster, right before starting to remove the k0s installation.
+    - `after`: Runs before disconnecting from the hosts after a successful reset operation
+
 ##### `spec.hosts[*].os` &lt;string&gt; (optional) (default: ``)
 
-Override auto-detected OS distro. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl` to use Debian based functionality for the node with:
+Override OS distribution auto-detection. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl` to use Debian based functionality for the node with:
 ```yaml
   - role: worker
     os: debian
