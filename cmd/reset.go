@@ -70,7 +70,9 @@ var resetCommand = &cli.Command{
 			&phase.DetectOS{},
 			&phase.PrepareHosts{},
 			&phase.GatherK0sFacts{},
+			&phase.RunHooks{Stage: "before", Action: "reset"},
 			&phase.Reset{},
+			&phase.RunHooks{Stage: "after", Action: "reset"},
 			&phase.Disconnect{},
 		)
 
