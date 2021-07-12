@@ -120,6 +120,13 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 }
 
 func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
+	// If supplimental files or a k0s binary have been specified explicitly,
+	// always upgrade.  This covers the scenario where a user moves from a
+	// default-install cluster to one fed by OCI image bundles (ie. airgap)
+	if len(h.Files) != 0 || len(h.K0sBinaryPath) == 0 {
+		return true
+	}
+
 	target, err := semver.NewVersion(p.Config.Spec.K0s.Version)
 	if err != nil {
 		log.Warnf("%s: failed to parse target version: %s", h, err.Error())
