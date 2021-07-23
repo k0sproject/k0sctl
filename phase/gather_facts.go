@@ -32,7 +32,11 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	h.Metadata.Arch = output
 	p.IncProp(h.Metadata.Arch)
 
-	h.Metadata.Hostname = h.Configurer.Hostname(h)
+	if h.UseLongHostname {
+		h.Metadata.Hostname = h.Configurer.LongHostname(h)
+	} else {
+		h.Metadata.Hostname = h.Configurer.Hostname(h)
+	}
 
 	if h.IsController() {
 		if h.PrivateAddress == "" {

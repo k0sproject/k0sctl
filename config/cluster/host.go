@@ -28,6 +28,7 @@ type Host struct {
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []UploadFile      `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
+	UseLongHostname  bool              `yaml:"useLongHostname,omitempty"`
 	Hooks            Hooks             `yaml:"hooks,omitempty"`
 
 	Metadata   HostMetadata `yaml:"-"`
@@ -61,6 +62,7 @@ type configurer interface {
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
+	LongHostname(os.Host) string
 	KubectlCmdf(string, ...interface{}) string
 	KubeconfigPath() string
 	IsContainer(os.Host) bool
