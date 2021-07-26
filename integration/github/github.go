@@ -81,40 +81,23 @@ func (v versionCollection) Swap(i, j int) {
 // returns -1, 0, or 1 if this version is smaller, equal,
 // or larger than the other version, respectively.
 func vCompare(a, b *version.Version) int {
-	// A quick, efficient equality check
-	if a.String() == b.String() {
-		return 0
-	}
-
 	c := a.Compare(b)
 	if c != 0 {
 		// versions already differ enough to use the version pkg result
 		return c
 	}
 
-	if !strings.Contains(a.String(), "+") || !strings.Contains(b.String(), "+") {
-		// both versions do not include build tags
-		if strings.Contains(a.String(), "+") {
-			// version A has a build tag, B doesn't, assume version A is newer.
-			return 1
-		}
+	vA := a.String()
+
+	// go to plain string comparison
+	s := []string{vA, b.String()}
+	sort.Strings(s)
+
+	if vA == s[0] {
 		return -1
 	}
 
-	// go to plain string comparison
-	s := []string{
-		a.String(),
-		b.String(),
-	}
-	sort.Strings(s)
-	switch a.String() {
-	case s[0]:
-		return -1
-	case s[1]:
-		return 1
-	default:
-		return 0
-	}
+	return 1
 }
 
 // LatestRelease returns the semantically sorted latest version from github releases page for a repo.
