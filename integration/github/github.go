@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -61,6 +62,61 @@ func LatestK0sVersion(preok bool) (string, error) {
 	return strings.TrimPrefix(r.TagName, "v"), nil
 }
 
+// versionCollection is a type that implements the sort.Interface interface
+// so that versions can be sorted.
+type versionCollection []*version.Version
+
+func (v versionCollection) Len() int {
+	return len(v)
+}
+
+func (v versionCollection) Less(i, j int) bool {
+	return vCompare(v[i], v[j]) < 0
+}
+
+func (v versionCollection) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
+// vCompare compares this version to another version. This
+// returns -1, 0, or 1 if this version is smaller, equal,
+// or larger than the other version, respectively.
+func vCompare(a, b *version.Version) int {
+	// A quick, efficient equality check
+	if a.String() == b.String() {
+		return 0
+	}
+
+	segmentsSelf := a.Segments64()
+	segmentsOther := b.Segments64()
+
+	if reflect.DeepEqual(segmentsSelf, segmentsOther) {
+		preSelf := a.Prerelease()
+		preOther := b.Prerelease()
+		if preSelf == preOther {
+			if strings.Contains(a.String(), "+") && strings.Contains(b.String(), "+") {
+				// go to plain string comparison
+				s := []string{
+					a.String(),
+					b.String(),
+				}
+				sort.Strings(s)
+				switch a.String() {
+				case s[0]:
+					return -1
+				case s[1]:
+					return 1
+				default:
+					return 0
+				}
+			}
+		}
+	}
+	// not the case of buildtag comparison, use original from version pkg
+
+	return a.Compare(b)
+}
+
 // LatestRelease returns the semantically sorted latest version from github releases page for a repo.
 // Set preok true to allow returning pre-release versions.  Assumes the repository has release tags with
 // semantic version numbers (optionally v-prefixed).
@@ -81,7 +137,8 @@ func LatestRelease(repo string, preok bool) (Release, error) {
 			versions = append(versions, version)
 		}
 	}
-	sort.Sort(version.Collection(versions))
+	vc := versionCollection(versions)
+	sort.Sort(vc)
 
 	latest := versions[len(versions)-1].String()
 	if gotV {
