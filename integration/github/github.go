@@ -93,26 +93,24 @@ func vCompare(a, b *version.Version) int {
 	if reflect.DeepEqual(segmentsSelf, segmentsOther) {
 		preSelf := a.Prerelease()
 		preOther := b.Prerelease()
-		if preSelf == preOther {
-			if strings.Contains(a.String(), "+") && strings.Contains(b.String(), "+") {
-				// go to plain string comparison
-				s := []string{
-					a.String(),
-					b.String(),
-				}
-				sort.Strings(s)
-				switch a.String() {
-				case s[0]:
-					return -1
-				case s[1]:
-					return 1
-				default:
-					return 0
-				}
+		if preSelf == preOther && strings.Contains(a.String(), "+") && strings.Contains(b.String(), "+") {
+			// go to plain string comparison
+			s := []string{
+				a.String(),
+				b.String(),
+			}
+			sort.Strings(s)
+			switch a.String() {
+			case s[0]:
+				return -1
+			case s[1]:
+				return 1
+			default:
+				return 0
 			}
 		}
 	}
-	// not the case of buildtag comparison, use original from version pkg
+	// not a case requiring buildtag comparison, use original from version pkg
 
 	return a.Compare(b)
 }
