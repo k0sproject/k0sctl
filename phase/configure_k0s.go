@@ -172,7 +172,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	addUnlessExist(&sans, "127.0.0.1")
 	cfg.DigMapping("spec", "api")["sans"] = sans
 
-	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil {
+	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
 
