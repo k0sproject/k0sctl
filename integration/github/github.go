@@ -93,8 +93,12 @@ func vCompare(a, b *version.Version) int {
 	}
 
 	if !strings.Contains(a.String(), "+") || !strings.Contains(b.String(), "+") {
-		// versions do not include build tags, use the version pkg result
-		return c
+		// both versions do not include build tags
+		if strings.Contains(a.String(), "+") {
+			// version A has a build tag, B doesn't, assume version A is newer.
+			return 1
+		}
+		return -1
 	}
 
 	// go to plain string comparison
