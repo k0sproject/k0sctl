@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -87,32 +86,31 @@ func vCompare(a, b *version.Version) int {
 		return 0
 	}
 
-	segmentsSelf := a.Segments64()
-	segmentsOther := b.Segments64()
-
-	if reflect.DeepEqual(segmentsSelf, segmentsOther) {
-		preSelf := a.Prerelease()
-		preOther := b.Prerelease()
-		if preSelf == preOther && strings.Contains(a.String(), "+") && strings.Contains(b.String(), "+") {
-			// go to plain string comparison
-			s := []string{
-				a.String(),
-				b.String(),
-			}
-			sort.Strings(s)
-			switch a.String() {
-			case s[0]:
-				return -1
-			case s[1]:
-				return 1
-			default:
-				return 0
-			}
-		}
+	c := a.Compare(b)
+	if c != 0 {
+		// versions already differ enough to use the version pkg result
+		return c
 	}
-	// not a case requiring buildtag comparison, use original from version pkg
 
-	return a.Compare(b)
+	if !strings.Contains(a.String(), "+") || !strings.Contains(b.String(), "+") {
+		// versions do not include build tags, use the version pkg result
+		return c
+	}
+
+	// go to plain string comparison
+	s := []string{
+		a.String(),
+		b.String(),
+	}
+	sort.Strings(s)
+	switch a.String() {
+	case s[0]:
+		return -1
+	case s[1]:
+		return 1
+	default:
+		return 0
+	}
 }
 
 // LatestRelease returns the semantically sorted latest version from github releases page for a repo.
