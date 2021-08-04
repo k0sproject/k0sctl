@@ -153,12 +153,17 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	cfg.DigMapping("spec", "api")["address"] = addr
 	addUnlessExist(&sans, addr)
 
-	oldsans, ok := cfg.Dig("spec", "api", "sans").([]interface{})
-	if ok {
+	oldsans := cfg.Dig("spec", "api", "sans")
+	switch oldsans := oldsans.(type) {
+	case []interface{}:
 		for _, v := range oldsans {
 			if s, ok := v.(string); ok {
 				addUnlessExist(&sans, s)
 			}
+		}
+	case []string:
+		for _, v := range oldsans {
+			addUnlessExist(&sans, v)
 		}
 	}
 
