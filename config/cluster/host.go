@@ -257,13 +257,15 @@ func (h *Host) KubeNodeReady(node *Host) (bool, error) {
 	}
 	for _, i := range status.Items {
 		for _, c := range i.Status.Conditions {
+			log.Debugf("%s: node status condition %s = %s", node, c.Type, c.Status)
 			if c.Type == "Ready" {
 				return c.Status == "True", nil
 			}
 		}
 	}
 
-	return false, fmt.Errorf("failed to parse status from kubectl output")
+	log.Debugf("%s: failed to find Ready=True state in kubectl output", node)
+	return false, nil
 }
 
 // WaitKubeNodeReady blocks until node becomes ready. TODO should probably use Context
@@ -275,7 +277,7 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 				return err
 			}
 			if !status {
-				return fmt.Errorf("%s: node %s did not become ready", h, node.Metadata.Hostname)
+				return fmt.Errorf("%s: node %s status not reported as ready", h, node.Metadata.Hostname)
 			}
 			return nil
 		},
