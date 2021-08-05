@@ -277,7 +277,7 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 				return err
 			}
 			if !status {
-				return fmt.Errorf("%s: node %s did not become ready", h, node.Metadata.Hostname)
+				return fmt.Errorf("%s: node %s status not reported as ready", h, node.Metadata.Hostname)
 			}
 			return nil
 		},
