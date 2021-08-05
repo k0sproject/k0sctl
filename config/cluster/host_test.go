@@ -58,6 +58,12 @@ func TestK0sConfigPath(t *testing.T) {
 	require.Equal(t, "from-install-short-flag", h.K0sConfigPath())
 }
 
+func TestUnQE(t *testing.T) {
+	require.Equal(t, `hello`, unQE(`hello`))
+	require.Equal(t, `hello`, unQE(`"hello"`))
+	require.Equal(t, `hello "world"`, unQE(`"hello \"world\""`))
+}
+
 func TestK0sInstallCommand(t *testing.T) {
 	h := Host{Role: "worker"}
 	h.Configurer = &mockconfigurer{}
@@ -75,4 +81,10 @@ func TestK0sInstallCommand(t *testing.T) {
 	require.Equal(t, `k0s install controller --enable-worker --config "from-configurer"`, h.K0sInstallCommand())
 	h.Metadata.IsK0sLeader = false
 	require.Equal(t, `k0s install controller --enable-worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+
+	h.Role = "worker"
+	h.PrivateAddress = "10.0.0.9"
+	require.Equal(t, `k0s install worker --token-file "from-configurer" --extra-kubelet-args="--node-ip=10.0.0.9"`, h.K0sInstallCommand())
+	h.InstallFlags = []string{`--extra-kubelet-args="--foo bar"`}
+	require.Equal(t, `k0s install worker --extra-kubelet-args="--foo bar --node-ip=10.0.0.9" --token-file "from-configurer"`, h.K0sInstallCommand())
 }
