@@ -85,6 +85,6 @@ func TestK0sInstallCommand(t *testing.T) {
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
 	require.Equal(t, `k0s install worker --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, h.K0sInstallCommand())
-	h.InstallFlags = []string{`--extra-kubelet-args="--foo bar"`}
+	h.InstallFlags = []string{`--kubelet-extra-args="--foo bar"`}
 	require.Equal(t, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --token-file "from-configurer"`, h.K0sInstallCommand())
 }
