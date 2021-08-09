@@ -53,7 +53,7 @@ func kubeConfig(raw string, name string, address string) (string, error) {
 	cfg.Contexts[name] = cfg.Contexts["Default"]
 	delete(cfg.Contexts, "Default")
 	cfg.Contexts[name].Cluster = name
-	cfg.Contexts[name].AuthInfo = "kubernetes-admin"
+	cfg.Contexts[name].AuthInfo = "admin"
 
 	cfg.CurrentContext = name
 
