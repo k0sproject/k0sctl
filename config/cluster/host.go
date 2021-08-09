@@ -379,6 +379,16 @@ func (h *Host) NeedIPTables() bool {
 	return !h.Configurer.CommandExist(h, "iptables")
 }
 
+// NeedInetUtils returns true when the inetutils package is needed on the host to run `hostname`.
+func (h *Host) NeedInetUtils() bool {
+	// Windows does not need inetutils
+	if h.Configurer.Kind() == "windows" {
+		return false
+	}
+
+	return !h.Configurer.CommandExist(h, "hostname")
+}
+
 // WaitKubeAPIReady blocks until the local kube api responds to /version
 func (h *Host) WaitKubeAPIReady() error {
 	// If the anon-auth is disabled on kube api the version endpoint will give 401
