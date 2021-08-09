@@ -22,4 +22,5 @@ echo Downloading kubectl
 downloadKubectl
 
 ../k0sctl kubeconfig --config k0sctl.yaml > kubeconfig
+echo "Kubeconfig user: $(grep "user: " kubeconfig)"
 ./kubectl --kubeconfig kubeconfig get nodes
