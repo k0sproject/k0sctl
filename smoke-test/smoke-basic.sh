@@ -17,3 +17,9 @@ createCluster
 footloose ssh root@manager0 -- grep -q hello apply.hook
 
 ../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
+
+echo Downloading kubectl
+downloadKubectl
+
+../k0sctl kubeconfig --config k0sctl.yaml > kubeconfig
+./kubectl --kubeconfig kubeconfig get nodes -a
