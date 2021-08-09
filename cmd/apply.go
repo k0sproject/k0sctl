@@ -72,6 +72,7 @@ var applyCommand = &cli.Command{
 			&phase.DownloadBinaries{},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
+			&phase.InjectARMFixes{},
 			&phase.UploadFiles{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
