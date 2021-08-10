@@ -2,9 +2,6 @@ package phase
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path"
 
 	log "github.com/sirupsen/logrus"
 
@@ -29,6 +26,9 @@ func (p *InjectARMFixes) Prepare(config *config.Cluster) error {
 	p.Config = config
 
 	hosts := p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		if h.Role == "worker" {
+			return false
+		}
 		arch := h.Metadata.Arch
 		return arch == "arm" || arch == "arm64"
 	})
@@ -54,28 +54,5 @@ func (p *InjectARMFixes) FixARMQuirks(h *cluster.Host) error {
 Environment=ETCD_UNSUPPORTED_ARCH=%s
 `, h.Metadata.Arch)
 
-	name, err := func() (string, error) {
-		d, err := ioutil.TempDir("", "k0scontroller.service.d.")
-		if err != nil {
-			return "", err
-		}
-
-		name := path.Join(d, "override.conf")
-		err = os.WriteFile(name, []byte(systemdOverride), 0644)
-		if err != nil {
-			return "", err
-		}
-		return name, nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	h.Files = append(h.Files, cluster.UploadFile{
-		Source:         name,
-		DestinationDir: "/etc/systemd/system/k0scontroller.service.d",
-		PermMode:       "0644",
-	})
-
-	return nil
+	return h.Configurer.WriteFile(h, "/etc/systemd/system/k0scontroller.service.d/override.conf", systemdOverride, "0644")
 }
