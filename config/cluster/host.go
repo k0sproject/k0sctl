@@ -372,7 +372,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 func (h *Host) NeedCurl() bool {
 	// Windows does not need any packages for web requests
 	if h.Configurer.Kind() == "windows" {
-		return true
+		return false
 	}
 
 	// Controllers always need curl
