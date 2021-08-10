@@ -83,6 +83,6 @@ func (p *InstallControllers) waitJoined(h *cluster.Host) error {
 	if port == 0 {
 		port = 6443
 	}
-	log.Infof("%s: waiting for kubernetes api to respond :%d", h, port)
+	log.Infof("%s: waiting for kubernetes api to respond", h)
 	return h.WaitKubeAPIReady(port)
 }
