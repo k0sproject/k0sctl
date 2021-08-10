@@ -51,9 +51,9 @@ func (p *InitializeK0s) Run() error {
 		return err
 	}
 
-	port := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int)
-	if port == 0 {
-		port = 6443
+	port := 6443
+	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		port = p
 	}
 	log.Infof("%s: waiting for kubernetes api to respond", h)
 	if err := h.WaitKubeAPIReady(port); err != nil {
