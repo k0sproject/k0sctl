@@ -404,8 +404,8 @@ func (h *Host) NeedIPTables() bool {
 }
 
 // WaitKubeAPIReady blocks until the local kube api responds to /version
-func (h *Host) WaitKubeAPIReady() error {
+func (h *Host) WaitKubeAPIReady(port int) error {
 	// If the anon-auth is disabled on kube api the version endpoint will give 401
 	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
-	return h.WaitHTTPStatus("https://localhost:6443/version", 200, 401)
+	return h.WaitHTTPStatus(fmt.Sprintf("https://localhost:%d/version", port), 200, 401)
 }
