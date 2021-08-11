@@ -72,12 +72,12 @@ var applyCommand = &cli.Command{
 			&phase.DownloadBinaries{},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
-			&phase.InjectARMFixes{},
 			&phase.UploadFiles{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
+			&phase.PrepareArm{},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),
