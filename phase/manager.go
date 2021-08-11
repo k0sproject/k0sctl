@@ -8,6 +8,7 @@ import (
 
 // NoWait is used by various phases to decide if node ready state should be waited for or not
 var NoWait bool
+var Colorize = aurora.NewAurora(false)
 
 type phase interface {
 	Run() error
@@ -78,7 +79,7 @@ func (m *Manager) Run() error {
 			}
 		}
 
-		text := aurora.Green("==> Running phase: %s").String()
+		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
 		result := p.Run()
 
