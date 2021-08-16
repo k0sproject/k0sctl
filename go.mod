@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.8
 	github.com/Masterminds/semver v1.5.0
+	github.com/alessio/shellescape v1.4.1
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/creasty/defaults v1.5.1

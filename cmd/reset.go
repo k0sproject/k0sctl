@@ -8,7 +8,6 @@ import (
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -89,7 +88,7 @@ var resetCommand = &cli.Command{
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
-		log.Infof(aurora.Green(text).String())
+		log.Infof(Colorize.Green(text).String())
 
 		return nil
 	},
