@@ -60,6 +60,13 @@ func (p *InstallControllers) Run() error {
 			return err
 		}
 
+		if len(h.Environment) > 0 {
+			log.Infof("%s: updating service environment", h)
+			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+				return err
+			}
+		}
+
 		log.Infof("%s: starting service", h)
 		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 			return err

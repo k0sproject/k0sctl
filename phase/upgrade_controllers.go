@@ -56,6 +56,14 @@ func (p *UpgradeControllers) Run() error {
 		if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
 			return err
 		}
+
+		if len(h.Environment) > 0 {
+			log.Infof("%s: updating service environment", h)
+			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+				return err
+			}
+		}
+
 		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 			return err
 		}

@@ -1,7 +1,7 @@
 package phase
 
 import (
-	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -27,7 +27,7 @@ func (p *PrepareArm) Prepare(config *config.Cluster) error {
 
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		arch := h.Metadata.Arch
-		return h.Role != "worker" && (arch == "arm" || arch == "arm64")
+		return h.Role != "worker" && (strings.HasPrefix(arch, "arm") || strings.HasPrefix(arch, "aarch"))
 	})
 
 	return nil
@@ -44,12 +44,15 @@ func (p *PrepareArm) Run() error {
 }
 
 func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {
-	log.Infof("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override", h, h.Metadata.Arch)
+	var arch string
+	arch := "arm64"
+	switch h.Metadata.Arch {
+	case "aarch32", "arm32", "armv7l", "armhfp", "arm-32":
+		arch = "arm32"
+	default:
+		arch = "arm64"
+	}
 
-	return h.Configurer.WriteFile(
-		h,
-		"/etc/systemd/system/k0scontroller.service.d/override.conf",
-		fmt.Sprintf("[Service]\nEnvironment=ETCD_UNSUPPORTED_ARCH=%s\n", h.Metadata.Arch),
-		"0644",
-	)
+	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, arch)
+	h.Environment["ETCD_UNSUPPORTED_ARCH"] = arch
 }

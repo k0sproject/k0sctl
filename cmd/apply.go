@@ -77,7 +77,7 @@ var applyCommand = &cli.Command{
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
-			&phase.PrepareArm{},
+			//&phase.PrepareArm{},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),

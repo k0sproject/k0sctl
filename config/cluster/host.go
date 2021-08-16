@@ -69,6 +69,8 @@ type configurer interface {
 	PrivateInterface(os.Host) (string, error)
 	PrivateAddress(os.Host, string, string) (string, error)
 	TempDir(os.Host) (string, error)
+	UpdateServiceEnvironment(os.Host, string, map[string]string) error
+	CleanupServiceEnvironment(os.Host, string) error
 }
 
 // HostMetadata resolved metadata for host

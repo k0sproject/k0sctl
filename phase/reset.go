@@ -52,6 +52,10 @@ func (p *Reset) Run() error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
+			log.Infof("%s: cleaning up service environment", h)
+			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+				return err
+			}
 		}
 
 		log.Infof("%s: running k0s reset", h)
