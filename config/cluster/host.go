@@ -3,6 +3,8 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -164,6 +166,18 @@ func (h *Host) K0sConfigPath() string {
 	return h.Configurer.K0sConfigPath()
 }
 
+// unquote + unescape a string
+func unQE(s string) string {
+	unq, err := strconv.Unquote(s)
+	if err != nil {
+		return s
+	}
+
+	c := string(s[0])                                           // string was quoted, c now has the quote char
+	re := regexp.MustCompile(fmt.Sprintf(`(?:^|[^\\])\\%s`, c)) // replace \" with " (remove escaped quotes inside quoted string)
+	return string(re.ReplaceAllString(unq, c))
+}
+
 // K0sInstallCommand returns a full command that will install k0s service with necessary flags
 func (h *Host) K0sInstallCommand() string {
 	role := h.Role
@@ -180,6 +194,16 @@ func (h *Host) K0sInstallCommand() string {
 
 	if h.IsController() {
 		flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
+	}
+
+	if !h.IsController() && h.PrivateAddress != "" {
+		// set worker's private address to --node-ip in --extra-kubelet-args
+		var extra Flags
+		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
+			extra = Flags{unQE(old)}
+		}
+		extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
+		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
 	}
 
 	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
@@ -350,7 +374,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 func (h *Host) NeedCurl() bool {
 	// Windows does not need any packages for web requests
 	if h.Configurer.Kind() == "windows" {
-		return true
+		return false
 	}
 
 	// Controllers always need curl
@@ -381,9 +405,19 @@ func (h *Host) NeedIPTables() bool {
 	return !h.Configurer.CommandExist(h, "iptables")
 }
 
+// NeedInetUtils returns true when the inetutils package is needed on the host to run `hostname`.
+func (h *Host) NeedInetUtils() bool {
+	// Windows does not need inetutils
+	if h.Configurer.Kind() == "windows" {
+		return false
+	}
+
+	return !h.Configurer.CommandExist(h, "hostname")
+}
+
 // WaitKubeAPIReady blocks until the local kube api responds to /version
-func (h *Host) WaitKubeAPIReady() error {
+func (h *Host) WaitKubeAPIReady(port int) error {
 	// If the anon-auth is disabled on kube api the version endpoint will give 401
 	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
-	return h.WaitHTTPStatus("https://localhost:6443/version", 200, 401)
+	return h.WaitHTTPStatus(fmt.Sprintf("https://localhost:%d/version", port), 200, 401)
 }
