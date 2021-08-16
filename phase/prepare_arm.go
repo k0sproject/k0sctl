@@ -44,7 +44,6 @@ func (p *PrepareArm) Run() error {
 }
 
 func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {
-	var arch string
 	arch := "arm64"
 	switch h.Metadata.Arch {
 	case "aarch32", "arm32", "armv7l", "armhfp", "arm-32":
