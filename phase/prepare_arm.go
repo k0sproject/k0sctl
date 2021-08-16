@@ -55,4 +55,6 @@ func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {
 
 	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, arch)
 	h.Environment["ETCD_UNSUPPORTED_ARCH"] = arch
+
+	return nil
 }
