@@ -5,7 +5,6 @@ go 1.16
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.8
 	github.com/Masterminds/semver v1.5.0
-	github.com/alessio/shellescape v1.4.1
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/creasty/defaults v1.5.1
@@ -13,7 +12,7 @@ require (
 	github.com/gammazero/workerpool v1.1.1
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/hashicorp/go-version v1.2.1
-	github.com/k0sproject/dig v0.1.1
+	github.com/k0sproject/dig v0.2.0
 	github.com/k0sproject/rig v0.3.23
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-isatty v0.0.12
