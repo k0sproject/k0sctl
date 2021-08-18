@@ -204,7 +204,13 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join(), exec.Sudo(h))
+	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+	sudocmd, err := h.Sudo(cmd)
+	if err != nil {
+		log.Warnf("%s: %s", h, err.Error())
+		return cmd
+	}
+	return sudocmd
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
