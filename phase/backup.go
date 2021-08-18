@@ -58,7 +58,7 @@ func (p *Backup) Run() error {
 		return err
 	}
 
-	if err := h.Exec(h.K0sBackupCommand(backupDir)); err != nil {
+	if err := h.Exec(h.K0sBackupCommand(backupDir), exec.Sudo(h)); err != nil {
 		return err
 	}
 

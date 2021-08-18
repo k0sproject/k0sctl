@@ -215,12 +215,12 @@ func (h *Host) K0sInstallCommand() string {
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir, exec.Sudo(h))
+	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir)
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore %s", backupfile, exec.Sudo(h))
+	return h.Configurer.K0sCmdf("restore %s", backupfile)
 }
 
 // IsController returns true for controller and controller+worker roles
