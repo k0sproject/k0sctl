@@ -204,17 +204,17 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join(), exec.Sudo(h))
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir)
+	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir, exec.Sudo(h))
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore %s", backupfile)
+	return h.Configurer.K0sCmdf("restore %s", backupfile, exec.Sudo(h))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -233,7 +233,7 @@ func (h *Host) K0sServiceName() string {
 // UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
 func (h *Host) UpdateK0sBinary(version string) error {
 	if h.K0sBinaryPath != "" {
-		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()); err != nil {
+		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
 		}
 		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
@@ -244,7 +244,7 @@ func (h *Host) UpdateK0sBinary(version string) error {
 			return err
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
 		}
@@ -270,7 +270,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady(node *Host) (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput())
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -314,12 +314,12 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname))
+	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname))
+	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -359,7 +359,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 			if !h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 				return fmt.Errorf("not running")
 			}
-			return h.Exec(h.Configurer.K0sCmdf("status"))
+			return h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h))
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),

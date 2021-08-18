@@ -6,6 +6,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,7 +47,7 @@ func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 		return err
 	}
 
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		if err := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); err != nil {
 			log.Warnf("%s: failed to remove %s: %s", h, h.Configurer.K0sBinaryPath(), err.Error())

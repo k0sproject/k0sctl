@@ -1,6 +1,7 @@
 package linux
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/k0sproject/rig"
@@ -27,5 +28,14 @@ func init() {
 
 // InstallPackage installs packages via slackpkg
 func (l Slackware) InstallPackage(h os.Host, pkg ...string) error {
-	return h.Execf("sudo slackpkg update && sudo slackpkg install --priority ADD %s", strings.Join(pkg, " "))
+	updatecmd, err := h.Sudo("slackpkg update")
+	if err != nil {
+		return err
+	}
+	installcmd, err := h.Sudo(fmt.Sprintf("slackpkg install --priority ADD %s", strings.Join(pkg, " ")))
+	if err != nil {
+		return err
+	}
+
+	return h.Execf("%s && %s", updatecmd, installcmd)
 }

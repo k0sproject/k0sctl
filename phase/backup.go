@@ -34,7 +34,7 @@ func (p *Backup) Prepare(config *config.Cluster) error {
 		return fmt.Errorf("failed to find a running controller")
 	}
 
-	if leader.Exec(leader.Configurer.K0sCmdf("backup --help")) != nil {
+	if leader.Exec(leader.Configurer.K0sCmdf("backup --help"), exec.Sudo(leader)) != nil {
 		return fmt.Errorf("the version of k0s on the host does not support taking backups")
 	}
 
