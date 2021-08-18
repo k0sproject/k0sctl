@@ -40,13 +40,8 @@ func (p *ConfigureK0s) Run() error {
 		p.SetProp("default-config", false)
 	}
 
-	for _, h := range p.Config.Spec.Hosts.Controllers() {
-		if err := p.configureK0s(h); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	controllers := p.Config.Spec.Hosts.Controllers()
+	return controllers.ParallelEach(p.configureK0s)
 }
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
@@ -140,7 +135,7 @@ func addUnlessExist(slice *[]string, s string) {
 }
 
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
-	cfg := p.Config.Spec.K0s.Config
+	cfg := p.Config.Spec.K0s.Config.Dup()
 
 	var sans []string
 
