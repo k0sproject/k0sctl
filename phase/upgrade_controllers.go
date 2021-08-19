@@ -53,6 +53,9 @@ func (p *UpgradeControllers) Run() error {
 				return err
 			}
 		}
+		if err := h.WaitK0sServiceStopped(); err != nil {
+			return err
+		}
 		if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
 			return err
 		}

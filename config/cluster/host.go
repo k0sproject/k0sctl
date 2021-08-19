@@ -374,6 +374,25 @@ func (h *Host) WaitK0sServiceRunning() error {
 	)
 }
 
+// WaitK0sServiceStopped blocks until the k0s service is no longer running on the host
+func (h *Host) WaitK0sServiceStopped() error {
+	return retry.Do(
+		func() error {
+			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+				return fmt.Errorf("k0s still running")
+			}
+			if h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h)) == nil {
+				return fmt.Errorf("k0s still running")
+			}
+			return nil
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+}
+
 // NeedCurl returns true when the curl package is needed on the host
 func (h *Host) NeedCurl() bool {
 	// Windows does not need any packages for web requests

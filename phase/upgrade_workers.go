@@ -87,6 +87,9 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
+	if err := h.WaitK0sServiceStopped(); err != nil {
+		return err
+	}
 	if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
 		return err
 	}
