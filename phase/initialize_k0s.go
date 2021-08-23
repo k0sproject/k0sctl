@@ -32,6 +32,16 @@ func (p *InitializeK0s) ShouldRun() bool {
 	return p.leader != nil
 }
 
+// CleanUp cleans up the environment override file
+func (p *InitializeK0s) CleanUp() {
+	h := p.leader
+	if len(h.Environment) > 0 {
+		if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+		}
+	}
+}
+
 // Run the phase
 func (p *InitializeK0s) Run() error {
 	h := p.leader
@@ -40,6 +50,13 @@ func (p *InitializeK0s) Run() error {
 	log.Infof("%s: installing k0s controller", h)
 	if err := h.Exec(h.K0sInstallCommand()); err != nil {
 		return err
+	}
+
+	if len(h.Environment) > 0 {
+		log.Infof("%s: updating service environment", h)
+		if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+			return err
+		}
 	}
 
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {

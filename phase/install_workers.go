@@ -37,6 +37,17 @@ func (p *InstallWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// CleanUp cleans up the environment override files on hosts
+func (p *InstallWorkers) CleanUp() {
+	for _, h := range p.hosts {
+		if len(h.Environment) > 0 {
+			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+			}
+		}
+	}
+}
+
 // Run the phase
 func (p *InstallWorkers) Run() error {
 	log.Infof("%s: generating token", p.leader)
@@ -73,6 +84,13 @@ func (p *InstallWorkers) Run() error {
 		log.Infof("%s: installing k0s worker", h)
 		if err := h.Exec(h.K0sInstallCommand()); err != nil {
 			return err
+		}
+
+		if len(h.Environment) > 0 {
+			log.Infof("%s: updating service environment", h)
+			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+				return err
+			}
 		}
 
 		log.Infof("%s: starting service", h)

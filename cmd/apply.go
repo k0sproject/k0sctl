@@ -76,6 +76,7 @@ var applyCommand = &cli.Command{
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
+			&phase.PrepareArm{},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),
