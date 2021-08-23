@@ -102,7 +102,7 @@ func (m *Manager) Run() error {
 		result = p.Run()
 		ran = append(ran, p)
 
-		if p, ok := p.(afterhook); ok && result == nil {
+		if p, ok := p.(afterhook); ok {
 			if err := p.After(result); err != nil {
 				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
 				return err
