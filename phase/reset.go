@@ -48,13 +48,14 @@ func (p *Reset) Prepare(config *config.Cluster) error {
 // Run the phase
 func (p *Reset) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
+		log.Infof("%s: cleaning up service environment", h)
+		if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			return err
+		}
+
 		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 			log.Infof("%s: stopping k0s", h)
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
-				return err
-			}
-			log.Infof("%s: cleaning up service environment", h)
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 				return err
 			}
 		}
