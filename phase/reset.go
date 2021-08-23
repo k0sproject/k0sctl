@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -59,6 +60,6 @@ func (p *Reset) Run() error {
 		}
 
 		log.Infof("%s: running k0s reset", h)
-		return h.Exec(h.Configurer.K0sCmdf("reset"))
+		return h.Exec(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
 	})
 }

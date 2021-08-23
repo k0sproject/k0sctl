@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 )
 
@@ -40,12 +41,12 @@ func (l Linux) Arch(h os.Host) (string, error) {
 
 // Chmod changes file permissions
 func (l Linux) Chmod(h os.Host, path, chmod string) error {
-	return h.Execf("sudo chmod %s %s", chmod, path)
+	return h.Execf("chmod %s %s", chmod, path, exec.Sudo(h))
 }
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l Linux) K0sCmdf(template string, args ...interface{}) string {
-	return fmt.Sprintf("sudo %s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
+	return fmt.Sprintf("%s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
 }
 
 // K0sBinaryPath returns the location of k0s binary
@@ -86,7 +87,7 @@ func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 		return err
 	}
 
-	return h.Execf(`sudo install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath())
+	return h.Execf(`install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath(), exec.Sudo(h))
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
@@ -96,17 +97,17 @@ func (l Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
 
 // FileContains returns true if a file contains the substring
 func (l Linux) FileContains(h os.Host, path, s string) bool {
-	return h.Execf(`sudo grep -q "%s" "%s"`, s, path) == nil
+	return h.Execf(`grep -q "%s" "%s"`, s, path, exec.Sudo(h)) == nil
 }
 
 // MoveFile moves a file on the host
 func (l Linux) MoveFile(h os.Host, src, dst string) error {
-	return h.Execf(`sudo mv "%s" "%s"`, src, dst)
+	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
 }
 
 // DeleteFile deletes a file on the host
 func (l Linux) DeleteFile(h os.Host, path string) error {
-	return h.Execf(`sudo rm -f "%s"`, path)
+	return h.Execf(`rm -f "%s"`, path, exec.Sudo(h))
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host

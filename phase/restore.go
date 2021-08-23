@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,7 +32,7 @@ func (p *Restore) Prepare(config *config.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
-	if p.RestoreFrom != "" && p.leader.Exec(p.leader.Configurer.K0sCmdf("restore --help")) != nil {
+	if p.RestoreFrom != "" && p.leader.Exec(p.leader.Configurer.K0sCmdf("restore --help"), exec.Sudo(p.leader)) != nil {
 		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
 	}
 
@@ -55,7 +56,7 @@ func (p *Restore) Run() error {
 
 	// Run restore
 	log.Infof("%s: restoring cluster state", h)
-	if err := h.Exec(h.K0sRestoreCommand(dstFile)); err != nil {
+	if err := h.Exec(h.K0sRestoreCommand(dstFile), exec.Sudo(h)); err != nil {
 		return err
 	}
 
