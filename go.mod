@@ -16,7 +16,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.2.1
 	github.com/k0sproject/dig v0.2.0
-	github.com/k0sproject/rig v0.4.4-beta.2
+	github.com/k0sproject/rig v0.4.4
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20210623064412-3b76017826b0 // indirect
