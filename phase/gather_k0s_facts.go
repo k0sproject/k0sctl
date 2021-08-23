@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -53,7 +54,7 @@ func (p *GatherK0sFacts) Run() error {
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		return nil
 	}
@@ -71,7 +72,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
-	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"))
+	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"), exec.Sudo(h))
 	if err != nil {
 		return nil
 	}
