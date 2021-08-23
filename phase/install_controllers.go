@@ -37,6 +37,17 @@ func (p *InstallControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// CleanUp cleans up the environment override files on hosts
+func (p *InstallControllers) CleanUp() {
+	for _, h := range p.hosts {
+		if len(h.Environment) > 0 {
+			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+			}
+		}
+	}
+}
+
 // Run the phase
 func (p *InstallControllers) Run() error {
 	for _, h := range p.hosts {

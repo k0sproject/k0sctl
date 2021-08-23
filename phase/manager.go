@@ -37,6 +37,10 @@ type propsetter interface {
 	SetProp(string, interface{})
 }
 
+type withcleanup interface {
+	CleanUp()
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases []phase
@@ -50,6 +54,20 @@ func (m *Manager) AddPhase(p ...phase) {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
+	var ran []phase
+	var result error
+
+	defer func() {
+		if result != nil {
+			for _, p := range ran {
+				if c, ok := p.(withcleanup); ok {
+					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), p.Title())
+					c.CleanUp()
+				}
+			}
+		}
+	}()
+
 	for _, p := range m.phases {
 		title := p.Title()
 
@@ -81,9 +99,10 @@ func (m *Manager) Run() error {
 
 		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
-		result := p.Run()
+		result = p.Run()
+		ran = append(ran, p)
 
-		if p, ok := p.(afterhook); ok {
+		if p, ok := p.(afterhook); ok && result == nil {
 			if err := p.After(result); err != nil {
 				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
 				return err

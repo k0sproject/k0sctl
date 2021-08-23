@@ -44,6 +44,17 @@ func (p *UpgradeWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// CleanUp cleans up the environment override files on hosts
+func (p *UpgradeWorkers) CleanUp() {
+	for _, h := range p.hosts {
+		if len(h.Environment) > 0 {
+			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+			}
+		}
+	}
+}
+
 // Run the phase
 func (p *UpgradeWorkers) Run() error {
 	// Upgrade worker hosts parallelly in 10% chunks
@@ -93,6 +104,14 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
 		return err
 	}
+
+	if len(h.Environment) > 0 {
+		log.Infof("%s: updating service environment", h)
+		if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+			return err
+		}
+	}
+
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
