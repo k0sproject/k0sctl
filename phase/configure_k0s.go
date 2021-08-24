@@ -177,7 +177,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
 
-	c, err := yaml.Marshal(p.Config.Spec.K0s.Config)
+	c, err := yaml.Marshal(cfg)
 	if err != nil {
 		return "", err
 	}
