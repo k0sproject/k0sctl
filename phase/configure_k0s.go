@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -28,7 +29,7 @@ func (p *ConfigureK0s) Run() error {
 		p.SetProp("default-config", true)
 		leader := p.Config.Spec.K0sLeader()
 		log.Warnf("%s: generating default configuration", leader)
-		cfg, err := leader.ExecOutput(leader.Configurer.K0sCmdf("default-config"))
+		cfg, err := leader.ExecOutput(leader.Configurer.K0sCmdf("default-config"), exec.Sudo(leader))
 		if err != nil {
 			return err
 		}
@@ -40,18 +41,13 @@ func (p *ConfigureK0s) Run() error {
 		p.SetProp("default-config", false)
 	}
 
-	for _, h := range p.Config.Spec.Hosts.Controllers() {
-		if err := p.configureK0s(h); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	controllers := p.Config.Spec.Hosts.Controllers()
+	return controllers.ParallelEach(p.configureK0s)
 }
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 	log.Infof("%s: validating configuration", h)
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath()))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath()), exec.Sudo(h))
 	if err != nil {
 		return fmt.Errorf("spec.k0s.config fails validation:\n%s", output)
 	}
@@ -140,7 +136,7 @@ func addUnlessExist(slice *[]string, s string) {
 }
 
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
-	cfg := p.Config.Spec.K0s.Config
+	cfg := p.Config.Spec.K0s.Config.Dup()
 
 	var sans []string
 
@@ -181,7 +177,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
 
-	c, err := yaml.Marshal(p.Config.Spec.K0s.Config)
+	c, err := yaml.Marshal(cfg)
 	if err != nil {
 		return "", err
 	}

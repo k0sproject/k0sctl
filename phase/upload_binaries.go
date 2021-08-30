@@ -3,6 +3,7 @@ package phase
 import (
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,7 +39,7 @@ func (p *UploadBinaries) Run() error {
 
 func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 	log.Infof("%s: uploading k0s binary from %s", h, h.K0sBinaryPath)
-	if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()); err != nil {
+	if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 		return err
 	}
 

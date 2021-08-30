@@ -57,7 +57,7 @@ func (k *K0s) SetDefaults() {
 func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token string, err error) {
 	err = retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String()), exec.HideOutput())
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String()), exec.HideOutput(), exec.Sudo(h))
 			if err != nil {
 				return err
 			}
@@ -74,5 +74,5 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token st
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
 func (k K0s) GetClusterID(h *Host) (string, error) {
-	return h.ExecOutput(h.Configurer.KubectlCmdf("get -n kube-system namespace kube-system -o template={{.metadata.uid}}"))
+	return h.ExecOutput(h.Configurer.KubectlCmdf("get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
 }

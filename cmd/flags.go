@@ -12,8 +12,10 @@ import (
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/integration/segment"
+	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
+	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -48,6 +50,8 @@ var (
 		EnvVars: []string{"DISABLE_TELEMETRY"},
 		Hidden:  true,
 	}
+
+	Colorize = aurora.NewAurora(false)
 )
 
 // actions can be used to chain action functions (for urfave/cli's Before, After, etc)
@@ -241,12 +245,26 @@ func (h *loghook) Fire(entry *log.Entry) error {
 }
 
 func screenLoggerHook(lvl log.Level) *loghook {
-	l := &loghook{Formatter: &log.TextFormatter{DisableTimestamp: lvl < log.DebugLevel, ForceColors: true}}
-
+	var forceColors bool
+	var writer io.Writer
 	if runtime.GOOS == "windows" {
-		l.Writer = ansicolor.NewAnsiColorWriter(os.Stdout)
+		writer = ansicolor.NewAnsiColorWriter(os.Stdout)
+		forceColors = true
 	} else {
-		l.Writer = os.Stdout
+		writer = os.Stdout
+		if fi, _ := os.Stdout.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
+			forceColors = true
+		}
+	}
+
+	if forceColors {
+		Colorize = aurora.NewAurora(true)
+		phase.Colorize = Colorize
+	}
+
+	l := &loghook{
+		Writer:    writer,
+		Formatter: &log.TextFormatter{DisableTimestamp: lvl < log.DebugLevel, ForceColors: forceColors},
 	}
 
 	l.SetLevel(lvl)

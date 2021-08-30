@@ -30,7 +30,12 @@ func (p *GetKubeconfig) Run() error {
 		a = h.SSH.Address
 	}
 
-	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, a)
+	port := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int)
+	if port == 0 {
+		port = 6443
+	}
+
+	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, a, port)
 	if err != nil {
 		return err
 	}
@@ -40,7 +45,7 @@ func (p *GetKubeconfig) Run() error {
 
 // kubeConfig reads in the raw kubeconfig and changes the given address
 // and cluster name into it
-func kubeConfig(raw string, name string, address string) (string, error) {
+func kubeConfig(raw string, name string, address string, port int) (string, error) {
 	cfg, err := clientcmd.Load([]byte(raw))
 	if err != nil {
 		return "", err
@@ -48,7 +53,7 @@ func kubeConfig(raw string, name string, address string) (string, error) {
 
 	cfg.Clusters[name] = cfg.Clusters["local"]
 	delete(cfg.Clusters, "local")
-	cfg.Clusters[name].Server = fmt.Sprintf("https://%s:6443", address)
+	cfg.Clusters[name].Server = fmt.Sprintf("https://%s:%d", address, port)
 
 	cfg.Contexts[name] = cfg.Contexts["Default"]
 	delete(cfg.Contexts, "Default")

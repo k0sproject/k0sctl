@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
 )
@@ -33,13 +34,9 @@ func init() {
 
 // InstallPackage installs packages via slackpkg
 func (l Alpine) InstallPackage(h os.Host, pkg ...string) error {
-	return h.Execf("sudo apk add --update %s", strings.Join(pkg, " "))
+	return h.Execf("apk add --update %s", strings.Join(pkg, " "), exec.Sudo(h))
 }
 
 func (l Alpine) Prepare(h os.Host) error {
-	if !l.CommandExist(h, "sudo") {
-		return h.Exec("apk add --update sudo")
-	}
-
 	return l.InstallPackage(h, "findutils", "coreutils")
 }

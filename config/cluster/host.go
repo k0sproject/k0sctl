@@ -71,6 +71,8 @@ type configurer interface {
 	PrivateInterface(os.Host) (string, error)
 	PrivateAddress(os.Host, string, string) (string, error)
 	TempDir(os.Host) (string, error)
+	UpdateServiceEnvironment(os.Host, string, map[string]string) error
+	CleanupServiceEnvironment(os.Host, string) error
 }
 
 // HostMetadata resolved metadata for host
@@ -204,7 +206,13 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+	sudocmd, err := h.Sudo(cmd)
+	if err != nil {
+		log.Warnf("%s: %s", h, err.Error())
+		return cmd
+	}
+	return sudocmd
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
@@ -233,7 +241,7 @@ func (h *Host) K0sServiceName() string {
 // UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
 func (h *Host) UpdateK0sBinary(version string) error {
 	if h.K0sBinaryPath != "" {
-		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()); err != nil {
+		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
 		}
 		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
@@ -244,7 +252,7 @@ func (h *Host) UpdateK0sBinary(version string) error {
 			return err
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
 		}
@@ -270,7 +278,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady(node *Host) (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput())
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -314,12 +322,12 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname))
+	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname))
+	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -359,7 +367,26 @@ func (h *Host) WaitK0sServiceRunning() error {
 			if !h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 				return fmt.Errorf("not running")
 			}
-			return h.Exec(h.Configurer.K0sCmdf("status"))
+			return h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h))
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(60),
+	)
+}
+
+// WaitK0sServiceStopped blocks until the k0s service is no longer running on the host
+func (h *Host) WaitK0sServiceStopped() error {
+	return retry.Do(
+		func() error {
+			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+				return fmt.Errorf("k0s still running")
+			}
+			if h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h)) == nil {
+				return fmt.Errorf("k0s still running")
+			}
+			return nil
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),
@@ -372,7 +399,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 func (h *Host) NeedCurl() bool {
 	// Windows does not need any packages for web requests
 	if h.Configurer.Kind() == "windows" {
-		return true
+		return false
 	}
 
 	// Controllers always need curl
@@ -403,9 +430,19 @@ func (h *Host) NeedIPTables() bool {
 	return !h.Configurer.CommandExist(h, "iptables")
 }
 
+// NeedInetUtils returns true when the inetutils package is needed on the host to run `hostname`.
+func (h *Host) NeedInetUtils() bool {
+	// Windows does not need inetutils
+	if h.Configurer.Kind() == "windows" {
+		return false
+	}
+
+	return !h.Configurer.CommandExist(h, "hostname")
+}
+
 // WaitKubeAPIReady blocks until the local kube api responds to /version
-func (h *Host) WaitKubeAPIReady() error {
+func (h *Host) WaitKubeAPIReady(port int) error {
 	// If the anon-auth is disabled on kube api the version endpoint will give 401
 	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
-	return h.WaitHTTPStatus("https://localhost:6443/version", 200, 401)
+	return h.WaitHTTPStatus(fmt.Sprintf("https://localhost:%d/version", port), 200, 401)
 }

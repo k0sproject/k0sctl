@@ -6,6 +6,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,6 +48,11 @@ func (p *Reset) Prepare(config *config.Cluster) error {
 // Run the phase
 func (p *Reset) Run() error {
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
+		log.Infof("%s: cleaning up service environment", h)
+		if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			return err
+		}
+
 		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 			log.Infof("%s: stopping k0s", h)
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
@@ -55,6 +61,6 @@ func (p *Reset) Run() error {
 		}
 
 		log.Infof("%s: running k0s reset", h)
-		return h.Exec(h.Configurer.K0sCmdf("reset"))
+		return h.Exec(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
 	})
 }

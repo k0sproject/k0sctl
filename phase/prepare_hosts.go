@@ -51,6 +51,10 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		pkgs = append(pkgs, "iptables")
 	}
 
+	if h.NeedInetUtils() {
+		pkgs = append(pkgs, "inetutils")
+	}
+
 	if len(pkgs) > 0 {
 		log.Infof("%s: installing packages (%s)", h, strings.Join(pkgs, ", "))
 		if err := h.Configurer.InstallPackage(h, pkgs...); err != nil {

@@ -7,7 +7,6 @@ import (
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
@@ -70,13 +69,14 @@ var applyCommand = &cli.Command{
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.DownloadBinaries{},
-			&phase.UploadBinaries{},
-			&phase.DownloadK0s{},
 			&phase.UploadFiles{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
+			&phase.UploadBinaries{},
+			&phase.DownloadK0s{},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
+			&phase.PrepareArm{},
 			&phase.ConfigureK0s{},
 			&phase.Restore{
 				RestoreFrom: ctx.String("restore-from"),
@@ -110,11 +110,11 @@ var applyCommand = &cli.Command{
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
-		log.Infof(aurora.Green(text).String())
+		log.Infof(Colorize.Green(text).String())
 
 		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)
 		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Infof("     " + aurora.Cyan("k0sctl kubeconfig").String())
+		log.Infof("     " + Colorize.Cyan("k0sctl kubeconfig").String())
 
 		return nil
 	},

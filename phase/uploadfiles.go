@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -49,7 +50,7 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 			return err
 		}
 
-		if err := h.Execf("sudo install -d %s -m %s", f.DestinationDir, f.PermMode); err != nil {
+		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermMode, exec.Sudo(h)); err != nil {
 			return err
 		}
 
@@ -57,7 +58,7 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 			log.Debugf("%s: uploading %s to %s", h, file, f.DestinationDir)
 			destination := filepath.Join(f.DestinationDir, filepath.Base(file))
 
-			if err := h.Upload(file, destination); err != nil {
+			if err := h.Upload(file, destination, exec.Sudo(h)); err != nil {
 				return err
 			}
 

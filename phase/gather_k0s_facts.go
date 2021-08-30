@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -53,7 +54,7 @@ func (p *GatherK0sFacts) Run() error {
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		return nil
 	}
@@ -71,7 +72,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
-	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"))
+	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"), exec.Sudo(h))
 	if err != nil {
 		return nil
 	}
@@ -123,7 +124,7 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	// If supplimental files or a k0s binary have been specified explicitly,
 	// always upgrade.  This covers the scenario where a user moves from a
 	// default-install cluster to one fed by OCI image bundles (ie. airgap)
-	if len(h.Files) != 0 || len(h.K0sBinaryPath) == 0 {
+	if len(h.Files) > 0 || h.K0sBinaryPath != "" {
 		return true
 	}
 
