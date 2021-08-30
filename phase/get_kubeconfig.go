@@ -30,9 +30,9 @@ func (p *GetKubeconfig) Run() error {
 		a = h.SSH.Address
 	}
 
-	port := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int)
-	if port == 0 {
-		port = 6443
+	port := 6443
+	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		port = p
 	}
 
 	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, a, port)
