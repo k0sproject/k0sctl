@@ -23,19 +23,20 @@ func (p *GetKubeconfig) Run() error {
 	if err != nil {
 		return err
 	}
+
 	// the controller admin.conf is aways pointing to localhost, thus we need to change the address
 	// something usable from outside
-	a := p.Config.Spec.K0s.Config.DigString("spec", "api", "externalAddress")
-	if a == "" {
-		a = h.SSH.Address
+	address := h.Address()
+	if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+		address = a
 	}
 
-	port := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int)
-	if port == 0 {
-		port = 6443
+	port := 6443
+	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		port = p
 	}
 
-	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, a, port)
+	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, address, port)
 	if err != nil {
 		return err
 	}

@@ -24,3 +24,13 @@ function cleanup() {
       deleteCluster
     fi
 }
+
+function downloadKubectl() {
+    OS=$(uname | tr '[:upper:]' '[:lower:]')
+    ARCH="amd64"
+    case $(uname -m) in
+        arm,arm64) ARCH="arm64" ;;
+    esac
+    [ -f kubectl ] || (curl -L https://storage.googleapis.com/kubernetes-release/release/v1.21.3/bin/${OS}/${ARCH}/kubectl > ./kubectl && chmod +x ./kubectl)
+    ./kubectl version --client
+}
