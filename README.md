@@ -53,7 +53,7 @@ As the released binaries aren't signed yet, on macOS and Windows, you must first
 If you have a working Go toolchain, you can use `go get` to install k0sctl to your `$GOPATH/bin`.
 
 ```sh
-$ GO111MODULE=on go get github.com/k0sproject/k0sctl
+GO111MODULE=on go get github.com/k0sproject/k0sctl
 ```
 
 ### Package managers
@@ -66,7 +66,6 @@ K0sctl is still in an early stage of development. Missing major features include
 
 * Windows targets are not yet supported
 * The released binaries have not been signed
-* Cluster backup and restore are not available yet
 * Nodes can't be removed
 
 ## Usage
@@ -78,7 +77,7 @@ The main function of k0sctl is the `k0sctl apply` subcommand. Provided a configu
 The default location for the configuration file is `k0sctl.yaml` in the current working directory. To load a configuration from a different location, use:
 
 ```sh
-$ k0sctl apply --config path/to/k0sctl.yaml
+k0sctl apply --config path/to/k0sctl.yaml
 ```
 
 If the configuration cluster version `spec.k0s.version` is greater than the version detected on the cluster, a cluster upgrade will be performed. If the configuration lists hosts that are not part of the cluster, they will be configured to run k0s and will be joined to the cluster.
@@ -90,19 +89,19 @@ Generate a configuration template. Use `--k0s` to include an example `spec.k0s.c
 Output a minimal configuration template:
 
 ```sh
-$ k0sctl init > k0sctl.yaml
+k0sctl init > k0sctl.yaml
 ```
 
 Output an example configuration with a default k0s config:
 
 ```sh
-$ k0sctl init --k0s > k0sctl.yaml
+k0sctl init --k0s > k0sctl.yaml
 ```
 
 Create a configuration from a list of host addresses and pipe it to k0sctl apply:
 
 ```sh
-$ k0sctl init 10.0.0.1 10.0.0.2 ubuntu@10.0.0.3:8022 | k0sctl apply --config -
+k0sctl init 10.0.0.1 10.0.0.2 ubuntu@10.0.0.3:8022 | k0sctl apply --config -
 ```
 
 ### `k0sctl backup & restore`
