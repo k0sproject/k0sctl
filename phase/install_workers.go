@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/k0sproject/k0sctl/config"
@@ -50,6 +51,30 @@ func (p *InstallWorkers) CleanUp() {
 
 // Run the phase
 func (p *InstallWorkers) Run() error {
+	caddr := p.leader.Address()
+	cport := 6443
+	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		cport = p
+	}
+
+	if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+		caddr = a
+	}
+
+	url := fmt.Sprintf("https://%s:%d/healthz", caddr, cport)
+
+	err := p.hosts.ParallelEach(func(h *cluster.Host) error {
+		log.Infof("%s: validating api connection to controller at %s:%d", h, caddr, cport)
+		if err := h.CheckHTTPStatus(url, 200); err != nil {
+			return fmt.Errorf("failed to connect from worker to kubernetes api at %s:%d - check networking", caddr, cport)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
 	log.Infof("%s: generating token", p.leader)
 	token, err := p.Config.Spec.K0s.GenerateToken(
 		p.leader,
