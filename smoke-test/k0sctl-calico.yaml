@@ -16,6 +16,8 @@ spec:
     version: "1.21.1+k0s.0"
     config:
       spec:
+        telemetry:
+          enabled: false
         network:
           provider: calico
         images:
