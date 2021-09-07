@@ -1,6 +1,10 @@
 package cluster
 
-import "github.com/creasty/defaults"
+import (
+	"fmt"
+
+	"github.com/creasty/defaults"
+)
 
 // Spec defines cluster config spec section
 type Spec struct {
@@ -43,4 +47,26 @@ func (s *Spec) K0sLeader() *Host {
 	}
 
 	return s.k0sLeader
+}
+
+// KubeAPIURL returns an address to the cluster's kube api url
+func (s *Spec) KubeAPIURL() string {
+	leader := s.K0sLeader()
+	var caddr string
+	if a, ok := s.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+		caddr = a
+	} else {
+		if leader.PrivateAddress != "" {
+			caddr = leader.PrivateAddress
+		} else {
+			caddr = leader.Address()
+		}
+	}
+
+	cport := 6443
+	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		cport = p
+	}
+
+	return fmt.Sprintf("https://%s:%d/", caddr, cport)
 }
