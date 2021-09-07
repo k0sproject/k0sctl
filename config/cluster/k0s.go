@@ -68,6 +68,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token st
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
+		retry.LastErrorOnly(true),
 	)
 	return
 }

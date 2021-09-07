@@ -317,6 +317,7 @@ func (h *Host) WaitKubeNodeReady(node *Host) error {
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
 		retry.Attempts(120),
+		retry.LastErrorOnly(true),
 	)
 }
 
@@ -357,6 +358,7 @@ func (h *Host) WaitHTTPStatus(url string, expected ...int) error {
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
+		retry.LastErrorOnly(true),
 	)
 }
 
@@ -373,6 +375,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
+		retry.LastErrorOnly(true),
 	)
 }
 
@@ -392,6 +395,7 @@ func (h *Host) WaitK0sServiceStopped() error {
 		retry.MaxJitter(time.Second*2),
 		retry.Delay(time.Second*3),
 		retry.Attempts(60),
+		retry.LastErrorOnly(true),
 	)
 }
 
