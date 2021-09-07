@@ -19,6 +19,8 @@ spec:
     version: "1.21.1+k0s.0"
     config:
       spec:
+        telemetry:
+          enabled: false
         images:
           konnectivity:
             image: us.gcr.io/k8s-artifacts-prod/kas-network-proxy/proxy-agent

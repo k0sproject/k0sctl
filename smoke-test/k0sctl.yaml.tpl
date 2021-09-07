@@ -26,4 +26,5 @@ spec:
     version: "$K0S_VERSION"
     config:
       spec:
-        
+        telemetry:
+          enabled: false
