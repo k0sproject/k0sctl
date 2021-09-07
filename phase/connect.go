@@ -42,6 +42,7 @@ func (p *Connect) Run() error {
 			retry.MaxJitter(time.Second*2),
 			retry.Delay(time.Second*3),
 			retry.Attempts(retries),
+			retry.LastErrorOnly(true),
 		)
 
 		if err != nil {
