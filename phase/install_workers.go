@@ -56,7 +56,7 @@ func (p *InstallWorkers) Run() error {
 
 	err := p.hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: validating api connection to controller at %s", h, url)
-		if err := h.CheckHTTPStatus(healthz, 200); err != nil {
+		if err := h.CheckHTTPStatus(healthz, 200, 401); err != nil {
 			return fmt.Errorf("failed to connect from worker to kubernetes api at %s - check networking", url)
 		}
 		return nil
