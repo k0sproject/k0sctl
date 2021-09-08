@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -60,11 +61,23 @@ func (p *InstallWorkers) Run() error {
 		return err
 	}
 
+	defer func() {
+		if err := p.leader.Exec(p.leader.Configurer.K0sCmdf("invalidate %s", token), exec.RedactString(token)); err != nil {
+			log.Warnf("%s: failed to invalidate the join token", p.leader)
+		}
+	}()
+
 	return p.hosts.ParallelEach(func(h *cluster.Host) error {
 		log.Infof("%s: writing join token", h)
 		if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), token, "0640"); err != nil {
 			return err
 		}
+
+		defer func() {
+			if err := h.Configurer.DeleteFile(h, h.K0sJoinTokenPath()); err != nil {
+				log.Warnf("%s: failed to clean up the join token file at %s", h, h.K0sJoinTokenPath())
+			}
+		}()
 
 		if sp, err := h.Configurer.ServiceScriptPath(h, h.K0sServiceName()); err == nil {
 			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
