@@ -49,13 +49,13 @@ func (s *Spec) K0sLeader() *Host {
 	return s.k0sLeader
 }
 
-// KubeAPIURL returns an address to the cluster's kube api url
+// KubeAPIURL returns an url to the cluster's kube api
 func (s *Spec) KubeAPIURL() string {
-	leader := s.K0sLeader()
 	var caddr string
-	if a, ok := s.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+	if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
 		caddr = a
 	} else {
+		leader := s.K0sLeader()
 		if leader.PrivateAddress != "" {
 			caddr = leader.PrivateAddress
 		} else {
@@ -68,5 +68,5 @@ func (s *Spec) KubeAPIURL() string {
 		cport = p
 	}
 
-	return fmt.Sprintf("https://%s:%d/", caddr, cport)
+	return fmt.Sprintf("https://%s:%d", caddr, cport)
 }
