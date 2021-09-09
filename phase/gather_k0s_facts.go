@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
@@ -13,12 +14,16 @@ import (
 )
 
 type k0sstatus struct {
-	Pid      int    `json:"Pid"`
-	PPid     int    `json:"PPid"`
-	Version  string `json:"Version"`
-	Role     string `json:"Role"`
-	SysInit  string `json:"SysInit"`
-	StubFile string `json:"StubFile"`
+	Version       string      `json:"Version"`
+	Pid           int         `json:"Pid"`
+	PPid          int         `json:"PPid"`
+	Role          string      `json:"Role"`
+	SysInit       string      `json:"SysInit"`
+	StubFile      string      `json:"StubFile"`
+	Workloads     bool        `json:"Workloads"`
+	Args          []string    `json:"Args"`
+	ClusterConfig dig.Mapping `json:"ClusterConfig"`
+	K0sVars       dig.Mapping `json:"K0sVars"`
 }
 
 // GatherK0sFacts gathers information about hosts, such as if k0s is already up and running
@@ -94,6 +99,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		status.Role = "controller"
 	case "server+worker":
 		status.Role = "controller+worker"
+	case "controller":
+		if status.Workloads {
+			status.Role = "controller+worker"
+		}
 	}
 
 	if status.Role != h.Role {
