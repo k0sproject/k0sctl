@@ -196,7 +196,7 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
 	}
 
-	if !h.IsController() && h.PrivateAddress != "" {
+	if strings.HasSuffix(h.Role, "worker") && h.PrivateAddress != "" {
 		// set worker's private address to --node-ip in --extra-kubelet-args
 		var extra Flags
 		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
