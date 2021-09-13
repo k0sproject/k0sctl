@@ -28,7 +28,7 @@ func (p *Restore) ShouldRun() bool {
 
 // Prepare the phase
 func (p *Restore) Prepare(config *config.Cluster) error {
-	log.Debugf("restore from: %s", p.RestoreFrom)
+	log.Tracef("restore from: %s", p.RestoreFrom)
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
@@ -36,8 +36,8 @@ func (p *Restore) Prepare(config *config.Cluster) error {
 		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
 	}
 
-	log.Debugf("restore leader: %s", p.leader)
-	log.Debugf("restore leader state: %+v", p.leader.Metadata)
+	log.Tracef("restore leader: %s", p.leader)
+	log.Tracef("restore leader state: %+v", p.leader.Metadata)
 	return nil
 }
 

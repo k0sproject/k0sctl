@@ -19,6 +19,7 @@ var backupCommand = &cli.Command{
 		configFlag,
 		debugFlag,
 		traceFlag,
+		redactFlag,
 		analyticsFlag,
 	},
 	Before: actions(initLogging, initConfig, displayLogo, initAnalytics, displayCopyright),

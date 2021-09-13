@@ -16,6 +16,7 @@ var kubeconfigCommand = &cli.Command{
 		configFlag,
 		debugFlag,
 		traceFlag,
+		redactFlag,
 		analyticsFlag,
 	},
 	Before: actions(initSilentLogging, initConfig, initAnalytics),
