@@ -11,6 +11,7 @@ var App = &cli.App{
 	Flags: []cli.Flag{
 		debugFlag,
 		traceFlag,
+		redactFlag,
 	},
 	Commands: []*cli.Command{
 		versionCommand,

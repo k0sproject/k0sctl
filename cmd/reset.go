@@ -23,6 +23,7 @@ var resetCommand = &cli.Command{
 		configFlag,
 		debugFlag,
 		traceFlag,
+		redactFlag,
 		analyticsFlag,
 		&cli.BoolFlag{
 			Name:    "force",
