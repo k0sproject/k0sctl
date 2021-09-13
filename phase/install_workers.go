@@ -79,7 +79,7 @@ func (p *InstallWorkers) Run() error {
 
 	if !NoWait {
 		defer func() {
-			if err := p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate %s", token), exec.RedactString(token)); err != nil {
+			if err := p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate %s", token), exec.Sudo(p.leader), exec.RedactString(token)); err != nil {
 				log.Warnf("%s: failed to invalidate the join token", p.leader)
 			}
 		}()
