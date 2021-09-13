@@ -32,7 +32,13 @@ spec:
     serviceCIDR: 10.96.0.0/12
     provider: kuberouter
     kuberouter:
+      mtu: 0
+      peerRouterIPs: ""
+      peerRouterASNs: ""
       autoMTU: true
+    kubeProxy:
+      disabled: false
+      mode: iptables
   podSecurityPolicy:
     defaultPolicy: 00-k0s-privileged
   telemetry:
@@ -47,13 +53,13 @@ spec:
   images:
     konnectivity:
       image: us.gcr.io/k8s-artifacts-prod/kas-network-proxy/proxy-agent
-      version: v0.0.16
+      version: v0.0.24
     metricsserver:
       image: gcr.io/k8s-staging-metrics-server/metrics-server
-      version: v0.3.7
+      version: v0.5.0
     kubeproxy:
       image: k8s.gcr.io/kube-proxy
-      version: v1.21.1
+      version: v1.22.1
     coredns:
       image: docker.io/coredns/coredns
       version: 1.7.0
