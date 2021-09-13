@@ -70,8 +70,10 @@ func (p *DownloadBinaries) Run() error {
 	for _, h := range p.hosts {
 		if h.K0sBinaryPath == "" {
 			if bin := bins.find(h.Configurer.Kind(), h.Metadata.Arch); bin != nil {
-				h.K0sBinaryPath = bin.path
+				h.UploadBinaryPath = bin.path
 			}
+		} else {
+			h.UploadBinaryPath = h.K0sBinaryPath
 		}
 	}
 
