@@ -15,6 +15,7 @@ import (
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/exec"
 	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
@@ -32,9 +33,14 @@ var (
 	traceFlag = &cli.BoolFlag{
 		Name:    "trace",
 		Usage:   "Enable trace logging",
-		Aliases: []string{"dd"},
 		EnvVars: []string{"TRACE"},
-		Hidden:  true,
+		Hidden:  false,
+	}
+
+	redactFlag = &cli.BoolFlag{
+		Name:  "no-redact",
+		Usage: "Do not hide sensitive information in the output",
+		Value: false,
 	}
 
 	configFlag = &cli.StringFlag{
@@ -122,6 +128,7 @@ func initLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
+	exec.DisableRedact = ctx.Bool("no-redact")
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger()
 }
@@ -131,16 +138,17 @@ func initLogging(ctx *cli.Context) error {
 func initSilentLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
+	exec.DisableRedact = ctx.Bool("no-redact")
 	initScreenLogger(logLevelFromCtx(ctx, log.FatalLevel))
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger()
 }
 
 func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
-	if ctx.Bool("debug") {
-		return log.DebugLevel
-	} else if ctx.Bool("trace") {
+	if ctx.Bool("trace") {
 		return log.TraceLevel
+	} else if ctx.Bool("debug") {
+		return log.DebugLevel
 	} else {
 		return defaultLevel
 	}

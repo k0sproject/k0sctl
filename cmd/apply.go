@@ -38,6 +38,7 @@ var applyCommand = &cli.Command{
 		},
 		debugFlag,
 		traceFlag,
+		redactFlag,
 		analyticsFlag,
 	},
 	Before: actions(initLogging, initConfig, displayLogo, initAnalytics, displayCopyright),
