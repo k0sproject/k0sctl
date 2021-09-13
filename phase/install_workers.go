@@ -76,6 +76,7 @@ func (p *InstallWorkers) Run() error {
 	if err != nil {
 		return err
 	}
+	log.Tracef("%s: join token: %s", p.leader, token)
 
 	if !NoWait {
 		defer func() {
