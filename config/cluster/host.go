@@ -32,8 +32,9 @@ type Host struct {
 	OSIDOverride     string            `yaml:"os,omitempty"`
 	Hooks            Hooks             `yaml:"hooks,omitempty"`
 
-	Metadata   HostMetadata `yaml:"-"`
-	Configurer configurer   `yaml:"-"`
+	UploadBinaryPath string       `yaml:"-"`
+	Metadata         HostMetadata `yaml:"-"`
+	Configurer       configurer   `yaml:"-"`
 }
 
 type configurer interface {
@@ -240,8 +241,8 @@ func (h *Host) K0sServiceName() string {
 
 // UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
 func (h *Host) UpdateK0sBinary(version string) error {
-	if h.K0sBinaryPath != "" {
-		if err := h.Upload(h.K0sBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
+	if h.UploadBinaryPath != "" {
+		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
 		}
 		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {

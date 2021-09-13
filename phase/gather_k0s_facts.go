@@ -133,10 +133,17 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	// If supplimental files or a k0s binary have been specified explicitly,
 	// always upgrade.  This covers the scenario where a user moves from a
 	// default-install cluster to one fed by OCI image bundles (ie. airgap)
-	if len(h.Files) > 0 || h.K0sBinaryPath != "" {
+	if len(h.Files) > 0 {
+		log.Debugf("%s: marked for upgrade because there are %d file uploads for the host", h, len(h.Files))
 		return true
 	}
 
+	if h.K0sBinaryPath != "" {
+		log.Debugf("%s: marked for upgrade because a static k0s binary path %s", h, h.K0sBinaryPath)
+		return true
+	}
+
+	log.Debugf("%s: checking if %s is an upgrade from %s", h, p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
 	target, err := semver.NewVersion(p.Config.Spec.K0s.Version)
 	if err != nil {
 		log.Warnf("%s: failed to parse target version: %s", h, err.Error())
