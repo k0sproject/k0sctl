@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
@@ -50,12 +51,25 @@ func (p *GatherK0sFacts) Run() error {
 		p.SetProp("clusterID", id)
 	}
 
+	p.investigateCluster(p.leader)
+
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	if err := workers.ParallelEach(p.investigateK0s); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (p *GatherK0sFacts) investigateCluster(h *cluster.Host) {
+	cm, err := config.LoadK0sctlConfigMap(h)
+	if err != nil {
+		return
+	}
+
+	log.Infof("%s: found a previous k0sctl configuration", h)
+	log.Tracef("existing config:\n%+v", cm)
+	p.Config.Metadata.K0sctlConfig = cm
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {

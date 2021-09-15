@@ -6,6 +6,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-version"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	"gopkg.in/yaml.v2"
 )
 
 // APIVersion is the current api version
@@ -13,7 +14,8 @@ const APIVersion = "k0sctl.k0sproject.io/v1beta1"
 
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
-	Name string `yaml:"name" validate:"required" default:"k0s-cluster"`
+	Name         string           `yaml:"name" validate:"required" default:"k0s-cluster"`
+	K0sctlConfig *K0sctlConfigMap `yaml:"-"`
 }
 
 // Cluster describes launchpad.yaml configuration
@@ -70,4 +72,19 @@ func validateMinK0sVersion(sl validator.StructLevel) {
 			sl.ReportError(k0s.Version, "version", "", fmt.Sprintf("minimum k0s version is %s", cluster.K0sMinVersion), "")
 		}
 	}
+}
+
+func (c *Cluster) ConfigMap() (*K0sctlConfigMap, error) {
+	cfg, err := yaml.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	cm := &K0sctlConfigMap{
+		APIVersion: "v1",
+		Kind:       "ConfigMap",
+	}
+	cm.Metadata.Name = "k0sctl"
+	cm.Data.Config = string(cfg)
+	return cm, nil
 }

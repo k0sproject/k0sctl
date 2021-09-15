@@ -89,6 +89,7 @@ var applyCommand = &cli.Command{
 			&phase.UpgradeWorkers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
+			&phase.SaveConfig{},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
 			&phase.Disconnect{},
 		)
