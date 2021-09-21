@@ -86,6 +86,7 @@ func (p *InstallWorkers) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to decode the join token: %w", err)
 	}
+
 	rdata := bytes.NewReader(base64Text)
 	r, err := gzip.NewReader(rdata)
 	if err != nil {
@@ -94,7 +95,7 @@ func (p *InstallWorkers) Run() error {
 
 	s, err := io.ReadAll(r)
 	if err != nil {
-		return fmt.Errorf("failed to uncompress the join token: %w", err)
+		return fmt.Errorf("failed to uncompress the join token '%s': %w", token, err)
 	}
 	idx := bytes.Index(s, []byte("."))
 	if idx < 0 {
