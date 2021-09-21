@@ -1,11 +1,7 @@
 package phase
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/k0sproject/k0sctl/config"
@@ -81,33 +77,16 @@ func (p *InstallWorkers) Run() error {
 		return err
 	}
 
-	base64Text := make([]byte, base64.StdEncoding.DecodedLen(len(token)))
-	_, err = base64.StdEncoding.Decode(base64Text, []byte(token))
+	tokenID, err := k0s.TokenID(token)
 	if err != nil {
-		return fmt.Errorf("failed to decode the join token: %w", err)
+		return err
 	}
-
-	rdata := bytes.NewReader(base64Text)
-	r, err := gzip.NewReader(rdata)
-	if err != nil {
-		return fmt.Errorf("failed to read the join token: %w", err)
-	}
-
-	s, err := io.ReadAll(r)
-	if err != nil {
-		return fmt.Errorf("failed to uncompress the join token '%s': %w", token, err)
-	}
-	idx := bytes.Index(s, []byte("."))
-	if idx < 0 {
-		return fmt.Errorf("invalid join token")
-	}
-	tokenID := string(s[0:idx])
 	log.Debugf("%s: join token ID: %s", p.leader, tokenID)
 
 	if !NoWait {
 		defer func() {
 			if err := p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate %s", tokenID), exec.Sudo(p.leader), exec.RedactString(token)); err != nil {
-				log.Warnf("%s: failed to invalidate the join token", p.leader)
+				log.Warnf("%s: failed to invalidate the worker join token", p.leader)
 			}
 		}()
 	}
