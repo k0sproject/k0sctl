@@ -94,10 +94,10 @@ func TokenID(s string) (string, error) {
 	sr := strings.NewReader(s)
 	b64r := base64.NewDecoder(base64.StdEncoding, sr)
 	gzr, err := gzip.NewReader(b64r)
-	defer gzr.Close()
 	if err != nil {
 		return "", fmt.Errorf("failed to create a reader for token: %w", err)
 	}
+	defer gzr.Close()
 
 	c, err := io.ReadAll(gzr)
 	if err != nil {
@@ -110,7 +110,7 @@ func TokenID(s string) (string, error) {
 	}
 
 	users, ok := cfg.Dig("users").([]interface{})
-	if len(users) < 1 {
+	if !ok || len(users) < 1 {
 		return "", fmt.Errorf("failed to find users in token")
 	}
 
