@@ -61,7 +61,7 @@ func (p *InstallControllers) Run() error {
 		if err != nil {
 			return err
 		}
-		tokenID, err := k0s.TokenID(token)
+		tokenID, err := cluster.TokenID(token)
 		if err != nil {
 			return err
 		}

@@ -77,7 +77,7 @@ func (p *InstallWorkers) Run() error {
 		return err
 	}
 
-	tokenID, err := k0s.TokenID(token)
+	tokenID, err := cluster.TokenID(token)
 	if err != nil {
 		return err
 	}
