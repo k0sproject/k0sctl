@@ -27,7 +27,9 @@ func init() {
 			return os.ID == "alpine"
 		},
 		func() interface{} {
-			return Alpine{}
+			linuxType := &Alpine{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

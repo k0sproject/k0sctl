@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "debian"
 		},
 		func() interface{} {
-			return &Debian{}
+			linuxType := &Debian{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

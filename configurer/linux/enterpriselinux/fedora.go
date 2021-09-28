@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "fedora"
 		},
 		func() interface{} {
-			return Fedora{}
+			linuxType := &Fedora{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "centos"
 		},
 		func() interface{} {
-			return CentOS{}
+			linuxType := &CentOS{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

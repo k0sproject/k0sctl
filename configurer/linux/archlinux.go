@@ -19,7 +19,9 @@ func init() {
 			return os.IDLike == "arch"
 		},
 		func() interface{} {
-			return &Archlinux{}
+			linuxType := &Archlinux{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

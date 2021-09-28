@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "ol"
 		},
 		func() interface{} {
-			return OracleLinux{}
+			linuxType := &OracleLinux{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

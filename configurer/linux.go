@@ -10,8 +10,24 @@ import (
 	"github.com/k0sproject/rig/os"
 )
 
+// Static Constants Interface for overriding by distro-specific structs
+type LinuxStaticConstants interface {
+	K0sBinaryPath() string
+	K0sConfigPath() string
+	K0sJoinTokenPath() string
+	KubeconfigPath() string
+}
+
 // Linux is a base module for various linux OS support packages
-type Linux struct{}
+type Linux struct {
+	LinuxStaticConstants
+}
+
+func New() *Linux {
+	linuxType := &Linux{}
+	linuxType.LinuxStaticConstants = interface{}(linuxType).(LinuxStaticConstants)
+	return linuxType
+}
 
 // NOTE The Linux struct does not embed rig/os.Linux because it will confuse
 // go as the distro-configurers' parents embed it too. This means you can't
@@ -46,7 +62,7 @@ func (l Linux) Chmod(h os.Host, path, chmod string) error {
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l Linux) K0sCmdf(template string, args ...interface{}) string {
-	return fmt.Sprintf("%s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
+	return fmt.Sprintf("%s %s", l.LinuxStaticConstants.K0sBinaryPath(), fmt.Sprintf(template, args...))
 }
 
 // K0sBinaryPath returns the location of k0s binary
@@ -87,12 +103,12 @@ func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 		return err
 	}
 
-	return h.Execf(`install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.K0sBinaryPath(), exec.Sudo(h))
+	return h.Execf(`install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.LinuxStaticConstants.K0sBinaryPath(), exec.Sudo(h))
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
 func (l Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
-	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
+	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.LinuxStaticConstants.K0sJoinTokenPath(), spath))
 }
 
 // FileContains returns true if a file contains the substring
@@ -117,7 +133,7 @@ func (l Linux) KubeconfigPath() string {
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
 func (l Linux) KubectlCmdf(s string, args ...interface{}) string {
-	return l.K0sCmdf(`kubectl --kubeconfig "%s" %s`, l.KubeconfigPath(), fmt.Sprintf(s, args...))
+	return l.K0sCmdf(`kubectl --kubeconfig "%s" %s`, l.LinuxStaticConstants.KubeconfigPath(), fmt.Sprintf(s, args...))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error

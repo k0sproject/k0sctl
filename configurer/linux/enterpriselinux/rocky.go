@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "rocky"
 		},
 		func() interface{} {
-			return RockyLinux{}
+			linuxType := &RockyLinux{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

@@ -27,7 +27,9 @@ func init() {
 			return os.ID == "amzn"
 		},
 		func() interface{} {
-			return AmazonLinux{}
+			linuxType := &AmazonLinux{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }

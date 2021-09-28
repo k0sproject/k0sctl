@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "almalinux"
 		},
 		func() interface{} {
-			return AlmaLinux{}
+			linuxType := &AlmaLinux{}
+			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			return linuxType
 		},
 	)
 }
