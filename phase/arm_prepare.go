@@ -44,16 +44,8 @@ func (p *PrepareArm) Run() error {
 }
 
 func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {
-	var arch string
-	switch h.Metadata.Arch {
-	case "aarch32", "arm32", "armv7l", "armhfp", "arm-32":
-		arch = "arm32"
-	default:
-		arch = "arm64"
-	}
-
-	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, arch)
-	h.Environment["ETCD_UNSUPPORTED_ARCH"] = arch
+	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, h.Metadata.Arch)
+	h.Environment["ETCD_UNSUPPORTED_ARCH"] = h.Metadata.Arch
 
 	return nil
 }
