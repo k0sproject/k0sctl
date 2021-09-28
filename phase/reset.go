@@ -58,6 +58,10 @@ func (p *Reset) Run() error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
+			log.Infof("%s: waiting for k0s to stop", h)
+			if err := h.WaitK0sServiceStopped(); err != nil {
+				return err
+			}
 		}
 
 		log.Infof("%s: running k0s reset", h)
