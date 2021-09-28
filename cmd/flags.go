@@ -54,7 +54,6 @@ var (
 	analyticsFlag = &cli.BoolFlag{
 		Name:    "disable-telemetry",
 		EnvVars: []string{"DISABLE_TELEMETRY"},
-		Hidden:  true,
 	}
 
 	Colorize = aurora.NewAurora(false)
