@@ -2,6 +2,7 @@ package configurer
 
 import (
 	"fmt"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -100,6 +101,10 @@ func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 
 	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
 	if err := h.Execf(`curl -sSLf -o "%s" "%s"`, tmp, url); err != nil {
+		return err
+	}
+
+	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, path.Dir(l.LinuxStaticConstants.K0sBinaryPath()), exec.Sudo(h)); err != nil {
 		return err
 	}
 
