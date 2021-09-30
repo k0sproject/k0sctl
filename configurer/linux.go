@@ -50,11 +50,6 @@ func (l Linux) Arch(h os.Host) (string, error) {
 	}
 }
 
-// Chmod changes file permissions
-func (l Linux) Chmod(h os.Host, path, chmod string) error {
-	return h.Execf("chmod %s %s", chmod, path, exec.Sudo(h))
-}
-
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l Linux) K0sCmdf(template string, args ...interface{}) string {
 	return fmt.Sprintf("%s %s", l.PathFuncs.K0sBinaryPath(), fmt.Sprintf(template, args...))
@@ -85,6 +80,11 @@ func (l Linux) TempDir(h os.Host) (string, error) {
 	return h.ExecOutput("mktemp -d")
 }
 
+// DownloadURL performs a download from a URL on the host
+func (l Linux) DownloadURL(h os.Host, url, destination string) error {
+	return h.Execf(`curl -sSLf -o "%s" "%s"`, destination, url)
+}
+
 // DownloadK0s performs k0s binary download from github on the host
 func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 	tmp, err := l.TempFile(h)
@@ -94,7 +94,7 @@ func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
 	defer func() { _ = h.Execf(`rm -f "%s"`, tmp) }()
 
 	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
-	if err := h.Execf(`curl -sSLf -o "%s" "%s"`, tmp, url); err != nil {
+	if err := l.DownloadURL(h, url, tmp); err != nil {
 		return err
 	}
 
@@ -118,11 +118,6 @@ func (l Linux) FileContains(h os.Host, path, s string) bool {
 // MoveFile moves a file on the host
 func (l Linux) MoveFile(h os.Host, src, dst string) error {
 	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
-}
-
-// DeleteFile deletes a file on the host
-func (l Linux) DeleteFile(h os.Host, path string) error {
-	return h.Execf(`rm -f "%s"`, path, exec.Sudo(h))
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host

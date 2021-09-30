@@ -103,6 +103,44 @@ jobs:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-basic
 
+  smoke-files:
+    name: Basic file upload smoke
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Restore the compiled binary for smoke testing
+        uses: actions/cache@v2
+        id: restore-compiled-binary
+        with:
+          path: |
+            k0sctl
+          key: build-${{ github.run_id }}
+
+      - name: K0sctl cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/k0sctl
+            ~/.k0sctl/cache
+            !*.log
+          key: k0sctl-cache
+
+      - name: Docker Layer Caching For Footloose
+        uses: satackey/action-docker-layer-caching@v0.0.11
+        continue-on-error: true
+
+      - name: Run smoke tests
+        run: make smoke-files
+
   smoke-os-override:
     name: OS override smoke test
     needs: build

@@ -50,10 +50,10 @@ As the released binaries aren't signed yet, on macOS and Windows, you must first
 
 ### Install from the sources
 
-If you have a working Go toolchain, you can use `go get` to install k0sctl to your `$GOPATH/bin`.
+If you have a working Go toolchain, you can use `go install` to install k0sctl to your `$GOPATH/bin`.
 
 ```sh
-GO111MODULE=on go get github.com/k0sproject/k0sctl
+go install github.com/k0sproject/k0sctl
 ```
 
 ### Package managers
@@ -272,9 +272,13 @@ Example:
 ```
 
 * `name`: name of the file "bundle", used only for logging purposes (optional)
-* `src`: [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded
-* `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host.
-* `perm`: File permission mode for uploaded file(s) and created directories
+* `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host (required)
+* `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host (default: user home)
+* `dst`: Destination filename for the file. Only usable for single file uploads (default: basename of file)
+* `perm`: File permission mode for uploaded file(s) (default: same as local)
+* `dirPerm`: Directory permission mode for created directories (default: 0755)
+* `user`: User name of file/directory owner, must exist on the host (optional)
+* `group`: Group name of file/directory owner, must exist on the host (optional)
 
 ###### `spec.hosts[*].hooks` &lt;mapping&gt; (optional)
 
@@ -295,17 +299,18 @@ The currently available "hook points" are:
 
 * `apply`: Runs during `k0sctl apply`
     - `before`: Runs after configuration and host validation, right before configuring k0s on the host
-    - `after`: Runs before disconnecting from the hosts after a successful apply operation
+    - `after`: Runs before disconnecting from the host after a successful apply operation
 * `backup`: Runs during `k0s backup`
     - `before`: Runs before k0sctl runs the `k0s backup` command
-    - `after`: Runs before disconnecting from the hosts after successfully taking a backup
+    - `after`: Runs before disconnecting from the host after successfully taking a backup
 * `reset`: Runs during `k0sctl reset`
     - `before`: Runs after gathering information about the cluster, right before starting to remove the k0s installation.
-    - `after`: Runs before disconnecting from the hosts after a successful reset operation
+    - `after`: Runs before disconnecting from the host after a successful reset operation
 
 ##### `spec.hosts[*].os` &lt;string&gt; (optional) (default: ``)
 
 Override OS distribution auto-detection. By default `k0sctl` detects the OS by reading `/etc/os-release` or `/usr/lib/os-release` files. In case your system is based on e.g. Debian but the OS release info has something else configured you can override `k0sctl` to use Debian based functionality for the node with:
+
 ```yaml
   - role: worker
     os: debian
