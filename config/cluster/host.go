@@ -30,6 +30,7 @@ type Host struct {
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []UploadFile      `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
+	HostnameOverride string            `yaml:"hostname,omitempty"`
 	Hooks            Hooks             `yaml:"hooks,omitempty"`
 
 	UploadBinaryPath string       `yaml:"-"`
@@ -204,6 +205,9 @@ func (h *Host) K0sInstallCommand() string {
 			extra = Flags{unQE(old)}
 		}
 		extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
+		if h.HostnameOverride != "" {
+			extra.AddOrReplace(fmt.Sprintf("--hostname-override=%s", h.HostnameOverride))
+		}
 		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
 	}
 
