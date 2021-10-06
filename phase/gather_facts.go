@@ -49,7 +49,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 			}
 			if over != "" {
 				if h.HostnameOverride != unq {
-					return fmt.Errorf("spec.host.hostname and installFlags[--kubelet-extra-args[--hostname-override]] mismatch, only define either one")
+					return fmt.Errorf("hostname and installFlags kubelet-extra-args hostname-override mismatch, only define either one")
 				}
 				h.HostnameOverride = unq
 			}
