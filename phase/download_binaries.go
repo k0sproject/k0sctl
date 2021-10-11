@@ -113,10 +113,21 @@ func (b binary) url() string {
 func (b binary) downloadTo(path string) error {
 	log.Infof("downloading k0s version %s binary for %s-%s", b.version, b.os, b.arch)
 
-	f, err := os.CreateTemp("", "k0s")
+	var err error
+
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if err != nil {
+			err = os.Remove(path)
+			if err != nil {
+				log.Warnf("failed to remove broken download at %s: %s", path, err.Error())
+			}
+		}
+	}()
 
 	resp, err := http.Get(b.url())
 	if err != nil {
@@ -125,23 +136,15 @@ func (b binary) downloadTo(path string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		if err == nil {
-			return fmt.Errorf("Failed to get k0s binary (%d)", resp.StatusCode)
-		}
-		return err
+		return fmt.Errorf("failed to get k0s binary (http %d)", resp.StatusCode)
 	}
 
-	// Write the body to file
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	if err := f.Close(); err != nil {
-		return err
-	}
-
-	if err := os.Rename(f.Name(), path); err != nil {
+	if err = f.Close(); err == nil {
 		return err
 	}
 
