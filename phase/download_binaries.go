@@ -115,6 +115,11 @@ func (b binary) downloadTo(path string) error {
 
 	var err error
 
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
 	defer func() {
 		if err != nil {
 			err = os.Remove(path)
@@ -123,11 +128,6 @@ func (b binary) downloadTo(path string) error {
 			}
 		}
 	}()
-
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
 
 	resp, err := http.Get(b.url())
 	if err != nil {
