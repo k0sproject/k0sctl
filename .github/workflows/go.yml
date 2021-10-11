@@ -1,10 +1,6 @@
 name: Go
 
-on:
-  push:
-    branches-ignore:
-      - "main"
-  pull_request:
+on: [ pull_request ]
 
 jobs:
 
