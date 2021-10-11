@@ -124,7 +124,7 @@ func (b binary) downloadTo(path string) error {
 		if err != nil {
 			err = os.Remove(path)
 			if err != nil {
-				log.Warnf("failed to remove broken download at %s: %w", path, err)
+				log.Warnf("failed to remove broken download at %s: %s", path, err.Error())
 			}
 		}
 	}()
