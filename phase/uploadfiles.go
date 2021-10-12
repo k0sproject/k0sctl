@@ -50,7 +50,7 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 			return err
 		}
 
-		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermMode, exec.Sudo(h)); err != nil {
+		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermString, exec.Sudo(h)); err != nil {
 			return err
 		}
 
@@ -62,7 +62,7 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 				return err
 			}
 
-			if err := h.Configurer.Chmod(h, destination, f.PermMode); err != nil {
+			if err := h.Configurer.Chmod(h, destination, f.PermString); err != nil {
 				return err
 			}
 		}
