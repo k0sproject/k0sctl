@@ -15,6 +15,9 @@ bin/k0sctl-linux-x64: $(GO_SRCS)
 bin/k0sctl-linux-arm64: $(GO_SRCS)
 	GOOS=linux GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm64 main.go
 
+bin/k0sctl-linux-arm: $(GO_SRCS)
+	GOOS=linux GOARCH=arm go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm main.go
+
 bin/k0sctl-win-x64.exe: $(GO_SRCS)
 	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-x64.exe main.go
 
