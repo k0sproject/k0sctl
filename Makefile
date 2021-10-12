@@ -31,7 +31,7 @@ bin/%.sha256: bin/%
 	sha256sum -b $< | sed 's/bin\///' > $@.tmp
 	mv $@.tmp $@
 
-bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-win-x64.exe k0sctl-darwin-x64 k0sctl-darwin-arm64
+bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-x64.exe k0sctl-darwin-x64 k0sctl-darwin-arm64
 checksums := $(addsuffix .sha256,$(bins))
 
 .PHONY: build-all
