@@ -2,7 +2,6 @@ package phase
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/k0sproject/k0sctl/config/cluster"
 	log "github.com/sirupsen/logrus"
@@ -37,22 +36,12 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 
 	extra := h.InstallFlags.GetValue("--kubelet-extra-args")
 	if extra != "" {
-		unq, err := strconv.Unquote(extra)
-		if err != nil {
-			return err
-		}
-		ef := cluster.Flags{unq}
+		ef := cluster.Flags{extra}
 		if over := ef.GetValue("--hostname-override"); over != "" {
-			unq, err = strconv.Unquote(over)
-			if err != nil {
-				return err
+			if h.HostnameOverride != over {
+				return fmt.Errorf("hostname and installFlags kubelet-extra-args hostname-override mismatch, only define either one")
 			}
-			if over != "" {
-				if h.HostnameOverride != unq {
-					return fmt.Errorf("hostname and installFlags kubelet-extra-args hostname-override mismatch, only define either one")
-				}
-				h.HostnameOverride = unq
-			}
+			h.HostnameOverride = over
 		}
 	}
 
