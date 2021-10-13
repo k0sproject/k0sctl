@@ -9,6 +9,7 @@ import (
 // GetKubeconfig is a phase to get and dump the admin kubeconfig
 type GetKubeconfig struct {
 	GenericPhase
+	APIAddress string
 }
 
 // Title for the phase
@@ -24,19 +25,23 @@ func (p *GetKubeconfig) Run() error {
 		return err
 	}
 
-	// the controller admin.conf is aways pointing to localhost, thus we need to change the address
-	// something usable from outside
-	address := h.Address()
-	if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
-		address = a
+	if p.APIAddress == "" {
+		// the controller admin.conf is aways pointing to localhost, thus we need to change the address
+		// something usable from outside
+		address := h.Address()
+		if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+			address = a
+		}
+
+		port := 6443
+		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+			port = p
+		}
+
+		p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)
 	}
 
-	port := 6443
-	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		port = p
-	}
-
-	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, address, port)
+	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, p.APIAddress)
 	if err != nil {
 		return err
 	}
@@ -46,7 +51,7 @@ func (p *GetKubeconfig) Run() error {
 
 // kubeConfig reads in the raw kubeconfig and changes the given address
 // and cluster name into it
-func kubeConfig(raw string, name string, address string, port int) (string, error) {
+func kubeConfig(raw string, name string, address string) (string, error) {
 	cfg, err := clientcmd.Load([]byte(raw))
 	if err != nil {
 		return "", err
@@ -54,7 +59,7 @@ func kubeConfig(raw string, name string, address string, port int) (string, erro
 
 	cfg.Clusters[name] = cfg.Clusters["local"]
 	delete(cfg.Clusters, "local")
-	cfg.Clusters[name].Server = fmt.Sprintf("https://%s:%d", address, port)
+	cfg.Clusters[name].Server = address
 
 	cfg.Contexts[name] = cfg.Contexts["Default"]
 	delete(cfg.Contexts, "Default")
