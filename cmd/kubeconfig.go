@@ -13,6 +13,11 @@ var kubeconfigCommand = &cli.Command{
 	Name:  "kubeconfig",
 	Usage: "Output the admin kubeconfig of the cluster",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "address",
+			Usage: "Set kubernetes API address (default: auto-detect)",
+			Value: "",
+		},
 		configFlag,
 		debugFlag,
 		traceFlag,
@@ -42,7 +47,7 @@ var kubeconfigCommand = &cli.Command{
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
-			&phase.GetKubeconfig{},
+			&phase.GetKubeconfig{APIAddress: ctx.String("address")},
 			&phase.Disconnect{},
 		)
 
