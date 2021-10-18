@@ -11,7 +11,7 @@ import (
 )
 
 // WriteKey for analytics
-var WriteKey = "9uTKgGzXDVsC97cioQWpiV40GwSlXFEl"
+var WriteKey = "oU2iC4shRUBfEboaO0FDuDIUk49Ime92"
 
 // Verbose controls the verbosity of segment analytics client
 var Verbose bool
