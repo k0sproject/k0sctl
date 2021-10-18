@@ -22,7 +22,7 @@ func init() {
 		},
 		func() interface{} {
 			linuxType := &SLES{}
-			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
 			return linuxType
 		},
 	)

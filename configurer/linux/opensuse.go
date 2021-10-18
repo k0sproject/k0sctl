@@ -18,7 +18,7 @@ func init() {
 		},
 		func() interface{} {
 			linuxType := &OpenSUSE{}
-			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
 			return linuxType
 		},
 	)
