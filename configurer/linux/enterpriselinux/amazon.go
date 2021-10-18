@@ -28,7 +28,7 @@ func init() {
 		},
 		func() interface{} {
 			linuxType := &AmazonLinux{}
-			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
 			return linuxType
 		},
 	)

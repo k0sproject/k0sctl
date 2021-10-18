@@ -21,7 +21,7 @@ func init() {
 		},
 		func() interface{} {
 			linuxType := &Flatcar{}
-			linuxType.LinuxStaticConstants = interface{}(linuxType).(configurer.LinuxStaticConstants)
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
 			return linuxType
 		},
 	)
