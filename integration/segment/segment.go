@@ -1,7 +1,6 @@
 package segment
 
 import (
-	"os"
 	"runtime"
 
 	"github.com/k0sproject/k0sctl/analytics"
@@ -11,7 +10,7 @@ import (
 )
 
 // WriteKey for analytics
-var WriteKey = "9uTKgGzXDVsC97cioQWpiV40GwSlXFEl"
+const WriteKey string = "oU2iC4shRUBfEboaO0FDuDIUk49Ime92"
 
 // Verbose controls the verbosity of segment analytics client
 var Verbose bool
@@ -65,10 +64,4 @@ func (c Client) Publish(event string, props map[string]interface{}) error {
 // Close the analytics connection
 func (c Client) Close() {
 	c.client.Close()
-}
-
-func init() {
-	if WriteKey == "" {
-		WriteKey = os.Getenv("SEGMENT_WRITE_KEY")
-	}
 }
