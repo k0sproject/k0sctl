@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "debian"
 		},
 		func() interface{} {
-			return &Debian{}
+			linuxType := &Debian{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }

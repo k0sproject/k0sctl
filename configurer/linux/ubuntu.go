@@ -1,6 +1,7 @@
 package linux
 
 import (
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os/registry"
 )
@@ -16,7 +17,9 @@ func init() {
 			return os.ID == "ubuntu"
 		},
 		func() interface{} {
-			return &Ubuntu{}
+			linuxType := &Ubuntu{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }

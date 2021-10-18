@@ -19,7 +19,9 @@ func init() {
 			return os.ID == "centos"
 		},
 		func() interface{} {
-			return CentOS{}
+			linuxType := &CentOS{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }

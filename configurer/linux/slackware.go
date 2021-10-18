@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -21,7 +22,9 @@ func init() {
 			return os.ID == "slackware"
 		},
 		func() interface{} {
-			return Slackware{}
+			linuxType := &Slackware{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }

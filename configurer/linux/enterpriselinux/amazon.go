@@ -27,7 +27,9 @@ func init() {
 			return os.ID == "amzn"
 		},
 		func() interface{} {
-			return AmazonLinux{}
+			linuxType := &AmazonLinux{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }

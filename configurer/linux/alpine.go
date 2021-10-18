@@ -27,7 +27,9 @@ func init() {
 			return os.ID == "alpine"
 		},
 		func() interface{} {
-			return Alpine{}
+			linuxType := &Alpine{}
+			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
+			return linuxType
 		},
 	)
 }
