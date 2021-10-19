@@ -1,0 +1,49 @@
+project_name: k0sctl
+
+env:
+  - CGO_ENABLED=0
+
+snapshot:
+  name_template: '{{ .Tag }}-SNAPSHOT'
+
+before:
+  hooks:
+    - go mod tidy
+
+dist: bin
+
+builds:
+  - flags:
+      - -trimpath
+      - -a
+      - -installsuffix
+    tags:
+      - netgo
+      - static_build
+    ldflags:
+      - -s -w
+      - -X github.com/k0sproject/k0sctl/version.Environment={{ if .IsSnapshot }}development{{ else }}production{{ end }}
+      - -X github.com/k0sproject/k0sctl/version.GitCommit={{.ShortCommit}}
+      - -X github.com/k0sproject/k0sctl/version.Version={{ if .IsSnapshot }}dev{{ else }}{{.Version}}{{ end }}
+      - -extldflags '-static'
+    goos:
+      - linux
+      - windows
+      - darwin
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+    goarch:
+      - amd64
+      - arm64
+      - arm
+
+archives:
+  - format: binary
+    name_template: '{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}'
+    replacements:
+      windows: win
+      arm6: arm
+      amd64: x64
