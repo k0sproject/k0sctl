@@ -12,7 +12,7 @@ basic: $(footloose) id_rsa_k0s
 	./smoke-basic.sh
 
 $(footloose):
-	go get github.com/weaveworks/footloose/...@0.6.3
+	go install github.com/weaveworks/footloose/...@0.6.3
 
 id_rsa_k0s:
 	ssh-keygen -t rsa -f ./id_rsa_k0s -N ""
