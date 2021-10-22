@@ -27,10 +27,10 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.42
-          args: --verbose
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.42
+        args: --verbose
 
     - name: Build
       run: make k0sctl
