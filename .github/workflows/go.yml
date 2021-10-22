@@ -38,7 +38,7 @@ jobs:
     - name: Test
       run: make test
 
-    - name: Cache the compiled binary for further testing
+    - name: Store the compiled binary for further testing
       uses: actions/upload-artifact@v2
       with:
         name: binary
@@ -73,6 +73,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: binary
+
+      - name: Make the binary executable
+        run: chmod +x k0sctl
 
       - name: K0sctl cache
         uses: actions/cache@v2
@@ -118,6 +121,9 @@ jobs:
         with:
           name: binary
 
+      - name: Make the binary executable
+        run: chmod +x k0sctl
+
       - name: K0sctl cache
         uses: actions/cache@v2
         with:
@@ -161,6 +167,9 @@ jobs:
         with:
           name: binary
 
+      - name: Make the binary executable
+        run: chmod +x k0sctl
+
       - name: K0sctl cache
         uses: actions/cache@v2
         with:
@@ -202,6 +211,9 @@ jobs:
         with:
           name: binary
 
+      - name: Make the binary executable
+        run: chmod +x k0sctl
+
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -230,6 +242,9 @@ jobs:
         with:
           name: binary
 
+      - name: Make the binary executable
+        run: chmod +x k0sctl
+
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -253,6 +268,9 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: binary
+
+      - name: Make the binary executable
+        run: chmod +x k0sctl
 
       - name: K0sctl cache
         uses: actions/cache@v2
