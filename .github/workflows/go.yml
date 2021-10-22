@@ -27,23 +27,23 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2.3.0
-      with:
-        version: v1.35.2
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.42
+          args: --verbose
 
     - name: Build
       run: make k0sctl
 
     - name: Test
-      run: go test -v ./...
+      run: make test
 
     - name: Cache the compiled binary for further testing
-      uses: actions/cache@v2
-      id: cache-compiled-binary
+      uses: actions/upload-artifact@v2
       with:
-        path: |
-          k0sctl
-        key: build-${{ github.run_id }}
+        name: binary
+        path: k0sctl
+        retention-days: 5
 
     - name: Build all
       run: make build-all
@@ -54,7 +54,6 @@ jobs:
         image:
           - quay.io/footloose/ubuntu18.04
           - quay.io/footloose/centos7
-            #- quay.io/footloose/amazonlinux2
           - quay.io/footloose/debian10
           - quay.io/footloose/fedora29
     name: Basic 1+1 smoke
@@ -71,12 +70,9 @@ jobs:
           go-version: 1.17
 
       - name: Restore the compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: K0sctl cache
         uses: actions/cache@v2
@@ -118,12 +114,9 @@ jobs:
           go-version: 1.17
 
       - name: Restore the compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: K0sctl cache
         uses: actions/cache@v2
@@ -164,12 +157,9 @@ jobs:
           go-version: 1.17
 
       - name: Restore the compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: K0sctl cache
         uses: actions/cache@v2
@@ -179,13 +169,6 @@ jobs:
             ~/.k0sctl/cache
             !*.log
           key: k0sctl-cache
-
-      - name: Old k0sctl cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache
-          key: k0sctl-040-cache
 
       - name: Docker Layer Caching For Footloose
         uses: satackey/action-docker-layer-caching@v0.0.11
@@ -214,13 +197,10 @@ jobs:
         with:
           go-version: 1.17
 
-      - name: Restore compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+      - name: Restore the compiled binary for smoke testing
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: Run smoke tests
         env:
@@ -245,13 +225,10 @@ jobs:
         with:
           go-version: 1.17
 
-      - name: Restore compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+      - name: Restore the compiled binary for smoke testing
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: Run smoke tests
         env:
@@ -273,12 +250,9 @@ jobs:
           go-version: 1.17
 
       - name: Restore the compiled binary for smoke testing
-        uses: actions/cache@v2
-        id: restore-compiled-binary
+        uses: actions/download-artifact@v2
         with:
-          path: |
-            k0sctl
-          key: build-${{ github.run_id }}
+          name: binary
 
       - name: K0sctl cache
         uses: actions/cache@v2

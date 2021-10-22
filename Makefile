@@ -20,7 +20,7 @@ k0sctl: $(GO_SRCS) .goreleaser.yml $(goreleaser)
 
 .PHONY: clean
 clean:
-	rm -rf bin/
+	rm -rf bin/ k0sctl
 
 $(golint):
 	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
