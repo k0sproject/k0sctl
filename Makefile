@@ -1,7 +1,10 @@
 GO_SRCS := $(shell find . -type f -name '*.go' -a ! -name 'zz_generated*')
+GOARCH ?= $(shell go env GOARCH)
+GOOS ?= $(shell go env GOOS)
 
-k0sctl: $(GO_SRCS)
-	go build $(BUILD_FLAGS) -o k0sctl main.go
+k0sctl: $(GO_SRCS) .goreleaser.yml $(goreleaser)
+	$(goreleaser) build --single-target --snapshot --rm-dist
+	mv bin/k0sctl_$(GOOS)_$(GOARCH)/k0sctl .
 
 .PHONY: clean
 clean:
@@ -31,7 +34,6 @@ $(goreleaser):
 .PHONY: lint
 lint: $(golint)
 	$(golint) run ./...
-
 
 .PHONY: build-all
 build-all: $(goreleaser)
