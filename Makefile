@@ -4,6 +4,16 @@ GOARCH ?= $(shell go env GOARCH)
 GOOS ?= $(shell go env GOOS)
 PREFIX = /usr/local
 
+goreleaser := $(shell which goreleaser)
+ifeq ($(goreleaser),)
+goreleaser := $(shell go env GOPATH)/bin/goreleaser
+endif
+
+golint := $(shell which golangci-lint)
+ifeq ($(golint),)
+golint := $(shell go env GOPATH)/bin/golangci-lint
+endif
+
 k0sctl: $(GO_SRCS) .goreleaser.yml $(goreleaser)
 	$(goreleaser) build --single-target --snapshot --rm-dist
 	mv bin/k0sctl_$(GOOS)_$(GOARCH)/k0sctl .
@@ -12,18 +22,8 @@ k0sctl: $(GO_SRCS) .goreleaser.yml $(goreleaser)
 clean:
 	rm -rf bin/
 
-golint := $(shell which golangci-lint)
-ifeq ($(golint),)
-golint := $(shell go env GOPATH)/bin/golangci-lint
-endif
-
 $(golint):
 	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
-
-goreleaser := $(shell which goreleaser)
-ifeq ($(goreleaser),)
-goreleaser := $(shell go env GOPATH)/bin/goreleaser
-endif
 
 $(goreleaser):
 	go install github.com/goreleaser/goreleaser@latest
