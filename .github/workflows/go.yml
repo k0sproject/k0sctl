@@ -45,8 +45,8 @@ jobs:
           k0sctl
         key: build-${{ github.run_id }}
 
-    - name: Build windows
-      run: make bin/k0sctl-win-x64.exe
+    - name: Build all
+      run: make build-all
 
   smoke-basic:
     strategy:
@@ -101,7 +101,7 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-basic
+        run: make -C smoke-test basic
 
   smoke-os-override:
     name: OS override smoke test
@@ -139,7 +139,7 @@ jobs:
         continue-on-error: true
 
       - name: Run OS override smoke test
-        run: make smoke-os-override
+        run: make -C smoke-test os-override
 
   smoke-upgrade:
     strategy:
@@ -194,7 +194,7 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-upgrade
+        run: make -C smoke-test upgrade
 
   smoke-reset:
     strategy:
@@ -225,7 +225,7 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-reset
+        run: make -C smoke-test reset
 
   smoke-backup-restore:
     strategy:
@@ -256,7 +256,7 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-        run: make smoke-backup-restore
+        run: make -C smoke-test backup-restore
 
   smoke-init:
     name: Init sub-command smoke test
@@ -294,4 +294,4 @@ jobs:
         continue-on-error: true
 
       - name: Run init smoke test
-        run: make smoke-init
+        run: make -C smoke-test init
