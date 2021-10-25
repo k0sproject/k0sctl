@@ -376,7 +376,7 @@ TCP port of the SSH service on the host.
 
 ###### `spec.hosts[*].ssh.keyPath` &lt;string&gt; (optional) (default: `~/.ssh/id_rsa`)
 
-Path to a SSH private key file.
+Path to an SSH private key file.
 
 ##### `spec.hosts[*].localhost` &lt;mapping&gt; (optional)
 
