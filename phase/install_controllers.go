@@ -77,12 +77,6 @@ func (p *InstallControllers) Run() error {
 			return err
 		}
 
-		defer func() {
-			if err := h.Configurer.DeleteFile(h, h.K0sJoinTokenPath()); err != nil {
-				log.Warnf("%s: failed to clean up the join token file at %s", h, h.K0sJoinTokenPath())
-			}
-		}()
-
 		log.Infof("%s: installing k0s controller", h)
 		if err := h.Exec(h.K0sInstallCommand()); err != nil {
 			return err

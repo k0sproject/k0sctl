@@ -97,14 +97,6 @@ func (p *InstallWorkers) Run() error {
 			return err
 		}
 
-		if !NoWait {
-			defer func() {
-				if err := h.Configurer.DeleteFile(h, h.K0sJoinTokenPath()); err != nil {
-					log.Warnf("%s: failed to clean up the join token file at %s", h, h.K0sJoinTokenPath())
-				}
-			}()
-		}
-
 		if sp, err := h.Configurer.ServiceScriptPath(h, h.K0sServiceName()); err == nil {
 			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 				log.Infof("%s: stopping service", h)
