@@ -32,6 +32,7 @@ type UploadFile struct {
 	Base            string       `yaml:"-"`
 }
 
+// converts string or integer value to octal string for chmod
 func permToString(val interface{}) (string, error) {
 	var s string
 	switch t := val.(type) {
@@ -98,6 +99,7 @@ func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return u.resolve()
 }
 
+// String returns the file bundle name or if it is empty, the source.
 func (u *UploadFile) String() string {
 	if u.Name == "" {
 		return u.Source
@@ -105,14 +107,17 @@ func (u *UploadFile) String() string {
 	return u.Name
 }
 
+// Owner returns a chown compatible user:group string from User and Group, or empty when neither are set.
 func (u *UploadFile) Owner() string {
 	return strings.TrimSuffix(fmt.Sprintf("%s:%s", u.User, u.Group), ":")
 }
 
+// returns true if the string contains any glob characters
 func isGlob(s string) bool {
 	return strings.ContainsAny(s, "*%?[]{}")
 }
 
+// sets the destination and resolves any globs/local paths into u.Sources
 func (u *UploadFile) resolve() error {
 	if u.IsURL() {
 		if u.DestinationFile == "" {
@@ -151,6 +156,7 @@ func (u *UploadFile) resolve() error {
 	return nil
 }
 
+// finds files based on a glob pattern
 func (u *UploadFile) glob(src string) error {
 	base, pattern := doublestar.SplitPattern(src)
 	u.Base = base
