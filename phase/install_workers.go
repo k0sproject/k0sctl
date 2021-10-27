@@ -99,7 +99,7 @@ func (p *InstallWorkers) Run() error {
 
 		if !NoWait {
 			defer func() {
-				if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# already joined", "0600"); err != nil {
+				if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
 					log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 				}
 			}()
