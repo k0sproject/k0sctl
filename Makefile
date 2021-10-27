@@ -23,7 +23,7 @@ clean:
 	rm -rf bin/ k0sctl
 
 $(golint):
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 $(goreleaser):
 	go install github.com/goreleaser/goreleaser@latest
