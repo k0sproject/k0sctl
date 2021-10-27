@@ -78,8 +78,8 @@ func (p *InstallControllers) Run() error {
 		}
 
 		defer func() {
-			if err := h.Configurer.DeleteFile(h, h.K0sJoinTokenPath()); err != nil {
-				log.Warnf("%s: failed to clean up the join token file at %s", h, h.K0sJoinTokenPath())
+			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
+				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
 		}()
 
