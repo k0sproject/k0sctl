@@ -53,7 +53,7 @@ As the released binaries aren't signed yet, on macOS and Windows, you must first
 If you have a working Go toolchain, you can use `go install` to install k0sctl to your `$GOPATH/bin`.
 
 ```sh
-go install github.com/k0sproject/k0sctl
+go install github.com/k0sproject/k0sctl@latest
 ```
 
 ### Package managers
