@@ -22,13 +22,13 @@ createCluster
 system_ns_uid=$(footloose ssh root@manager0 -- k0s kubectl --kubeconfig "/var/lib/k0s/pki/admin.conf" get -n kube-system namespace kube-system -o template={{.metadata.uid}})
 node_uid=$(footloose ssh root@manager0 -- k0s kubectl --kubeconfig "/var/lib/k0s/pki/admin.conf" get node worker0 -o template={{.metadata.uid}})
 
-../k0sctl backup --config k0sctl.yaml --debug
+../k0sctl backup --config "${K0SCTL_CONFIG}" --debug
 
 # Reset the controller
 footloose ssh root@manager0 -- k0s stop
 footloose ssh root@manager0 -- k0s reset
 
-../k0sctl apply --config k0sctl.yaml --debug --restore-from $(ls k0s_backup*.tar.gz)
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug --restore-from $(ls k0s_backup*.tar.gz)
 
 # Verify kube object UIDs match so we know we did full restore of the API objects
 new_system_ns_uid=$(footloose ssh root@manager0 -- k0s kubectl --kubeconfig "/var/lib/k0s/pki/admin.conf" get -n kube-system namespace kube-system -o template={{.metadata.uid}})
