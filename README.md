@@ -189,6 +189,15 @@ spec:
             version: v3.16.2
 ```
 
+### Environment variable substitution
+
+Simple bash-like expressions are supported in the configuration for environment variable substition.
+
+- `$VAR` or `${VAR}` value of `VAR` environment variable
+- `${var:-DEFAULT_VALUE}` will use `VAR` if non-empty, otherwise `DEFAULT_VALUE`
+- `$$var` - escape, result will be `$var`.
+- And [several other expressions](https://github.com/a8m/envsubst#docs)
+
 ### Configuration Header Fields
 
 ###### `apiVersion` &lt;string&gt; (required)

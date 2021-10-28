@@ -23,7 +23,7 @@ spec:
         port: 9023
         keyPath: ./id_rsa_k0s
   k0s:
-    version: "$K0S_VERSION"
+    version: "${K0S_VERSION}"
     config:
       spec:
         telemetry:

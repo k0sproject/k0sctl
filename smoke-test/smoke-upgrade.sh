@@ -1,6 +1,6 @@
 #!/bin/bash
 
-K0SCTL_TEMPLATE=${K0SCTL_TEMPLATE:-"k0sctl.yaml.tpl"}
+K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
 set -e
 
@@ -13,11 +13,9 @@ createCluster
 
 # Create config with older version and apply
 K0S_VERSION="1.20.6+k0s.0"
-envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
-../k0sctl apply --config k0sctl.yaml --debug
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 
 # Create config with newer version and apply as upgrade
 K0S_VERSION="1.21.1+k0s.0"
-envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
-../k0sctl apply --config k0sctl.yaml --debug
-../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
+../k0sctl kubeconfig --config "${K0SCTL_CONFIG}" | grep -v -- "-data"

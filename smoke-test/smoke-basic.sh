@@ -1,6 +1,6 @@
 #!/bin/bash
 
-K0SCTL_TEMPLATE=${K0SCTL_TEMPLATE:-"k0sctl.yaml.tpl"}
+K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
 set -e
 
@@ -8,13 +8,11 @@ set -e
 . ./smoke.common.sh
 trap cleanup EXIT
 
-envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
-
 deleteCluster
 createCluster
 
 echo "* Starting apply"
-../k0sctl apply --config k0sctl.yaml --debug
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 echo "* Apply OK"
 
 echo "* Verify hooks were executed on the host"
