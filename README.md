@@ -2,6 +2,11 @@
 
 *A command-line bootstrapping and management tool for [k0s zero friction kubernetes](https://k0sproject.io/) clusters.*
 
+- [Installation](#installation)
+- [Development status](#development-status)
+- [Usage](#usage)
+- [Configuration](#configuration-file)
+
 Example output of k0sctl deploying a k0s cluster:
 
 ```sh
@@ -62,11 +67,14 @@ Scripts for installation via popular package managers such as Homebrew, Scoop or
 
 ## Development status
 
-K0sctl is still in an early stage of development. Missing major features include at least:
+K0sctl is ready for use and in continuous development. It is still at a stage where maintaining backwards compatibility is not a high priority goal.
+
+Missing major features include at least:
 
 * Windows targets are not yet supported
 * The released binaries have not been signed
 * Nodes can't be removed
+* The configuration specification and command-line interface options are still evolving
 
 ## Usage
 
