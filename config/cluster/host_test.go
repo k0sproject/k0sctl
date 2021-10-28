@@ -6,6 +6,8 @@ import (
 
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
+	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/os"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,6 +23,14 @@ func TestHostK0sServiceName(t *testing.T) {
 type mockconfigurer struct {
 	cfg.Linux
 	linux.Ubuntu
+}
+
+func (c mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
+	return nil
+}
+
+func (c mockconfigurer) MkDir(_ os.Host, _ string, _ ...exec.Option) error {
+	return nil
 }
 
 func (c mockconfigurer) K0sJoinTokenPath() string {

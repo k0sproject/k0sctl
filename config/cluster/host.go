@@ -28,7 +28,7 @@ type Host struct {
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
-	Files            []UploadFile      `yaml:"files,omitempty"`
+	Files            []*UploadFile     `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
 	HostnameOverride string            `yaml:"hostname,omitempty"`
 	Hooks            Hooks             `yaml:"hooks,omitempty"`
@@ -57,11 +57,13 @@ type configurer interface {
 	ServiceScriptPath(os.Host, string) (string, error)
 	ReadFile(os.Host, string) (string, error)
 	FileExist(os.Host, string) bool
-	Chmod(os.Host, string, string) error
+	Chmod(os.Host, string, string, ...exec.Option) error
 	DownloadK0s(os.Host, string, string) error
+	DownloadURL(os.Host, string, string) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error
+	MkDir(os.Host, string, ...exec.Option) error
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
@@ -73,6 +75,7 @@ type configurer interface {
 	PrivateInterface(os.Host) (string, error)
 	PrivateAddress(os.Host, string, string) (string, error)
 	TempDir(os.Host) (string, error)
+	TempFile(os.Host) (string, error)
 	UpdateServiceEnvironment(os.Host, string, map[string]string) error
 	CleanupServiceEnvironment(os.Host, string) error
 }

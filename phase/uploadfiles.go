@@ -1,7 +1,8 @@
 package phase
 
 import (
-	"path/filepath"
+	"fmt"
+	"path"
 
 	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/config/cluster"
@@ -44,29 +45,110 @@ func (p *UploadFiles) Run() error {
 
 func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 	for _, f := range h.Files {
-		log.Infof("%s: starting to upload %s", h, f.Name)
-		files, err := f.Resolve()
+		var err error
+		if f.IsURL() {
+			err = p.uploadURL(h, f)
+		} else {
+			err = p.uploadFile(h, f)
+		}
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
 
-		if err := h.Execf("install -d %s -m %s", f.DestinationDir, f.PermString, exec.Sudo(h)); err != nil {
+func ensureDir(h *cluster.Host, dir, perm, owner string) error {
+	log.Debugf("%s: ensuring directory %s", h, dir)
+	if h.Configurer.FileExist(h, dir) {
+		return nil
+	}
+
+	if err := h.Configurer.MkDir(h, dir, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	if perm == "" {
+		perm = "0755"
+	}
+
+	if err := h.Configurer.Chmod(h, dir, perm, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to set permissions for directory %s: %w", dir, err)
+	}
+
+	if owner != "" {
+		if err := h.Execf(`chown "%s" "%s"`, owner, dir, exec.Sudo(h)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
+	log.Infof("%s: uploading %s", h, f)
+	numfiles := len(f.Sources)
+
+	for i, s := range f.Sources {
+		dest := f.DestinationFile
+		if dest == "" {
+			dest = path.Join(f.DestinationDir, s.Path)
+		}
+
+		src := path.Join(f.Base, s.Path)
+		if numfiles > 1 {
+			log.Infof("%s: uploading file %s => %s (%d of %d)", h, src, dest, i+1, numfiles)
+		}
+
+		owner := f.Owner()
+
+		if err := ensureDir(h, path.Dir(dest), f.DirPermString, owner); err != nil {
 			return err
 		}
 
-		for _, file := range files {
-			log.Debugf("%s: uploading %s to %s", h, file, f.DestinationDir)
-			destination := filepath.Join(f.DestinationDir, filepath.Base(file))
+		if err := h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h)); err != nil {
+			return err
+		}
 
-			if err := h.Upload(file, destination, exec.Sudo(h)); err != nil {
-				return err
-			}
-
-			if err := h.Configurer.Chmod(h, destination, f.PermString); err != nil {
+		if owner != "" {
+			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
+			if err := h.Execf(`chown "%s" "%s"`, owner, dest, exec.Sudo(h)); err != nil {
 				return err
 			}
 		}
-		log.Infof("%s: %s upload done", h, f.Name)
+		log.Debugf("%s: setting permissions %s for %s", h, s.PermMode, dest)
+		if err := h.Configurer.Chmod(h, dest, s.PermMode, exec.Sudo(h)); err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
+	log.Infof("%s: downloading %s to host %s", h, f, f.DestinationFile)
+	owner := f.Owner()
+
+	if err := ensureDir(h, path.Dir(f.DestinationFile), f.DirPermString, owner); err != nil {
+		return err
+	}
+
+	if err := h.Configurer.DownloadURL(h, f.Source, f.DestinationFile); err != nil {
+		return err
+	}
+
+	if f.PermString != "" {
+		if err := h.Configurer.Chmod(h, f.DestinationFile, f.PermString, exec.Sudo(h)); err != nil {
+			return err
+		}
+	}
+
+	if owner != "" {
+		log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
+		if err := h.Execf(`chown "%s" %s"`, owner, f.DestinationFile, exec.Sudo(h)); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

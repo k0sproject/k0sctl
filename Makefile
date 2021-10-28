@@ -50,7 +50,7 @@ github_release := $(shell go env GOPATH)/bin/github-release
 endif
 
 $(github_release):
-	go get github.com/github-release/github-release/...@v0.10.0
+	go install github.com/github-release/github-release/...@v0.10.0
 
 upload-%: bin/% $(github_release)
 	$(github_release) upload \
@@ -63,7 +63,7 @@ upload-%: bin/% $(github_release)
 .PHONY: upload
 upload: $(addprefix upload-,$(bins) $(checksums))
 
-smoketests := smoke-basic smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore
+smoketests := smoke-basic smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
@@ -74,7 +74,7 @@ golint := $(shell go env GOPATH)/bin/golangci-lint
 endif
 
 $(golint):
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
 
 .PHONY: lint
 lint: $(golint)
