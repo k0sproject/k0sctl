@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/phase"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var backupCommand = &cli.Command{
@@ -29,19 +28,8 @@ var backupCommand = &cli.Command{
 	},
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
-		content := ctx.String("config")
-		log.Debugf("Loaded configuration:\n%s", content)
 
-		c := config.Cluster{}
-		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
-			return err
-		}
-
-		if err := c.Validate(); err != nil {
-			return err
-		}
-
-		manager := phase.Manager{Config: &c}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)}
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},

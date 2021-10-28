@@ -21,7 +21,7 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role             string            `yaml:"role" validate:"oneof=controller worker controller+worker"`
+	Role             string            `yaml:"role" validate:"oneof=controller worker controller+worker single"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
@@ -188,9 +188,13 @@ func (h *Host) K0sInstallCommand() string {
 	role := h.Role
 	flags := h.InstallFlags
 
-	if role == "controller+worker" {
+	switch role {
+	case "controller+worker":
 		role = "controller"
 		flags.AddUnlessExist("--enable-worker")
+	case "single":
+		role = "controller"
+		flags.AddUnlessExist("--single")
 	}
 
 	if !h.Metadata.IsK0sLeader {
@@ -235,7 +239,7 @@ func (h *Host) K0sRestoreCommand(backupfile string) string {
 
 // IsController returns true for controller and controller+worker roles
 func (h *Host) IsController() bool {
-	return h.Role == "controller" || h.Role == "controller+worker"
+	return h.Role == "controller" || h.Role == "controller+worker" || h.Role == "single"
 }
 
 // K0sServiceName returns correct service name

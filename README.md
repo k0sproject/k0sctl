@@ -245,7 +245,11 @@ See [k0s object documentation](#spec-fields) below.
 
 ###### `spec.hosts[*].role` &lt;string&gt; (required)
 
-One of `controller`, `worker` or to set up a controller that can also run workloads, use `controller+worker`.
+One of:
+- `controller` - a controller host
+- `controller+worker` - a controller host that will also run workloads
+- `single` - a [single-node cluster](https://docs.k0sproject.io/main/k0s-single-node/) host, the configuration can only contain one host
+- `worker` - a worker host
 
 ###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
 
@@ -378,7 +382,7 @@ spec:
         user: ubuntu
 ```
 
-```
+```shell
 $ ssh-add ~/.ssh/aws.pem
 $ ssh -A user@jumphost
 user@jumphost ~ $ k0sctl apply

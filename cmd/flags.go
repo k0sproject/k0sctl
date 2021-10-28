@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/a8m/envsubst"
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/cache"
+	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/version"
@@ -21,7 +23,10 @@ import (
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
+
+type ctxConfigKey struct{}
 
 var (
 	debugFlag = &cli.BoolFlag{
@@ -95,7 +100,20 @@ func initConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	return ctx.Set("config", string(subst))
+	log.Debugf("Loaded configuration:\n%s", subst)
+
+	c := &config.Cluster{}
+	if err := yaml.UnmarshalStrict(subst, c); err != nil {
+		return err
+	}
+
+	if err := c.Validate(); err != nil {
+		return err
+	}
+
+	ctx.Context = context.WithValue(ctx.Context, ctxConfigKey{}, c)
+
+	return nil
 }
 
 func displayCopyright(ctx *cli.Context) error {

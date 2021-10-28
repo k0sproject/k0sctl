@@ -13,7 +13,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var resetCommand = &cli.Command{
@@ -52,18 +51,8 @@ var resetCommand = &cli.Command{
 		}
 
 		start := time.Now()
-		content := ctx.String("config")
 
-		c := config.Cluster{}
-		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
-			return err
-		}
-
-		if err := c.Validate(); err != nil {
-			return err
-		}
-
-		manager := phase.Manager{Config: &c}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)}
 
 		manager.AddPhase(
 			&phase.Connect{},

@@ -60,7 +60,6 @@ src: /tmp
 dstDir: /tmp
 perm: 0
 `)
-	t.Logf("what the hell: %+v %+v", u.PermMode, u.PermString)
 
 	require.Error(t, yaml.Unmarshal(yml, &u))
 }
