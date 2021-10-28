@@ -1,6 +1,6 @@
 #!/bin/bash
 
-K0SCTL_TEMPLATE=${K0SCTL_TEMPLATE:-"k0sctl.yaml.tpl"}
+K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
 set -e
 
@@ -13,12 +13,10 @@ function runCleanup() {
     rm k0s_backup*.tar.gz
 }
 
-envsubst < "${K0SCTL_TEMPLATE}" > k0sctl.yaml
-
 deleteCluster
 createCluster
 ../k0sctl init
-../k0sctl apply --config k0sctl.yaml --debug
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 
 # Collect some facts so we can validate restore actually did full restore
 system_ns_uid=$(footloose ssh root@manager0 -- k0s kubectl --kubeconfig "/var/lib/k0s/pki/admin.conf" get -n kube-system namespace kube-system -o template={{.metadata.uid}})

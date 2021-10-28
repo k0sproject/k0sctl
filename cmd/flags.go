@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/a8m/envsubst"
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/integration/segment"
@@ -89,7 +90,12 @@ func initConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	return ctx.Set("config", string(content))
+	subst, err := envsubst.Bytes(content)
+	if err != nil {
+		return err
+	}
+
+	return ctx.Set("config", string(subst))
 }
 
 func displayCopyright(ctx *cli.Context) error {
