@@ -6,7 +6,6 @@ import (
 	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var kubeconfigCommand = &cli.Command{
@@ -30,19 +29,12 @@ var kubeconfigCommand = &cli.Command{
 		return nil
 	},
 	Action: func(ctx *cli.Context) error {
-		content := ctx.String("config")
-		c := config.Cluster{}
-		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
-			return err
-		}
+		c := ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)
 
-		if err := c.Validate(); err != nil {
-			return err
-		}
 		// Change so that the internal config has only single controller host as we
 		// do not need to connect to all nodes
 		c.Spec.Hosts = cluster.Hosts{c.Spec.K0sLeader()}
-		manager := phase.Manager{Config: &c}
+		manager := phase.Manager{Config: c}
 
 		manager.AddPhase(
 			&phase.Connect{},

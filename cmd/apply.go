@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var applyCommand = &cli.Command{
@@ -48,21 +47,9 @@ var applyCommand = &cli.Command{
 	},
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
-		content := ctx.String("config")
-		log.Debugf("Loaded configuration:\n%s", content)
-
-		c := config.Cluster{}
-		if err := yaml.UnmarshalStrict([]byte(content), &c); err != nil {
-			return err
-		}
-
-		if err := c.Validate(); err != nil {
-			return err
-		}
-
 		phase.NoWait = ctx.Bool("no-wait")
 
-		manager := phase.Manager{Config: &c}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)}
 
 		manager.AddPhase(
 			&phase.Connect{},
@@ -113,7 +100,7 @@ var applyCommand = &cli.Command{
 		text := fmt.Sprintf("==> Finished in %s", duration)
 		log.Infof(Colorize.Green(text).String())
 
-		log.Infof("k0s cluster version %s is now installed", c.Spec.K0s.Version)
+		log.Infof("k0s cluster version %s is now installed", manager.Config.Spec.K0s.Version)
 		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
 		log.Infof("     " + Colorize.Cyan("k0sctl kubeconfig").String())
 

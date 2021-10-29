@@ -6,6 +6,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-version"
 	"github.com/k0sproject/k0sctl/config/cluster"
+	log "github.com/sirupsen/logrus"
 )
 
 // APIVersion is the current api version
@@ -48,7 +49,46 @@ func (c *Cluster) Validate() error {
 	if err := validator.RegisterValidation("apiversionmatch", validateAPIVersion); err != nil {
 		return err
 	}
+	validator.RegisterStructValidation(validateHostCounts, cluster.Spec{})
 	return validator.Struct(c)
+}
+
+func validateHostCounts(sl validator.StructLevel) {
+	spec, ok := sl.Current().Interface().(cluster.Spec)
+	if !ok {
+		return
+	}
+
+	if len(spec.Hosts) == 0 {
+		sl.ReportError(spec, "hosts", "", "no hosts in configuration", "")
+		return
+	}
+
+	var hasSingle bool
+	for _, h := range spec.Hosts {
+		if h.InstallFlags.Get("--single") != "" && h.Role != "single" {
+			log.Warnf("%s: changed role from '%s' to 'single' because '--single' defined in installFlags", h, h.Role)
+			h.Role = "single"
+		}
+
+		if h.InstallFlags.Get("--enable-worker") != "" && h.Role != "controller+worker" {
+			log.Warnf("%s: changed role from '%s' to 'controller+worker' because '--enable-workloads' defined in installFlags", h, h.Role)
+			h.Role = "controller+worker"
+		}
+
+		if h.Role == "single" {
+			hasSingle = true
+			break
+		}
+	}
+
+	if hasSingle && len(spec.Hosts) > 1 {
+		sl.ReportError(spec, "hosts", "", "contains a host with role: single but multiple hosts defined", "")
+	}
+
+	if len(spec.Hosts.Controllers()) == 0 {
+		sl.ReportError(spec, "hosts", "", "contains no controller nodes", "")
+	}
 }
 
 func validateAPIVersion(fl validator.FieldLevel) bool {

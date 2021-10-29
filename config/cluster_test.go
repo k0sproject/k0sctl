@@ -26,7 +26,9 @@ func TestK0sVersionValidation(t *testing.T) {
 			K0s: cluster.K0s{
 				Version: "0.1.0",
 			},
-			Hosts: cluster.Hosts{},
+			Hosts: cluster.Hosts{
+				&cluster.Host{Role: "controller"},
+			},
 		},
 	}
 
