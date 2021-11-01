@@ -244,10 +244,12 @@ func (h *Host) IsController() bool {
 
 // K0sServiceName returns correct service name
 func (h *Host) K0sServiceName() string {
-	if h.Role == "controller+worker" {
+	switch h.Role {
+	case "controller", "controller+worker", "single":
 		return "k0scontroller"
+	default:
+		return "k0sworker"
 	}
-	return "k0s" + h.Role
 }
 
 // UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
