@@ -26,6 +26,15 @@ type k0sstatus struct {
 	K0sVars       dig.Mapping `json:"K0sVars"`
 }
 
+func (k *k0sstatus) isSingle() bool {
+	for _, a := range k.Args {
+		if a == "--single=true" {
+			return true
+		}
+	}
+	return false
+}
+
 // GatherK0sFacts gathers information about hosts, such as if k0s is already up and running
 type GatherK0sFacts struct {
 	GenericPhase
@@ -101,7 +110,11 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		status.Role = "controller+worker"
 	case "controller":
 		if status.Workloads {
-			status.Role = "controller+worker"
+			if status.isSingle() {
+				status.Role = "single"
+			} else {
+				status.Role = "controller+worker"
+			}
 		}
 	}
 
