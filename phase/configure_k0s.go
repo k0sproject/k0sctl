@@ -177,6 +177,14 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
 
+	if _, ok := cfg["apiVersion"]; !ok {
+		cfg["apiVersion"] = "k0s.k0sproject.io/v1beta1"
+	}
+
+	if _, ok := cfg["kind"]; !ok {
+		cfg["kind"] = "ClusterConfig"
+	}
+
 	c, err := yaml.Marshal(cfg)
 	if err != nil {
 		return "", err
