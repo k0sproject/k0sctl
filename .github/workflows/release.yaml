@@ -62,7 +62,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         with:
-          is_append_body: |
+          is_append_body: true
+          body: |
             \### SHA256 checksums
             ```
             ${{ steps.read_sums.outputs.contents }}
