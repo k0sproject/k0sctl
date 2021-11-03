@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
@@ -49,7 +49,7 @@ var applyCommand = &cli.Command{
 		start := time.Now()
 		phase.NoWait = ctx.Bool("no-wait")
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
 
 		manager.AddPhase(
 			&phase.Connect{},

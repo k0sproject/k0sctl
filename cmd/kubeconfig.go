@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
 	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,7 +29,7 @@ var kubeconfigCommand = &cli.Command{
 		return nil
 	},
 	Action: func(ctx *cli.Context) error {
-		c := ctx.Context.Value(ctxConfigKey{}).(*config.Cluster)
+		c := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
 
 		// Change so that the internal config has only single controller host as we
 		// do not need to connect to all nodes

@@ -8,8 +8,8 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig"
 
 	"github.com/urfave/cli/v2"
@@ -232,10 +232,10 @@ var initCommand = &cli.Command{
 		// Read addresses from args
 		addresses = append(addresses, ctx.Args().Slice()...)
 
-		cfg := config.Cluster{
-			APIVersion: config.APIVersion,
+		cfg := v1beta1.Cluster{
+			APIVersion: v1beta1.APIVersion,
 			Kind:       "Cluster",
-			Metadata:   &config.ClusterMetadata{Name: ctx.String("cluster-name")},
+			Metadata:   &v1beta1.ClusterMetadata{Name: ctx.String("cluster-name")},
 			Spec: &cluster.Spec{
 				Hosts: buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path")),
 				K0s:   cluster.K0s{},

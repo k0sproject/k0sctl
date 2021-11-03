@@ -1,7 +1,7 @@
 package phase
 
 import (
-	"github.com/k0sproject/k0sctl/config"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,7 +17,7 @@ type phase interface {
 
 type withconfig interface {
 	Title() string
-	Prepare(*config.Cluster) error
+	Prepare(*v1beta1.Cluster) error
 }
 
 type conditional interface {
@@ -44,7 +44,7 @@ type withcleanup interface {
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases []phase
-	Config *config.Cluster
+	Config *v1beta1.Cluster
 }
 
 // AddPhase adds a Phase to Manager

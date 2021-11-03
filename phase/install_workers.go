@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +23,7 @@ func (p *InstallWorkers) Title() string {
 }
 
 // Prepare the phase
-func (p *InstallWorkers) Prepare(config *config.Cluster) error {
+func (p *InstallWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {

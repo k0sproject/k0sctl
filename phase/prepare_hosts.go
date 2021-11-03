@@ -3,7 +3,7 @@ package phase
 import (
 	"strings"
 
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
 	log "github.com/sirupsen/logrus"
 )

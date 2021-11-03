@@ -5,8 +5,8 @@ import (
 	"math"
 
 	"github.com/gammazero/workerpool"
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -26,7 +26,7 @@ func (p *UpgradeWorkers) Title() string {
 }
 
 // Prepare the phase
-func (p *UpgradeWorkers) Prepare(config *config.Cluster) error {
+func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()

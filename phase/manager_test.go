@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ func (p *conditionalPhase) Run() error {
 }
 
 func TestConditionalPhase(t *testing.T) {
-	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &conditionalPhase{}
 	m.AddPhase(p)
 	require.NoError(t, m.Run())
@@ -45,7 +45,7 @@ func (p *configPhase) Title() string {
 	return "config phase"
 }
 
-func (p *configPhase) Prepare(c *config.Cluster) error {
+func (p *configPhase) Prepare(c *v1beta1.Cluster) error {
 	p.receivedConfig = c != nil
 	return nil
 }
@@ -55,7 +55,7 @@ func (p *configPhase) Run() error {
 }
 
 func TestConfigPhase(t *testing.T) {
-	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &configPhase{}
 	m.AddPhase(p)
 	require.NoError(t, m.Run())
@@ -88,7 +88,7 @@ func (p *hookedPhase) Run() error {
 }
 
 func TestHookedPhase(t *testing.T) {
-	m := Manager{Config: &config.Cluster{Spec: &cluster.Spec{}}}
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &hookedPhase{}
 	m.AddPhase(p)
 	require.Error(t, m.Run())

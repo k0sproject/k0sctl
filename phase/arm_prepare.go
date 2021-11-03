@@ -5,8 +5,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
 // PrepareArm implements a phase which fixes arm quirks
@@ -22,7 +22,7 @@ func (p *PrepareArm) Title() string {
 }
 
 // Prepare the phase
-func (p *PrepareArm) Prepare(config *config.Cluster) error {
+func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {

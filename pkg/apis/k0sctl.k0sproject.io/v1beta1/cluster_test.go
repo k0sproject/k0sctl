@@ -1,9 +1,9 @@
-package config
+package v1beta1
 
 import (
 	"testing"
 
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/stretchr/testify/require"
 )
 

@@ -13,9 +13,9 @@ import (
 	"github.com/a8m/envsubst"
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/cache"
-	"github.com/k0sproject/k0sctl/config"
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
@@ -102,7 +102,7 @@ func initConfig(ctx *cli.Context) error {
 
 	log.Debugf("Loaded configuration:\n%s", subst)
 
-	c := &config.Cluster{}
+	c := &v1beta1.Cluster{}
 	if err := yaml.UnmarshalStrict(subst, c); err != nil {
 		return err
 	}
