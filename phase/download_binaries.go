@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/k0sproject/k0sctl/cache"
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +24,7 @@ func (p *DownloadBinaries) Title() string {
 }
 
 // Prepare the phase
-func (p *DownloadBinaries) Prepare(config *config.Cluster) error {
+func (p *DownloadBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		return h.UploadBinary && h.Metadata.K0sBinaryVersion != config.Spec.K0s.Version

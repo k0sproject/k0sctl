@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,7 +23,7 @@ func (p *UpgradeControllers) Title() string {
 }
 
 // Prepare the phase
-func (p *UpgradeControllers) Prepare(config *config.Cluster) error {
+func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 	log.Debugf("UpgradeControllers phase prep starting")
 	p.Config = config
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()

@@ -1,11 +1,11 @@
-package config
+package v1beta1
 
 import (
 	"fmt"
 
 	validator "github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-version"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 

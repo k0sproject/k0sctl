@@ -1,8 +1,8 @@
 package phase
 
 import (
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,7 +18,7 @@ func (p *InitializeK0s) Title() string {
 }
 
 // Prepare the phase
-func (p *InitializeK0s) Prepare(config *config.Cluster) error {
+func (p *InitializeK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	leader := p.Config.Spec.K0sLeader()
 	if leader.Metadata.K0sRunningVersion == "" {

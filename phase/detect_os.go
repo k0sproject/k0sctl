@@ -1,7 +1,7 @@
 package phase
 
 import (
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 
 	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer"

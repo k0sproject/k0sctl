@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/config"
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
 var _ phase = &RunHooks{}
@@ -23,7 +23,7 @@ func (p *RunHooks) Title() string {
 }
 
 // Prepare digs out the hosts with steps from the config
-func (p *RunHooks) Prepare(config *config.Cluster) error {
+func (p *RunHooks) Prepare(config *v1beta1.Cluster) error {
 	p.hosts = config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		return len(h.Hooks.ForActionAndStage(p.Action, p.Stage)) > 0
 	})

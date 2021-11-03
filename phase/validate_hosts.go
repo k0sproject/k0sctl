@@ -3,7 +3,7 @@ package phase
 import (
 	"fmt"
 
-	"github.com/k0sproject/k0sctl/config/cluster"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
 // ValidateHosts performs remote OS detection
