@@ -50,3 +50,22 @@ jobs:
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         run: make upload
 
+      - name: "Read sha256sums"
+        uses: andstor/file-reader-action@v1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
+        with:
+          path: "bin/checksums.txt"
+
+      - name: Update sha256sums to github release
+        uses: tubone24/update_release@v1.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
+          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
+        with:
+          is_append_body: |
+            \### SHA256 checksums
+            ```
+            ${{ steps.read_sums.outputs.contents }}
+            ```
+
+
