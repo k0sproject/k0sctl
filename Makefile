@@ -27,15 +27,13 @@ bin/k0sctl-darwin-x64: $(GO_SRCS)
 bin/k0sctl-darwin-arm64: $(GO_SRCS)
 	GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
 
-bin/%.sha256: bin/%
-	sha256sum -b $< | sed 's/bin\///' > $@.tmp
-	mv $@.tmp $@
-
 bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-x64.exe k0sctl-darwin-x64 k0sctl-darwin-arm64
-checksums := $(addsuffix .sha256,$(bins))
+
+bin/checksums.txt: $(addprefix bin/,$(bins))
+	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
 
 .PHONY: build-all
-build-all: $(addprefix bin/,$(bins) $(checksums))
+build-all: $(addprefix bin/,$(bins)) bin/checksums.txt
 
 k0sctl: $(GO_SRCS)
 	go build $(BUILD_FLAGS) -o k0sctl main.go
