@@ -28,6 +28,18 @@ type Release struct {
 	Assets     []Asset `json:"assets"`
 }
 
+func (r *Release) IsNewer(b string) bool {
+	this, err := version.NewVersion(r.TagName)
+	if err != nil {
+		return false
+	}
+	other, err := version.NewVersion(b)
+	if err != nil {
+		return false
+	}
+	return this.GreaterThan(other)
+}
+
 // LatestK0sBinaryURL returns the url for the latest k0s release by arch and os
 func LatestK0sBinaryURL(arch, osKind string, preok bool) (string, error) {
 	r, err := LatestRelease("k0sproject/k0s", preok)
