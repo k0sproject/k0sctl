@@ -39,12 +39,10 @@ var applyCommand = &cli.Command{
 		traceFlag,
 		redactFlag,
 		analyticsFlag,
+		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, initConfig, displayLogo, initAnalytics, displayCopyright),
-	After: func(ctx *cli.Context) error {
-		analytics.Client.Close()
-		return nil
-	},
+	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright),
+	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
 		phase.NoWait = ctx.Bool("no-wait")

@@ -24,17 +24,15 @@ var resetCommand = &cli.Command{
 		traceFlag,
 		redactFlag,
 		analyticsFlag,
+		upgradeCheckFlag,
 		&cli.BoolFlag{
 			Name:    "force",
 			Usage:   "Don't ask for confirmation",
 			Aliases: []string{"f"},
 		},
 	},
-	Before: actions(initLogging, initConfig, initAnalytics, displayCopyright),
-	After: func(ctx *cli.Context) error {
-		analytics.Client.Close()
-		return nil
-	},
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics, displayCopyright, reportCheckUpgrade),
+	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		if !ctx.Bool("force") {
 			if !isatty.IsTerminal(os.Stdout.Fd()) {
