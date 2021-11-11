@@ -63,7 +63,19 @@ go install github.com/k0sproject/k0sctl@latest
 
 ### Package managers
 
-Scripts for installation via popular package managers such as Homebrew, Scoop or SnapCraft will be added later.
+#### [Homebrew](https://brew.sh/) (macOS, Linux)
+
+```sh
+brew install k0sproject/tap/k0sctl
+```
+
+#### [Chocolatey](https://chocolatey.org/) (Windows)
+
+Note: The [chocolatey package](https://community.chocolatey.org/packages/k0sctl) is community maintained, any issues should be reported to the maintainer of the package.
+
+```sh
+choco install k0sctl
+```
 
 ## Development status
 
