@@ -20,5 +20,6 @@ var App = &cli.App{
 		initCommand,
 		resetCommand,
 		backupCommand,
+		completionCommand,
 	},
 }
