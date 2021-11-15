@@ -45,8 +45,14 @@ jobs:
           k0sctl
         key: build-${{ github.run_id }}
 
-    - name: Build windows
-      run: make bin/k0sctl-win-x64.exe
+    - name: Build all
+      run: make build-all
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: k0sctl-linux-x64
+        path: bin/k0sctl-linux-x64
+        retention-days: 2
 
   smoke-basic:
     strategy:
