@@ -10,16 +10,6 @@
 Example output of k0sctl deploying a k0s cluster:
 
 ```sh
-$ k0sctl apply
-
-⠀⣿⣿⡇⠀⠀⢀⣴⣾⣿⠟⠁⢸⣿⣿⣿⣿⣿⣿⣿⡿⠛⠁⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀█████████ █████████ ███
-⠀⣿⣿⡇⣠⣶⣿⡿⠋⠀⠀⠀⢸⣿⡇⠀⠀⠀⣠⠀⠀⢀⣠⡆⢸⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀███          ███    ███
-⠀⣿⣿⣿⣿⣟⠋⠀⠀⠀⠀⠀⢸⣿⡇⠀⢰⣾⣿⠀⠀⣿⣿⡇⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀███          ███    ███
-⠀⣿⣿⡏⠻⣿⣷⣤⡀⠀⠀⠀⠸⠛⠁⠀⠸⠋⠁⠀⠀⣿⣿⡇⠈⠉⠉⠉⠉⠉⠉⠉⠉⢹⣿⣿⠀███          ███    ███
-⠀⣿⣿⡇⠀⠀⠙⢿⣿⣦⣀⠀⠀⠀⣠⣶⣶⣶⣶⣶⣶⣿⣿⡇⢰⣶⣶⣶⣶⣶⣶⣶⣶⣾⣿⣿⠀█████████    ███    ██████████
-
-INFO By continuing to use k0sctl you agree to these terms:
-INFO https://k0sproject.io/licenses/eula
 INFO ==> Running phase: Connect to hosts
 INFO ==> Running phase: Detect host operating systems
 INFO [ssh] 10.0.0.1:22: is running Ubuntu 20.10
@@ -31,7 +21,6 @@ INFO ==> Running phase: Validate hosts
 INFO ==> Running phase: Gather k0s facts
 INFO ==> Running phase: Download k0s binaries on hosts
 INFO ==> Running phase: Configure k0s
-INFO [ssh] 10.0.0.1:22: validating configuration
 INFO ==> Running phase: Initialize the k0s cluster
 INFO [ssh] 10.0.0.1:22: installing k0s controller
 INFO ==> Running phase: Install workers
@@ -40,10 +29,12 @@ INFO [ssh] 10.0.0.2:22: installing k0s worker
 INFO [ssh] 10.0.0.2:22: waiting for node to become ready
 INFO ==> Running phase: Disconnect from hosts
 INFO ==> Finished in 2m2s
-INFO k0s cluster version 0.11.0 is now installed
+INFO k0s cluster version 1.22.3+k0s.0 is now installed
 INFO Tip: To access the cluster you can now fetch the admin kubeconfig using:
 INFO      k0sctl kubeconfig
 ```
+
+You can find example Terraform and Footloose configurations in the [examples/](examples/) directory.
 
 ## Installation
 
