@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
@@ -22,7 +24,7 @@ const K0sMinVersion = "0.11.0-rc1"
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
-	Version  string      `yaml:"version" validate:"required"`
+	Version  string      `yaml:"version"`
 	Config   dig.Mapping `yaml:"config,omitempty"`
 	Metadata K0sMetadata `yaml:"-"`
 }
@@ -43,6 +45,36 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return defaults.Set(k)
+}
+
+func validateVersion(value interface{}) error {
+	vs, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("not a string")
+	}
+
+	v, err := semver.NewVersion(vs)
+	if err != nil {
+		return err
+	}
+
+	min, err := semver.NewVersion(K0sMinVersion)
+	if err != nil {
+		return fmt.Errorf("internal error: k0sminversion can't be parsed: %s", err)
+	}
+
+	if min.GreaterThan(v) {
+		return fmt.Errorf("version: minimum supported k0s version is %s", K0sMinVersion)
+	}
+
+	return nil
+}
+
+func (k *K0s) Validate() error {
+	return validation.ValidateStruct(k,
+		validation.Field(&k.Version, validation.Required),
+		validation.Field(&k.Version, validation.By(validateVersion)),
+	)
 }
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version

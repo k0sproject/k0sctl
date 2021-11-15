@@ -238,7 +238,7 @@ var initCommand = &cli.Command{
 			Metadata:   &v1beta1.ClusterMetadata{Name: ctx.String("cluster-name")},
 			Spec: &cluster.Spec{
 				Hosts: buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path")),
-				K0s:   cluster.K0s{},
+				K0s:   &cluster.K0s{},
 			},
 		}
 

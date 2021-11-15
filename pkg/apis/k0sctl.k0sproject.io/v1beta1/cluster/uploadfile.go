@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,8 +20,8 @@ type LocalFile struct {
 // UploadFile describes a file to be uploaded for the host
 type UploadFile struct {
 	Name            string       `yaml:"name,omitempty"`
-	Source          string       `yaml:"src" validate:"required"`
-	DestinationDir  string       `yaml:"dstDir" validate:"required"`
+	Source          string       `yaml:"src"`
+	DestinationDir  string       `yaml:"dstDir"`
 	DestinationFile string       `yaml:"dst"`
 	PermMode        interface{}  `yaml:"perm"`
 	DirPermMode     interface{}  `yaml:"dirPerm"`
@@ -30,6 +31,14 @@ type UploadFile struct {
 	DirPermString   string       `yaml:"-"`
 	Sources         []*LocalFile `yaml:"-"`
 	Base            string       `yaml:"-"`
+}
+
+func (u UploadFile) Validate() error {
+	return validation.ValidateStruct(&u,
+		validation.Field(&u.Source, validation.Required),
+		validation.Field(&u.DestinationFile, validation.Required.When(u.DestinationDir == "").Error("dst or dstdir required")),
+		validation.Field(&u.DestinationDir, validation.Required.When(u.DestinationFile == "").Error("dst or dstdir required")),
+	)
 }
 
 // converts string or integer value to octal string for chmod
