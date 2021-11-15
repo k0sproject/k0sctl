@@ -77,6 +77,26 @@ Note: The [chocolatey package](https://community.chocolatey.org/packages/k0sctl)
 choco install k0sctl
 ```
 
+#### Shell auto-completions
+
+##### Bash
+
+```sh
+k0sctl completion > /etc/bash_completion.d/k0sctl
+```
+
+##### Zsh
+
+```sh
+k0sctl completion > /usr/local/share/zsh/site-functions/_k0sctl
+```
+
+##### Fish
+
+```sh
+k0sctl completion > ~/.config/fish/completions/k0sctl.fish
+```
+
 ## Development status
 
 K0sctl is ready for use and in continuous development. It is still at a stage where maintaining backwards compatibility is not a high priority goal.
