@@ -12,6 +12,9 @@ PREFIX = /usr/local
 LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/k0sproject/k0sctl/version.GitCommit=$(GIT_COMMIT) -X github.com/k0sproject/k0sctl/version.Version=$(K0SCTL_VERSION)
 BUILD_FLAGS = -trimpath -a -tags "netgo,osusergo,static_build" -installsuffix netgo -ldflags "$(LD_FLAGS) -extldflags '-static'"
 
+k0sctl: $(GO_SRCS)
+	go build $(BUILD_FLAGS) -o k0sctl main.go
+
 bin/k0sctl-linux-x64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
 
