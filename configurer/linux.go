@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 )
@@ -81,8 +82,8 @@ func (l Linux) TempDir(h os.Host) (string, error) {
 }
 
 // DownloadURL performs a download from a URL on the host
-func (l Linux) DownloadURL(h os.Host, url, destination string) error {
-	return h.Execf(`curl -sSLf -o "%s" "%s"`, destination, url)
+func (l Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Option) error {
+	return h.Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)), opts...)
 }
 
 // DownloadK0s performs k0s binary download from github on the host
