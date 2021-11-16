@@ -59,7 +59,7 @@ type configurer interface {
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string, ...exec.Option) error
 	DownloadK0s(os.Host, string, string) error
-	DownloadURL(os.Host, string, string) error
+	DownloadURL(os.Host, string, string, ...exec.Option) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error

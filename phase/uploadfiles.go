@@ -133,7 +133,7 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 		return err
 	}
 
-	if err := h.Configurer.DownloadURL(h, f.Source, f.DestinationFile); err != nil {
+	if err := h.Configurer.DownloadURL(h, f.Source, f.DestinationFile, exec.Sudo(h)); err != nil {
 		return err
 	}
 
