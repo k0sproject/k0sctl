@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/alessio/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
@@ -112,7 +113,7 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 
 		if owner != "" {
 			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-			if err := h.Execf(`chown "%s" "%s"`, owner, dest, exec.Sudo(h)); err != nil {
+			if err := h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h)); err != nil {
 				return err
 			}
 		}
@@ -145,7 +146,7 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 
 	if owner != "" {
 		log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
-		if err := h.Execf(`chown "%s" %s"`, owner, f.DestinationFile, exec.Sudo(h)); err != nil {
+		if err := h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(f.DestinationFile), exec.Sudo(h)); err != nil {
 			return err
 		}
 	}
