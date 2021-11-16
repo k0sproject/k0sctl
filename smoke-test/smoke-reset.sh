@@ -9,5 +9,8 @@ trap cleanup EXIT
 
 deleteCluster
 createCluster
-../k0sctl apply --config "${K0SCTL_CONFIG}" --debug --trace
-../k0sctl reset --config "${K0SCTL_CONFIG}" --debug --trace --force
+echo "* Applying"
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
+echo "* Resetting"
+../k0sctl reset --config "${K0SCTL_CONFIG}" --debug --force
+echo "* Done, cleaning up"
