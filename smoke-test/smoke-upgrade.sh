@@ -22,5 +22,5 @@ if [ "${UNAME}" = "Darwin" ]; then
 else
   SEDOPTS="-i"
 fi
-sed ${SEDOPTS} '/[:space:]*version:/d' "${K0SCTL_CONFIG}"
+sed ${SEDOPTS} '/[[:space:]]*version:/d' "${K0SCTL_CONFIG}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
