@@ -16,6 +16,5 @@ K0S_VERSION="${K0S_FROM}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 
 # Create config with blank version (to use latest) and apply as upgrade
-K0S_VERSION=""
+sed -e -i '/[:space:]*version:/d' "${K0SCTL_CONFIG}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
-../k0sctl kubeconfig --config "${K0SCTL_CONFIG}" | grep -v -- "-data"
