@@ -79,7 +79,7 @@ jobs:
           - quay.io/footloose/centos7
             #- quay.io/footloose/amazonlinux2
           - quay.io/footloose/debian10
-          - quay.io/footloose/fedora29
+            # - quay.io/footloose/fedora29
     name: Basic 1+1 smoke
     needs: build
     runs-on: ubuntu-latest
