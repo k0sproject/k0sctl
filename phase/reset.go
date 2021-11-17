@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -65,6 +66,14 @@ func (p *Reset) Run() error {
 		}
 
 		log.Infof("%s: running k0s reset", h)
-		return h.Exec(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
+		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
+		if err != nil {
+			log.Warnf("%s: k0s reported failure: %v", h, err)
+			if strings.Contains(out, "k0s cleanup operations done") {
+				return nil
+			}
+		}
+
+		return err
 	})
 }
