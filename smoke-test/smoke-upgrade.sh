@@ -17,4 +17,5 @@ K0S_VERSION="${K0S_FROM}"
 
 # Create config with blank version (to use latest) and apply as upgrade
 sed -e -i '/[:space:]*version:/d' "${K0SCTL_CONFIG}"
+cat "${K0SCTL_CONFIG}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
