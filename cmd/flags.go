@@ -403,9 +403,17 @@ func reportCheckUpgrade(ctx *cli.Context) error {
 	}
 
 	log.Tracef("waiting for upgrade check response")
-
-	if release := <-upgradeChan; release != nil {
-		fmt.Println(Colorize.BrightCyan(fmt.Sprintf("A new version %s of k0sctl is available: %s", release.TagName, release.URL)))
+	var release *github.Release
+	select {
+	case release = <-upgradeChan:
+		log.Tracef("upgrade check response received")
+		if release == nil {
+			log.Tracef("no upgrade available")
+		} else {
+			fmt.Println(Colorize.BrightCyan(fmt.Sprintf("A new version %s of k0sctl is available: %s", release.TagName, release.URL)))
+		}
+	case <-time.After(5 * time.Second):
+		log.Tracef("upgrade check timed out")
 	}
 
 	return nil
