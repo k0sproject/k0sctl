@@ -1,6 +1,6 @@
 GO_SRCS := $(shell find . -type f -name '*.go' -a ! \( -name 'zz_generated*' -o -name '*_test.go' \))
 GO_TESTS := $(shell find . -type f -name '*_test.go')
-TAG_NAME = $(shell git diff-index --quiet HEAD && git name-rev --name-only --tags --no-undefined HEAD 2>/dev/null | sed -n 's/^\([^^~]\{1,\}\)\(\^0\)\{0,1\}$/\1/p')
+TAG_NAME = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_COMMIT = $(shell git rev-parse --short=7 HEAD)
 K0SCTL_VERSION = $(or ${TAG_NAME},dev)
 ifdef TAG_NAME
