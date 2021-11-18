@@ -59,7 +59,7 @@ jobs:
           path: "bin/checksums.txt"
 
       - name: Update sha256sums to github release
-        uses: tubone24/update_release@v1.2.0
+        uses: tubone24/update_release@v1.3.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
         with:
