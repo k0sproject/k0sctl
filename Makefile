@@ -36,7 +36,7 @@ bin/k0sctl-darwin-arm64: $(GO_SRCS)
 bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-x64.exe k0sctl-darwin-x64 k0sctl-darwin-arm64
 
 bin/checksums.txt: $(addprefix bin/,$(bins))
-	sha256sum -b $(addprefix bin/,$(bins)) | sed 's:bin/::' > $@
+	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
 
 .PHONY: build-all
 build-all: $(addprefix bin/,$(bins)) bin/checksums.txt
