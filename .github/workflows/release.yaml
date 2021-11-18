@@ -32,14 +32,6 @@ jobs:
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         run: make build-all
 
-      - name: "Read sha256sums"
-        id: read_sums
-        uses: andstor/file-reader-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-        with:
-          path: "bin/checksums.txt"
-
       - name: Create Release in Github
         id: create_release
         uses: actions/create-release@v1
