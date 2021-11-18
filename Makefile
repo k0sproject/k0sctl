@@ -38,31 +38,19 @@ bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-x64.exe 
 bin/checksums.txt: $(addprefix bin/,$(bins))
 	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
 
+bin/checksums.md: bin/checksums.txt
+	@echo "### SHA256 Checksums" > $@
+	@echo >> $@
+	@echo "\`\`\`" >> $@
+	@cat $< >> $@
+	@echo "\`\`\`" >> $@
+
 .PHONY: build-all
-build-all: $(addprefix bin/,$(bins)) bin/checksums.txt
+build-all: $(addprefix bin/,$(bins)) bin/checksums.md
 
 .PHONY: clean
 clean:
 	rm -rf bin/ k0sctl
-
-github_release := $(shell which github-release)
-ifeq ($(github_release),)
-github_release := $(shell go env GOPATH)/bin/github-release
-endif
-
-$(github_release):
-	go install github.com/github-release/github-release/...@latest
-
-upload-%: bin/% $(github_release)
-	$(github_release) upload \
-		--user k0sproject \
-		--repo k0sctl \
-		--tag "${TAG_NAME}" \
-		--name "`basename $<`" \
-		--file "$<"; \
-
-.PHONY: upload
-upload: $(addprefix upload-,$(bins)) bin/checksums.txt
 
 smoketests := smoke-basic smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore
 .PHONY: $(smoketests)

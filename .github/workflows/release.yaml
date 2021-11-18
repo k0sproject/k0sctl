@@ -32,6 +32,14 @@ jobs:
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         run: make build-all
 
+      - name: "Read sha256sums"
+        id: read_sums
+        uses: andstor/file-reader-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
+        with:
+          path: "bin/checksums.txt"
+
       - name: Create Release in Github
         id: create_release
         uses: actions/create-release@v1
@@ -43,31 +51,10 @@ jobs:
           draft: true # So we can manually edit before publishing
           prerelease: ${{ contains(github.ref, '-') }} # v0.1.2-beta1, 1.2.3-rc1
 
-      - name: Upload artifacts
-        id: upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
-        run: make upload
-
-      - name: "Read sha256sums"
-        id: read_sums
-        uses: andstor/file-reader-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v1
         with:
-          path: "bin/checksums.txt"
-
-      - name: Update sha256sums to github release
-        uses: tubone24/update_release@v1.3.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-        with:
-          is_append_body: true
-          body: |
-            \### SHA256 checksums
-            ```
-            ${{ steps.read_sums.outputs.contents }}
-            ```
-
-
+          files: |
+            bin/k0sctl-*
+            bin/checksums.txt
+          body_path: bin/checksums.md
