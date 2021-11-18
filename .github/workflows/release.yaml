@@ -25,28 +25,22 @@ jobs:
         with:
           go-version: 1.17
 
-      - name: Build bins
+      - name: Build binaries
         id: build_bins
         env:
           SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
           TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
         run: make build-all
 
-      - name: Create Release in Github
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          draft: true # So we can manually edit before publishing
-          prerelease: ${{ contains(github.ref, '-') }} # v0.1.2-beta1, 1.2.3-rc1
-
-      - name: Upload binaries
+      - name: Create release and upload binaries
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             bin/k0sctl-*
             bin/checksums.txt
           body_path: bin/checksums.md
+          tag_name: ${{ steps.branch_name.outputs.TAG_NAME }}
+          name: ${{ steps.branch_name.outputs.TAG_NAME }}
+          draft: true # So we can manually edit before publishing
+          prerelease: ${{ contains(steps.branch_name.outputs.TAG_NAME, '-') }} # v0.1.2-beta1, 1.2.3-rc1
