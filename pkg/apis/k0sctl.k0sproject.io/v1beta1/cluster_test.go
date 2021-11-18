@@ -13,7 +13,7 @@ func TestAPIVersionValidation(t *testing.T) {
 		Kind:       "cluster",
 	}
 
-	require.EqualError(t, cfg.Validate(), "Key: 'Cluster.APIVersion' Error:Field validation for 'APIVersion' failed on the 'apiversionmatch' tag")
+	require.EqualError(t, cfg.Validate(), "apiVersion: must equal k0sctl.k0sproject.io/v1beta1.")
 	cfg.APIVersion = APIVersion
 	require.NoError(t, cfg.Validate())
 }
@@ -23,7 +23,7 @@ func TestK0sVersionValidation(t *testing.T) {
 		APIVersion: APIVersion,
 		Kind:       "cluster",
 		Spec: &cluster.Spec{
-			K0s: cluster.K0s{
+			K0s: &cluster.K0s{
 				Version: "0.1.0",
 			},
 			Hosts: cluster.Hosts{
@@ -34,7 +34,7 @@ func TestK0sVersionValidation(t *testing.T) {
 
 	err := cfg.Validate()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "minimum k0s version")
+	require.Contains(t, err.Error(), "minimum supported k0s version")
 	cfg.Spec.K0s.Version = cluster.K0sMinVersion
 	require.NoError(t, cfg.Validate())
 }

@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	"github.com/creasty/defaults"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 // Spec defines cluster config spec section
 type Spec struct {
-	Hosts Hosts `yaml:"hosts" validate:"required,dive,min=1"`
-	K0s   K0s   `yaml:"k0s"`
+	Hosts Hosts `yaml:"hosts"`
+	K0s   *K0s  `yaml:"k0s"`
 
 	k0sLeader *Host
 }
@@ -47,6 +48,14 @@ func (s *Spec) K0sLeader() *Host {
 	}
 
 	return s.k0sLeader
+}
+
+func (s *Spec) Validate() error {
+	return validation.ValidateStruct(s,
+		validation.Field(&s.Hosts, validation.Required),
+		validation.Field(&s.Hosts),
+		validation.Field(&s.K0s),
+	)
 }
 
 // KubeAPIURL returns an url to the cluster's kube api

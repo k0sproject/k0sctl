@@ -116,8 +116,13 @@ func initConfig(ctx *cli.Context) error {
 		return err
 	}
 
+	m, err := yaml.Marshal(c)
+	if err == nil {
+		log.Tracef("unmarshaled configuration:\n%s", m)
+	}
+
 	if err := c.Validate(); err != nil {
-		return err
+		return fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	ctx.Context = context.WithValue(ctx.Context, ctxConfigKey{}, c)

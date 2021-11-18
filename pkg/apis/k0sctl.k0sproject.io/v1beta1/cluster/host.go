@@ -10,6 +10,9 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
+	"github.com/go-playground/validator/v10"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -21,10 +24,10 @@ import (
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role             string            `yaml:"role" validate:"oneof=controller worker controller+worker single"`
+	Role             string            `yaml:"role"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
-	PrivateAddress   string            `yaml:"privateAddress,omitempty" validate:"omitempty,ip"`
-	Environment      map[string]string `yaml:"environment,flow,omitempty" default:"{}"`
+	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
+	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
@@ -36,6 +39,33 @@ type Host struct {
 	UploadBinaryPath string       `yaml:"-"`
 	Metadata         HostMetadata `yaml:"-"`
 	Configurer       configurer   `yaml:"-"`
+}
+
+func (h *Host) SetDefaults() {
+	_ = defaults.Set(h.Connection)
+
+	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
+		log.Debugf("%s: changed role from '%s' to 'single' because of --single installFlag", h, h.Role)
+		h.Role = "single"
+	}
+	if h.InstallFlags.Get("--enable-worker") != "" && h.InstallFlags.GetValue("--enable-worker") != "false" && h.Role != "controller+worker" {
+		log.Debugf("%s: changed role from '%s' to 'controller+worker' because of --enable-worker installFlag", h, h.Role)
+		h.Role = "controller+worker"
+	}
+}
+
+func (h *Host) Validate() error {
+	// For rig validation
+	v := validator.New()
+	if err := v.Struct(h); err != nil {
+		return err
+	}
+
+	return validation.ValidateStruct(h,
+		validation.Field(&h.Role, validation.In("controller", "worker", "controller+worker", "single").Error("unknown role "+h.Role)),
+		validation.Field(&h.PrivateAddress, is.IP),
+		validation.Field(&h.Files),
+	)
 }
 
 type configurer interface {
