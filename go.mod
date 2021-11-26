@@ -10,13 +10,13 @@ require (
 	github.com/a8m/envsubst v1.2.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/bmatcuk/doublestar/v4 v4.0.2
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/creasty/defaults v1.5.2
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gammazero/workerpool v1.1.2
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.3.0
 	github.com/k0sproject/dig v0.2.0
+	github.com/k0sproject/k0s v1.22.5-0.20211118112808-e2fd5d3ee34e
 	github.com/k0sproject/rig v0.4.6
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
@@ -39,14 +39,14 @@ require (
 )
 
 require (
+	github.com/alessio/shellescape v1.4.1
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.9.0
 )
 
 require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-	github.com/alessio/shellescape v1.4.1 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gammazero/deque v0.1.0 // indirect
@@ -78,6 +78,7 @@ require (
 	k8s.io/apimachinery v0.22.1 // indirect
 	k8s.io/klog/v2 v2.20.0 // indirect
 	k8s.io/utils v0.0.0-20210820185131-d34e5cb4466e // indirect
+	sigs.k8s.io/controller-runtime v0.10.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )

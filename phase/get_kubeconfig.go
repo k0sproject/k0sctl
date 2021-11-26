@@ -29,13 +29,13 @@ func (p *GetKubeconfig) Run() error {
 		// the controller admin.conf is aways pointing to localhost, thus we need to change the address
 		// something usable from outside
 		address := h.Address()
-		if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+		if a := p.Config.Spec.K0s.Config.Spec.API.ExternalAddress; a != "" {
 			address = a
 		}
 
 		port := 6443
-		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-			port = p
+		if ap := p.Config.Spec.K0s.Config.Spec.API.Port; ap != 0 {
+			port = ap
 		}
 
 		p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)

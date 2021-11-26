@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/creasty/defaults"
-	"github.com/k0sproject/dig"
+	k0s "github.com/k0sproject/k0s/pkg/apis/k0s.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig"
@@ -15,76 +15,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
-
-// DefaultK0sYaml is pretty much what "k0s default-config" outputs
-var DefaultK0sYaml = []byte(`apiVersion: k0s.k0sproject.io/v1beta1
-kind: Cluster
-metadata:
-  name: k0s
-spec:
-  api:
-    port: 6443
-    k0sApiPort: 9443
-  storage:
-    type: etcd
-  network:
-    podCIDR: 10.244.0.0/16
-    serviceCIDR: 10.96.0.0/12
-    provider: kuberouter
-    kuberouter:
-      mtu: 0
-      peerRouterIPs: ""
-      peerRouterASNs: ""
-      autoMTU: true
-    kubeProxy:
-      disabled: false
-      mode: iptables
-  podSecurityPolicy:
-    defaultPolicy: 00-k0s-privileged
-  telemetry:
-    enabled: true
-  installConfig:
-    users:
-      etcdUser: etcd
-      kineUser: kube-apiserver
-      konnectivityUser: konnectivity-server
-      kubeAPIserverUser: kube-apiserver
-      kubeSchedulerUser: kube-scheduler
-  images:
-    konnectivity:
-      image: us.gcr.io/k8s-artifacts-prod/kas-network-proxy/proxy-agent
-      version: v0.0.24
-    metricsserver:
-      image: gcr.io/k8s-staging-metrics-server/metrics-server
-      version: v0.5.0
-    kubeproxy:
-      image: k8s.gcr.io/kube-proxy
-      version: v1.22.1
-    coredns:
-      image: docker.io/coredns/coredns
-      version: 1.7.0
-    calico:
-      cni:
-        image: docker.io/calico/cni
-        version: v3.18.1
-      node:
-        image: docker.io/calico/node
-        version: v3.18.1
-      kubecontrollers:
-        image: docker.io/calico/kube-controllers
-        version: v3.18.1
-    kuberouter:
-      cni:
-        image: docker.io/cloudnativelabs/kube-router
-        version: v1.2.1
-      cniInstaller:
-        image: quay.io/k0sproject/cni-node
-        version: 0.1.0
-    default_pull_policy: IfNotPresent
-  konnectivity:
-    agentPort: 8132
-    adminPort: 8133
-`)
 
 var defaultHosts = cluster.Hosts{
 	&cluster.Host{
@@ -247,10 +177,7 @@ var initCommand = &cli.Command{
 		}
 
 		if ctx.Bool("k0s") {
-			cfg.Spec.K0s.Config = dig.Mapping{}
-			if err := yaml.Unmarshal(DefaultK0sYaml, &cfg.Spec.K0s.Config); err != nil {
-				return err
-			}
+			cfg.Spec.K0s.Config = k0s.DefaultClusterConfig("/var/lib/k0s")
 		}
 
 		encoder := yaml.NewEncoder(os.Stdout)

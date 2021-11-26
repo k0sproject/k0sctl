@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	k0s "github.com/k0sproject/k0s/pkg/apis/k0s.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +26,7 @@ func (p *ConfigureK0s) Title() string {
 
 // Run the phase
 func (p *ConfigureK0s) Run() error {
-	if len(p.Config.Spec.K0s.Config) == 0 {
+	if p.Config.Spec.K0s.Config != nil {
 		p.SetProp("default-config", true)
 		leader := p.Config.Spec.K0sLeader()
 		log.Warnf("%s: generating default configuration", leader)
@@ -34,9 +35,11 @@ func (p *ConfigureK0s) Run() error {
 			return err
 		}
 
-		if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
+		c := &k0s.ClusterConfig{}
+		if err := yaml.Unmarshal([]byte(cfg), c); err != nil {
 			return err
 		}
+		p.Config.Spec.K0s.Config = c
 	} else {
 		p.SetProp("default-config", false)
 	}
@@ -136,7 +139,7 @@ func addUnlessExist(slice *[]string, s string) {
 }
 
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
-	cfg := p.Config.Spec.K0s.Config.Dup()
+	cfg := p.Config.Spec.K0s.Config.DeepCopy()
 
 	var sans []string
 
@@ -146,21 +149,12 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	} else {
 		addr = h.Address()
 	}
-	cfg.DigMapping("spec", "api")["address"] = addr
+	cfg.Spec.API.Address = addr
 	addUnlessExist(&sans, addr)
 
-	oldsans := cfg.Dig("spec", "api", "sans")
-	switch oldsans := oldsans.(type) {
-	case []interface{}:
-		for _, v := range oldsans {
-			if s, ok := v.(string); ok {
-				addUnlessExist(&sans, s)
-			}
-		}
-	case []string:
-		for _, v := range oldsans {
-			addUnlessExist(&sans, v)
-		}
+	oldsans := cfg.Spec.API.SANs
+	for _, v := range oldsans {
+		addUnlessExist(&sans, v)
 	}
 
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
@@ -171,18 +165,18 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		}
 	}
 	addUnlessExist(&sans, "127.0.0.1")
-	cfg.DigMapping("spec", "api")["sans"] = sans
+	cfg.Spec.API.SANs = sans
 
-	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
-		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
+	if cfg.Spec.Storage.Etcd.PeerAddress != "" || h.PrivateAddress != "" {
+		cfg.Spec.Storage.Etcd.PeerAddress = addr
 	}
 
-	if _, ok := cfg["apiVersion"]; !ok {
-		cfg["apiVersion"] = "k0s.k0sproject.io/v1beta1"
+	if cfg.APIVersion == "" {
+		cfg.APIVersion = "k0s.k0sproject.io/v1beta1"
 	}
 
-	if _, ok := cfg["kind"]; !ok {
-		cfg["kind"] = "ClusterConfig"
+	if cfg.Kind == "" {
+		cfg.Kind = "ClusterConfig"
 	}
 
 	c, err := yaml.Marshal(cfg)

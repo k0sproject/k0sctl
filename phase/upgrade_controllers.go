@@ -86,8 +86,8 @@ func (p *UpgradeControllers) Run() error {
 			return err
 		}
 		port := 6443
-		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-			port = p
+		if ap := p.Config.Spec.K0s.Config.Spec.API.Port; ap != 0 {
+			port = ap
 		}
 		if err := h.WaitKubeAPIReady(port); err != nil {
 			return err

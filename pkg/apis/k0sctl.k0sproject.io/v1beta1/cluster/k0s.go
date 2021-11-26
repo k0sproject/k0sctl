@@ -13,6 +13,7 @@ import (
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
+	k0s "github.com/k0sproject/k0s/pkg/apis/k0s.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
@@ -24,9 +25,9 @@ const K0sMinVersion = "0.11.0-rc1"
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
-	Version  string      `yaml:"version"`
-	Config   dig.Mapping `yaml:"config,omitempty"`
-	Metadata K0sMetadata `yaml:"-"`
+	Version  string             `yaml:"version"`
+	Config   *k0s.ClusterConfig `yaml:"config,omitempty"`
+	Metadata K0sMetadata        `yaml:"-"`
 }
 
 // K0sMetadata contains gathered information about k0s cluster

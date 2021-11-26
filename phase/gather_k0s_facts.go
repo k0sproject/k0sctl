@@ -76,7 +76,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.IsController() && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
+	if h.IsController() && p.Config.Spec.K0s.Config != nil && h.Configurer.FileExist(h, h.K0sConfigPath()) {
 		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)

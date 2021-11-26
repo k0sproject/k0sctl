@@ -61,7 +61,7 @@ func (s *Spec) Validate() error {
 // KubeAPIURL returns an url to the cluster's kube api
 func (s *Spec) KubeAPIURL() string {
 	var caddr string
-	if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
+	if a := s.K0s.Config.Spec.API.ExternalAddress; a != "" {
 		caddr = a
 	} else {
 		leader := s.K0sLeader()
@@ -73,7 +73,7 @@ func (s *Spec) KubeAPIURL() string {
 	}
 
 	cport := 6443
-	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
+	if p := s.K0s.Config.Spec.API.Port; p != 0 {
 		cport = p
 	}
 
