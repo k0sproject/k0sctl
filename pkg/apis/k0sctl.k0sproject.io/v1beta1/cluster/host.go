@@ -42,6 +42,10 @@ type Host struct {
 }
 
 func (h *Host) SetDefaults() {
+	if h.OSIDOverride != "" {
+		h.OSVersion = &rig.OSVersion{ID: h.OSIDOverride}
+	}
+
 	_ = defaults.Set(h.Connection)
 
 	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
@@ -165,7 +169,7 @@ func (h *Host) Protocol() string {
 
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
-	bf, err := registry.GetOSModuleBuilder(h.OSVersion)
+	bf, err := registry.GetOSModuleBuilder(*h.OSVersion)
 	if err != nil {
 		return err
 	}

@@ -27,8 +27,7 @@ func (p *DetectOS) Title() string {
 func (p *DetectOS) Run() error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
 		if h.OSIDOverride != "" {
-			log.Infof("%s: overriding OS to %s", h, h.OSIDOverride)
-			h.OSVersion.ID = h.OSIDOverride
+			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
 		}
 		if err := h.ResolveConfigurer(); err != nil {
 			p.SetProp("missing-support", h.OSVersion.String())
