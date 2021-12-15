@@ -19,6 +19,7 @@ type Spec struct {
 func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type spec Spec
 	ys := (*spec)(s)
+	ys.K0s = &K0s{}
 
 	if err := unmarshal(ys); err != nil {
 		return err
