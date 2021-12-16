@@ -130,6 +130,8 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type host Host
 	yh := (*host)(h)
 
+	yh.Environment = make(map[string]string)
+
 	if err := unmarshal(yh); err != nil {
 		return err
 	}
