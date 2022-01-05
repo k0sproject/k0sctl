@@ -445,4 +445,4 @@ The version of k0s to deploy. When left out, k0sctl will default to using the la
 
 Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
 
-When left out, the output of `k0s default-config` will be used.
+When left out, the output of `k0s config create` will be used.
