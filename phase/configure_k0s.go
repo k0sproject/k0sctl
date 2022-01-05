@@ -29,7 +29,13 @@ func (p *ConfigureK0s) Run() error {
 		p.SetProp("default-config", true)
 		leader := p.Config.Spec.K0sLeader()
 		log.Warnf("%s: generating default configuration", leader)
-		cfg, err := leader.ExecOutput(leader.Configurer.K0sCmdf("default-config"), exec.Sudo(leader))
+
+		var cmd string
+		if leader.Exec(leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(leader)) == nil {
+			cmd = leader.Configurer.K0sCmdf("config create")
+		}
+
+		cfg, err := leader.ExecOutput(cmd, exec.Sudo(leader))
 		if err != nil {
 			return err
 		}
@@ -47,7 +53,14 @@ func (p *ConfigureK0s) Run() error {
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 	log.Infof("%s: validating configuration", h)
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath()), exec.Sudo(h))
+	var cmd string
+	if h.Exec(h.Configurer.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
+		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, h.K0sConfigPath())
+	} else {
+		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath())
+	}
+
+	output, err := h.ExecOutput(cmd, exec.Sudo(h))
 	if err != nil {
 		return fmt.Errorf("spec.k0s.config fails validation:\n%s", output)
 	}
