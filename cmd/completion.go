@@ -73,7 +73,7 @@ _k0sctl_bash_autocomplete() {
   fi
 }
 
-complete -o bashdefault -o default -o nospace -F _cli_bash_autocomplete %s
+complete -o bashdefault -o default -o nospace -F _k0sctl_bash_autocomplete %s
 `, prog())
 }
 
