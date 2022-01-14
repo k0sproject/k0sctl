@@ -175,7 +175,12 @@ func (l Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error)
 		if len(items) < 4 {
 			continue
 		}
-		addr := items[3][:strings.Index(items[3], "/")]
+		// When subnet mask is 255.255.255.255, CIDR notation is not /32, but it is omitted instead.
+		index := strings.Index(items[3], "/")
+		addr := items[3]
+		if index >= 0 {
+			addr = items[3][:index]
+		}
 		if len(strings.Split(addr, ".")) == 4 {
 			if publicip != addr {
 				return addr, nil
