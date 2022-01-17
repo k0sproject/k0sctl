@@ -22,4 +22,5 @@ var App = &cli.App{
 		backupCommand,
 		completionCommand,
 	},
+	EnableBashCompletion: true,
 }
