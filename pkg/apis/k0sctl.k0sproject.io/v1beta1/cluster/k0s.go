@@ -92,9 +92,17 @@ func (k *K0s) SetDefaults() {
 
 // GenerateToken runs the k0s token create command
 func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token string, err error) {
+	var tokenCreateCmd string
+	out, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --help"), exec.Sudo(h))
+	if err == nil && strings.Contains(out, "--config") {
+		tokenCreateCmd = fmt.Sprintf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String())
+	} else {
+		tokenCreateCmd = fmt.Sprintf("token create --role %s --expiry %s", role, expiry.String())
+	}
+
 	err = retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String()), exec.HideOutput(), exec.Sudo(h))
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf(tokenCreateCmd), exec.HideOutput(), exec.Sudo(h))
 			if err != nil {
 				return err
 			}
