@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/alessio/shellescape"
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -91,10 +92,20 @@ func (k *K0s) SetDefaults() {
 }
 
 // GenerateToken runs the k0s token create command
-func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token string, err error) {
+func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, error) {
+	var k0sFlags Flags
+	k0sFlags.Add(fmt.Sprintf("--role %s", role))
+	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
+
+	out, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --help"), exec.Sudo(h))
+	if err == nil && strings.Contains(out, "--config") {
+		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
+	}
+
+	var token string
 	err = retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --config %s --role %s --expiry %s", h.K0sConfigPath(), role, expiry.String()), exec.HideOutput(), exec.Sudo(h))
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
 			if err != nil {
 				return err
 			}
@@ -107,7 +118,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (token st
 		retry.Attempts(60),
 		retry.LastErrorOnly(true),
 	)
-	return
+	return token, err
 }
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
