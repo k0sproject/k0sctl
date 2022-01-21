@@ -106,7 +106,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 	err = retry.Do(
 		func() error {
 			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
-			if err == nil {
+			if err != nil {
 				return err
 			}
 			token = output
