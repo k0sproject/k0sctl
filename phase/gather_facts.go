@@ -34,11 +34,10 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	h.Metadata.Arch = output
 	p.IncProp(h.Metadata.Arch)
 
-	extra := h.InstallFlags.GetValue("--kubelet-extra-args")
-	if extra != "" {
+	if extra := h.InstallFlags.GetValue("--kubelet-extra-args"); extra != "" {
 		ef := cluster.Flags{extra}
 		if over := ef.GetValue("--hostname-override"); over != "" {
-			if h.HostnameOverride != over {
+			if h.HostnameOverride != "" && h.HostnameOverride != over {
 				return fmt.Errorf("hostname and installFlags kubelet-extra-args hostname-override mismatch, only define either one")
 			}
 			h.HostnameOverride = over
@@ -49,8 +48,12 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 		log.Infof("%s: using %s from configuration as hostname", h, h.HostnameOverride)
 		h.Metadata.Hostname = h.HostnameOverride
 	} else {
-		h.Metadata.Hostname = h.Configurer.Hostname(h)
-		log.Infof("%s: using %s as hostname", h, h.Metadata.Hostname)
+		n := h.Configurer.Hostname(h)
+		if n == "" {
+			return fmt.Errorf("%s: failed to resolve a hostname", h)
+		}
+		h.Metadata.Hostname = n
+		log.Infof("%s: using %s as hostname", h, n)
 	}
 
 	if h.PrivateAddress == "" {
