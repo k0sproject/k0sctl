@@ -22,6 +22,9 @@ id_rsa_k0s:
 smoke-basic: $(footloose) id_rsa_k0s k0sctl
 	./smoke-basic.sh
 
+smoke-dynamic: $(footloose) id_rsa_k0s k0sctl
+	./smoke-dynamic.sh
+
 smoke-files: $(footloose) id_rsa_k0s k0sctl
 	./smoke-files.sh
 

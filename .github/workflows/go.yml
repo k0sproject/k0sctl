@@ -127,6 +127,29 @@ jobs:
       - name: Run smoke tests
         run: make smoke-files
 
+  smoke-dynamic:
+    name: Basic dynamic config smoke
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
+      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
+      - {"name":"Make executable","run":"chmod +x k0sctl"}
+      - {"name":"K0sctl cache","uses":"actions/cache@v2","with":{"path":"/var/cache/k0sctl\n~/.k0sctl/cache\n!*.log\n","key":"k0sctl-cache"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v2","with":{"path":"smoke-test/kubectl\n","key":"kubectl-1.21.3"}}
+      - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
+      - {"name":"Docker Layer Caching For Footloose","uses":"satackey/action-docker-layer-caching@v0.0.11","continue-on-error":true}
+
+      - name: Run smoke tests
+        run: make smoke-dynamic
+
   smoke-os-override:
     name: OS override smoke test
     needs: build

@@ -47,6 +47,12 @@ func (p *InitializeK0s) Run() error {
 	h := p.leader
 	h.Metadata.IsK0sLeader = true
 
+	if p.Config.Spec.K0s.DynamicConfig || (h.InstallFlags.Include("--enable-dynamic-config") && h.InstallFlags.GetValue("--enable-dynamic-config") != "false") {
+		p.Config.Spec.K0s.DynamicConfig = true
+		h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+		p.SetProp("dynamic-config", true)
+	}
+
 	log.Infof("%s: installing k0s controller", h)
 	if err := h.Exec(h.K0sInstallCommand()); err != nil {
 		return err
