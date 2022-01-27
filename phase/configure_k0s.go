@@ -33,6 +33,8 @@ func (p *ConfigureK0s) Run() error {
 		var cmd string
 		if leader.Exec(leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(leader)) == nil {
 			cmd = leader.Configurer.K0sCmdf("config create")
+		} else {
+			cmd = leader.Configurer.K0sCmdf("default-config")
 		}
 
 		cfg, err := leader.ExecOutput(cmd, exec.Sudo(leader))
