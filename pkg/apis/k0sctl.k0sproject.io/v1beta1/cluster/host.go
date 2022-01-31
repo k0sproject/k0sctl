@@ -241,17 +241,21 @@ func (h *Host) K0sInstallCommand() string {
 		flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
 	}
 
-	if strings.HasSuffix(h.Role, "worker") && h.PrivateAddress != "" {
-		// set worker's private address to --node-ip in --extra-kubelet-args
+	if strings.HasSuffix(h.Role, "worker") {
 		var extra Flags
 		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
 			extra = Flags{unQE(old)}
 		}
-		extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
+		// set worker's private address to --node-ip in --extra-kubelet-args
+		if h.PrivateAddress != "" {
+			extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
+		}
 		if h.HostnameOverride != "" {
 			extra.AddOrReplace(fmt.Sprintf("--hostname-override=%s", h.HostnameOverride))
 		}
-		flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
+		if extra != nil {
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
+		}
 	}
 
 	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
