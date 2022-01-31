@@ -2,7 +2,7 @@ apiVersion: k0sctl.k0sproject.io/v1beta1
 kind: cluster
 spec:
   hosts:
-    - role: controller
+    - role: single
       uploadBinary: true
       os: "$OS_OVERRIDE"
       ssh:
