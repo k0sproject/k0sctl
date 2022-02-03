@@ -20,6 +20,14 @@ var App = &cli.App{
 		initCommand,
 		resetCommand,
 		backupCommand,
+		{
+			Name:  "config",
+			Usage: "Configuration related sub-commands",
+			Subcommands: []*cli.Command{
+				configEditCommand,
+				configStatusCommand,
+			},
+		},
 		completionCommand,
 	},
 	EnableBashCompletion: true,
