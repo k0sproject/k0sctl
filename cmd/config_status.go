@@ -22,6 +22,11 @@ var configStatusCommand = &cli.Command{
 		redactFlag,
 		analyticsFlag,
 		upgradeCheckFlag,
+		&cli.StringFlag{
+			Name:    "output",
+			Usage:   "kubectl output formatting",
+			Aliases: []string{"o"},
+		},
 	},
 	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
@@ -45,12 +50,16 @@ var configStatusCommand = &cli.Command{
 		if err := h.ResolveConfigurer(); err != nil {
 			return err
 		}
+		format := ctx.String("output")
+		if format != "" {
+			format = "-o " + format
+		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get event --field-selector involvedObject.name=k0s"), exec.Sudo(h))
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get event --field-selector involvedObject.name=k0s %s", format), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}
-		fmt.Print(output)
+		fmt.Println(output)
 
 		return nil
 	},

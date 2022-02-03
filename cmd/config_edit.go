@@ -21,11 +21,11 @@ func shellEditor() (string, error) {
 	if v := os.Getenv("EDITOR"); v != "" {
 		return v, nil
 	}
-	if path, err := osexec.LookPath("vi"); err != nil {
+	if path, err := osexec.LookPath("vi"); err == nil {
 		return path, nil
 	}
 
-	return "", fmt.Errorf("could not detect shell edit ($VISUAL, $EDITOR)")
+	return "", fmt.Errorf("could not detect shell editor ($VISUAL, $EDITOR)")
 }
 
 var configEditCommand = &cli.Command{
@@ -67,7 +67,7 @@ var configEditCommand = &cli.Command{
 			return err
 		}
 
-		oldCfg, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get clusterconfig k0s"), exec.Sudo(h))
+		oldCfg, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get clusterconfig k0s -o yaml"), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}
@@ -87,8 +87,11 @@ var configEditCommand = &cli.Command{
 		}
 
 		cmd := osexec.Command(editor, tmpFile.Name())
-		if err := cmd.Wait(); err != nil {
-			return err
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to start editor (%s): %w", cmd.String(), err)
 		}
 
 		newCfgBytes, err := os.ReadFile(tmpFile.Name())
