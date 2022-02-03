@@ -78,7 +78,10 @@ var configEditCommand = &cli.Command{
 		}
 		defer func() { _ = os.Remove(tmpFile.Name()) }()
 
-		tmpFile.WriteString(oldCfg)
+		if _, err := tmpFile.WriteString(oldCfg); err != nil {
+			return err
+		}
+
 		if err := tmpFile.Close(); err != nil {
 			return err
 		}
