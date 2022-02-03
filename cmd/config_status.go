@@ -46,7 +46,7 @@ var configStatusCommand = &cli.Command{
 			return err
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get event --field-selector invonvedObject.name=k0s"), exec.Sudo(h))
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get event --field-selector involvedObject.name=k0s"), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}

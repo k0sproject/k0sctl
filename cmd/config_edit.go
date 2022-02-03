@@ -8,9 +8,25 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/rig/exec"
 
+	osexec "os/exec"
+
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 )
+
+func shellEditor() (string, error) {
+	if v := os.Getenv("VISUAL"); v != "" {
+		return v, nil
+	}
+	if v := os.Getenv("EDITOR"); v != "" {
+		return v, nil
+	}
+	if path, err := osexec.LookPath("vi"); err != nil {
+		return path, nil
+	}
+
+	return "", fmt.Errorf("could not detect shell edit ($VISUAL, $EDITOR)")
+}
 
 var configEditCommand = &cli.Command{
 	Name:  "edit",
@@ -34,6 +50,11 @@ var configEditCommand = &cli.Command{
 			return err
 		}
 
+		editor, err := shellEditor()
+		if err != nil {
+			return err
+		}
+
 		c := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
 		h := c.Spec.K0sLeader()
 
@@ -46,11 +67,40 @@ var configEditCommand = &cli.Command{
 			return err
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get clusterconfig k0s"), exec.Sudo(h))
+		oldCfg, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl -n kube-system get clusterconfig k0s"), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}
-		fmt.Print(output)
+
+		tmpFile, err := os.CreateTemp("", "k0s-config.*.yaml")
+		if err != nil {
+			return err
+		}
+		defer func() { _ = os.Remove(tmpFile.Name()) }()
+
+		tmpFile.WriteString(oldCfg)
+		if err := tmpFile.Close(); err != nil {
+			return err
+		}
+
+		cmd := osexec.Command(editor, tmpFile.Name())
+		if err := cmd.Wait(); err != nil {
+			return err
+		}
+
+		newCfgBytes, err := os.ReadFile(tmpFile.Name())
+		if err != nil {
+			return err
+		}
+		newCfg := string(newCfgBytes)
+
+		if newCfg == oldCfg {
+			return fmt.Errorf("configuration was not changed, aborting")
+		}
+
+		if err := h.Exec(h.Configurer.K0sCmdf("kubectl apply -n kube-system -f -"), exec.Stdin(newCfg), exec.Sudo(h)); err != nil {
+			return err
+		}
 
 		return nil
 	},
