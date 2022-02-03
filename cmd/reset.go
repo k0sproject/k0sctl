@@ -31,7 +31,7 @@ var resetCommand = &cli.Command{
 			Aliases: []string{"f"},
 		},
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics, displayCopyright, reportCheckUpgrade),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics, displayCopyright),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		if !ctx.Bool("force") {
