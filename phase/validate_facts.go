@@ -3,7 +3,7 @@ package phase
 import (
 	"fmt"
 
-	"github.com/Masterminds/semver"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -39,12 +39,12 @@ func (p *ValidateFacts) validateDowngrade() error {
 		return nil
 	}
 
-	cfgV, err := semver.NewVersion(p.Config.Spec.K0s.Version)
+	cfgV, err := version.NewVersion(p.Config.Spec.K0s.Version)
 	if err != nil {
 		return err
 	}
 
-	runV, err := semver.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
+	runV, err := version.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
 	if err != nil {
 		return err
 	}
@@ -67,12 +67,12 @@ func (p *ValidateFacts) validateDefaultVersion() error {
 		return nil
 	}
 
-	cfgV, err := semver.NewVersion(p.Config.Spec.K0s.Version)
+	cfgV, err := version.NewVersion(p.Config.Spec.K0s.Version)
 	if err != nil {
 		return err
 	}
 
-	runV, err := semver.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
+	runV, err := version.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
 	if err != nil {
 		return err
 	}

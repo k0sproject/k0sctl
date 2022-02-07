@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -157,12 +157,12 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	}
 
 	log.Debugf("%s: checking if %s is an upgrade from %s", h, p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
-	target, err := semver.NewVersion(p.Config.Spec.K0s.Version)
+	target, err := version.NewVersion(p.Config.Spec.K0s.Version)
 	if err != nil {
 		log.Warnf("%s: failed to parse target version: %s", h, err.Error())
 		return false
 	}
-	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
+	current, err := version.NewVersion(h.Metadata.K0sRunningVersion)
 	if err != nil {
 		log.Warnf("%s: failed to parse running version: %s", h, err.Error())
 		return false
