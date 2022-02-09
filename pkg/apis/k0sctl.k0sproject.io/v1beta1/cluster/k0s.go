@@ -8,15 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/alessio/shellescape"
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
-	"github.com/k0sproject/k0sctl/integration/github"
-	"github.com/k0sproject/k0sctl/version"
+	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	"gopkg.in/yaml.v2"
 )
 
@@ -54,17 +53,17 @@ func validateVersion(value interface{}) error {
 		return fmt.Errorf("not a string")
 	}
 
-	v, err := semver.NewVersion(vs)
+	v, err := version.NewVersion(vs)
 	if err != nil {
 		return err
 	}
 
-	min, err := semver.NewVersion(K0sMinVersion)
+	min, err := version.NewVersion(K0sMinVersion)
 	if err != nil {
 		return fmt.Errorf("internal error: k0sminversion can't be parsed: %s", err)
 	}
 
-	if min.GreaterThan(v) {
+	if v.LessThan(min) {
 		return fmt.Errorf("version: minimum supported k0s version is %s", K0sMinVersion)
 	}
 
@@ -80,12 +79,10 @@ func (k *K0s) Validate() error {
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
 func (k *K0s) SetDefaults() {
-	if defaults.CanUpdate(k.Version) {
-		preok := version.IsPre() || version.Version == "0.0.0"
-		if latest, err := github.LatestK0sVersion(preok); err == nil {
-			k.Version = latest
-			k.Metadata.VersionDefaulted = true
-		}
+	latest, err := version.LatestReleaseByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
+	if err == nil {
+		k.Version = latest.String()
+		k.Metadata.VersionDefaulted = true
 	}
 
 	k.Version = strings.TrimPrefix(k.Version, "v")

@@ -18,7 +18,7 @@ import (
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/k0sproject/k0sctl/version"
+	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/logrusorgru/aurora"
@@ -131,7 +131,7 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(ctx *cli.Context) error {
-	fmt.Printf("k0sctl %s Copyright 2021, k0sctl authors.\n", version.Version)
+	fmt.Printf("k0sctl %s Copyright 2021, k0sctl authors.\n", k0sctl.Version)
 	if !ctx.Bool("disable-telemetry") {
 		fmt.Println("Anonymized telemetry of usage will be sent to the authors.")
 	}
@@ -361,7 +361,7 @@ func githubOrCachedRelease() (*github.Release, error) {
 		}
 	}
 	log.Tracef("starting online k0sctl upgrade check")
-	latest, err := github.LatestRelease("k0sproject/k0sctl", version.IsPre())
+	latest, err := github.LatestRelease(k0sctl.IsPre())
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func githubOrCachedRelease() (*github.Release, error) {
 }
 
 func startCheckUpgrade(ctx *cli.Context) error {
-	if ctx.Bool("disable-upgrade-check") || version.Environment == "development" {
+	if ctx.Bool("disable-upgrade-check") || k0sctl.Environment == "development" {
 		return nil
 	}
 
@@ -392,7 +392,7 @@ func startCheckUpgrade(ctx *cli.Context) error {
 			upgradeChan <- nil
 			return
 		}
-		if latest.IsNewer(version.Version) {
+		if latest.IsNewer(k0sctl.Version) {
 			upgradeChan <- latest
 		} else {
 			upgradeChan <- nil
@@ -403,7 +403,7 @@ func startCheckUpgrade(ctx *cli.Context) error {
 }
 
 func reportCheckUpgrade(ctx *cli.Context) error {
-	if ctx.Bool("disable-upgrade-check") || version.Environment == "development" {
+	if ctx.Bool("disable-upgrade-check") || k0sctl.Environment == "development" {
 		return nil
 	}
 

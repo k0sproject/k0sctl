@@ -15,7 +15,7 @@ require (
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gammazero/workerpool v1.1.2
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/hashicorp/go-version v1.3.0
+	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/k0sproject/dig v0.2.0
 	github.com/k0sproject/rig v0.4.7
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -42,6 +42,7 @@ require (
 	github.com/alessio/shellescape v1.4.1
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.9.0
+	github.com/k0sproject/version v0.1.3
 )
 
 require (
