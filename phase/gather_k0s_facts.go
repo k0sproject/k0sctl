@@ -126,6 +126,29 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+	if h.IsController() {
+		for _, a := range status.Args {
+			if strings.HasPrefix(a, "--enable-dynamic-config") && !strings.HasSuffix(a, "false") {
+				if !p.Config.Spec.K0s.DynamicConfig {
+					log.Warnf("%s: controller has dynamic config enabled, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode", h)
+					p.Config.Spec.K0s.DynamicConfig = true
+				}
+			}
+		}
+		if h.InstallFlags.Include("--enable-dynamic-config") {
+			if val := h.InstallFlags.GetValue("--enable-dynamic-config"); val != "false" {
+				if !p.Config.Spec.K0s.DynamicConfig {
+					log.Warnf("%s: controller has --enable-dynamic-config in installFlags, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode", h)
+				}
+				p.Config.Spec.K0s.DynamicConfig = true
+			}
+		}
+
+		if p.Config.Spec.K0s.DynamicConfig {
+			h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+		}
+	}
+
 	if h.Metadata.NeedsUpgrade {
 		log.Warnf("%s: k0s will be upgraded", h)
 	}

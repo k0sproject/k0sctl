@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
@@ -16,6 +18,7 @@ import (
 // ConfigureK0s writes the k0s configuration to host k0s config dir
 type ConfigureK0s struct {
 	GenericPhase
+	leader *cluster.Host
 }
 
 // Title returns the phase title
@@ -23,21 +26,27 @@ func (p *ConfigureK0s) Title() string {
 	return "Configure k0s"
 }
 
+// Prepare the phase
+func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
+	p.Config = config
+	p.leader = p.Config.Spec.K0sLeader()
+	return nil
+}
+
 // Run the phase
 func (p *ConfigureK0s) Run() error {
 	if len(p.Config.Spec.K0s.Config) == 0 {
 		p.SetProp("default-config", true)
-		leader := p.Config.Spec.K0sLeader()
-		log.Warnf("%s: generating default configuration", leader)
+		log.Warnf("%s: generating default configuration", p.leader)
 
 		var cmd string
-		if leader.Exec(leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(leader)) == nil {
-			cmd = leader.Configurer.K0sCmdf("config create")
+		if p.leader.Exec(p.leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(p.leader)) == nil {
+			cmd = p.leader.Configurer.K0sCmdf("config create")
 		} else {
-			cmd = leader.Configurer.K0sCmdf("default-config")
+			cmd = p.leader.Configurer.K0sCmdf("default-config")
 		}
 
-		cfg, err := leader.ExecOutput(cmd, exec.Sudo(leader))
+		cfg, err := p.leader.ExecOutput(cmd, exec.Sudo(p.leader))
 		if err != nil {
 			return err
 		}
@@ -151,7 +160,13 @@ func addUnlessExist(slice *[]string, s string) {
 }
 
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
-	cfg := p.Config.Spec.K0s.Config.Dup()
+	var cfg dig.Mapping
+	// Leader will get a full config on initialize only
+	if !p.Config.Spec.K0s.DynamicConfig || (h == p.leader && h.Metadata.K0sRunningVersion == "") {
+		cfg = p.Config.Spec.K0s.Config.Dup()
+	} else {
+		cfg = p.Config.Spec.K0s.NodeConfig()
+	}
 
 	var sans []string
 

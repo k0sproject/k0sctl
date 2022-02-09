@@ -441,6 +441,19 @@ This must be set `true` to enable the localhost connection.
 
 The version of k0s to deploy. When left out, k0sctl will default to using the latest released version of k0s or the version already running on the cluster.
 
+##### `spec.k0s.dynamicConfig` &lt;boolean&gt; (optional) (default: false)
+
+Enable k0s dynamic config. The setting will be automatically set to true if:
+
+* Any controller node has `--enable-dynamic-config` in `installFlags`
+* Any existing controller node has `--enable-dynamic-config` in run arguments (`k0s status -o json`)
+
+**Note:**: When running k0s in dynamic config mode, k0sctl will ONLY configure the cluster-wide configuration during the first time initialization, after that the configuration has to be managed via `k0s config edit` or `k0sctl config edit`. The node specific configuration will be updated on each apply.
+
+See also:
+
+* [k0s Dynamic Configuration](https://docs.k0sproject.io/main/dynamic-configuration/)
+
 ##### `spec.k0s.config` &lt;mapping&gt; (optional) (default: auto-generated)
 
 Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.

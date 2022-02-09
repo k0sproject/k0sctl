@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/rig/exec"
 
-	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 )
 
@@ -31,10 +29,6 @@ var configStatusCommand = &cli.Command{
 	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		if !isatty.IsTerminal(os.Stdout.Fd()) {
-			return fmt.Errorf("output is not a terminal")
-		}
-
 		if err := analytics.Client.Publish("config-status-start", map[string]interface{}{}); err != nil {
 			return err
 		}

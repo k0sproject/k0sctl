@@ -13,6 +13,11 @@ func (f *Flags) Add(s string) {
 	*f = append(*f, s)
 }
 
+// Add a flag with a value
+func (f *Flags) AddWithValue(key, value string) {
+	*f = append(*f, key+" "+value)
+}
+
 // AddUnlessExist adds a flag unless one with the same prefix exists
 func (f *Flags) AddUnlessExist(s string) {
 	if f.Include(s) {
