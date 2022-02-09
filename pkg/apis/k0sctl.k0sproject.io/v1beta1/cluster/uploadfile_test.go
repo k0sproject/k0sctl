@@ -10,8 +10,8 @@ import (
 func TestPermStringUnmarshalWithOctal(t *testing.T) {
 	u := UploadFile{}
 	yml := []byte(`
-src: /tmp
-dstDir: /tmp
+src: .
+dstDir: .
 perm: 0755
 `)
 
@@ -22,8 +22,8 @@ perm: 0755
 func TestPermStringUnmarshalWithString(t *testing.T) {
 	u := UploadFile{}
 	yml := []byte(`
-src: /tmp
-dstDir: /tmp
+src: .
+dstDir: .
 perm: "0755"
 `)
 
@@ -34,8 +34,8 @@ perm: "0755"
 func TestPermStringUnmarshalWithInvalidString(t *testing.T) {
 	u := UploadFile{}
 	yml := []byte(`
-src: /tmp
-dstDir: /tmp
+src: .
+dstDir: .
 perm: u+rwx
 `)
 
@@ -45,8 +45,8 @@ perm: u+rwx
 func TestPermStringUnmarshalWithInvalidNumber(t *testing.T) {
 	u := UploadFile{}
 	yml := []byte(`
-src: /tmp
-dstDir: /tmp
+src: .
+dstDir: .
 perm: 0800
 `)
 
@@ -56,8 +56,8 @@ perm: 0800
 func TestPermStringUnmarshalWithZero(t *testing.T) {
 	u := UploadFile{}
 	yml := []byte(`
-src: /tmp
-dstDir: /tmp
+src: .
+dstDir: .
 perm: 0
 `)
 
