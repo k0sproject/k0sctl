@@ -362,6 +362,28 @@ Override OS distribution auto-detection. By default `k0sctl` detects the OS by r
       address: 10.0.0.2
 ```
 
+##### `spec.hosts[*].privateInterface` &lt;string&gt; (optional) (default: ``)
+
+Override private network interface selected by host fact gathering.
+Useful in case fact gathering picks the wrong private network interface.
+
+```yaml
+  - role: worker
+    os: debian
+    privateInterface: eth1
+```
+
+##### `spec.hosts[*].privateAddress` &lt;string&gt; (optional) (default: ``)
+
+Override private IP address selected by host fact gathering.
+Useful in case fact gathering picks the wrong IPAddress.
+
+```yaml
+  - role: worker
+    os: debian
+    privateAddress: 10.0.0.2
+```
+
 ##### `spec.hosts[*].ssh` &lt;mapping&gt; (optional)
 
 SSH connection options.
