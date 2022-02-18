@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -36,13 +38,21 @@ var kubeconfigCommand = &cli.Command{
 		c.Spec.Hosts = cluster.Hosts{c.Spec.K0sLeader()}
 		manager := phase.Manager{Config: c}
 
+		kubeconfig := &phase.GetKubeconfig{APIAddress: ctx.String("address")}
+
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
-			&phase.GetKubeconfig{APIAddress: ctx.String("address")},
+			kubeconfig,
 			&phase.Disconnect{},
 		)
 
-		return manager.Run()
+		if err := manager.Run(); err != nil {
+			return err
+		}
+
+		fmt.Println(kubeconfig.Kubeconfig())
+
+		return nil
 	},
 }
