@@ -10,7 +10,6 @@ import (
 type GetKubeconfig struct {
 	GenericPhase
 	APIAddress string
-	kubeconfig string
 }
 
 // Title for the phase
@@ -47,14 +46,9 @@ func (p *GetKubeconfig) Run() error {
 		return err
 	}
 
-	p.kubeconfig = cfgString
+	p.Config.Metadata.Kubeconfig = cfgString
 
 	return nil
-}
-
-// Kubeconfig gets the kubeconfig
-func (p *GetKubeconfig) Kubeconfig() string {
-	return p.kubeconfig
 }
 
 // kubeConfig reads in the raw kubeconfig and changes the given address

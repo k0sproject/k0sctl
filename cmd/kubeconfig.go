@@ -38,12 +38,10 @@ var kubeconfigCommand = &cli.Command{
 		c.Spec.Hosts = cluster.Hosts{c.Spec.K0sLeader()}
 		manager := phase.Manager{Config: c}
 
-		kubeconfig := &phase.GetKubeconfig{APIAddress: ctx.String("address")}
-
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
-			kubeconfig,
+			&phase.GetKubeconfig{APIAddress: ctx.String("address")},
 			&phase.Disconnect{},
 		)
 
@@ -51,7 +49,7 @@ var kubeconfigCommand = &cli.Command{
 			return err
 		}
 
-		fmt.Println(kubeconfig.Kubeconfig())
+		fmt.Println(c.Metadata.Kubeconfig)
 
 		return nil
 	},
