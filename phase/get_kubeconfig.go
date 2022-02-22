@@ -45,7 +45,9 @@ func (p *GetKubeconfig) Run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(cfgString)
+
+	p.Config.Metadata.Kubeconfig = cfgString
+
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -43,6 +45,12 @@ var kubeconfigCommand = &cli.Command{
 			&phase.Disconnect{},
 		)
 
-		return manager.Run()
+		if err := manager.Run(); err != nil {
+			return err
+		}
+
+		fmt.Println(c.Metadata.Kubeconfig)
+
+		return nil
 	},
 }
