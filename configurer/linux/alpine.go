@@ -3,6 +3,7 @@ package linux
 import (
 	"strings"
 
+	"github.com/gofrs/uuid"
 	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
@@ -40,5 +41,20 @@ func (l Alpine) InstallPackage(h os.Host, pkg ...string) error {
 }
 
 func (l Alpine) Prepare(h os.Host) error {
+	// alpinelinux by default does not have a machine-id
+	if !l.FileExist(h, "/etc/machine-id") {
+		id, err := uuid.NewV4()
+		if err != nil {
+			return err
+		}
+		if err = l.WriteFile(
+			h,
+			"/etc/machine-id",
+			strings.ReplaceAll(id.String(), "-", "")+"\n",
+			"0444",
+		); err != nil {
+			return err
+		}
+	}
 	return l.InstallPackage(h, "findutils", "coreutils")
 }
