@@ -22,7 +22,7 @@ func (p *UploadBinaries) Title() string {
 func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.UploadBinaryPath != "" || h.Metadata.K0sBinaryVersion != p.Config.Spec.K0s.Version
+		return h.UploadBinaryPath != "" || (h.Metadata.K0sBinaryVersion != p.Config.Spec.K0s.Version && !h.Metadata.NeedsUpgrade)
 	})
 	return nil
 }
