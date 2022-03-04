@@ -105,6 +105,10 @@ func (k *K0s) validateMinDynamic() func(interface{}) error {
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
 func (k *K0s) SetDefaults() {
+	if k.Version != "" {
+		return
+	}
+
 	latest, err := version.LatestReleaseByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
 	if err == nil {
 		k.Version = latest.String()
