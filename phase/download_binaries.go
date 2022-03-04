@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -107,11 +108,11 @@ func (b binary) ext() string {
 }
 
 func (b binary) url() string {
-	return fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s%s", b.version, b.version, b.arch, b.ext())
+	return fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s%s", strings.TrimPrefix(b.version, "v"), strings.TrimPrefix(b.version, "v"), b.arch, b.ext())
 }
 
 func (b binary) downloadTo(path string) error {
-	log.Infof("downloading k0s version %s binary for %s-%s", b.version, b.os, b.arch)
+	log.Infof("downloading k0s version %s binary for %s-%s from %s", b.version, b.os, b.arch, b.url())
 
 	var err error
 
