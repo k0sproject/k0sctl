@@ -111,7 +111,7 @@ func (b binary) url() string {
 }
 
 func (b binary) downloadTo(path string) error {
-	log.Infof("downloading k0s version %s binary for %s-%s", b.version, b.os, b.arch)
+	log.Infof("downloading k0s version %s binary for %s-%s from %s", b.version, b.os, b.arch, b.url())
 
 	var err error
 
