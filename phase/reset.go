@@ -69,6 +69,11 @@ func (p *Reset) Run() error {
 		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
 		c, _ := semver.NewConstraint("<= 1.22.3+k0s.0")
 		running, _ := semver.NewVersion(h.Metadata.K0sBinaryVersion)
+
+		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sConfigPath()); dErr != nil {
+			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
+		}
+
 		if err != nil {
 			log.Warnf("%s: k0s reported failure: %v", h, err)
 			if c.Check(running) && strings.Contains(out, "k0s cleanup operations done") {
