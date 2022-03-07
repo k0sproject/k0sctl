@@ -76,6 +76,10 @@ func (p *Reset) Run() error {
 			}
 		}
 
-		return err
+		if err := h.Configurer.DeleteFile(h, h.Configurer.K0sConfigPath()); err != nil {
+			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), err)
+		}
+
+		return nil
 	})
 }
