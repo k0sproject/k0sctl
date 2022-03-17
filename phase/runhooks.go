@@ -2,7 +2,9 @@ package phase
 
 import (
 	"fmt"
-	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -19,7 +21,8 @@ type RunHooks struct {
 
 // Title for the phase
 func (p *RunHooks) Title() string {
-	return fmt.Sprintf("Run %s %s Hooks", strings.Title(p.Stage), strings.Title(p.Action))
+	titler := cases.Title(language.AmericanEnglish)
+	return fmt.Sprintf("Run %s %s Hooks", titler.String(p.Stage), titler.String(p.Action))
 }
 
 // Prepare digs out the hosts with steps from the config
