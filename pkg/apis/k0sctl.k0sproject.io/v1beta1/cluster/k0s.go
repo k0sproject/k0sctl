@@ -109,7 +109,7 @@ func (k *K0s) SetDefaults() {
 		return
 	}
 
-	latest, err := version.LatestReleaseByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
+	latest, err := version.LatestByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
 	if err == nil {
 		k.Version = latest.String()
 		k.Metadata.VersionDefaulted = true
