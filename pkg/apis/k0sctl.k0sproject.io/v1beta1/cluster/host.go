@@ -460,17 +460,7 @@ func (h *Host) NeedCurl() bool {
 		return false
 	}
 
-	// Controllers always need curl
-	if h.IsController() {
-		return !h.Configurer.CommandExist(h, "curl")
-	}
-
-	// Workers only need curl if they're going to use the direct downloading
-	if !h.UploadBinary {
-		return !h.Configurer.CommandExist(h, "curl")
-	}
-
-	return false
+	return !h.Configurer.CommandExist(h, "curl")
 }
 
 // NeedIPTables returns true when the iptables package is needed on the host
