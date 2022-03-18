@@ -42,35 +42,20 @@ func (r *Release) IsNewer(b string) bool {
 
 // LatestK0sBinaryURL returns the url for the latest k0s release by arch and os
 func LatestK0sBinaryURL(arch, osKind string, preok bool) (string, error) {
-	r, err := k0sversion.LatestReleaseByPrerelease(preok)
+	r, err := k0sversion.LatestByPrerelease(preok)
 	if err != nil {
 		return "", err
 	}
-
-	for _, a := range r.Assets {
-		if !strings.Contains(a.Name, "-"+arch) {
-			continue
-		}
-
-		if strings.HasSuffix(a.Name, ".exe") {
-			if osKind == "windows" {
-				return a.URL, nil
-			}
-		} else if osKind != "windows" {
-			return a.URL, nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to find a k0s release")
+	return r.DownloadURL(osKind, arch), nil
 }
 
 // LatestK0sVersion returns the latest k0s version number (without v prefix)
 func LatestK0sVersion(preok bool) (string, error) {
-	r, err := k0sversion.LatestReleaseByPrerelease(preok)
+	r, err := k0sversion.LatestByPrerelease(preok)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimPrefix(r.TagName, "v"), nil
+	return strings.TrimPrefix(r.String(), "v"), nil
 }
 
 // LatestRelease returns the semantically sorted latest k0sctl version from github
