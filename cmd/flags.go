@@ -338,7 +338,7 @@ func fileLoggerHook(logFile io.Writer) *loghook {
 }
 
 func displayLogo(_ *cli.Context) error {
-	fmt.Println(logo)
+	fmt.Print(logo)
 	return nil
 }
 
