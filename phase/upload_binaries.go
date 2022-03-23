@@ -1,6 +1,9 @@
 package phase
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
@@ -38,13 +41,26 @@ func (p *UploadBinaries) Run() error {
 }
 
 func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
-	log.Infof("%s: uploading k0s binary from %s", h, h.UploadBinaryPath)
-	if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
-		return err
+	stat, err := os.Stat(h.UploadBinaryPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat %s: %w", h.UploadBinaryPath, err)
+	}
+	if h.FileChanged(h.UploadBinaryPath, h.Configurer.K0sBinaryPath()) {
+		log.Infof("%s: uploading k0s binary from %s", h, h.UploadBinaryPath)
+		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
+			return err
+		}
+	} else {
+		log.Infof("%s: k0s binary %s already exists on the target and hasn't been changed, skipping upload", h, h.UploadBinaryPath)
 	}
 
 	if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700", exec.Sudo(h)); err != nil {
 		return err
+	}
+
+	log.Debugf("%s: touching %s", h, h.Configurer.K0sBinaryPath())
+	if err := h.Configurer.Touch(h, h.Configurer.K0sBinaryPath(), stat.ModTime(), exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to touch %s: %w", h.Configurer.K0sBinaryPath(), err)
 	}
 
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version

@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	gos "os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -112,6 +113,8 @@ type configurer interface {
 	TempFile(os.Host) (string, error)
 	UpdateServiceEnvironment(os.Host, string, map[string]string) error
 	CleanupServiceEnvironment(os.Host, string) error
+	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
+	Touch(os.Host, string, time.Time, ...exec.Option) error
 }
 
 // HostMetadata resolved metadata for host
@@ -493,4 +496,31 @@ func (h *Host) WaitKubeAPIReady(port int) error {
 	// If the anon-auth is disabled on kube api the version endpoint will give 401
 	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
 	return h.WaitHTTPStatus(fmt.Sprintf("https://localhost:%d/version", port), 200, 401)
+}
+
+// FileChanged returns true when a remote file has different size or mtime compared to local
+// or if an error occurs
+func (h *Host) FileChanged(lpath, rpath string) bool {
+	lstat, err := gos.Stat(lpath)
+	if err != nil {
+		log.Debugf("%s: local stat failed: %s", h, err)
+		return true
+	}
+	rstat, err := h.Configurer.Stat(h, rpath, exec.Sudo(h))
+	if err != nil {
+		log.Debugf("%s: remote stat failed: %s", h, err)
+		return true
+	}
+
+	if lstat.Size() != rstat.Size() {
+		log.Debugf("%s: file sizes for %s differ (%d vs %d)", h, lpath, lstat.Size(), rstat.Size())
+		return true
+	}
+
+	if !lstat.ModTime().Equal(rstat.ModTime()) {
+		log.Debugf("%s: file modtimes for %s differ (%s vs %s)", h, lpath, lstat.ModTime(), rstat.ModTime())
+		return true
+	}
+
+	return false
 }
