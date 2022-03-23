@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"os"
 	"path"
 
 	"github.com/alessio/shellescape"
@@ -107,8 +108,12 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 			return err
 		}
 
-		if err := h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h)); err != nil {
-			return err
+		if h.FileChanged(src, dest) {
+			if err := h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h)); err != nil {
+				return err
+			}
+		} else {
+			log.Infof("%s: file already exists and hasn't been changed, skipping upload", h)
 		}
 
 		if owner != "" {
@@ -120,6 +125,14 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 		log.Debugf("%s: setting permissions %s for %s", h, s.PermMode, dest)
 		if err := h.Configurer.Chmod(h, dest, s.PermMode, exec.Sudo(h)); err != nil {
 			return err
+		}
+		stat, err := os.Stat(src)
+		if err != nil {
+			return fmt.Errorf("failed to stat %s: %s", src, err)
+		}
+		log.Debugf("%s: touching %s", h, dest)
+		if err := h.Configurer.Touch(h, dest, stat.ModTime(), exec.Sudo(h)); err != nil {
+			return fmt.Errorf("failed to touch %s: %w", dest, err)
 		}
 	}
 
