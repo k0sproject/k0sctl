@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -136,6 +137,23 @@ func displayCopyright(ctx *cli.Context) error {
 	}
 	fmt.Println("By continuing to use k0sctl you agree to these terms:")
 	fmt.Println("https://k0sproject.io/licenses/eula")
+	return nil
+}
+
+func warnOldCache(_ *cli.Context) error {
+	var olds []string
+	home, err := os.UserHomeDir()
+	if err == nil {
+		olds = append(olds, path.Join(home, ".k0sctl", "cache"))
+	}
+	if runtime.GOOS == "linux" {
+		olds = append(olds, "/var/cache/k0sctl")
+	}
+	for _, p := range olds {
+		if _, err := os.Stat(p); err == nil {
+			log.Warnf("An old cache directory still exists at %s, k0sctl now uses %s", p, path.Join(xdg.CacheHome, "k0sctl"))
+		}
+	}
 	return nil
 }
 
