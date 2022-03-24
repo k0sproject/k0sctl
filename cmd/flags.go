@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/a8m/envsubst"
+	"github.com/adrg/xdg"
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/cache"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
@@ -209,13 +208,17 @@ func initFileLogger() error {
 	return nil
 }
 
+const logPath = "k0sctl/k0sctl.log"
+
 func LogFile() (io.Writer, error) {
-	logDir := cache.Dir()
-	if err := cache.EnsureDir(logDir); err != nil {
-		return nil, fmt.Errorf("error while creating log directory %s: %s", logDir, err.Error())
+	fn, err := xdg.SearchCacheFile(logPath)
+	if err != nil {
+		fn, err = xdg.CacheFile(logPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	fn := path.Join(logDir, "k0sctl.log")
 	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open log %s: %s", fn, err.Error())
@@ -345,7 +348,7 @@ func displayLogo(_ *cli.Context) error {
 var upgradeChan = make(chan *github.Release)
 
 func githubOrCachedRelease() (*github.Release, error) {
-	cached, err := cache.GetFile("k0sctl.github.latest.json")
+	cached, err := xdg.SearchCacheFile("k0sctl.github.latest.json")
 	if err == nil {
 		log.Tracef("found a cached github response in %s", cached)
 		stat, err := os.Stat(cached)
@@ -365,7 +368,11 @@ func githubOrCachedRelease() (*github.Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	cached = cache.File("k0sctl.github.latest.json")
+	cached, err = xdg.CacheFile("k0sctl.github.latest.json")
+	if err != nil {
+		return nil, err
+	}
+
 	cf, err := os.Create(cached)
 	if err != nil {
 		return nil, err
