@@ -41,7 +41,7 @@ var applyCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright, warnOldCache),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()

@@ -5,9 +5,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/cache"
+	"github.com/adrg/xdg"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
@@ -89,12 +90,21 @@ type binary struct {
 }
 
 func (b *binary) download() error {
-	path, err := cache.GetOrCreate(b.downloadTo, "k0s", b.os, b.arch, "k0s-"+b.version+b.ext())
+	fn := path.Join("k0sctl", "k0s", b.os, b.arch, "k0s-"+b.version+b.ext())
+	p, err := xdg.SearchCacheFile(fn)
+	if err == nil {
+		b.path = p
+		return nil
+	}
+	p, err = xdg.CacheFile(fn)
 	if err != nil {
 		return err
 	}
+	if err := b.downloadTo(p); err != nil {
+		return err
+	}
 
-	b.path = path
+	b.path = p
 	log.Infof("using k0s binary from %s for %s-%s", b.path, b.os, b.arch)
 
 	return nil
