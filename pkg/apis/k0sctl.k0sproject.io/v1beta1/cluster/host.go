@@ -18,6 +18,7 @@ import (
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -83,6 +84,7 @@ type configurer interface {
 	Arch(os.Host) (string, error)
 	K0sCmdf(string, ...interface{}) string
 	K0sBinaryPath() string
+	K0sBinaryVersion(os.Host) (*version.Version, error)
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
 	WriteFile(os.Host, string, string, string) error
@@ -93,7 +95,7 @@ type configurer interface {
 	ReadFile(os.Host, string) (string, error)
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, string, string) error
+	DownloadK0s(os.Host, *version.Version, string) error
 	DownloadURL(os.Host, string, string, ...exec.Option) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
@@ -296,7 +298,7 @@ func (h *Host) K0sServiceName() string {
 }
 
 // UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
-func (h *Host) UpdateK0sBinary(version string) error {
+func (h *Host) UpdateK0sBinary(version *version.Version) error {
 	if h.UploadBinaryPath != "" {
 		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
@@ -308,17 +310,18 @@ func (h *Host) UpdateK0sBinary(version string) error {
 		if err := h.Configurer.DownloadK0s(h, version, h.Metadata.Arch); err != nil {
 			return err
 		}
-
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
-		if err != nil {
-			return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
-		}
-		output = strings.TrimPrefix(output, "v")
-		if output != version {
-			return fmt.Errorf("downloaded k0s binary version is %s not %s", output, version)
-		}
 	}
-	h.Metadata.K0sBinaryVersion = version
+
+	updatedVersion, err := h.Configurer.K0sBinaryVersion(h)
+	if err != nil {
+		return fmt.Errorf("failed to get updated k0s binary version: %w", err)
+	}
+	if !version.Equal(updatedVersion) {
+		return fmt.Errorf("updated k0s binary version is %s not %s", updatedVersion, version)
+	}
+
+	h.Metadata.K0sBinaryVersion = version.String()
+
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/version"
 )
 
 // Static Constants Interface for overriding by distro-specific structs
@@ -61,6 +62,21 @@ func (l Linux) K0sBinaryPath() string {
 	return "/usr/local/bin/k0s"
 }
 
+func (l Linux) K0sBinaryVersion(h os.Host) (*version.Version, error) {
+	k0sVersionCmd := l.K0sCmdf("version")
+	output, err := h.ExecOutput(k0sVersionCmd, exec.Sudo(h))
+	if err != nil {
+		return nil, err
+	}
+
+	version, err := version.NewVersion(output)
+	if err != nil {
+		return nil, err
+	}
+
+	return version, nil
+}
+
 // K0sConfigPath returns the location of k0s configuration file
 func (l Linux) K0sConfigPath() string {
 	return "/etc/k0s/k0s.yaml"
@@ -87,14 +103,14 @@ func (l Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Opti
 }
 
 // DownloadK0s performs k0s binary download from github on the host
-func (l Linux) DownloadK0s(h os.Host, version, arch string) error {
+func (l Linux) DownloadK0s(h os.Host, version *version.Version, arch string) error {
 	tmp, err := l.TempFile(h)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = h.Execf(`rm -f "%s"`, tmp) }()
 
-	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%s/k0s-v%s-%s", version, version, arch)
+	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/%s/k0s-%s-%s", version, version, arch)
 	if err := l.DownloadURL(h, url, tmp); err != nil {
 		return err
 	}

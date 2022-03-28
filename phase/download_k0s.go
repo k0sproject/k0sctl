@@ -2,11 +2,10 @@ package phase
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,25 +40,28 @@ func (p *DownloadK0s) Run() error {
 }
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
-	target := p.Config.Spec.K0s.Version
-	log.Infof("%s: downloading k0s %s", h, target)
-	if err := h.Configurer.DownloadK0s(h, target, h.Metadata.Arch); err != nil {
+	targetVersion, err := version.NewVersion(p.Config.Spec.K0s.Version)
+	if err != nil {
 		return err
 	}
 
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
+	log.Infof("%s: downloading k0s %s", h, targetVersion)
+	if err := h.Configurer.DownloadK0s(h, targetVersion, h.Metadata.Arch); err != nil {
+		return err
+	}
+
+	downloadedVersion, err := h.Configurer.K0sBinaryVersion(h)
 	if err != nil {
 		if err := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); err != nil {
 			log.Warnf("%s: failed to remove %s: %s", h, h.Configurer.K0sBinaryPath(), err.Error())
 		}
-		return fmt.Errorf("downloaded k0s binary is invalid: %s", err.Error())
+		return fmt.Errorf("failed to get downloaded k0s binary version: %w", err)
 	}
-	output = strings.TrimPrefix(output, "v")
-	if output != target {
-		return fmt.Errorf("downloaded k0s binary version is %s not %s", output, target)
+	if !targetVersion.Equal(downloadedVersion) {
+		return fmt.Errorf("downloaded k0s binary version is %s not %s", downloadedVersion, targetVersion)
 	}
 
-	h.Metadata.K0sBinaryVersion = target
+	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 
 	return nil
 }

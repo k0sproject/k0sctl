@@ -7,6 +7,7 @@ import (
 	"github.com/gammazero/workerpool"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -101,7 +102,11 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.WaitK0sServiceStopped(); err != nil {
 		return err
 	}
-	if err := h.UpdateK0sBinary(p.Config.Spec.K0s.Version); err != nil {
+	version, err := version.NewVersion(p.Config.Spec.K0s.Version)
+	if err != nil {
+		return err
+	}
+	if err := h.UpdateK0sBinary(version); err != nil {
 		return err
 	}
 

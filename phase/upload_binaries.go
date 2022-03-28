@@ -7,6 +7,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -63,7 +64,17 @@ func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 		return fmt.Errorf("failed to touch %s: %w", h.Configurer.K0sBinaryPath(), err)
 	}
 
-	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
+	uploadedVersion, err := h.Configurer.K0sBinaryVersion(h)
+	if err != nil {
+		return fmt.Errorf("failed to get uploaded k0s binary version: %w", err)
+	}
+
+	h.Metadata.K0sBinaryVersion = uploadedVersion.String()
+	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
+
+	if version, err := version.NewVersion(p.Config.Spec.K0s.Version); err == nil && !version.Equal(uploadedVersion) {
+		return fmt.Errorf("uploaded k0s binary version is %s not %s", uploadedVersion, version)
+	}
 
 	return nil
 }
