@@ -301,7 +301,7 @@ func (h *Host) UpdateK0sBinary(version string) error {
 		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
 		}
-		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700"); err != nil {
+		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700", exec.Sudo(h)); err != nil {
 			return err
 		}
 	} else {
