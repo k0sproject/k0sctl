@@ -104,7 +104,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		return err
 	}
 
-	if err := h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0700"); err != nil {
+	if err := h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0600"); err != nil {
 		return err
 	}
 
