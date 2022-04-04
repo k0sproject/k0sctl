@@ -3,6 +3,7 @@ package phase
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/k0sproject/dig"
@@ -169,13 +170,28 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	// If supplimental files or a k0s binary have been specified explicitly,
 	// always upgrade.  This covers the scenario where a user moves from a
 	// default-install cluster to one fed by OCI image bundles (ie. airgap)
-	if len(h.Files) > 0 {
-		log.Debugf("%s: marked for upgrade because there are %d file uploads for the host", h, len(h.Files))
-		return true
+	for _, f := range h.Files {
+		if f.IsURL() {
+			log.Debugf("%s: marked for upgrade because there are URL source file uploads for the host", h)
+			return true
+		}
+
+		for _, s := range f.Sources {
+			dest := f.DestinationFile
+			if dest == "" {
+				dest = path.Join(f.DestinationDir, s.Path)
+			}
+			src := path.Join(f.Base, s.Path)
+
+			if h.FileChanged(src, dest) {
+				log.Debugf("%s: marked for upgrade because file was changed for upload %s", h, src)
+				return true
+			}
+		}
 	}
 
-	if h.K0sBinaryPath != "" {
-		log.Debugf("%s: marked for upgrade because a static k0s binary path %s", h, h.K0sBinaryPath)
+	if h.K0sBinaryPath != "" && h.FileChanged(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()) {
+		log.Debugf("%s: marked for upgrade because of a static k0s binary path %s", h, h.K0sBinaryPath)
 		return true
 	}
 
