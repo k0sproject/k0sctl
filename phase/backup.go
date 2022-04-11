@@ -68,6 +68,13 @@ func (p *Backup) Run() error {
 		return err
 	}
 
+	defer func() {
+		log.Debugf("%s: cleaning up %s", h, remoteFile)
+		if err := h.Configurer.DeleteFile(h, remoteFile); err != nil {
+			log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remoteFile, err)
+		}
+	}()
+
 	localFile, err := filepath.Abs(fmt.Sprintf("k0s_backup_%d.tar.gz", time.Now().Unix()))
 	if err != nil {
 		return err
