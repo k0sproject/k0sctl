@@ -262,7 +262,7 @@ See [host object documentation](#host-fields) below.
 
 Settings related to the k0s cluster.
 
-See [k0s object documentation](#spec-fields) below.
+See [k0s object documentation](#k0s-fields) below.
 
 ### Host Fields
 
@@ -312,7 +312,7 @@ Example:
 - name: image-bundle
   src: airgap-images.tgz
   dstDir: /var/lib/k0s/images/
-  perm: 0700
+  perm: 0600
 ```
 
 * `name`: name of the file "bundle", used only for logging purposes (optional)
@@ -334,9 +334,9 @@ Example:
 hooks:
   apply:
     before:
-      - date > k0sctl-apply.log
+      - date >> k0sctl-apply.log
     after:
-      - echo "apply success" > k0sctl-apply.log
+      - echo "apply success" >> k0sctl-apply.log
 ```
 
 The currently available "hook points" are:
