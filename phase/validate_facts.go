@@ -18,6 +18,13 @@ func (p *ValidateFacts) Title() string {
 	return "Validate facts"
 }
 
+func (p *ValidateFacts) Initialize(g Getter) error {
+	if v, ok := g.Value("disable-downgrade-check").(bool); ok {
+		p.SkipDowngradeCheck = v
+	}
+	return nil
+}
+
 // Run the phase
 func (p *ValidateFacts) Run() error {
 	if err := p.validateDowngrade(); err != nil {

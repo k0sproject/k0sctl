@@ -28,8 +28,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ctxConfigKey struct{}
-
 var (
 	debugFlag = &cli.BoolFlag{
 		Name:    "debug",
@@ -125,7 +123,13 @@ func initConfig(ctx *cli.Context) error {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
 
-	ctx.Context = context.WithValue(ctx.Context, ctxConfigKey{}, c)
+	ctx.Context = context.WithValue(ctx.Context, phase.ConfigKey{}, c)
+
+	for _, k := range ctx.FlagNames() {
+		ctx.Context = context.WithValue(ctx.Context, k, ctx.Value(k))
+	}
+
+	phase.NoWait = ctx.Bool("no-wait")
 
 	return nil
 }

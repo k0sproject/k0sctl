@@ -17,6 +17,13 @@ func (p *GetKubeconfig) Title() string {
 	return "Get admin kubeconfig"
 }
 
+func (p *GetKubeconfig) Initialize(g Getter) error {
+	if v, ok := g.Value("address").(string); ok {
+		p.APIAddress = v
+	}
+	return nil
+}
+
 // Run the phase
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.Hosts.Controllers()[0]

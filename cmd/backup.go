@@ -6,10 +6,20 @@ import (
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
+
+var BackupPhases = []phase.Phase{
+	&phase.Connect{},
+	&phase.DetectOS{},
+	&phase.GatherFacts{},
+	&phase.GatherK0sFacts{},
+	&phase.RunHooks{Stage: "before", Action: "backup"},
+	&phase.Backup{},
+	&phase.RunHooks{Stage: "after", Action: "backup"},
+	&phase.Disconnect{},
+}
 
 var backupCommand = &cli.Command{
 	Name:  "backup",
@@ -27,17 +37,9 @@ var backupCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
-		manager.AddPhase(
-			&phase.Connect{},
-			&phase.DetectOS{},
-			&phase.GatherFacts{},
-			&phase.GatherK0sFacts{},
-			&phase.RunHooks{Stage: "before", Action: "backup"},
-			&phase.Backup{},
-			&phase.RunHooks{Stage: "after", Action: "backup"},
-			&phase.Disconnect{},
-		)
+		manager := phase.NewManager(ctx.Context)
+
+		manager.AddPhase(BackupPhases...)
 
 		if err := analytics.Client.Publish("backup-start", map[string]interface{}{}); err != nil {
 			return err

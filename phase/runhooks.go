@@ -10,7 +10,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
-var _ phase = &RunHooks{}
+var _ Phase = &RunHooks{}
 
 // RunHooks phase runs a set of hooks configured for the host
 type RunHooks struct {

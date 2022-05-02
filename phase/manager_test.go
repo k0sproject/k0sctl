@@ -96,3 +96,16 @@ func TestHookedPhase(t *testing.T) {
 	require.True(t, p.afterCalled, "after hook was not called")
 	require.EqualError(t, p.err, "run failed")
 }
+
+func TestAddPhaseBefore(t *testing.T) {
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
+	m.AddPhase(&Connect{})
+	m.AddPhase(&Disconnect{})
+	require.Len(t, m.phases, 2)
+
+	require.Error(t, m.AddPhaseBefore("Foofoo to foofoo", &DetectOS{}))
+
+	require.NoError(t, m.AddPhaseBefore("Disconnect from hosts", &DetectOS{}))
+	require.Len(t, m.phases, 3)
+	require.Equal(t, m.phases[1].Title(), "Detect host operating systems")
+}

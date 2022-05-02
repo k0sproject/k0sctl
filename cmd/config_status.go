@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/analytics"
+	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/rig/exec"
 
@@ -33,7 +34,7 @@ var configStatusCommand = &cli.Command{
 			return err
 		}
 
-		c := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
+		c := ctx.Context.Value(phase.ConfigKey{}).(*v1beta1.Cluster)
 		h := c.Spec.K0sLeader()
 
 		if err := h.Connect(); err != nil {

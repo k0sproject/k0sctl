@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
@@ -20,6 +21,7 @@ type Cluster struct {
 	Kind       string           `yaml:"kind"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
+	Context    dig.Mapping      `yaml:"-"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml

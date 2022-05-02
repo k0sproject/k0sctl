@@ -26,6 +26,13 @@ func (p *UpgradeWorkers) Title() string {
 	return "Upgrade workers"
 }
 
+func (p *UpgradeWorkers) Initialize(g Getter) error {
+	if v, ok := g.Value("no-drain").(bool); ok {
+		p.NoDrain = v
+	}
+	return nil
+}
+
 // Prepare the phase
 func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config

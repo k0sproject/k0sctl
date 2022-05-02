@@ -12,7 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var _ phase = &Backup{}
+var _ Phase = &Backup{}
 
 // Backup connect to one of the controllers and takes a backup
 type Backup struct {

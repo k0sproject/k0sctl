@@ -1,6 +1,9 @@
 package phase
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
@@ -10,13 +13,20 @@ import (
 var NoWait bool
 var Colorize = aurora.NewAurora(false)
 
-type phase interface {
+type Phase interface {
 	Run() error
 	Title() string
 }
 
+type Getter interface {
+	Value(any) any
+}
+
+type withinitializer interface {
+	Initialize(Getter) error
+}
+
 type withconfig interface {
-	Title() string
 	Prepare(*v1beta1.Cluster) error
 }
 
@@ -41,27 +51,65 @@ type withcleanup interface {
 	CleanUp()
 }
 
+type ConfigKey struct{}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
-	phases []phase
-	Config *v1beta1.Cluster
+	phases  []Phase
+	Config  *v1beta1.Cluster
+	context context.Context
+}
+
+func NewManager(ctx context.Context) *Manager {
+	m := &Manager{}
+	m.context = ctx
+	if cfg, ok := ctx.Value(ConfigKey{}).(*v1beta1.Cluster); ok {
+		m.Config = cfg
+	}
+	return m
+}
+
+func (m *Manager) Value(name any) any {
+	return m.context.Value(name)
 }
 
 // AddPhase adds a Phase to Manager
-func (m *Manager) AddPhase(p ...phase) {
+func (m *Manager) AddPhase(p ...Phase) {
 	m.phases = append(m.phases, p...)
+}
+
+func (m *Manager) Index(title string) int {
+	for i, p := range m.phases {
+		if p.Title() == title {
+			return i
+		}
+	}
+	return -1
+}
+
+func (m *Manager) AddPhaseBefore(title string, b Phase) error {
+	idx := m.Index(title)
+
+	if idx < 0 {
+		return fmt.Errorf("couldn't find phase %s", title)
+	}
+
+	m.phases = append(m.phases[:idx], append([]Phase{b}, m.phases[idx:]...)...)
+
+	return nil
 }
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
-	var ran []phase
+	var ran []Phase
 	var result error
 
 	defer func() {
 		if result != nil {
 			for _, p := range ran {
+				title := p.Title()
 				if c, ok := p.(withcleanup); ok {
-					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), p.Title())
+					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), title)
 					c.CleanUp()
 				}
 			}
@@ -71,8 +119,15 @@ func (m *Manager) Run() error {
 	for _, p := range m.phases {
 		title := p.Title()
 
+		if p, ok := p.(withinitializer); ok {
+			log.Debugf("Initializing phase '%s'", title)
+			if err := p.Initialize(m); err != nil {
+				return err
+			}
+		}
+
 		if p, ok := p.(withconfig); ok {
-			log.Debugf("Preparing phase '%s'", p.Title())
+			log.Debugf("Preparing phase '%s'", title)
 			if err := p.Prepare(m.Config); err != nil {
 				return err
 			}

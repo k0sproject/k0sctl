@@ -21,6 +21,13 @@ func (p *Restore) Title() string {
 	return "Restore cluster state"
 }
 
+func (p *Restore) Initialize(g Getter) error {
+	if v, ok := g.Value("restore-from").(string); ok {
+		p.RestoreFrom = v
+	}
+	return nil
+}
+
 // ShouldRun is true when there path to backup file
 func (p *Restore) ShouldRun() bool {
 	return p.RestoreFrom != "" && p.leader.Metadata.K0sRunningVersion == ""

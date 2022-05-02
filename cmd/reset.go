@@ -7,13 +7,23 @@ import (
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 )
+
+var ResetPhases = []phase.Phase{
+	&phase.Connect{},
+	&phase.DetectOS{},
+	&phase.PrepareHosts{},
+	&phase.GatherK0sFacts{},
+	&phase.RunHooks{Stage: "before", Action: "reset"},
+	&phase.Reset{},
+	&phase.RunHooks{Stage: "after", Action: "reset"},
+	&phase.Disconnect{},
+}
 
 var resetCommand = &cli.Command{
 	Name:  "reset",
@@ -50,18 +60,9 @@ var resetCommand = &cli.Command{
 
 		start := time.Now()
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		manager := phase.NewManager(ctx.Context)
 
-		manager.AddPhase(
-			&phase.Connect{},
-			&phase.DetectOS{},
-			&phase.PrepareHosts{},
-			&phase.GatherK0sFacts{},
-			&phase.RunHooks{Stage: "before", Action: "reset"},
-			&phase.Reset{},
-			&phase.RunHooks{Stage: "after", Action: "reset"},
-			&phase.Disconnect{},
-		)
+		manager.AddPhase(ResetPhases...)
 
 		if err := analytics.Client.Publish("reset-start", map[string]interface{}{}); err != nil {
 			return err

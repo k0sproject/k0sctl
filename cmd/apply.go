@@ -6,11 +6,35 @@ import (
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
+
+var ApplyPhases = []phase.Phase{
+	&phase.Connect{},
+	&phase.DetectOS{},
+	&phase.PrepareHosts{},
+	&phase.GatherFacts{},
+	&phase.DownloadBinaries{},
+	&phase.UploadFiles{},
+	&phase.ValidateHosts{},
+	&phase.GatherK0sFacts{},
+	&phase.ValidateFacts{},
+	&phase.UploadBinaries{},
+	&phase.DownloadK0s{},
+	&phase.RunHooks{Stage: "before", Action: "apply"},
+	&phase.PrepareArm{},
+	&phase.ConfigureK0s{},
+	&phase.Restore{},
+	&phase.InitializeK0s{},
+	&phase.InstallControllers{},
+	&phase.InstallWorkers{},
+	&phase.UpgradeControllers{},
+	&phase.UpgradeWorkers{},
+	&phase.RunHooks{Stage: "after", Action: "apply"},
+	&phase.Disconnect{},
+}
 
 var applyCommand = &cli.Command{
 	Name:  "apply",
@@ -45,38 +69,10 @@ var applyCommand = &cli.Command{
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
-		phase.NoWait = ctx.Bool("no-wait")
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		manager := phase.NewManager(ctx.Context)
 
-		manager.AddPhase(
-			&phase.Connect{},
-			&phase.DetectOS{},
-			&phase.PrepareHosts{},
-			&phase.GatherFacts{},
-			&phase.DownloadBinaries{},
-			&phase.UploadFiles{},
-			&phase.ValidateHosts{},
-			&phase.GatherK0sFacts{},
-			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
-			&phase.UploadBinaries{},
-			&phase.DownloadK0s{},
-			&phase.RunHooks{Stage: "before", Action: "apply"},
-			&phase.PrepareArm{},
-			&phase.ConfigureK0s{},
-			&phase.Restore{
-				RestoreFrom: ctx.String("restore-from"),
-			},
-			&phase.InitializeK0s{},
-			&phase.InstallControllers{},
-			&phase.InstallWorkers{},
-			&phase.UpgradeControllers{},
-			&phase.UpgradeWorkers{
-				NoDrain: ctx.Bool("no-drain"),
-			},
-			&phase.RunHooks{Stage: "after", Action: "apply"},
-			&phase.Disconnect{},
-		)
+		manager.AddPhase(ApplyPhases...)
 
 		if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
 			return err
