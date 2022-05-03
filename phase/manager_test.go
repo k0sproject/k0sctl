@@ -32,7 +32,7 @@ func TestConditionalPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &conditionalPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.True(t, m.Run().Success())
 	require.False(t, p.runCalled, "run was not called")
 	require.True(t, p.shouldrunCalled, "shouldrun was not called")
 }
@@ -58,7 +58,7 @@ func TestConfigPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &configPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.True(t, m.Run().Success())
 	require.True(t, p.receivedConfig, "config was not received")
 }
 
