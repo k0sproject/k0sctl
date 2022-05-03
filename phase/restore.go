@@ -54,6 +54,8 @@ func (p *Restore) Run() error {
 		return err
 	}
 
+	defer func() { _ = h.Configurer.DeleteFile(h, dstFile) }()
+
 	// Run restore
 	log.Infof("%s: restoring cluster state", h)
 	if err := h.Exec(h.K0sRestoreCommand(dstFile), exec.Sudo(h)); err != nil {
