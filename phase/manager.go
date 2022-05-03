@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/logrusorgru/aurora"
@@ -60,11 +61,39 @@ type Manager struct {
 	context context.Context
 }
 
-func NewManager(ctx context.Context) *Manager {
+type ManagerResult struct {
+	startTime time.Time
+	endTime   time.Time
+	err       error
+}
+
+func (m ManagerResult) Success() bool {
+	return m.err == nil
+}
+
+func (m ManagerResult) Duration() time.Duration {
+	return m.endTime.Sub(m.startTime).Truncate(time.Second)
+}
+
+func (m ManagerResult) Error() string {
+	if m.err == nil {
+		return ""
+	}
+	return m.err.Error()
+}
+
+func (m ManagerResult) String() string {
+	return m.Error()
+}
+
+func NewManager(ctx context.Context, phases ...Phase) *Manager {
 	m := &Manager{}
 	m.context = ctx
 	if cfg, ok := ctx.Value(ConfigKey{}).(*v1beta1.Cluster); ok {
 		m.Config = cfg
+	}
+	if len(phases) > 0 {
+		m.AddPhase(phases...)
 	}
 	return m
 }
@@ -100,12 +129,13 @@ func (m *Manager) AddPhaseBefore(title string, b Phase) error {
 }
 
 // Run executes all the added Phases in order
-func (m *Manager) Run() error {
+func (m *Manager) Run() ManagerResult {
+	res := ManagerResult{startTime: time.Now()}
+
 	var ran []Phase
-	var result error
 
 	defer func() {
-		if result != nil {
+		if res.err != nil {
 			for _, p := range ran {
 				title := p.Title()
 				if c, ok := p.(withcleanup); ok {
@@ -121,15 +151,15 @@ func (m *Manager) Run() error {
 
 		if p, ok := p.(withinitializer); ok {
 			log.Debugf("Initializing phase '%s'", title)
-			if err := p.Initialize(m); err != nil {
-				return err
+			if res.err = p.Initialize(m); res.err != nil {
+				return res
 			}
 		}
 
 		if p, ok := p.(withconfig); ok {
 			log.Debugf("Preparing phase '%s'", title)
-			if err := p.Prepare(m.Config); err != nil {
-				return err
+			if res.err = p.Prepare(m.Config); res.err != nil {
+				return res
 			}
 		}
 
@@ -140,9 +170,9 @@ func (m *Manager) Run() error {
 		}
 
 		if p, ok := p.(beforehook); ok {
-			if err := p.Before(title); err != nil {
-				log.Debugf("before hook failed '%s'", err.Error())
-				return err
+			if res.err = p.Before(title); res.err != nil {
+				log.Debugf("before hook failed '%s'", res.err)
+				return res
 			}
 		}
 
@@ -154,20 +184,19 @@ func (m *Manager) Run() error {
 
 		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
-		result = p.Run()
+		res.err = p.Run()
 		ran = append(ran, p)
 
 		if p, ok := p.(afterhook); ok {
-			if err := p.After(result); err != nil {
-				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
-				return err
+			if res.err = p.After(res.err); res.err != nil {
+				log.Debugf("after hook failed: '%s'", res.err)
 			}
 		}
 
-		if result != nil {
-			return result
+		if res.err != nil {
+			break
 		}
 	}
 
-	return nil
+	return res
 }

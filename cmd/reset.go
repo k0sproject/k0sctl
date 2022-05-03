@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
@@ -58,24 +57,22 @@ var resetCommand = &cli.Command{
 			}
 		}
 
-		start := time.Now()
-
-		manager := phase.NewManager(ctx.Context)
-
-		manager.AddPhase(ResetPhases...)
+		manager := phase.NewManager(ctx.Context, ResetPhases...)
 
 		if err := analytics.Client.Publish("reset-start", map[string]interface{}{}); err != nil {
 			return err
 		}
 
-		if err := manager.Run(); err != nil {
+		res := manager.Run()
+
+		if !res.Success() {
 			_ = analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
-			return err
+			return res
 		}
 
-		_ = analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		duration := res.Duration()
 
-		duration := time.Since(start).Truncate(time.Second)
+		_ = analytics.Client.Publish("reset-success", map[string]interface{}{"duration": duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 		text := fmt.Sprintf("==> Finished in %s", duration)
 		log.Infof(Colorize.Green(text).String())
 

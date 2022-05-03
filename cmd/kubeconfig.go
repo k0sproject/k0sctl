@@ -37,10 +37,11 @@ var kubeconfigCommand = &cli.Command{
 		return nil
 	},
 	Action: func(ctx *cli.Context) error {
-		manager := phase.NewManager(ctx.Context)
+		manager := phase.NewManager(ctx.Context, KubeconfigPhases...)
+		res := manager.Run()
 
-		if err := manager.Run(); err != nil {
-			return err
+		if !res.Success() {
+			return res
 		}
 
 		fmt.Println(manager.Config.Metadata.Kubeconfig)

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
@@ -68,29 +67,28 @@ var applyCommand = &cli.Command{
 	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright, warnOldCache),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		start := time.Now()
-
-		manager := phase.NewManager(ctx.Context)
-
-		manager.AddPhase(ApplyPhases...)
+		manager := phase.NewManager(ctx.Context, ApplyPhases...)
 
 		if err := analytics.Client.Publish("apply-start", map[string]interface{}{}); err != nil {
 			return err
 		}
 
-		if err := manager.Run(); err != nil {
+		res := manager.Run()
+
+		if !res.Success() {
 			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			if lf, err := LogFile(); err == nil {
 				if ln, ok := lf.(interface{ Name() string }); ok {
 					log.Errorf("apply failed - log file saved to %s", ln.Name())
 				}
 			}
-			return err
+			return fmt.Errorf("apply failed: %s", res)
 		}
 
-		_ = analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		duration := res.Duration()
 
-		duration := time.Since(start).Truncate(time.Second)
+		_ = analytics.Client.Publish("apply-success", map[string]interface{}{"duration": duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+
 		text := fmt.Sprintf("==> Finished in %s", duration)
 		log.Infof(Colorize.Green(text).String())
 
