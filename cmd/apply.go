@@ -85,11 +85,9 @@ var applyCommand = &cli.Command{
 			return fmt.Errorf("apply failed: %s", res)
 		}
 
-		duration := res.Duration()
+		_ = analytics.Client.Publish("apply-success", map[string]interface{}{"duration": res.Duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 
-		_ = analytics.Client.Publish("apply-success", map[string]interface{}{"duration": duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
-
-		text := fmt.Sprintf("==> Finished in %s", duration)
+		text := fmt.Sprintf("==> Finished in %s", res.Duration)
 		log.Infof(Colorize.Green(text).String())
 
 		log.Infof("k0s cluster version %s is now installed", manager.Config.Spec.K0s.Version)

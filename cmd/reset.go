@@ -70,10 +70,8 @@ var resetCommand = &cli.Command{
 			return res
 		}
 
-		duration := res.Duration()
-
-		_ = analytics.Client.Publish("reset-success", map[string]interface{}{"duration": duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
-		text := fmt.Sprintf("==> Finished in %s", duration)
+		_ = analytics.Client.Publish("reset-success", map[string]interface{}{"duration": res.Duration, "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		text := fmt.Sprintf("==> Finished in %s", res.Duration)
 		log.Infof(Colorize.Green(text).String())
 
 		return nil

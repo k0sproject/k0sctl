@@ -63,16 +63,12 @@ type Manager struct {
 
 type ManagerResult struct {
 	startTime time.Time
-	endTime   time.Time
+	Duration  time.Duration
 	err       error
 }
 
 func (m ManagerResult) Success() bool {
 	return m.err == nil
-}
-
-func (m ManagerResult) Duration() time.Duration {
-	return m.endTime.Sub(m.startTime).Truncate(time.Second)
 }
 
 func (m ManagerResult) Error() string {
@@ -131,6 +127,7 @@ func (m *Manager) AddPhaseBefore(title string, b Phase) error {
 // Run executes all the added Phases in order
 func (m *Manager) Run() ManagerResult {
 	res := ManagerResult{startTime: time.Now()}
+	defer func() { res.Duration = time.Since(res.startTime).Truncate(time.Second) }()
 
 	var ran []Phase
 
