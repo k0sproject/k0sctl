@@ -6,11 +6,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alessio/shellescape"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/version"
+	log "github.com/sirupsen/logrus"
 )
 
 // Static Constants Interface for overriding by distro-specific structs
@@ -85,6 +87,33 @@ func (l Linux) K0sConfigPath() string {
 // K0sJoinTokenPath returns the location of k0s join token file
 func (l Linux) K0sJoinTokenPath() string {
 	return "/etc/k0s/k0stoken"
+}
+
+// TryLock tries to obtain an exclusive lock on the host to avoid multiple instances accessing it at once
+func (l Linux) TryLock(h os.Host) error {
+	if err := h.Exec("command -v flock"); err != nil {
+		log.Warnf("%s: host does not have the 'flock' command which is used to ensure only one instance of k0sctl operates on it at a time", h)
+		return nil
+	}
+
+	sshpid, err := h.ExecOutput("ps --no-headers -eo ppid -fp $$")
+	if err != nil {
+		return err
+	}
+
+	errCh := make(chan error)
+	go func() {
+		errCh <- h.Execf(`flock -n /tmp/k0sctl.lock -c "while ps -p %s > /dev/null; do sleep 1; done;"`, sshpid, exec.Sudo(h))
+	}()
+
+	select {
+	case err := <-errCh:
+		log.Debugf("%s: lock failed: %s", h, err)
+		return fmt.Errorf("failed to obtain an exclusive lock on the host: %w", err)
+	case <-time.After(time.Second * 5):
+		log.Debugf("%s: acquired a lock", h)
+		return nil
+	}
 }
 
 // TempFile returns a temp file path

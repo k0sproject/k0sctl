@@ -80,14 +80,28 @@ var applyCommand = &cli.Command{
 
 		analytics.Client.Publish("apply-start", map[string]interface{}{})
 
-		if err := manager.Run(); err != nil {
+		var result error
+
+		defer func() {
+			// Handle panics and failed applies by running the disconnect phase
+			if err := recover(); err != nil || result != nil {
+				p := &phase.Disconnect{}
+				_ = p.Prepare(manager.Config)
+				_ = p.Run()
+				if err != nil {
+					panic(err)
+				}
+			}
+		}()
+
+		if result = manager.Run(); result != nil {
 			analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			if lf, err := LogFile(); err == nil {
 				if ln, ok := lf.(interface{ Name() string }); ok {
 					log.Errorf("apply failed - log file saved to %s", ln.Name())
 				}
 			}
-			return err
+			return result
 		}
 
 		analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})

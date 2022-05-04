@@ -117,6 +117,7 @@ type configurer interface {
 	CleanupServiceEnvironment(os.Host, string) error
 	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
 	Touch(os.Host, string, time.Time, ...exec.Option) error
+	TryLock(os.Host) error
 }
 
 // HostMetadata resolved metadata for host

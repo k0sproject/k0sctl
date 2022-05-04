@@ -1,8 +1,11 @@
 package phase
 
 import (
+	"errors"
 	"strings"
+	"time"
 
+	retry "github.com/avast/retry-go"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +35,31 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		if err := c.Prepare(h); err != nil {
 			return err
 		}
+	}
+
+	err := retry.Do(
+		func() error {
+			return h.Configurer.TryLock(h)
+		},
+		retry.OnRetry(
+			func(n uint, err error) {
+				log.Errorf("%s: attempt %d of %d.. trying to obtain a lock on host: %s", h, n+1, retries, err.Error())
+			},
+		),
+		retry.RetryIf(
+			func(err error) bool {
+				return !strings.Contains(err.Error(), "host does not have")
+			},
+		),
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(5),
+		retry.LastErrorOnly(true),
+	)
+
+	if err != nil && !strings.Contains(err.Error(), "host does not have") {
+		return errors.New("another k0sctl instance is currently operating on the node")
 	}
 
 	if len(h.Environment) > 0 {
