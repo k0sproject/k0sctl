@@ -19,6 +19,27 @@ type Phase interface {
 	Title() string
 }
 
+type Phases []Phase
+
+func (phases Phases) Index(title string) int {
+	for i, p := range phases {
+		if p.Title() == title {
+			return i
+		}
+	}
+	return -1
+}
+
+func (phases Phases) AddBefore(title string, b Phase) Phases {
+	idx := phases.Index(title)
+
+	if idx < 0 {
+		return phases
+	}
+
+	return append(phases[:idx], append([]Phase{b}, phases[idx:]...)...)
+}
+
 type Getter interface {
 	Value(any) any
 }
@@ -185,8 +206,9 @@ func (m *Manager) Run() ManagerResult {
 		ran = append(ran, p)
 
 		if p, ok := p.(afterhook); ok {
-			if res.err = p.After(res.err); res.err != nil {
-				log.Debugf("after hook failed: '%s'", res.err)
+			if err := p.After(res.err); err != nil {
+				log.Debugf("after hook failed: '%s'", err)
+				res.err = err
 			}
 		}
 

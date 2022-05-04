@@ -143,7 +143,7 @@ func buildHosts(addresses []string, ccount int, user, keypath string) cluster.Ho
 	return hosts
 }
 
-var initCommand = &cli.Command{
+var InitCommand = &cli.Command{
 	Name:        "init",
 	Usage:       "Create a configuration template",
 	Description: "Outputs a new k0sctl configuration. When a list of addresses are provided, hosts are generated into the configuration. The list of addresses can also be provided via stdin.",

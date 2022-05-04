@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var ApplyPhases = []phase.Phase{
+var ApplyPhases = phase.Phases{
 	&phase.Connect{},
 	&phase.DetectOS{},
 	&phase.PrepareHosts{},
@@ -35,7 +35,7 @@ var ApplyPhases = []phase.Phase{
 	&phase.Disconnect{},
 }
 
-var applyCommand = &cli.Command{
+var ApplyCommand = &cli.Command{
 	Name:  "apply",
 	Usage: "Apply a k0sctl configuration",
 	Flags: []cli.Flag{
