@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -11,8 +12,9 @@ const APIVersion = "k0sctl.k0sproject.io/v1beta1"
 
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
-	Name       string `yaml:"name" validate:"required" default:"k0s-cluster"`
-	Kubeconfig string `yaml:"-"`
+	Name       string      `yaml:"name" validate:"required" default:"k0s-cluster"`
+	Kubeconfig string      `yaml:"-"`
+	Custom     dig.Mapping `yaml:"-"`
 }
 
 // Cluster describes launchpad.yaml configuration
@@ -21,13 +23,13 @@ type Cluster struct {
 	Kind       string           `yaml:"kind"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
-	Context    dig.Mapping      `yaml:"-"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.Metadata = &ClusterMetadata{
-		Name: "k0s-cluster",
+		Name:   "k0s-cluster",
+		Custom: dig.Mapping{},
 	}
 	c.Spec = &cluster.Spec{}
 
@@ -38,7 +40,7 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	return nil
+	return defaults.Set(c)
 }
 
 // Validate performs a configuration sanity check

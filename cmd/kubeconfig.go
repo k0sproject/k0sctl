@@ -38,7 +38,7 @@ var kubeconfigCommand = &cli.Command{
 	},
 	Action: func(ctx *cli.Context) error {
 		manager := phase.NewManager(ctx.Context, KubeconfigPhases...)
-		res := manager.Run()
+		res := manager.Run(ctx)
 
 		if !res.Success() {
 			return res

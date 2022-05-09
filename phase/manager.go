@@ -41,7 +41,7 @@ func (phases Phases) AddBefore(title string, b Phase) Phases {
 }
 
 type Getter interface {
-	Value(any) any
+	Value(string) any
 }
 
 type withinitializer interface {
@@ -146,7 +146,7 @@ func (m *Manager) AddPhaseBefore(title string, b Phase) error {
 }
 
 // Run executes all the added Phases in order
-func (m *Manager) Run() ManagerResult {
+func (m *Manager) Run(valueGetter Getter) ManagerResult {
 	res := ManagerResult{startTime: time.Now()}
 	defer func() { res.Duration = time.Since(res.startTime).Truncate(time.Second) }()
 
@@ -169,7 +169,7 @@ func (m *Manager) Run() ManagerResult {
 
 		if p, ok := p.(withinitializer); ok {
 			log.Debugf("Initializing phase '%s'", title)
-			if res.err = p.Initialize(m); res.err != nil {
+			if res.err = p.Initialize(valueGetter); res.err != nil {
 				return res
 			}
 		}

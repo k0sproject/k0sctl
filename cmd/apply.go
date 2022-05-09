@@ -73,7 +73,7 @@ var ApplyCommand = &cli.Command{
 			return err
 		}
 
-		res := manager.Run()
+		res := manager.Run(ctx)
 
 		if !res.Success() {
 			_ = analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
