@@ -31,7 +31,7 @@ var kubeconfigCommand = &cli.Command{
 		redactFlag,
 		analyticsFlag,
 	},
-	Before: actions(initSilentLogging, initConfig, initAnalytics),
+	Before: Actions(initSilentLogging, InitConfig, initAnalytics),
 	After: func(ctx *cli.Context) error {
 		analytics.Client.Close()
 		return nil

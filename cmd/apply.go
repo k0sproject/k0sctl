@@ -64,8 +64,8 @@ var ApplyCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright, warnOldCache),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: Actions(InitLogging, startCheckUpgrade, InitConfig, DisplayLogo, initAnalytics, displayCopyright, warnOldCache),
+	After:  Actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		manager := phase.NewManager(ctx.Context, ApplyPhases...)
 

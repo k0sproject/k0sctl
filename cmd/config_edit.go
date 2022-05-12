@@ -40,8 +40,8 @@ var configEditCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: Actions(InitLogging, startCheckUpgrade, InitConfig, initAnalytics),
+	After:  Actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		if !isatty.IsTerminal(os.Stdout.Fd()) {
 			return fmt.Errorf("output is not a terminal")

@@ -72,8 +72,8 @@ var (
 	Colorize = aurora.NewAurora(false)
 )
 
-// actions can be used to chain action functions (for urfave/cli's Before, After, etc)
-func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
+// Actions can be used to chain action functions (for urfave/cli's Before, After, etc)
+func Actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
 	return func(ctx *cli.Context) error {
 		for _, f := range funcs {
 			if err := f(ctx); err != nil {
@@ -84,8 +84,8 @@ func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
 	}
 }
 
-// initConfig takes the config flag, does some magic and replaces the value with the file contents
-func initConfig(ctx *cli.Context) error {
+// InitConfig takes the config flag, does some magic and replaces the value with the file contents
+func InitConfig(ctx *cli.Context) error {
 	f := ctx.String("config")
 	if f == "" {
 		return nil
@@ -186,8 +186,8 @@ func closeAnalytics(_ *cli.Context) error {
 	return nil
 }
 
-// initLogging initializes the logger
-func initLogging(ctx *cli.Context) error {
+// InitLogging initializes the logger
+func InitLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
@@ -362,8 +362,8 @@ func fileLoggerHook(logFile io.Writer) *loghook {
 	return l
 }
 
-func displayLogo(_ *cli.Context) error {
-	fmt.Print(logo)
+func DisplayLogo(_ *cli.Context) error {
+	fmt.Print(Logo)
 	return nil
 }
 

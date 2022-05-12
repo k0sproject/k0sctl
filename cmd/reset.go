@@ -40,8 +40,8 @@ var resetCommand = &cli.Command{
 			Aliases: []string{"f"},
 		},
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics, displayCopyright),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: Actions(InitLogging, startCheckUpgrade, InitConfig, initAnalytics, displayCopyright),
+	After:  Actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		if !ctx.Bool("force") {
 			if !isatty.IsTerminal(os.Stdout.Fd()) {

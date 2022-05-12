@@ -31,8 +31,8 @@ var backupCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: Actions(InitLogging, startCheckUpgrade, InitConfig, DisplayLogo, initAnalytics, displayCopyright),
+	After:  Actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		manager := phase.NewManager(ctx.Context, BackupPhases...)
 

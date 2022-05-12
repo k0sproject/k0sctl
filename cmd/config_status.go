@@ -27,8 +27,8 @@ var configStatusCommand = &cli.Command{
 			Aliases: []string{"o"},
 		},
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: Actions(InitLogging, startCheckUpgrade, InitConfig, initAnalytics),
+	After:  Actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		if err := analytics.Client.Publish("config-status-start", map[string]interface{}{}); err != nil {
 			return err
