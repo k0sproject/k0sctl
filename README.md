@@ -90,7 +90,7 @@ k0sctl completion > ~/.config/fish/completions/k0sctl.fish
 
 ## Anonymous telemetry
 
-K0sctl will send anonymized telemetry data when used. This can be disabled by using the `--disable-telemetry` flag or setting `DISABLE_TELEMETRY=true` environment variable.
+K0sctl sends anonymized telemetry data when it is used. This can be disabled via the `--disable-telemetry` flag or by setting the environment variable `DISABLE_TELEMETRY=true`.
 
 The telemetry data includes:
 
