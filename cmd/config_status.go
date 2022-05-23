@@ -29,9 +29,7 @@ var configStatusCommand = &cli.Command{
 	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		if err := analytics.Client.Publish("config-status-start", map[string]interface{}{}); err != nil {
-			return err
-		}
+		analytics.Client.Publish("config-status-start", map[string]interface{}{})
 
 		c := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
 		h := c.Spec.K0sLeader()

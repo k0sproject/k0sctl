@@ -51,14 +51,17 @@ func NewClient() (*Client, error) {
 }
 
 // Publish enqueues the sending of a tracking event
-func (c Client) Publish(event string, props map[string]interface{}) error {
+func (c Client) Publish(event string, props map[string]interface{}) {
 	log.Tracef("segment event %s - properties: %+v", event, props)
-	return c.client.Enqueue(segment.Track{
+	err := c.client.Enqueue(segment.Track{
 		Context:     ctx,
 		AnonymousId: c.machineID,
 		Event:       event,
 		Properties:  props,
 	})
+	if err != nil {
+		log.Debugf("failed to submit telemetry: %s", err)
+	}
 }
 
 // Close the analytics connection

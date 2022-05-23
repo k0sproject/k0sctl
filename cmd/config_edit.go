@@ -46,9 +46,7 @@ var configEditCommand = &cli.Command{
 			return fmt.Errorf("output is not a terminal")
 		}
 
-		if err := analytics.Client.Publish("config-edit-start", map[string]interface{}{}); err != nil {
-			return err
-		}
+		analytics.Client.Publish("config-edit-start", map[string]interface{}{})
 
 		editor, err := shellEditor()
 		if err != nil {

@@ -63,16 +63,14 @@ var resetCommand = &cli.Command{
 			&phase.Disconnect{},
 		)
 
-		if err := analytics.Client.Publish("reset-start", map[string]interface{}{}); err != nil {
-			return err
-		}
+		analytics.Client.Publish("reset-start", map[string]interface{}{})
 
 		if err := manager.Run(); err != nil {
-			_ = analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+			analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			return err
 		}
 
-		_ = analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)

@@ -5,7 +5,7 @@ import (
 )
 
 type publisher interface {
-	Publish(string, map[string]interface{}) error
+	Publish(string, map[string]interface{})
 	Close()
 }
 
@@ -21,9 +21,8 @@ func (c *NullClient) Initialize() error {
 }
 
 // Publish would send a tracking event
-func (c *NullClient) Publish(event string, props map[string]interface{}) error {
+func (c *NullClient) Publish(event string, props map[string]interface{}) {
 	log.Tracef("analytics event %s - properties: %+v", event, props)
-	return nil
 }
 
 // Close the analytics connection

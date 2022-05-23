@@ -54,5 +54,7 @@ func (p *Phase) After(result error) error {
 		event = "phase-failure"
 	}
 
-	return Client.Publish(event, p.props)
+	Client.Publish(event, p.props)
+
+	return nil
 }

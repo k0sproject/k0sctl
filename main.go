@@ -29,7 +29,7 @@ func handlepanic() {
 			bt = append(bt, strings.TrimSpace(row))
 		}
 
-		_ = analytics.Client.Publish("panic", map[string]interface{}{"backtrace": strings.Join(bt, "\n")})
+		analytics.Client.Publish("panic", map[string]interface{}{"backtrace": strings.Join(bt, "\n")})
 		log.Fatalf("PANIC: %v\n", err)
 	}
 }

@@ -248,6 +248,7 @@ func LogFile() (io.Writer, error) {
 }
 
 func configReader(f string) (io.ReadCloser, error) {
+	panic("wut wut")
 	if f == "-" {
 		stat, err := os.Stdin.Stat()
 		if err != nil {
