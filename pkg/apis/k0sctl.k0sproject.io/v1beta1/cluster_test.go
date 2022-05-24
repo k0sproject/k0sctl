@@ -23,7 +23,7 @@ func TestK0sVersionValidation(t *testing.T) {
 		APIVersion: APIVersion,
 		Kind:       "cluster",
 		Spec: &cluster.Spec{
-			K0s: &cluster.K0s{
+			K0s: cluster.K0s{
 				Version: "0.1.0",
 			},
 			Hosts: cluster.Hosts{

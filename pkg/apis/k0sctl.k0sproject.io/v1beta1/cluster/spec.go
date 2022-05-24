@@ -10,7 +10,7 @@ import (
 // Spec defines cluster config spec section
 type Spec struct {
 	Hosts Hosts `yaml:"hosts"`
-	K0s   *K0s  `yaml:"k0s"`
+	K0s   K0s   `yaml:"k0s"`
 
 	k0sLeader *Host
 }
@@ -19,7 +19,6 @@ type Spec struct {
 func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type spec Spec
 	ys := (*spec)(s)
-	ys.K0s = &K0s{}
 
 	if err := unmarshal(ys); err != nil {
 		return err

@@ -11,7 +11,7 @@ import (
 func TestNeedsUpgrade(t *testing.T) {
 	cfg := &v1beta1.Cluster{
 		Spec: &cluster.Spec{
-			K0s: &cluster.K0s{
+			K0s: cluster.K0s{
 				Version: "1.23.3+k0s.1",
 			},
 		},
