@@ -39,12 +39,10 @@ var backupCommand = &cli.Command{
 			&phase.Disconnect{},
 		)
 
-		if err := analytics.Client.Publish("backup-start", map[string]interface{}{}); err != nil {
-			return err
-		}
+		analytics.Client.Publish("backup-start", map[string]interface{}{})
 
 		if err := manager.Run(); err != nil {
-			_ = analytics.Client.Publish("backup-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+			analytics.Client.Publish("backup-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			if lf, err := LogFile(); err == nil {
 				if ln, ok := lf.(interface{ Name() string }); ok {
 					log.Errorf("backup failed - log file saved to %s", ln.Name())
@@ -53,7 +51,7 @@ var backupCommand = &cli.Command{
 			return err
 		}
 
-		_ = analytics.Client.Publish("backup-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		analytics.Client.Publish("backup-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
