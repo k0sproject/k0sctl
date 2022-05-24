@@ -48,10 +48,12 @@ var applyCommand = &cli.Command{
 		phase.NoWait = ctx.Bool("no-wait")
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		lockPhase := &phase.Lock{}
 
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
+			lockPhase,
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.DownloadBinaries{},
@@ -75,6 +77,7 @@ var applyCommand = &cli.Command{
 				NoDrain: ctx.Bool("no-drain"),
 			},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
+			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
 		)
 

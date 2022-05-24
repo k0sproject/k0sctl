@@ -28,14 +28,18 @@ var backupCommand = &cli.Command{
 		start := time.Now()
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		lockPhase := &phase.Lock{}
+
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
+			lockPhase,
 			&phase.GatherFacts{},
 			&phase.GatherK0sFacts{},
 			&phase.RunHooks{Stage: "before", Action: "backup"},
 			&phase.Backup{},
 			&phase.RunHooks{Stage: "after", Action: "backup"},
+			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
 		)
 
