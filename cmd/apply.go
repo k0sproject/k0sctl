@@ -85,18 +85,6 @@ var applyCommand = &cli.Command{
 
 		var result error
 
-		defer func() {
-			// Handle panics and failed applies by running the disconnect phase
-			if err := recover(); err != nil || result != nil {
-				p := &phase.Disconnect{}
-				_ = p.Prepare(manager.Config)
-				_ = p.Run()
-				if err != nil {
-					panic(err)
-				}
-			}
-		}()
-
 		if result = manager.Run(); result != nil {
 			analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			if lf, err := LogFile(); err == nil {

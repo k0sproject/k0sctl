@@ -21,6 +21,7 @@ type Lock struct {
 	cfs        []func()
 	instanceID string
 	m          sync.Mutex
+	wg         sync.WaitGroup
 }
 
 // Prepare the phase
@@ -42,6 +43,7 @@ func (p *Lock) Cancel() {
 	for _, f := range p.cfs {
 		f()
 	}
+	p.wg.Wait()
 }
 
 // Run the phase
@@ -53,6 +55,7 @@ func (p *Lock) Run() error {
 }
 
 func (p *Lock) startTicker(h *cluster.Host) error {
+	p.wg.Add(1)
 	lfp := h.Configurer.K0sctlLockFilePath()
 	ticker := time.NewTicker(10 * time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,10 +69,14 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 			select {
 			case <-ticker.C:
 				if err := h.Configurer.Touch(h, h.Configurer.K0sctlLockFilePath(), time.Now(), exec.Sudo(h)); err != nil {
-					log.Debugf("%s: failed to touch lock file: %s", h, err)
+					log.Warnf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():
-				_ = h.Configurer.DeleteFile(h, lfp)
+				log.Debugf("%s: stopped lock cycle, removing file")
+				if err := h.Configurer.DeleteFile(h, lfp); err != nil {
+					log.Warnf("%s: failed to remove host lock file: %s", err)
+				}
+				p.wg.Done()
 				return
 			}
 		}
@@ -109,7 +116,7 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 			return fmt.Errorf("failed to read lock file:  %w", err)
 		}
 		if content != p.instanceID {
-			if time.Since(stat.ModTime()) < 20*time.Second {
+			if time.Since(stat.ModTime()) < 30*time.Second {
 				return fmt.Errorf("another instance of k0sctl is currently operating on the host")
 			}
 			_ = h.Configurer.DeleteFile(h, lfp)
