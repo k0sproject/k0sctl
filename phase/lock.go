@@ -72,9 +72,9 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 					log.Warnf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():
-				log.Debugf("%s: stopped lock cycle, removing file")
+				log.Debugf("%s: stopped lock cycle, removing file", h)
 				if err := h.Configurer.DeleteFile(h, lfp); err != nil {
-					log.Warnf("%s: failed to remove host lock file: %s", err)
+					log.Warnf("%s: failed to remove host lock file: %s", h, err)
 				}
 				p.wg.Done()
 				return
