@@ -150,6 +150,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
+	if h.Role == "controller+worker" && !h.NoTaints {
+		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for node-role.kubernetes.io/master:NoSchedule unless 'noTaints: true' is set", h)
+	}
+
 	if h.Metadata.NeedsUpgrade {
 		log.Warnf("%s: k0s will be upgraded", h)
 	}

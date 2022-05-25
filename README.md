@@ -291,6 +291,10 @@ One of:
 - `single` - a [single-node cluster](https://docs.k0sproject.io/main/k0s-single-node/) host, the configuration can only contain one host
 - `worker` - a worker host
 
+###### `spec.hosts[*].noTaints` &lt;boolean&gt; (optional) (default: `false`)
+
+When `true` and used in conjuction with the `controller+worker` role, the default taints are disabled making regular workloads schedulable on the node. By default, k0s sets a node-role.kubernetes.io/master:NoSchedule taint on controller+worker nodes and only workloads with toleration for it will be scheduled.
+
 ###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
 
 When `true`, the k0s binaries for target host will be downloaded and cached on the local host and uploaded to the target.
