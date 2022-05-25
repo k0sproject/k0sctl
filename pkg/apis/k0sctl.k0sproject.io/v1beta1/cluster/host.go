@@ -117,7 +117,7 @@ type configurer interface {
 	CleanupServiceEnvironment(os.Host, string) error
 	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
 	Touch(os.Host, string, time.Time, ...exec.Option) error
-	K0sctlLockFilePath() string
+	K0sctlLockFilePath(os.Host) string
 	UpsertFile(os.Host, string, string) error
 }
 

@@ -56,7 +56,7 @@ func (p *Lock) Run() error {
 
 func (p *Lock) startTicker(h *cluster.Host) error {
 	p.wg.Add(1)
-	lfp := h.Configurer.K0sctlLockFilePath()
+	lfp := h.Configurer.K0sctlLockFilePath(h)
 	ticker := time.NewTicker(10 * time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	p.m.Lock()
@@ -68,7 +68,7 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 		for {
 			select {
 			case <-ticker.C:
-				if err := h.Configurer.Touch(h, h.Configurer.K0sctlLockFilePath(), time.Now(), exec.Sudo(h)); err != nil {
+				if err := h.Configurer.Touch(h, lfp, time.Now(), exec.Sudo(h)); err != nil {
 					log.Warnf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():
@@ -104,7 +104,7 @@ func (p *Lock) startLock(h *cluster.Host) error {
 }
 
 func (p *Lock) tryLock(h *cluster.Host) error {
-	lfp := h.Configurer.K0sctlLockFilePath()
+	lfp := h.Configurer.K0sctlLockFilePath(h)
 
 	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
 		stat, err := h.Configurer.Stat(h, lfp, exec.Sudo(h))

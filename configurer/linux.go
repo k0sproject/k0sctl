@@ -19,7 +19,6 @@ type PathFuncs interface {
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
 	KubeconfigPath() string
-	K0sctlLockFilePath() string
 }
 
 // Linux is a base module for various linux OS support packages
@@ -89,8 +88,12 @@ func (l Linux) K0sJoinTokenPath() string {
 }
 
 // K0sctlLockFilePath returns a path to a lock file
-func (l Linux) K0sctlLockFilePath() string {
-	return "/run/lock/k0sctl"
+func (l Linux) K0sctlLockFilePath(h os.Host) string {
+	if h.Exec("test -d /run/lock", exec.Sudo(h)) == nil {
+		return "/run/lock/k0sctl"
+	}
+
+	return "/tmp/k0sctl.lock"
 }
 
 // TempFile returns a temp file path
