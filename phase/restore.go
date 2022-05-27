@@ -50,7 +50,7 @@ func (p *Restore) Run() error {
 	if err != nil {
 		return err
 	}
-	dstFile := path.Join(tmpDir, "k0s_backup.tar.gz", tmpDir)
+	dstFile := path.Join(tmpDir, "k0s_backup.tar.gz")
 	if err := h.Upload(p.RestoreFrom, dstFile); err != nil {
 		return err
 	}

@@ -64,7 +64,7 @@ func (p *Backup) Run() error {
 	}
 
 	// get the name of the backup file
-	remoteFile, err := h.ExecOutput(fmt.Sprintf("ls %s", backupDir))
+	remoteFile, err := h.ExecOutputf(`ls "%s"`, backupDir)
 	if err != nil {
 		return err
 	}
