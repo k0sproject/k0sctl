@@ -87,6 +87,15 @@ func (l Linux) K0sJoinTokenPath() string {
 	return "/etc/k0s/k0stoken"
 }
 
+// K0sctlLockFilePath returns a path to a lock file
+func (l Linux) K0sctlLockFilePath(h os.Host) string {
+	if h.Exec("test -d /run/lock", exec.Sudo(h)) == nil {
+		return "/run/lock/k0sctl"
+	}
+
+	return "/tmp/k0sctl.lock"
+}
+
 // TempFile returns a temp file path
 func (l Linux) TempFile(h os.Host) (string, error) {
 	return h.ExecOutput("mktemp")
@@ -205,4 +214,31 @@ func (l Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error)
 	}
 
 	return "", fmt.Errorf("not found")
+}
+
+// UpsertFile creates a file in path with content only if the file does not exist already
+func (l Linux) UpsertFile(h os.Host, path, content string) error {
+	tmpf, err := l.TempFile(h)
+	if err != nil {
+		return err
+	}
+	if err := h.Execf(`cat > "%s"`, tmpf, exec.Stdin(content), exec.Sudo(h)); err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = h.Execf(`rm -f "%s"`, tmpf, exec.Sudo(h))
+	}()
+
+	// mv -n is atomic
+	if err := h.Execf(`mv -n "%s" "%s"`, tmpf, path, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("upsert failed: %w", err)
+	}
+
+	// if original tempfile still exists, error out
+	if h.Execf(`test -f "%s"`, tmpf) == nil {
+		return fmt.Errorf("upsert failed")
+	}
+
+	return nil
 }

@@ -52,14 +52,17 @@ var resetCommand = &cli.Command{
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
 
+		lockPhase := &phase.Lock{}
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
+			lockPhase,
 			&phase.PrepareHosts{},
 			&phase.GatherK0sFacts{},
 			&phase.RunHooks{Stage: "before", Action: "reset"},
 			&phase.Reset{},
 			&phase.RunHooks{Stage: "after", Action: "reset"},
+			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
 		)
 

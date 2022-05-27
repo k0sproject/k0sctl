@@ -48,10 +48,12 @@ var applyCommand = &cli.Command{
 		phase.NoWait = ctx.Bool("no-wait")
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		lockPhase := &phase.Lock{}
 
 		manager.AddPhase(
 			&phase.Connect{},
 			&phase.DetectOS{},
+			lockPhase,
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.DownloadBinaries{},
@@ -75,19 +77,22 @@ var applyCommand = &cli.Command{
 				NoDrain: ctx.Bool("no-drain"),
 			},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
+			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
 		)
 
 		analytics.Client.Publish("apply-start", map[string]interface{}{})
 
-		if err := manager.Run(); err != nil {
+		var result error
+
+		if result = manager.Run(); result != nil {
 			analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
 			if lf, err := LogFile(); err == nil {
 				if ln, ok := lf.(interface{ Name() string }); ok {
 					log.Errorf("apply failed - log file saved to %s", ln.Name())
 				}
 			}
-			return err
+			return result
 		}
 
 		analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
