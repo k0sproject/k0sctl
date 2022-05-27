@@ -75,7 +75,7 @@ func (p *Backup) Run() error {
 		if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
 			log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
 		}
-		if err := h.Configurer.DeleteFile(h, backupDir); err != nil {
+		if err := h.Configurer.DeleteDir(h, backupDir, exec.Sudo(h)); err != nil {
 			log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
 		}
 	}()

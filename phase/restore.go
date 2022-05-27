@@ -60,7 +60,7 @@ func (p *Restore) Run() error {
 			log.Warnf("%s: failed to remove backup file %s: %s", h, dstFile, err)
 		}
 
-		if err := h.Configurer.DeleteFile(h, tmpDir); err != nil {
+		if err := h.Configurer.DeleteDir(h, tmpDir, exec.Sudo(h)); err != nil {
 			log.Warnf("%s: failed to remove backup temp dir %s: %s", h, tmpDir, err)
 		}
 	}()
