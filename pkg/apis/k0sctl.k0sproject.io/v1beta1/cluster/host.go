@@ -36,6 +36,7 @@ type Host struct {
 	Files            []*UploadFile     `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
 	HostnameOverride string            `yaml:"hostname,omitempty"`
+	NoTaints         bool              `yaml:"noTaints,omitempty"`
 	Hooks            Hooks             `yaml:"hooks,omitempty"`
 
 	UploadBinaryPath string       `yaml:"-"`
@@ -58,6 +59,10 @@ func (h *Host) SetDefaults() {
 		log.Debugf("%s: changed role from '%s' to 'controller+worker' because of --enable-worker installFlag", h, h.Role)
 		h.Role = "controller+worker"
 	}
+
+	if h.InstallFlags.Get("--no-taints") != "" && h.InstallFlags.GetValue("--no-taints") != "false" {
+		h.NoTaints = true
+	}
 }
 
 func (h *Host) Validate() error {
@@ -71,6 +76,7 @@ func (h *Host) Validate() error {
 		validation.Field(&h.Role, validation.In("controller", "worker", "controller+worker", "single").Error("unknown role "+h.Role)),
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
+		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
 	)
 }
 
@@ -233,6 +239,9 @@ func (h *Host) K0sInstallCommand() string {
 	case "controller+worker":
 		role = "controller"
 		flags.AddUnlessExist("--enable-worker")
+		if h.NoTaints {
+			flags.AddUnlessExist("--no-taints")
+		}
 	case "single":
 		role = "controller"
 		flags.AddUnlessExist("--single")
