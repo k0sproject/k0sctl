@@ -3,6 +3,7 @@ package phase
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -63,15 +64,19 @@ func (p *Backup) Run() error {
 	}
 
 	// get the name of the backup file
-	remoteFile, err := h.ExecOutput(fmt.Sprintf("ls %s", backupDir))
+	remoteFile, err := h.ExecOutputf(`ls "%s"`, backupDir)
 	if err != nil {
 		return err
 	}
+	remotePath := path.Join(backupDir, remoteFile)
 
 	defer func() {
-		log.Debugf("%s: cleaning up %s", h, remoteFile)
-		if err := h.Configurer.DeleteFile(h, remoteFile); err != nil {
-			log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remoteFile, err)
+		log.Debugf("%s: cleaning up %s", h, remotePath)
+		if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
+			log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
+		}
+		if err := h.Configurer.DeleteDir(h, backupDir, exec.Sudo(h)); err != nil {
+			log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
 		}
 	}()
 
@@ -87,8 +92,7 @@ func (p *Backup) Run() error {
 	}
 	defer f.Close()
 
-	cmd := fmt.Sprintf("cat %s/%s", backupDir, remoteFile)
-	if err := h.Exec(cmd, exec.Writer(f)); err != nil {
+	if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(f)); err != nil {
 		return err
 	}
 

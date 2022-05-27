@@ -11,7 +11,6 @@ import (
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
 	GenericPhase
-	cancel func()
 }
 
 // Title for the phase
@@ -26,10 +25,6 @@ func (p *PrepareHosts) Run() error {
 
 type prepare interface {
 	Prepare(os.Host) error
-}
-
-func (p *PrepareHosts) CleanUp() {
-	p.cancel()
 }
 
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {

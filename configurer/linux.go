@@ -242,3 +242,7 @@ func (l Linux) UpsertFile(h os.Host, path, content string) error {
 
 	return nil
 }
+
+func (l Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
+	return h.Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)), opts...)
+}

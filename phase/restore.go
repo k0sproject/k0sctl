@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -49,12 +50,20 @@ func (p *Restore) Run() error {
 	if err != nil {
 		return err
 	}
-	dstFile := fmt.Sprintf("%s/k0s_backup.tar.gz", tmpDir)
+	dstFile := path.Join(tmpDir, "k0s_backup.tar.gz")
 	if err := h.Upload(p.RestoreFrom, dstFile); err != nil {
 		return err
 	}
 
-	defer func() { _ = h.Configurer.DeleteFile(h, dstFile) }()
+	defer func() {
+		if err := h.Configurer.DeleteFile(h, dstFile); err != nil {
+			log.Warnf("%s: failed to remove backup file %s: %s", h, dstFile, err)
+		}
+
+		if err := h.Configurer.DeleteDir(h, tmpDir, exec.Sudo(h)); err != nil {
+			log.Warnf("%s: failed to remove backup temp dir %s: %s", h, tmpDir, err)
+		}
+	}()
 
 	// Run restore
 	log.Infof("%s: restoring cluster state", h)
