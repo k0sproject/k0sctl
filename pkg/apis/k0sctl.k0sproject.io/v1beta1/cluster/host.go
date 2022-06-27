@@ -398,6 +398,11 @@ func (h *Host) DrainNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
+// DeleteNode deletes the given node
+func (h *Host) DeleteNode(node *Host) error {
+	return h.Exec(h.Configurer.KubectlCmdf("delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+}
+
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
