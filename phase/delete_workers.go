@@ -38,7 +38,7 @@ func (p *DeleteWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
-	output, err := p.leader.ExecOutput(p.leader.Configurer.KubectlCmdf("get nodes -l role.kubernetes.io/control-plane!=true -o json"), exec.Sudo(p.leader))
+	output, err := p.leader.ExecOutput(p.leader.Configurer.KubectlCmdf("get nodes -l node-role.kubernetes.io/control-plane!=true -o json"), exec.Sudo(p.leader))
 	if err != nil {
 		return err
 	}
