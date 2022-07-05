@@ -222,11 +222,12 @@ spec:
       kind: Cluster
       metadata:
         name: my-k0s-cluster
-      images:
-        calico:
-          cni:
-            image: calico/cni
-            version: v3.16.2
+      spec:
+        images:
+          calico:
+            cni:
+              image: calico/cni
+              version: v3.16.2
 ```
 
 ### Environment variable substitution
