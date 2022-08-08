@@ -14,7 +14,7 @@ type OpenSUSE struct {
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
-			return os.ID == "opensuse"
+			return os.ID == "opensuse" || os.ID == "opensuse-microos"
 		},
 		func() interface{} {
 			linuxType := &OpenSUSE{}
