@@ -128,7 +128,7 @@ func (l Linux) DownloadK0s(h os.Host, version *version.Version, arch string) err
 		return err
 	}
 
-	return h.Execf(`install -m 0750 -o root -g adm "%s" "%s"`, tmp, l.PathFuncs.K0sBinaryPath(), exec.Sudo(h))
+	return h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, tmp, l.PathFuncs.K0sBinaryPath(), exec.Sudo(h))
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
