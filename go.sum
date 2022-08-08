@@ -230,8 +230,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/k0sproject/dig v0.2.0 h1:cNxEIl96g9kqSMfPSZLhpnZ0P8bWXKv08nxvsMHop5w=
 github.com/k0sproject/dig v0.2.0/go.mod h1:rBcqaQlJpcKdt2x/OE/lPvhGU50u/e95CSm5g/r4s78=
-github.com/k0sproject/rig v0.6.4 h1:f0I0ruc4b7VjLDEVjojJjih/89z/oC5iDdsAlz/oEPA=
-github.com/k0sproject/rig v0.6.4/go.mod h1:7x0Qph3bTFKLkR5OiGt0h4kF4Se/B6CepTYJDEVkp6c=
+github.com/k0sproject/rig v0.7.0 h1:tRwfDRo2fVE5pZmNP6Z1Dq2aXvH4tZ0D3zmDCYlq/IA=
+github.com/k0sproject/rig v0.7.0/go.mod h1:7x0Qph3bTFKLkR5OiGt0h4kF4Se/B6CepTYJDEVkp6c=
 github.com/k0sproject/version v0.3.0 h1:6HAn8C29+WVksGCzbQvQ9feEJpUZ0iHD8GebIQMiftQ=
 github.com/k0sproject/version v0.3.0/go.mod h1:oEjuz2ItQQtAnGyRgwEV9m5R6/9rjoFC6EiEEzbkFdI=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
