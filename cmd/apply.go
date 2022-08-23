@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
@@ -29,6 +30,15 @@ var applyCommand = &cli.Command{
 			Name:      "restore-from",
 			Usage:     "Path to cluster backup archive to restore the state from",
 			TakesFile: true,
+		},
+		&cli.StringFlag{
+			Name:      "kubeconfig-out",
+			Usage:     "Write kubeconfig to given path after a successful apply",
+			TakesFile: true,
+		},
+		&cli.StringFlag{
+			Name:  "kubeconfig-api-address",
+			Usage: "Override the API address in the kubeconfig when kubeconfig-out is set",
 		},
 		&cli.BoolFlag{
 			Name:   "disable-downgrade-check",
@@ -77,6 +87,16 @@ var applyCommand = &cli.Command{
 				NoDrain: ctx.Bool("no-drain"),
 			},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
+		)
+
+		kubecfgOut := ctx.String("kubeconfig-out")
+		var kubeCfgPhase *phase.GetKubeconfig
+		if kubecfgOut != "" {
+			kubeCfgPhase = &phase.GetKubeconfig{APIAddress: ctx.String("kubeconfig-api-address")}
+			manager.AddPhase(kubeCfgPhase)
+		}
+
+		manager.AddPhase(
 			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
 		)
@@ -96,6 +116,13 @@ var applyCommand = &cli.Command{
 		}
 
 		analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
+		if kubecfgOut != "" {
+			if err := os.WriteFile(kubecfgOut, []byte(manager.Config.Metadata.Kubeconfig), 0644); err != nil {
+				log.Warnf("failed to write kubeconfig to %s: %v", kubecfgOut, err)
+			} else {
+				log.Infof("kubeconfig written to %s", kubecfgOut)
+			}
+		}
 
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
