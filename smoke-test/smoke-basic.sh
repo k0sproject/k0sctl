@@ -12,7 +12,7 @@ deleteCluster
 createCluster
 
 echo "* Starting apply"
-../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
+../k0sctl apply --config "${K0SCTL_CONFIG}" --kubeconfig-out applykubeconfig --debug
 echo "* Apply OK"
 
 echo "* Verify hooks were executed on the host"
@@ -26,6 +26,9 @@ footloose ssh root@manager0 -- k0s kubectl get nodes
 
 echo "* Downloading kubectl for local test"
 downloadKubectl
+
+echo "* Using the kubectl from apply"
+./kubectl --kubeconfig applykubeconfig get nodes
 
 echo "* Using k0sctl kubecofig locally"
 ../k0sctl kubeconfig --config k0sctl.yaml > kubeconfig
