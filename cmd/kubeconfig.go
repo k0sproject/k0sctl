@@ -49,7 +49,7 @@ var kubeconfigCommand = &cli.Command{
 			return err
 		}
 
-		fmt.Println(c.Metadata.Kubeconfig)
+		fmt.Fprintf(ctx.App.Writer, "%s\n", c.Metadata.Kubeconfig)
 
 		return nil
 	},
