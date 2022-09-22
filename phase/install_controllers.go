@@ -27,7 +27,7 @@ func (p *InstallControllers) Prepare(config *v1beta1.Cluster) error {
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	p.leader = p.Config.Spec.K0sLeader()
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
-		return h != p.leader && h.Metadata.K0sRunningVersion == ""
+		return !h.Uninstall && (h != p.leader && h.Metadata.K0sRunningVersion == "")
 	})
 
 	return nil

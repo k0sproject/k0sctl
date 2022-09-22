@@ -86,6 +86,12 @@ var applyCommand = &cli.Command{
 			&phase.UpgradeWorkers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
+			&phase.UninstallWorkers{
+				NoDrain: ctx.Bool("no-drain"),
+			},
+			&phase.UninstallControllers{
+				NoDrain: ctx.Bool("no-drain"),
+			},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
 		)
 
@@ -127,6 +133,16 @@ var applyCommand = &cli.Command{
 		duration := time.Since(start).Truncate(time.Second)
 		text := fmt.Sprintf("==> Finished in %s", duration)
 		log.Infof(Colorize.Green(text).String())
+
+		uninstalled := false
+		for _, host := range manager.Config.Spec.Hosts {
+			if host.Uninstall {
+				uninstalled = true
+			}
+		}
+		if uninstalled {
+			log.Info("INFO: There were nodes that got uninstalled druing the apply phase. Please remove them from your kubectl.yaml file")
+		}
 
 		log.Infof("k0s cluster version %s is now installed", manager.Config.Spec.K0s.Version)
 		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
