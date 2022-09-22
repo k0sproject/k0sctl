@@ -57,7 +57,7 @@ func (p *UninstallControllers) CleanUp() {
 
 // Run the phase
 func (p *UninstallControllers) Run() error {
-	return p.hosts.ParallelEach(func(h *cluster.Host) error {
+	for _, h := range p.hosts {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain && h.Role != "controller" {
 			if err := p.leader.DrainNode(&cluster.Host{
@@ -119,6 +119,6 @@ func (p *UninstallControllers) Run() error {
 		log.Debugf("%s: removing config completed", h)
 
 		log.Infof("%s: uninstalled", h)
-		return err
-	})
+	}
+	return nil
 }
