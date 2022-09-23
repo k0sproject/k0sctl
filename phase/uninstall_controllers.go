@@ -39,7 +39,7 @@ func (p *UninstallControllers) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
-// ShouldRun is true when there are controllers that needs to be upgraded
+// ShouldRun is true when there are controllers that needs to be uninstalled
 func (p *UninstallControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
