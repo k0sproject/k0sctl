@@ -113,7 +113,6 @@ K0sctl is ready for use and in continuous development. It is still at a stage wh
 Missing major features include at least:
 
 * The released binaries have not been signed
-* Nodes can't be removed
 * The configuration specification and command-line interface options are still evolving
 
 ## Usage
