@@ -86,10 +86,10 @@ var applyCommand = &cli.Command{
 			&phase.UpgradeWorkers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
-			&phase.UninstallWorkers{
+			&phase.ResetWorkers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
-			&phase.UninstallControllers{
+			&phase.ResetControllers{
 				NoDrain: ctx.Bool("no-drain"),
 			},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
@@ -136,7 +136,7 @@ var applyCommand = &cli.Command{
 
 		uninstalled := false
 		for _, host := range manager.Config.Spec.Hosts {
-			if host.Uninstall {
+			if host.Reset {
 				uninstalled = true
 			}
 		}

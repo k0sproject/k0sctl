@@ -33,7 +33,7 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	log.Debugf("%d workers in total", len(workers))
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {
-		return !h.Uninstall && h.Metadata.NeedsUpgrade
+		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	log.Debugf("UpgradeWorkers phase prepared, %d workers needs upgrade", len(p.hosts))
 

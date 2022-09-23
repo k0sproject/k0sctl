@@ -30,7 +30,7 @@ func (p *DownloadK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		// Nothing to upload
-		if h.Uninstall {
+		if h.Reset {
 			return false
 		}
 

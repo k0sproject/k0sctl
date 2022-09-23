@@ -10,42 +10,45 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// UninstallControllers uninstalls k0s from the controllers
-type UninstallControllers struct {
+// ResetControllers phase removes controllers marked for reset from the kubernetes and etcd clusters
+// and resets k0s on the host
+type ResetControllers struct {
 	GenericPhase
 
-	NoDrain bool
+	NoDrain  bool
+	NoDelete bool
+	NoLeave  bool
 
 	hosts  cluster.Hosts
 	leader *cluster.Host
 }
 
 // Title for the phase
-func (p *UninstallControllers) Title() string {
-	return "Uninstall controllers"
+func (p *ResetControllers) Title() string {
+	return "Reset controllers"
 }
 
 // Prepare the phase
-func (p *UninstallControllers) Prepare(config *v1beta1.Cluster) error {
+func (p *ResetControllers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
-		return h.Uninstall
+		return h.Reset
 	})
-	log.Debugf("UninstallControllers phase prepared, %d controllers will be uninstalled", len(p.hosts))
+	log.Debugf("ResetControllers phase prepared, %d controllers will be reset", len(p.hosts))
 	return nil
 }
 
-// ShouldRun is true when there are controllers that needs to be uninstalled
-func (p *UninstallControllers) ShouldRun() bool {
+// ShouldRun is true when there are controllers that needs to be reset
+func (p *ResetControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
 // CleanUp cleans up the environment override files on hosts
-func (p *UninstallControllers) CleanUp() {
+func (p *ResetControllers) CleanUp() {
 	for _, h := range p.hosts {
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
@@ -56,7 +59,7 @@ func (p *UninstallControllers) CleanUp() {
 }
 
 // Run the phase
-func (p *UninstallControllers) Run() error {
+func (p *ResetControllers) Run() error {
 	for _, h := range p.hosts {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain && h.Role != "controller" {
@@ -71,7 +74,7 @@ func (p *UninstallControllers) Run() error {
 		log.Debugf("%s: draining node completed", h)
 
 		log.Debugf("%s: deleting node...", h)
-		if h.Role != "controller" {
+		if !p.NoDelete && h.Role != "controller" {
 			if err := p.leader.DeleteNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
@@ -95,8 +98,10 @@ func (p *UninstallControllers) Run() error {
 		}
 
 		log.Debugf("%s: leaving etcd...", h)
-		if err := p.leader.LeaveEtcd(h); err != nil {
-			log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
+		if !p.NoLeave {
+			if err := p.leader.LeaveEtcd(h); err != nil {
+				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
+			}
 		}
 		log.Debugf("%s: leaving etcd completed", h)
 
@@ -118,7 +123,7 @@ func (p *UninstallControllers) Run() error {
 		}
 		log.Debugf("%s: removing config completed", h)
 
-		log.Infof("%s: uninstalled", h)
+		log.Infof("%s: reset", h)
 	}
 	return nil
 }

@@ -27,7 +27,7 @@ type Host struct {
 	rig.Connection `yaml:",inline"`
 
 	Role             string            `yaml:"role"`
-	Uninstall        bool              `yaml:"uninstall,omitempty"`
+	Reset            bool              `yaml:"reset,omitempty"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`

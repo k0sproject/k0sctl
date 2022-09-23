@@ -32,7 +32,7 @@ func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		// Nothing to upload
-		if h.Uninstall {
+		if h.Reset {
 			return false
 		}
 

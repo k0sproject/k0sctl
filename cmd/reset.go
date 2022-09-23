@@ -51,6 +51,9 @@ var resetCommand = &cli.Command{
 		start := time.Now()
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		for _, h := range manager.Config.Spec.Hosts {
+			h.Reset = true
+		}
 
 		lockPhase := &phase.Lock{}
 		manager.AddPhase(
@@ -60,7 +63,16 @@ var resetCommand = &cli.Command{
 			&phase.PrepareHosts{},
 			&phase.GatherK0sFacts{},
 			&phase.RunHooks{Stage: "before", Action: "reset"},
-			&phase.Reset{},
+			&phase.ResetWorkers{
+				NoDrain:  true,
+				NoDelete: true,
+			},
+			&phase.ResetControllers{
+				NoDrain:  true,
+				NoDelete: true,
+				NoLeave:  true,
+			},
+			&phase.ResetLeader{},
 			&phase.RunHooks{Stage: "after", Action: "reset"},
 			&phase.Unlock{Cancel: lockPhase.Cancel},
 			&phase.Disconnect{},
