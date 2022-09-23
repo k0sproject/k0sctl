@@ -141,7 +141,7 @@ var applyCommand = &cli.Command{
 			}
 		}
 		if uninstalled {
-			log.Info("INFO: There were nodes that got uninstalled druing the apply phase. Please remove them from your kubectl.yaml file")
+			log.Info("There were nodes that got uninstalled during the apply phase. Please remove them from your k0sctl config file")
 		}
 
 		log.Infof("k0s cluster version %s is now installed", manager.Config.Spec.K0s.Version)
