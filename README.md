@@ -480,9 +480,9 @@ Localhost connection options. Can be used to use the local host running k0sctl a
 
 This must be set `true` to enable the localhost connection.
 
-###### `spec.hosts[*].uninstall` &lt;boolean&gt; (optional) (default: `false`)
+###### `spec.hosts[*].reset` &lt;boolean&gt; (optional) (default: `false`)
 
-If set to `true` k0sctl will remove the node from kubernetes and uninstall k0s from the host.
+If set to `true` k0sctl will remove the node from kubernetes and reset k0s on the host.
 
 ### K0s Fields
 
