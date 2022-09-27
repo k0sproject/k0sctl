@@ -21,6 +21,9 @@ func TestPaths(t *testing.T) {
 	require.Equal(t, "/opt/bin/k0s --help", fc.K0sCmdf("--help"))
 	require.Equal(t, "/usr/local/bin/k0s --help", ubuntu.K0sCmdf("--help"))
 
-	require.Equal(t, "/var/lib/k0s/pki/admin.conf", fc.KubeconfigPath())
-	require.Equal(t, "/var/lib/k0s/pki/admin.conf", ubuntu.KubeconfigPath())
+	require.Equal(t, "/var/lib/k0s/pki/admin.conf", fc.KubeconfigPath(true))
+	require.Equal(t, "/var/lib/k0s/pki/admin.conf", ubuntu.KubeconfigPath(true))
+
+	require.Equal(t, "/var/lib/k0s/kubelet.conf", fc.KubeconfigPath(false))
+	require.Equal(t, "/var/lib/k0s/kubelet.conf", ubuntu.KubeconfigPath(false))
 }
