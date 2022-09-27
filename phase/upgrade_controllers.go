@@ -30,7 +30,7 @@ func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
-		return h.Metadata.NeedsUpgrade
+		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	log.Debugf("UpgradeControllers phase prepared, %d controllers needs upgrade", len(p.hosts))
 	return nil

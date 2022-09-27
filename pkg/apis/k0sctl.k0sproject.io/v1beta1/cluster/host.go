@@ -27,6 +27,7 @@ type Host struct {
 	rig.Connection `yaml:",inline"`
 
 	Role             string            `yaml:"role"`
+	Reset            bool              `yaml:"reset,omitempty"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
@@ -401,6 +402,19 @@ func (h *Host) DrainNode(node *Host) error {
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
+}
+
+// DeleteNode deletes the given node from kubernetes
+func (h *Host) DeleteNode(node *Host) error {
+	return h.Exec(h.Configurer.KubectlCmdf("delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+}
+
+func (h *Host) LeaveEtcd(node *Host) error {
+	etcdAddress := node.SSH.Address
+	if node.PrivateAddress != "" {
+		etcdAddress = node.PrivateAddress
+	}
+	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s", etcdAddress), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

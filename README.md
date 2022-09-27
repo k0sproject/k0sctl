@@ -113,7 +113,6 @@ K0sctl is ready for use and in continuous development. It is still at a stage wh
 Missing major features include at least:
 
 * The released binaries have not been signed
-* Nodes can't be removed
 * The configuration specification and command-line interface options are still evolving
 
 ## Usage
@@ -480,6 +479,10 @@ Localhost connection options. Can be used to use the local host running k0sctl a
 ###### `spec.hosts[*].localhost.enabled` &lt;boolean&gt; (optional) (default: `false`)
 
 This must be set `true` to enable the localhost connection.
+
+###### `spec.hosts[*].reset` &lt;boolean&gt; (optional) (default: `false`)
+
+If set to `true` k0sctl will remove the node from kubernetes and reset k0s on the host.
 
 ### K0s Fields
 

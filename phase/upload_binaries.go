@@ -31,6 +31,11 @@ func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
 			return false
 		}
 
+		// Nothing to upload
+		if h.Reset {
+			return false
+		}
+
 		// Upgrade is handled separately (k0s stopped, binary uploaded, k0s restarted)
 		if h.Metadata.NeedsUpgrade {
 			return false
