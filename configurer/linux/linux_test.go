@@ -10,7 +10,7 @@ import (
 )
 
 type mockHost struct {
-	ExecError bool
+	ExecFError bool
 }
 
 func (m mockHost) Upload(source, destination string, opts ...exec.Option) error {
@@ -18,9 +18,6 @@ func (m mockHost) Upload(source, destination string, opts ...exec.Option) error 
 }
 
 func (m mockHost) Exec(string, ...exec.Option) error {
-	if m.ExecError {
-		return fmt.Errorf("error")
-	}
 	return nil
 }
 
@@ -29,6 +26,9 @@ func (m mockHost) ExecOutput(string, ...exec.Option) (string, error) {
 }
 
 func (m mockHost) Execf(string, ...interface{}) error {
+	if m.ExecFError {
+		return fmt.Errorf("error")
+	}
 	return nil
 }
 
@@ -53,10 +53,10 @@ func TestPaths(t *testing.T) {
 	ubuntu.PathFuncs = interface{}(ubuntu).(configurer.PathFuncs)
 
 	h1 := &mockHost{
-		ExecError: false,
+		ExecFError: false,
 	}
 	h2 := &mockHost{
-		ExecError: true,
+		ExecFError: true,
 	}
 
 	require.Equal(t, "/opt/bin/k0s", fc.K0sBinaryPath())
