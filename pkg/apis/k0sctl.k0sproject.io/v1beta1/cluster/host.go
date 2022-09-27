@@ -112,7 +112,7 @@ type configurer interface {
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
 	KubectlCmdf(os.Host, string, ...interface{}) string
-	KubeconfigPath(bool) string
+	KubeconfigPath(os.Host) string
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
 	HTTPStatus(os.Host, string) (int, error)
