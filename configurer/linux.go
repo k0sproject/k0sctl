@@ -136,12 +136,6 @@ func (l Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
 	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.PathFuncs.K0sJoinTokenPath(), spath))
 }
 
-// FileExists returns true if a file exiyts
-func (l Linux) FileExists(h os.Host, path string) bool {
-	err := h.Execf(fmt.Sprintf("stat %s", path), exec.Sudo(h))
-	return err == nil
-}
-
 // FileContains returns true if a file contains the substring
 func (l Linux) FileContains(h os.Host, path, s string) bool {
 	return h.Execf(`grep -q "%s" "%s"`, s, path, exec.Sudo(h)) == nil
@@ -154,7 +148,8 @@ func (l Linux) MoveFile(h os.Host, src, dst string) error {
 
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (l Linux) KubeconfigPath(h os.Host) string {
-	if l.FileExists(h, "/var/lib/k0s/pki/admin.conf") {
+	linux := &os.Linux{}
+	if linux.FileExist(h, "/var/lib/k0s/pki/admin.conf") {
 		return "/var/lib/k0s/pki/admin.conf"
 	}
 	return "/var/lib/k0s/kubelet.conf"
