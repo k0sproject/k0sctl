@@ -18,7 +18,7 @@ type PathFuncs interface {
 	K0sBinaryPath() string
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
-	KubeconfigPath() string
+	KubeconfigPath(h os.Host) string
 }
 
 // Linux is a base module for various linux OS support packages
@@ -147,13 +147,17 @@ func (l Linux) MoveFile(h os.Host, src, dst string) error {
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
-func (l Linux) KubeconfigPath() string {
-	return "/var/lib/k0s/pki/admin.conf"
+func (l Linux) KubeconfigPath(h os.Host) string {
+	linux := &os.Linux{}
+	if linux.FileExist(h, "/var/lib/k0s/pki/admin.conf") {
+		return "/var/lib/k0s/pki/admin.conf"
+	}
+	return "/var/lib/k0s/kubelet.conf"
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (l Linux) KubectlCmdf(s string, args ...interface{}) string {
-	return l.K0sCmdf(`kubectl --kubeconfig "%s" %s`, l.PathFuncs.KubeconfigPath(), fmt.Sprintf(s, args...))
+func (l Linux) KubectlCmdf(h os.Host, s string, args ...interface{}) string {
+	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.PathFuncs.KubeconfigPath(h), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error

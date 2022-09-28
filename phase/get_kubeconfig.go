@@ -20,7 +20,7 @@ func (p *GetKubeconfig) Title() string {
 // Run the phase
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.Hosts.Controllers()[0]
-	output, err := h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath())
+	output, err := h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h))
 	if err != nil {
 		return err
 	}
