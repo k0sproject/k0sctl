@@ -350,8 +350,8 @@ type kubeNodeStatus struct {
 }
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
-func (h *Host) KubeNodeReady(node *Host) (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, "get node -l kubernetes.io/hostname=%s -o json", node.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+func (h *Host) KubeNodeReady() (bool, error) {
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, "get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -362,27 +362,27 @@ func (h *Host) KubeNodeReady(node *Host) (bool, error) {
 	}
 	for _, i := range status.Items {
 		for _, c := range i.Status.Conditions {
-			log.Debugf("%s: node status condition %s = %s", node, c.Type, c.Status)
+			log.Debugf("%s: node status condition %s = %s", h, c.Type, c.Status)
 			if c.Type == "Ready" {
 				return c.Status == "True", nil
 			}
 		}
 	}
 
-	log.Debugf("%s: failed to find Ready=True state in kubectl output", node)
+	log.Debugf("%s: failed to find Ready=True state in kubectl output", h)
 	return false, nil
 }
 
 // WaitKubeNodeReady blocks until node becomes ready. TODO should probably use Context
-func (h *Host) WaitKubeNodeReady(node *Host) error {
+func (h *Host) WaitKubeNodeReady() error {
 	return retry.Do(
 		func() error {
-			status, err := h.KubeNodeReady(node)
+			status, err := h.KubeNodeReady()
 			if err != nil {
 				return err
 			}
 			if !status {
-				return fmt.Errorf("%s: node %s status not reported as ready", h, node.Metadata.Hostname)
+				return fmt.Errorf("%s: node %s status not reported as ready", h, h.Metadata.Hostname)
 			}
 			return nil
 		},

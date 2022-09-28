@@ -160,7 +160,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
-		ready, err := p.leader.KubeNodeReady(h)
+		ready, err := h.KubeNodeReady()
 		if err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
 		}
