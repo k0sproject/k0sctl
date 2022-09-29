@@ -141,7 +141,7 @@ func (p *InstallWorkers) Run() error {
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready", h)
-			if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
+			if err := h.WaitKubeNodeReady(); err != nil {
 				return err
 			}
 			h.Metadata.Ready = true

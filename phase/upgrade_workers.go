@@ -130,7 +130,7 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 		log.Debugf("%s: not waiting because --no-wait given", h)
 	} else {
 		log.Infof("%s: waiting for node to become ready again", h)
-		if err := p.Config.Spec.K0sLeader().WaitKubeNodeReady(h); err != nil {
+		if err := h.WaitKubeNodeReady(); err != nil {
 			return err
 		}
 		h.Metadata.Ready = true
