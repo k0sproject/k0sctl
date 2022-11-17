@@ -151,6 +151,10 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
+	if h.SSH.HostKey != "" {
+		log.Warnf("%s: host.ssh.hostKey is deprecated, use a ssh known hosts file instead", h)
+	}
+
 	return defaults.Set(h)
 }
 
