@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,14 +18,14 @@ func TestBuildHosts(t *testing.T) {
 	require.Len(t, hosts.Controllers(), 1)
 	require.Len(t, hosts.Workers(), 2)
 	require.Equal(t, "test", hosts.First().SSH.User)
-	require.Equal(t, "foo", hosts.First().SSH.KeyPath)
+	require.Equal(t, "foo", *hosts.First().SSH.KeyPath)
 
 	hosts = buildHosts(addresses, 2, "", "")
 	require.Len(t, hosts, 3)
 	require.Len(t, hosts.Controllers(), 2)
 	require.Len(t, hosts.Workers(), 1)
 	require.Equal(t, "root", hosts.First().SSH.User)
-	require.True(t, strings.HasSuffix(hosts.First().SSH.KeyPath, "/.ssh/id_rsa"))
+	require.Nil(t, hosts.First().SSH.KeyPath)
 }
 
 func TestBuildHostsWithComments(t *testing.T) {

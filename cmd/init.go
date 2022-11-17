@@ -107,7 +107,7 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 		host.SSH.User = user
 	}
 	if keypath != "" {
-		host.SSH.KeyPath = keypath
+		host.SSH.KeyPath = &keypath
 	}
 
 	_ = defaults.Set(host)
@@ -148,6 +148,7 @@ var initCommand = &cli.Command{
 	Usage:       "Create a configuration template",
 	Description: "Outputs a new k0sctl configuration. When a list of addresses are provided, hosts are generated into the configuration. The list of addresses can also be provided via stdin.",
 	ArgsUsage:   "[[user@]address[:port] ...]",
+	Before:      actions(initLogging),
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "k0s",

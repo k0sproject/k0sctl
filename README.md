@@ -468,9 +468,9 @@ Username to log in as.
 
 TCP port of the SSH service on the host.
 
-###### `spec.hosts[*].ssh.keyPath` &lt;string&gt; (optional) (default: `~/.ssh/id_rsa`)
+###### `spec.hosts[*].ssh.keyPath` &lt;string&gt; (optional) (default: `~/.ssh/identity ~/.ssh/id_rsa ~/.ssh/id_dsa`)
 
-Path to an SSH private key file.
+Path to an SSH key file. If a public key is used, ssh-agent is required. When left empty, the default value will first be looked for from the ssh configuration (default `~/.ssh/config`) `IdentityFile` parameter.
 
 ##### `spec.hosts[*].localhost` &lt;mapping&gt; (optional)
 
