@@ -54,7 +54,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18
+        go-version: 1.19
 
     - name: Go modules cache
       uses: actions/cache@v2
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -114,7 +114,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -137,7 +137,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -160,7 +160,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -194,7 +194,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -226,7 +226,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -257,7 +257,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
@@ -282,7 +282,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
