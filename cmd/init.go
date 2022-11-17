@@ -107,7 +107,7 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 		host.SSH.User = user
 	}
 	if keypath != "" {
-		host.SSH.KeyPath = keypath
+		host.SSH.KeyPath = &keypath
 	}
 
 	_ = defaults.Set(host)
