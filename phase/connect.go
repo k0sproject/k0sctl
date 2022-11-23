@@ -1,11 +1,12 @@
 package phase
 
 import (
-	"strings"
+	"errors"
 	"time"
 
 	retry "github.com/avast/retry-go"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/rig"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +36,7 @@ func (p *Connect) Run() error {
 			),
 			retry.RetryIf(
 				func(err error) bool {
-					return !strings.Contains(err.Error(), "no supported methods remain")
+					return !errors.Is(err, rig.ErrCantConnect)
 				},
 			),
 			retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
