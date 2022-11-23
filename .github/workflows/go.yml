@@ -5,7 +5,7 @@ on: [ pull_request ]
 jobs:
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
         retention-days: 2
 
   build-all:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v2
@@ -82,7 +82,7 @@ jobs:
             # - quay.io/footloose/fedora29
     name: Basic 1+1 smoke
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -107,7 +107,7 @@ jobs:
   smoke-files:
     name: Basic file upload smoke
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -130,7 +130,7 @@ jobs:
   smoke-dynamic:
     name: Basic dynamic config smoke
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -153,7 +153,7 @@ jobs:
   smoke-os-override:
     name: OS override smoke test
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -187,7 +187,7 @@ jobs:
           - v1.21.6+k0s.0
     name: Upgrade
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -219,7 +219,7 @@ jobs:
 
     name: Apply + reset
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -250,7 +250,7 @@ jobs:
 
     name: Apply + backup + reset + restore
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -275,7 +275,7 @@ jobs:
   smoke-init:
     name: Init sub-command smoke test
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
