@@ -3,6 +3,7 @@ package phase
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -61,12 +62,30 @@ func (p *UploadBinaries) Run() error {
 	return p.hosts.ParallelEach(p.uploadBinary)
 }
 
+func (p *UploadBinaries) ensureBinPath(h *cluster.Host) error {
+	dir := filepath.Dir(h.Configurer.K0sBinaryPath())
+	// FileExist uses "-e" which also works for dirs
+	if h.Configurer.FileExist(h, dir) {
+		return nil
+	}
+	if err := h.Configurer.MkDir(h, dir, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to create %s: %w", dir, err)
+	}
+	if err := h.Configurer.Chmod(h, dir, "0755", exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to chmod %s: %w", dir, err)
+	}
+	return nil
+}
+
 func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 	stat, err := os.Stat(h.UploadBinaryPath)
 	if err != nil {
 		return fmt.Errorf("failed to stat %s: %w", h.UploadBinaryPath, err)
 	}
 	if h.FileChanged(h.UploadBinaryPath, h.Configurer.K0sBinaryPath()) {
+		if err := p.ensureBinPath(h); err != nil {
+			return err
+		}
 		log.Infof("%s: uploading k0s binary from %s", h, h.UploadBinaryPath)
 		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
 			return err
