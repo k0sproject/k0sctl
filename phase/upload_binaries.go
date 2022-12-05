@@ -12,6 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const concurrentUploads = 5
+
 // UploadBinaries uploads k0s binaries from localhost to target
 type UploadBinaries struct {
 	GenericPhase
@@ -59,7 +61,7 @@ func (p *UploadBinaries) ShouldRun() bool {
 
 // Run the phase
 func (p *UploadBinaries) Run() error {
-	return p.hosts.ParallelEach(p.uploadBinary)
+	return p.hosts.BatchedParallelEach(concurrentUploads, p.uploadBinary)
 }
 
 func (p *UploadBinaries) ensureBinPath(h *cluster.Host) error {

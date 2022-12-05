@@ -20,7 +20,7 @@ func (p *PrepareHosts) Title() string {
 
 // Run the phase
 func (p *PrepareHosts) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(p.prepareHost)
+	return p.Config.Spec.Hosts.BatchedParallelEach(concurrentWorkers, p.prepareHost)
 }
 
 type prepare interface {

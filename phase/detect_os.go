@@ -25,7 +25,7 @@ func (p *DetectOS) Title() string {
 
 // Run the phase
 func (p *DetectOS) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
+	return p.Config.Spec.Hosts.BatchedParallelEach(concurrentWorkers, func(h *cluster.Host) error {
 		if h.OSIDOverride != "" {
 			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
 		}

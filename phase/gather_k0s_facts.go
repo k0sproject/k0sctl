@@ -50,7 +50,7 @@ func (p *GatherK0sFacts) Title() string {
 // Run the phase
 func (p *GatherK0sFacts) Run() error {
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
-	if err := controllers.ParallelEach(p.investigateK0s); err != nil {
+	if err := controllers.BatchedParallelEach(concurrentWorkers, p.investigateK0s); err != nil {
 		return err
 	}
 	p.leader = p.Config.Spec.K0sLeader()
@@ -61,7 +61,7 @@ func (p *GatherK0sFacts) Run() error {
 	}
 
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
-	if err := workers.ParallelEach(p.investigateK0s); err != nil {
+	if err := workers.BatchedParallelEach(concurrentWorkers, p.investigateK0s); err != nil {
 		return err
 	}
 

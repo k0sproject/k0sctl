@@ -134,3 +134,18 @@ func (hosts Hosts) ParallelEach(filter ...func(h *Host) error) error {
 
 	return nil
 }
+
+// BatchedParallelEach runs a function (or multiple functions chained) on every Host parallelly in groups of batchSize hosts.
+func (hosts Hosts) BatchedParallelEach(batchSize int, filter ...func(h *Host) error) error {
+	for i := 0; i < len(hosts); i += batchSize {
+		end := i + batchSize
+		if end > len(hosts) {
+			end = len(hosts)
+		}
+		if err := hosts[i:end].ParallelEach(filter...); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

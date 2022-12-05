@@ -24,7 +24,7 @@ func (p *ValidateHosts) Run() error {
 		p.hncount[h.Metadata.Hostname]++
 	}
 
-	return p.Config.Spec.Hosts.ParallelEach(p.validateUniqueHostname, p.validateSudo)
+	return p.Config.Spec.Hosts.BatchedParallelEach(concurrentWorkers, p.validateUniqueHostname, p.validateSudo)
 }
 
 func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {

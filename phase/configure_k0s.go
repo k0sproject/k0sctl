@@ -59,7 +59,7 @@ func (p *ConfigureK0s) Run() error {
 	}
 
 	controllers := p.Config.Spec.Hosts.Controllers()
-	return controllers.ParallelEach(p.configureK0s)
+	return controllers.BatchedParallelEach(concurrentWorkers, p.configureK0s)
 }
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
