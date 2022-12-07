@@ -42,7 +42,7 @@ func (p *UploadFiles) ShouldRun() bool {
 
 // Run the phase
 func (p *UploadFiles) Run() error {
-	return p.Config.Spec.Hosts.BatchedParallelEach(concurrentUploads, p.uploadFiles)
+	return p.parallelDoUpload(p.Config.Spec.Hosts, p.uploadFiles)
 }
 
 func (p *UploadFiles) uploadFiles(h *cluster.Host) error {

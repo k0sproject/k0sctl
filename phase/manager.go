@@ -42,10 +42,16 @@ type withcleanup interface {
 	CleanUp()
 }
 
+type withmanager interface {
+	SetManager(*Manager)
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
-	phases []phase
-	Config *v1beta1.Cluster
+	phases            []phase
+	Config            *v1beta1.Cluster
+	Concurrency       int
+	ConcurrentUploads int
 }
 
 // AddPhase adds a Phase to Manager
@@ -71,6 +77,10 @@ func (m *Manager) Run() error {
 
 	for _, p := range m.phases {
 		title := p.Title()
+
+		if p, ok := p.(withmanager); ok {
+			p.SetManager(m)
+		}
 
 		if p, ok := p.(withconfig); ok {
 			log.Debugf("Preparing phase '%s'", p.Title())

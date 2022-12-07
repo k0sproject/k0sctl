@@ -48,7 +48,7 @@ func (p *Lock) Cancel() {
 
 // Run the phase
 func (p *Lock) Run() error {
-	if err := p.Config.Spec.Hosts.BatchedParallelEach(concurrentWorkers, p.startLock); err != nil {
+	if err := p.parallelDo(p.Config.Spec.Hosts, p.startLock); err != nil {
 		return err
 	}
 	return p.Config.Spec.Hosts.ParallelEach(p.startTicker)

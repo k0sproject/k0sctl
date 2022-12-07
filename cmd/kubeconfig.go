@@ -20,6 +20,7 @@ var kubeconfigCommand = &cli.Command{
 			Value: "",
 		},
 		configFlag,
+		concurrencyFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -36,7 +37,7 @@ var kubeconfigCommand = &cli.Command{
 		// Change so that the internal config has only single controller host as we
 		// do not need to connect to all nodes
 		c.Spec.Hosts = cluster.Hosts{c.Spec.K0sLeader()}
-		manager := phase.Manager{Config: c}
+		manager := phase.Manager{Config: c, Concurrency: ctx.Int("concurrency")}
 
 		manager.AddPhase(
 			&phase.Connect{},

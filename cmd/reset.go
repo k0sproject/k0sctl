@@ -20,6 +20,7 @@ var resetCommand = &cli.Command{
 	Usage: "Remove traces of k0s from all of the hosts",
 	Flags: []cli.Flag{
 		configFlag,
+		concurrencyFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -50,7 +51,7 @@ var resetCommand = &cli.Command{
 
 		start := time.Now()
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster), Concurrency: ctx.Int("concurrency")}
 		for _, h := range manager.Config.Spec.Hosts {
 			h.Reset = true
 		}

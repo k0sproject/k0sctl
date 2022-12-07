@@ -40,7 +40,7 @@ func (p *PrepareArm) ShouldRun() bool {
 
 // Run the phase
 func (p *PrepareArm) Run() error {
-	return p.hosts.BatchedParallelEach(concurrentWorkers, p.etcdUnsupportedArch)
+	return p.parallelDo(p.hosts, p.etcdUnsupportedArch)
 }
 
 func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {

@@ -59,7 +59,7 @@ func (p *ResetWorkers) CleanUp() {
 
 // Run the phase
 func (p *ResetWorkers) Run() error {
-	return p.hosts.BatchedParallelEach(concurrentWorkers, func(h *cluster.Host) error {
+	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain {
 			if err := p.leader.DrainNode(&cluster.Host{

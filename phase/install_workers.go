@@ -10,8 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const concurrentWorkers = 30
-
 // InstallWorkers installs k0s on worker hosts and joins them to the cluster
 type InstallWorkers struct {
 	GenericPhase
@@ -57,7 +55,7 @@ func (p *InstallWorkers) Run() error {
 	url := p.Config.Spec.KubeAPIURL()
 	healthz := fmt.Sprintf("%s/healthz", url)
 
-	err := p.hosts.BatchedParallelEach(concurrentWorkers, func(h *cluster.Host) error {
+	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		log.Infof("%s: validating api connection to %s", h, url)
 		if err := h.WaitHTTPStatus(healthz, 200, 401); err != nil {
 			return fmt.Errorf("failed to connect from worker to kubernetes api at %s - check networking", url)
@@ -93,7 +91,7 @@ func (p *InstallWorkers) Run() error {
 		}()
 	}
 
-	return p.hosts.BatchedParallelEach(concurrentWorkers, func(h *cluster.Host) error {
+	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		log.Infof("%s: writing join token", h)
 		if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), token, "0640"); err != nil {
 			return err
