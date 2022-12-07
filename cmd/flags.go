@@ -71,6 +71,18 @@ var (
 		EnvVars: []string{"DISABLE_UPGRADE_CHECK"},
 	}
 
+	concurrencyFlag = &cli.IntFlag{
+		Name:  "concurrency",
+		Usage: "Maximum number of hosts to configure in parallel, set to 0 for unlimited",
+		Value: 30,
+	}
+
+	concurrentUploadsFlag = &cli.IntFlag{
+		Name:  "concurrent-uploads",
+		Usage: "Maximum number of files to upload in parallel, set to 0 for unlimited",
+		Value: 5,
+	}
+
 	Colorize = aurora.NewAurora(false)
 )
 

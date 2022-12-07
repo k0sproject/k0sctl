@@ -21,7 +21,7 @@ func (p *GatherFacts) Title() string {
 
 // Run the phase
 func (p *GatherFacts) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(p.investigateHost)
+	return p.parallelDo(p.Config.Spec.Hosts, p.investigateHost)
 }
 
 func (p *GatherFacts) investigateHost(h *cluster.Host) error {

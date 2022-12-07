@@ -16,6 +16,7 @@ var backupCommand = &cli.Command{
 	Usage: "Take backup of existing clusters state",
 	Flags: []cli.Flag{
 		configFlag,
+		concurrencyFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -27,7 +28,7 @@ var backupCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster), Concurrency: ctx.Int("concurrency")}
 		lockPhase := &phase.Lock{}
 
 		manager.AddPhase(

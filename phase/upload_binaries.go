@@ -59,7 +59,7 @@ func (p *UploadBinaries) ShouldRun() bool {
 
 // Run the phase
 func (p *UploadBinaries) Run() error {
-	return p.hosts.ParallelEach(p.uploadBinary)
+	return p.parallelDoUpload(p.hosts, p.uploadBinary)
 }
 
 func (p *UploadBinaries) ensureBinPath(h *cluster.Host) error {

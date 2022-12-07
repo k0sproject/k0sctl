@@ -56,7 +56,7 @@ func (p *DownloadK0s) ShouldRun() bool {
 
 // Run the phase
 func (p *DownloadK0s) Run() error {
-	return p.hosts.ParallelEach(p.downloadK0s)
+	return p.parallelDo(p.hosts, p.downloadK0s)
 }
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {

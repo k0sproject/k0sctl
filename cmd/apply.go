@@ -18,6 +18,8 @@ var applyCommand = &cli.Command{
 	Usage: "Apply a k0sctl configuration",
 	Flags: []cli.Flag{
 		configFlag,
+		concurrencyFlag,
+		concurrentUploadsFlag,
 		&cli.BoolFlag{
 			Name:  "no-wait",
 			Usage: "Do not wait for worker nodes to join",
@@ -57,7 +59,7 @@ var applyCommand = &cli.Command{
 		start := time.Now()
 		phase.NoWait = ctx.Bool("no-wait")
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)}
+		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster), Concurrency: ctx.Int("concurrency"), ConcurrentUploads: ctx.Int("concurrent-uploads")}
 		lockPhase := &phase.Lock{}
 
 		manager.AddPhase(
