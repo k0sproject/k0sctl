@@ -239,7 +239,7 @@ func unQE(s string) string {
 }
 
 // K0sInstallCommand returns a full command that will install k0s service with necessary flags
-func (h *Host) K0sInstallCommand() string {
+func (h *Host) K0sInstallCommand() (string, error) {
 	role := h.Role
 	flags := h.InstallFlags
 
@@ -268,10 +268,15 @@ func (h *Host) K0sInstallCommand() string {
 		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
 			extra = Flags{unQE(old)}
 		}
-		// set worker's private address to --node-ip in --extra-kubelet-args
-		if h.PrivateAddress != "" {
+		// set worker's private address to --node-ip in --extra-kubelet-args if cloud ins't enabled
+		enableCloudProvider, err := h.InstallFlags.GetBoolean("--enable-cloud-provider")
+		if err != nil {
+			return "", fmt.Errorf("--enable-cloud-provider flag is set to invalid value: %s. (%v)", h.InstallFlags.GetValue("--enable-cloud-provider"), err)
+		}
+		if !enableCloudProvider && h.PrivateAddress != "" {
 			extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
 		}
+
 		if h.HostnameOverride != "" {
 			extra.AddOrReplace(fmt.Sprintf("--hostname-override=%s", h.HostnameOverride))
 		}
@@ -284,9 +289,9 @@ func (h *Host) K0sInstallCommand() string {
 	sudocmd, err := h.Sudo(cmd)
 	if err != nil {
 		log.Warnf("%s: %s", h, err.Error())
-		return cmd
+		return cmd, nil
 	}
-	return sudocmd
+	return sudocmd, nil
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup

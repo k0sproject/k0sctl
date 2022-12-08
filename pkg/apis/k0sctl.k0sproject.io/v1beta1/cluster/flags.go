@@ -88,6 +88,23 @@ func (f Flags) GetValue(s string) string {
 	return val
 }
 
+// GetValue returns the boolean value part of a flag such as true for a flag like "--san"
+// If the flag is not defined returns false. If the flag is defined without a value, returns true
+// If no value is set, returns true
+func (f Flags) GetBoolean(s string) (bool, error) {
+	idx := f.Index(s)
+	if idx < 0 {
+		return false, nil
+	}
+
+	fl := f.GetValue(s)
+	if fl == "" {
+		return true, nil
+	}
+
+	return strconv.ParseBool(fl)
+}
+
 // Delete removes a matching flag from the list
 func (f *Flags) Delete(s string) {
 	idx := f.Index(s)
