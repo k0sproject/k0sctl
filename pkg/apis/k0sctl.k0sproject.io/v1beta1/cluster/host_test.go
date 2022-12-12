@@ -78,23 +78,44 @@ func TestK0sInstallCommand(t *testing.T) {
 	h := Host{Role: "worker"}
 	h.Configurer = &mockconfigurer{}
 
-	require.Equal(t, `k0s install worker --token-file "from-configurer"`, h.K0sInstallCommand())
+	cmd, err := h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install worker --token-file "from-configurer"`, cmd)
 
 	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
-	require.Equal(t, `k0s install controller --config "from-configurer"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install controller --config "from-configurer"`, cmd)
+
 	h.Metadata.IsK0sLeader = false
-	require.Equal(t, `k0s install controller --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install controller --token-file "from-configurer" --config "from-configurer"`, cmd)
 
 	h.Role = "controller+worker"
 	h.Metadata.IsK0sLeader = true
-	require.Equal(t, `k0s install controller --enable-worker --config "from-configurer"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install controller --enable-worker --config "from-configurer"`, cmd)
 	h.Metadata.IsK0sLeader = false
-	require.Equal(t, `k0s install controller --enable-worker --token-file "from-configurer" --config "from-configurer"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install controller --enable-worker --token-file "from-configurer" --config "from-configurer"`, cmd)
 
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
-	require.Equal(t, `k0s install worker --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install worker --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, cmd)
+
 	h.InstallFlags = []string{`--kubelet-extra-args="--foo bar"`}
-	require.Equal(t, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --token-file "from-configurer"`, h.K0sInstallCommand())
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --token-file "from-configurer"`, cmd)
+
+	h.InstallFlags = []string{`--enable-cloud-provider`}
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install worker --enable-cloud-provider --token-file "from-configurer"`, cmd)
 }

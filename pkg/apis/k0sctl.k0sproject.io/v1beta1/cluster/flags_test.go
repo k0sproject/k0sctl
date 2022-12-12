@@ -49,3 +49,56 @@ func TestString(t *testing.T) {
 	flags := Flags{"--help", "--setting=false"}
 	require.Equal(t, "--help --setting=false", flags.Join())
 }
+
+func TestGetBoolean(t *testing.T) {
+	t.Run("Valid flags", func(t *testing.T) {
+		testsValid := []struct {
+			flag   string
+			expect bool
+		}{
+			{"--flag", true},
+			{"--flag=true", true},
+			{"--flag=false", false},
+			{"--flag=1", true},
+			{"--flag=TRUE", true},
+		}
+		for _, test := range testsValid {
+			flags := Flags{test.flag}
+			result, err := flags.GetBoolean(test.flag)
+			require.NoError(t, err)
+			require.Equal(t, test.expect, result)
+
+			flags = Flags{"--unrelated-flag1", "--unrelated-flag2=foo", test.flag}
+			result, err = flags.GetBoolean(test.flag)
+			require.NoError(t, err)
+			require.Equal(t, test.expect, result)
+		}
+	})
+
+	t.Run("Invalid flags", func(t *testing.T) {
+		testsInvalid := []string{
+			"--flag=foo",
+			"--flag=2",
+			"--flag=TrUe",
+			"--flag=-4",
+			"--flag=FalSe",
+		}
+		for _, test := range testsInvalid {
+			flags := Flags{test}
+			_, err := flags.GetBoolean(test)
+			require.Error(t, err)
+
+			flags = Flags{"--unrelated-flag1", "--unrelated-flag2=foo", test}
+			_, err = flags.GetBoolean(test)
+			require.Error(t, err)
+		}
+	})
+
+	t.Run("Unknown flags", func(t *testing.T) {
+		flags := Flags{"--flag1=1", "--flag2"}
+		result, err := flags.GetBoolean("--flag3")
+		require.NoError(t, err)
+		require.Equal(t, result, false)
+
+	})
+}

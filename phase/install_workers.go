@@ -121,7 +121,11 @@ func (p *InstallWorkers) Run() error {
 		}
 
 		log.Infof("%s: installing k0s worker", h)
-		if err := h.Exec(h.K0sInstallCommand()); err != nil {
+		cmd, err := h.K0sInstallCommand()
+		if err != nil {
+			return err
+		}
+		if err = h.Exec(cmd); err != nil {
 			return err
 		}
 
