@@ -10,7 +10,7 @@ function createCluster() {
   footloose create
   if [ "${LINUX_IMAGE}" = "quay.io/footloose/debian10" ]; then
     for host in $(footloose status -o json|grep hostname|cut -d"\"" -f4); do
-      footloose ssh root@${host} -- rm /etc/machine-id
+      footloose ssh root@${host} -- rm -f /etc/machine-id /var/lib/dbus/machine-id
       footloose ssh root@${host} -- systemd-machine-id-setup
     done
   fi
