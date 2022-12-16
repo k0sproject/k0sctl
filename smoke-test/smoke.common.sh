@@ -8,6 +8,12 @@ export K0S_VERSION
 function createCluster() {
   envsubst < "${FOOTLOOSE_TEMPLATE}" > footloose.yaml
   footloose create
+  if [ "${LINUX_IMAGE}" = "quay.io/footloose/debian10" ]; then
+    for host in $(footloose status -o json|grep hostname|cut -d"\"" -f4); do
+      footloose ssh root@${host} -- rm -f /etc/machine-id /var/lib/dbus/machine-id
+      footloose ssh root@${host} -- systemd-machine-id-setup
+    done
+  fi
 }
 
 function deleteCluster() {

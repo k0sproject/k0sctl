@@ -250,3 +250,7 @@ func (l Linux) UpsertFile(h os.Host, path, content string) error {
 func (l Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
 	return h.Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)), opts...)
 }
+
+func (l Linux) MachineID(h os.Host) (string, error) {
+	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
+}

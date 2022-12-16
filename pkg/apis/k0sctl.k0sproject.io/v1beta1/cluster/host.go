@@ -127,6 +127,7 @@ type configurer interface {
 	DeleteDir(os.Host, string, ...exec.Option) error
 	K0sctlLockFilePath(os.Host) string
 	UpsertFile(os.Host, string, string) error
+	MachineID(os.Host) (string, error)
 }
 
 // HostMetadata resolved metadata for host
@@ -138,6 +139,7 @@ type HostMetadata struct {
 	Hostname          string
 	Ready             bool
 	NeedsUpgrade      bool
+	MachineID         string
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
