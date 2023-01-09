@@ -183,7 +183,6 @@ jobs:
           #- quay.io/footloose/debian10
           #- quay.io/footloose/fedora29
         k0s_from:
-          - 0.11.0
           - v1.21.6+k0s.0
     name: Upgrade
     needs: build
