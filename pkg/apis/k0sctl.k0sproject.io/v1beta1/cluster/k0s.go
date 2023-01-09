@@ -143,6 +143,10 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
 	}
 
+	if datadir := h.InstallFlags.GetValue("data-dir"); datadir != "" {
+		k0sFlags.Add(fmt.Sprintf("--data-dir %s", shellescape.Quote(datadir)))
+	}
+
 	var token string
 	err = retry.Do(
 		func() error {
