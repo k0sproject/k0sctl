@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
-	github.com/Azure/go-ntlmssp v0.0.0-20220621081337-cb9428e4ac1e // indirect
+	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
 	github.com/Masterminds/semver v1.5.0
 	github.com/a8m/envsubst v1.2.0
@@ -18,7 +18,7 @@ require (
 	github.com/gofrs/uuid v4.3.1+incompatible // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/k0sproject/dig v0.2.0
-	github.com/k0sproject/rig v0.10.0
+	github.com/k0sproject/rig v0.11.0-beta.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20220917170901-b07f6cb0598d // indirect
@@ -30,11 +30,11 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.23.6
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
-	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0
+	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/text v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/client-go v0.22.1
 )
