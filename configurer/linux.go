@@ -2,7 +2,6 @@ package configurer
 
 import (
 	"fmt"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -112,23 +111,13 @@ func (l Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Opti
 }
 
 // DownloadK0s performs k0s binary download from github on the host
-func (l Linux) DownloadK0s(h os.Host, version *version.Version, arch string) error {
-	tmp, err := l.TempFile(h)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = h.Execf(`rm -f "%s"`, tmp) }()
-
+func (l Linux) DownloadK0s(h os.Host, path string, version *version.Version, arch string) error {
 	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/%s/k0s-%s-%s", version, version, arch)
-	if err := l.DownloadURL(h, url, tmp); err != nil {
-		return err
+	if err := l.DownloadURL(h, url, path); err != nil {
+		return fmt.Errorf("download k0s: %w", err)
 	}
 
-	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, path.Dir(l.PathFuncs.K0sBinaryPath()), exec.Sudo(h)); err != nil {
-		return err
-	}
-
-	return h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, tmp, l.PathFuncs.K0sBinaryPath(), exec.Sudo(h))
+	return nil
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub

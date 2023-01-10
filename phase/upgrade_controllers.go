@@ -30,6 +30,9 @@ func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
+		if h.Metadata.K0sBinaryTempFile == "" {
+			return false
+		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	log.Debugf("UpgradeControllers phase prepared, %d controllers needs upgrade", len(p.hosts))
@@ -55,12 +58,16 @@ func (p *UpgradeControllers) CleanUp() {
 // Run the phase
 func (p *UpgradeControllers) Run() error {
 	for _, h := range p.hosts {
+		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+			return fmt.Errorf("k0s binary tempfile not found on host")
+		}
 		log.Infof("%s: starting upgrade", h)
 		if p.needsMigration(h) {
 			if err := p.migrateService(h); err != nil {
 				return err
 			}
 		} else {
+			log.Debugf("%s: stop service", h)
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
@@ -72,7 +79,8 @@ func (p *UpgradeControllers) Run() error {
 		if err != nil {
 			return err
 		}
-		if err := h.UpdateK0sBinary(version); err != nil {
+		log.Debugf("%s: update binary", h)
+		if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, version); err != nil {
 			return err
 		}
 
@@ -83,6 +91,7 @@ func (p *UpgradeControllers) Run() error {
 			}
 		}
 
+		log.Debugf("%s: restart service", h)
 		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 			return err
 		}

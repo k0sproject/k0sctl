@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	gos "os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -102,7 +103,7 @@ type configurer interface {
 	ReadFile(os.Host, string) (string, error)
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, *version.Version, string) error
+	DownloadK0s(os.Host, string, *version.Version, string) error
 	DownloadURL(os.Host, string, string, ...exec.Option) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
@@ -133,6 +134,7 @@ type configurer interface {
 // HostMetadata resolved metadata for host
 type HostMetadata struct {
 	K0sBinaryVersion  string
+	K0sBinaryTempFile string
 	K0sRunningVersion string
 	Arch              string
 	IsK0sLeader       bool
@@ -321,19 +323,28 @@ func (h *Host) K0sServiceName() string {
 	}
 }
 
-// UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
-func (h *Host) UpdateK0sBinary(version *version.Version) error {
-	if h.UploadBinaryPath != "" {
-		if err := h.Upload(h.UploadBinaryPath, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
-			return err
-		}
-		if err := h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0700", exec.Sudo(h)); err != nil {
-			return err
-		}
-	} else {
-		if err := h.Configurer.DownloadK0s(h, version, h.Metadata.Arch); err != nil {
-			return err
-		}
+// InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
+func (h *Host) InstallK0sBinary(path string) error {
+	if !h.Configurer.FileExist(h, path) {
+		return fmt.Errorf("k0s binary tempfile not found")
+	}
+
+	dir := filepath.Dir(h.Configurer.K0sBinaryPath())
+	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, dir, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("create k0s binary dir: %w", err)
+	}
+
+	if err := h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, path, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
+		return fmt.Errorf("install k0s binary: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateK0sBinary updates the binary on the host from the provided file path
+func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
+	if err := h.InstallK0sBinary(path); err != nil {
+		return fmt.Errorf("update k0s binary: %w", err)
 	}
 
 	updatedVersion, err := h.Configurer.K0sBinaryVersion(h)

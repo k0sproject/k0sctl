@@ -75,6 +75,7 @@ var applyCommand = &cli.Command{
 			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
 			&phase.UploadBinaries{},
 			&phase.DownloadK0s{},
+			&phase.InstallBinaries{},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
 			&phase.PrepareArm{},
 			&phase.ConfigureK0s{},

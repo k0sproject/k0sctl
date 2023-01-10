@@ -33,6 +33,9 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	log.Debugf("%d workers in total", len(workers))
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {
+		if h.Metadata.K0sBinaryTempFile == "" {
+			return false
+		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	log.Debugf("UpgradeWorkers phase prepared, %d workers needs upgrade", len(p.hosts))
@@ -63,7 +66,7 @@ func (p *UpgradeWorkers) Run() error {
 	if concurrentUpgrades == 0 {
 		concurrentUpgrades = 1
 	}
-	log.Infof("Upgrading %d workers in parallel", concurrentUpgrades)
+	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
 	wp := workerpool.New(concurrentUpgrades)
 	errors := make(map[string]error)
 	for _, w := range p.hosts {
@@ -85,7 +88,11 @@ func (p *UpgradeWorkers) Run() error {
 }
 
 func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
-	log.Infof("%s: upgrade starting", h)
+	if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+		return fmt.Errorf("k0s binary tempfile not found on host")
+	}
+
+	log.Infof("%s: starting upgrade", h)
 
 	if !p.NoDrain {
 		log.Debugf("%s: draining...", h)
@@ -95,7 +102,7 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 		log.Debugf("%s: draining complete", h)
 	}
 
-	log.Debugf("%s: Update and restart service", h)
+	log.Debugf("%s: stop service", h)
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
@@ -106,7 +113,8 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err != nil {
 		return err
 	}
-	if err := h.UpdateK0sBinary(version); err != nil {
+	log.Debugf("%s: update binary", h)
+	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, version); err != nil {
 		return err
 	}
 
@@ -117,6 +125,7 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 		}
 	}
 
+	log.Debugf("%s: restart service", h)
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
