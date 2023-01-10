@@ -3,7 +3,7 @@ kind: cluster
 spec:
   hosts:
     - role: controller
-      uploadBinary: true
+      uploadBinary: false
       os: "$OS_OVERRIDE"
       ssh:
         address: "127.0.0.1"
@@ -16,7 +16,7 @@ spec:
           after:
             - "grep -q hello apply.hook"
     - role: worker
-      uploadBinary: true
+      uploadBinary: false
       os: "$OS_OVERRIDE"
       ssh:
         address: "127.0.0.1"
