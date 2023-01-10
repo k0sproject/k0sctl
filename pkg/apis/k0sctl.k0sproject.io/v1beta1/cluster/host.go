@@ -341,7 +341,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 	return nil
 }
 
-// UpdateK0sBinary updates the binary on the host either by downloading or uploading, based on the config
+// UpdateK0sBinary updates the binary on the host from the provided file path
 func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 	if err := h.InstallK0sBinary(path); err != nil {
 		return fmt.Errorf("update k0s binary: %w", err)
