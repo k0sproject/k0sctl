@@ -308,6 +308,10 @@ A path to a file on the local host that contains a k0s binary to be uploaded to 
 
 Override host's hostname. When not set, the hostname reported by the operating system is used.
 
+###### `spec.hosts[*].dataDir` &lt;string&gt; (optional) (default: `/var/lib/k0s`)
+
+Set host's k0s data-dir.
+
 ###### `spec.hosts[*].installFlags` &lt;sequence&gt; (optional)
 
 Extra flags passed to the `k0s install` command on the target host. See `k0s install --help` for a list of options.

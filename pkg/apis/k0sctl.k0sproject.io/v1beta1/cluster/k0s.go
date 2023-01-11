@@ -143,9 +143,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
 	}
 
-	if datadir := h.InstallFlags.GetValue("data-dir"); datadir != "" {
-		k0sFlags.Add(fmt.Sprintf("--data-dir %s", shellescape.Quote(datadir)))
-	}
+	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.DataDir))
 
 	var token string
 	err = retry.Do(
@@ -168,7 +166,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
 func (k K0s) GetClusterID(h *Host) (string, error) {
-	return h.ExecOutput(h.Configurer.KubectlCmdf(h, "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
+	return h.ExecOutput(h.Configurer.KubectlCmdf(h, "get --data-dir=%s -n kube-system namespace kube-system -o template={{.metadata.uid}}", h.DataDir), exec.Sudo(h))
 }
 
 // TokenID returns a token id from a token string that can be used to invalidate the token

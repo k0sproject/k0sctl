@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -31,6 +32,7 @@ type Host struct {
 	Reset            bool              `yaml:"reset,omitempty"`
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
+	DataDir          string            `yaml:"dataDir,omitempty"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
@@ -65,6 +67,14 @@ func (h *Host) SetDefaults() {
 	if h.InstallFlags.Get("--no-taints") != "" && h.InstallFlags.GetValue("--no-taints") != "false" {
 		h.NoTaints = true
 	}
+
+	if dd := h.InstallFlags.Get("--data-dir"); dd != "" {
+		if h.DataDir != "" {
+			log.Debugf("%s: changed dataDir from '%s' to '%s' because of --data-dir installFlag", h, h.DataDir, dd)
+		}
+		h.InstallFlags.Delete("--data-dir")
+		h.DataDir = dd
+	}
 }
 
 func (h *Host) Validate() error {
@@ -94,6 +104,7 @@ type configurer interface {
 	K0sBinaryPath() string
 	K0sBinaryVersion(os.Host) (*version.Version, error)
 	K0sConfigPath() string
+	DataDirDefaultPath() string
 	K0sJoinTokenPath() string
 	WriteFile(os.Host, string, string, string) error
 	UpdateEnvironment(os.Host, map[string]string) error
@@ -247,6 +258,8 @@ func (h *Host) K0sInstallCommand() (string, error) {
 	role := h.Role
 	flags := h.InstallFlags
 
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.DataDir))
+
 	switch role {
 	case "controller+worker":
 		role = "controller"
@@ -300,12 +313,12 @@ func (h *Host) K0sInstallCommand() (string, error) {
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s", targetDir)
+	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.DataDir)
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore %s", backupfile)
+	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.DataDir, shellescape.Quote(backupfile))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -373,7 +386,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady() (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, "get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, "get node --data-dir=%s -l kubernetes.io/hostname=%s -o json", h.DataDir, h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -418,17 +431,17 @@ func (h *Host) WaitKubeNodeReady() error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --data-dir=%s --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, "uncordon --data-dir=%s %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, "delete node --data-dir=%s %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
 }
 
 func (h *Host) LeaveEtcd(node *Host) error {
@@ -436,7 +449,7 @@ func (h *Host) LeaveEtcd(node *Host) error {
 	if node.PrivateAddress != "" {
 		etcdAddress = node.PrivateAddress
 	}
-	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s", etcdAddress), exec.Sudo(h))
+	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.DataDir), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

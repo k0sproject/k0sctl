@@ -97,7 +97,7 @@ func (p *ResetWorkers) Run() error {
 		}
 
 		log.Debugf("%s: resetting k0s...", h)
-		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset"), exec.Sudo(h))
+		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.DataDir), exec.Sudo(h))
 		c, _ := semver.NewConstraint("<= 1.22.3+k0s.0")
 		running, _ := semver.NewVersion(h.Metadata.K0sBinaryVersion)
 		if err != nil {

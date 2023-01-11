@@ -3,6 +3,7 @@ package phase
 import (
 	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
 	log "github.com/sirupsen/logrus"
@@ -68,6 +69,12 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 			return err
 		}
 	}
+
+	if h.DataDir == "" {
+		log.Debugf("%s: data-dir is not set, using default", h)
+		h.DataDir = h.Configurer.DataDirDefaultPath()
+	}
+	h.DataDir = shellescape.Quote(h.DataDir)
 
 	return nil
 }

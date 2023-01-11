@@ -52,7 +52,7 @@ func (p *ResetLeader) Run() error {
 	}
 
 	log.Debugf("%s: resetting k0s...", p.leader)
-	out, err := p.leader.ExecOutput(p.leader.Configurer.K0sCmdf("reset"), exec.Sudo(p.leader))
+	out, err := p.leader.ExecOutput(p.leader.Configurer.K0sCmdf("reset --data-dir=%s", p.leader.DataDir), exec.Sudo(p.leader))
 	c, _ := semver.NewConstraint("<= 1.22.3+k0s.0")
 	running, _ := semver.NewVersion(p.leader.Metadata.K0sBinaryVersion)
 	if err != nil {

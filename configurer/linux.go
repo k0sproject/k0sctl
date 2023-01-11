@@ -18,6 +18,7 @@ type PathFuncs interface {
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
 	KubeconfigPath(h os.Host) string
+	DataDirDefaultPath() string
 }
 
 // Linux is a base module for various linux OS support packages
@@ -142,6 +143,11 @@ func (l Linux) KubeconfigPath(h os.Host) string {
 		return "/var/lib/k0s/pki/admin.conf"
 	}
 	return "/var/lib/k0s/kubelet.conf"
+}
+
+// DataDirPath returns the location of k0s data dir
+func (l Linux) DataDirDefaultPath() string {
+	return "/var/lib/k0s"
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
