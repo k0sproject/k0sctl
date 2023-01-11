@@ -74,10 +74,7 @@ func (h *Host) SetDefaults() {
 		}
 		h.InstallFlags.Delete("--data-dir")
 		h.DataDir = dd
-	} else if h.DataDir == "" {
-		h.DataDir = h.Configurer.DataDirDefaultPath()
 	}
-	h.DataDir = shellescape.Quote(h.DataDir)
 }
 
 func (h *Host) Validate() error {
