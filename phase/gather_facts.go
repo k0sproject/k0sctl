@@ -3,7 +3,6 @@ package phase
 import (
 	"fmt"
 
-	"github.com/alessio/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
@@ -78,11 +77,6 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 				log.Infof("%s: discovered %s as private address", h, addr)
 			}
 		}
-
-		if datadir := h.InstallFlags.GetValue("data-dir"); datadir != "" {
-			k0sFlags.Add(fmt.Sprintf("--data-dir %s", shellescape.Quote(datadir)))
-		}
-
 	}
 
 	return nil
