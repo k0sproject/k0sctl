@@ -35,6 +35,7 @@ var backupCommand = &cli.Command{
 			&phase.Connect{},
 			&phase.DetectOS{},
 			lockPhase,
+			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.GatherK0sFacts{},
 			&phase.RunHooks{Stage: "before", Action: "backup"},
