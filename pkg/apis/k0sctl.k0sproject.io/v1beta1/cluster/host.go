@@ -431,7 +431,7 @@ func (h *Host) WaitKubeNodeReady() error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --data-dir=%s --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-local-data %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --data-dir=%s --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
