@@ -140,6 +140,8 @@ type configurer interface {
 	K0sctlLockFilePath(os.Host) string
 	UpsertFile(os.Host, string, string) error
 	MachineID(os.Host) (string, error)
+	SELinuxEnabled(os.Host) bool
+	ConfigureSELinux(os.Host, string) error
 }
 
 // HostMetadata resolved metadata for host

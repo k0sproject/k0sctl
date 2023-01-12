@@ -249,3 +249,21 @@ func (l Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
 func (l Linux) MachineID(h os.Host) (string, error) {
 	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
 }
+
+func (l Linux) ConfigureSELinux(h os.Host, datadir string) error {
+	script := `
+	  DATA_DIR=` + datadir + `
+    semanage fcontext -a -t container_runtime_exec_t "${DATA_DIR}/bin/containerd.*"
+    semanage fcontext -a -t container_runtime_exec_t "${DATA_DIR}/bin/runc"
+    restorecon -R -v ${DATA_DIR}/bin
+    semanage fcontext -a -t container_var_lib_t "${DATA_DIR}/containerd(/.*)?"
+    semanage fcontext -a -t container_ro_file_t "${DATA_DIR}/containerd/io.containerd.snapshotter.*/snapshots(/.*)?"
+    restorecon -R -v ${DATA_DIR}/containerd
+	`
+
+	if err := h.Exec("bash -s", exec.Stdin(script), exec.Sudo(h)); err != nil {
+		return err
+	}
+
+	return nil
+}

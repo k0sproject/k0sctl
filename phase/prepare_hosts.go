@@ -76,5 +76,12 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 	}
 	h.DataDir = shellescape.Quote(h.DataDir)
 
+	if h.Configurer.SELinuxEnabled(h) {
+		log.Infof("%s: SELinux is enabled, applying configuration", h)
+		if err := h.Configurer.ConfigureSELinux(h, h.DataDir); err != nil {
+			log.Warnf("%s: failed to configure SELinux: %s", h, err)
+		}
+	}
+
 	return nil
 }
