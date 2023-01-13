@@ -38,9 +38,8 @@ func (l CoreOS) InstallPackage(h os.Host, pkg ...string) error {
 }
 
 func (l CoreOS) Prepare(h os.Host) error {
-	return l.InstallPackage(h, "policycoreutils-python-utils")
-}
-
-func (l CoreOS) K0sBinaryPath() string {
-	return "/opt/bin/k0s"
+	if l.SELinuxEnabled(h) {
+		return l.InstallPackage(h, "policycoreutils-python-utils")
+	}
+	return nil
 }
