@@ -94,9 +94,6 @@ jobs:
       - name: Install Vagrant
         run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew tap hashicorp/tap && brew install hashicorp/tap/vagrant
 
-      - name: Configure Vagrant
-        run: 
-
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
       - {"name":"Make executable","run":"chmod +x k0sctl"}
