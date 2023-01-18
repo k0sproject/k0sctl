@@ -92,7 +92,7 @@ jobs:
         uses: docker/setup-qemu-action@v2
 
       - name: Install Vagrant
-        run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew tap hashicorp/tap && brew install hashicorp/tap/vagrant
+        run: wget https://releases.hashicorp.com/vagrant/2.2.19/vagrant_2.2.19_x86_64.deb && sudo apt install ./vagrant_2.2.19_x86_64.deb
 
       - {"name":"Go modules cache","uses":"actions/cache@v2","with":{"path":"~/go/pkg/mod\n~/.cache/go-build\n~/Library/Caches/go-build\n%LocalAppData%\\go-build\n","key":"${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}","restore-keys":"${{ runner.os }}-go-\n"}}
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v2","with":{"name":"k0sctl","path":"."}}
