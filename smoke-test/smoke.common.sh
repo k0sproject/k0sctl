@@ -7,7 +7,7 @@ export K0S_VERSION
 
 function createCluster() {
   envsubst < "${VAGRANT_TEMPLATE}" > Vagrantfile
-  vagrant up
+  vagrant up --provider=libvirt
   vagrant status
   vagrant ssh-config host-01
   vagrant ssh-config host-02
