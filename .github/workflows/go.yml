@@ -89,7 +89,7 @@ jobs:
           go-version: 1.19
 
       - name: Set up virtualization
-        run: sudo apt-get install qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils && sudo systemctl enable libvirt-bin
+        uses: docker/setup-qemu-action@v2
 
       - name: Install Vagrant
         run: eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew tap hashicorp/tap && brew install hashicorp/tap/vagrant
