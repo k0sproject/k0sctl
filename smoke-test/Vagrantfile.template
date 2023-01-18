@@ -1,0 +1,20 @@
+ENV["TERM"] = "xterm-256color"
+ENV["LC_ALL"] = "en_US.UTF-8"
+
+Vagrant.require_version '>= 2.0.4'
+
+Vagrant.configure('2') do |config|
+  config.ssh.username = 'user'
+  config.ssh.insert_key = true
+  config.vm.box = '${VAGRANT_BOX}'
+  config.vm.provider :libvirt do |v|
+    v.cpus = 2
+    v.memory = 2048
+  end
+  config.vm.define 'host-01' do |c|
+    c.vm.hostname = 'host-01'
+  end
+  config.vm.define 'host-02' do |c|
+    c.vm.hostname = 'host-02'
+  end
+end

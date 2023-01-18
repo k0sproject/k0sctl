@@ -16,13 +16,13 @@ echo "* Starting apply"
 echo "* Apply OK"
 
 echo "* Verify hooks were executed on the host"
-footloose ssh root@manager0 -- grep -q hello apply.hook
+vagrant ssh host-01 -- grep -q hello apply.hook
 
 echo "* Verify 'k0sctl kubeconfig' output includes 'data' block"
 ../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
 
 echo "* Run kubectl on controller"
-footloose ssh root@manager0 -- k0s kubectl get nodes
+vagrant ssh host-01 -- k0s kubectl get nodes
 
 echo "* Downloading kubectl for local test"
 downloadKubectl

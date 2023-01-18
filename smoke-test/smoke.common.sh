@@ -1,27 +1,23 @@
-FOOTLOOSE_TEMPLATE=${FOOTLOOSE_TEMPLATE:-"footloose.yaml.tpl"}
+VAGRANT_TEMPLATE=${VAGRANT_TEMPLATE:-"Vagrantfile.template"}
 
-export LINUX_IMAGE=${LINUX_IMAGE:-"quay.io/footloose/ubuntu18.04"}
+export VAGRANT_BOX=${VAGRANT_BOX:-"dongsupark/flatcar-stable"}
 export PRESERVE_CLUSTER=${PRESERVE_CLUSTER:-""}
 export DISABLE_TELEMETRY=true
 export K0S_VERSION
 
 function createCluster() {
-  envsubst < "${FOOTLOOSE_TEMPLATE}" > footloose.yaml
-  footloose create
-  if [ "${LINUX_IMAGE}" = "quay.io/footloose/debian10" ]; then
-    for host in $(footloose status -o json|grep hostname|cut -d"\"" -f4); do
-      footloose ssh root@${host} -- rm -f /etc/machine-id /var/lib/dbus/machine-id
-      footloose ssh root@${host} -- systemd-machine-id-setup
-    done
-  fi
+  envsubst < "${VAGRANT_TEMPLATE}" > Vagrantfile
+  vagrant up
+  vagrant status
+  vagrant ssh-config host-01
+  vagrant ssh-config host-02
 }
 
 function deleteCluster() {
   # cleanup any existing cluster
-  envsubst < "${FOOTLOOSE_TEMPLATE}" > footloose.yaml
-  footloose delete && docker volume prune -f
+  envsubst < "${VAGRANT_TEMPLATE}" > Vagrantfile
+  vagrant destroy --force
 }
-
 
 function cleanup() {
     echo -e "Cleaning up..."
