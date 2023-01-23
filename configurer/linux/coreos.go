@@ -20,7 +20,7 @@ type CoreOS struct {
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
-			return strings.Contains(os.Version, "CoreOS") && (os.ID == "fedora" || os.ID == "rhel")
+			return strings.Contains(os.Name, "CoreOS") && (os.ID == "fedora" || os.ID == "rhel")
 		},
 		func() interface{} {
 			linuxType := &CoreOS{}
@@ -31,8 +31,14 @@ func init() {
 }
 
 func (l CoreOS) InstallPackage(h os.Host, pkg ...string) error {
-	if err := h.Execf("sudo rpm-ostree --apply-live --allow-inactive -y install %s", strings.Join(pkg, " "), exec.Sudo(h)); err != nil {
-		return fmt.Errorf("install packages: %w", err)
+	for _, p := range pkg {
+		if h.Execf("rpm -q %s", p) == nil {
+			// already installed
+			continue
+		}
+		if err := h.Execf("sudo rpm-ostree --apply-live --allow-inactive -y install %s", p, exec.Sudo(h)); err != nil {
+			return fmt.Errorf("install package %s: %w", p, err)
+		}
 	}
 	return nil
 }
