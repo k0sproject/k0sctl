@@ -29,7 +29,13 @@ func (p *ValidateHosts) Run() error {
 		p.privateaddrcount[h.PrivateAddress]++
 	}
 
-	return p.parallelDo(p.Config.Spec.Hosts, p.validateUniqueHostname, p.validateUniqueMachineID, p.validateSudo)
+	return p.parallelDo(
+		p.Config.Spec.Hosts,
+		p.validateUniqueHostname,
+		p.validateUniqueMachineID,
+		p.validateUniquePrivateAddress,
+		p.validateSudo,
+	)
 }
 
 func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
