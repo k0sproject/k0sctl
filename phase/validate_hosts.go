@@ -23,6 +23,8 @@ func (p *ValidateHosts) Title() string {
 func (p *ValidateHosts) Run() error {
 	p.hncount = make(map[string]int, len(p.Config.Spec.Hosts))
 	p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))
+	p.privateaddrcount = make(map[string]int, len(p.Config.Spec.Hosts))
+
 	for _, h := range p.Config.Spec.Hosts {
 		p.hncount[h.Metadata.Hostname]++
 		p.machineidcount[h.Metadata.MachineID]++
