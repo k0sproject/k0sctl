@@ -251,8 +251,12 @@ func (l Linux) MachineID(h os.Host) (string, error) {
 }
 
 func (l Linux) ConfigureSELinux(h os.Host, datadir string) error {
+
 	script := `
 	  DATA_DIR=` + datadir + `
+	  install -d -m 0700 -o root -g root $DATA_DIR
+	  install -d -m 0700 -o root -g root $DATA_DIR/bin
+	  install -d -m 0700 -o root -g root $DATA_DIR/containerd
     semanage fcontext -a -t container_runtime_exec_t "${DATA_DIR}/bin/containerd.*"
     semanage fcontext -a -t container_runtime_exec_t "${DATA_DIR}/bin/runc"
     restorecon -R -v ${DATA_DIR}/bin
