@@ -143,7 +143,7 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(ctx *cli.Context) error {
-	fmt.Printf("k0sctl %s Copyright 2022, k0sctl authors.\n", k0sctl.Version)
+	fmt.Printf("k0sctl %s Copyright 2023, k0sctl authors.\n", k0sctl.Version)
 	if !ctx.Bool("disable-telemetry") {
 		fmt.Println("Anonymized telemetry of usage will be sent to the authors.")
 	}
