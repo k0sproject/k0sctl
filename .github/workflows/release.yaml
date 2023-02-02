@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # Ugly hack to get the tag name
       # github.ref gives the full reference like refs.tags.v0.0.1-beta1
@@ -21,9 +21,10 @@ jobs:
           echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.19
+          go-version-file: go.mod
+          check-latest: true
 
       - name: Build binaries
         id: build_bins
