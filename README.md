@@ -218,7 +218,7 @@ spec:
     version: 0.10.0
     config:
       apiVersion: k0s.k0sproject.io/v1beta1
-      kind: Cluster
+      kind: ClusterConfig
       metadata:
         name: my-k0s-cluster
       spec:
