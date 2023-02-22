@@ -1,9 +1,6 @@
 package phase
 
 import (
-	"strings"
-
-	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
@@ -53,13 +50,9 @@ func (p *ResetLeader) Run() error {
 
 	log.Debugf("%s: resetting k0s...", p.leader)
 	out, err := p.leader.ExecOutput(p.leader.Configurer.K0sCmdf("reset --data-dir=%s", p.leader.DataDir), exec.Sudo(p.leader))
-	c, _ := semver.NewConstraint("<= 1.22.3+k0s.0")
-	running, _ := semver.NewVersion(p.leader.Metadata.K0sBinaryVersion)
 	if err != nil {
+		log.Debugf("%s: k0s reset failed: %s", p.leader, out)
 		log.Warnf("%s: k0s reported failure: %v", p.leader, err)
-		if c.Check(running) && !strings.Contains(out, "k0s cleanup operations done") {
-			log.Warnf("%s: k0s reset failed, trying k0s cleanup", p.leader)
-		}
 	}
 	log.Debugf("%s: resetting k0s completed", p.leader)
 
