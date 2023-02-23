@@ -2,7 +2,9 @@ package phase
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -17,12 +19,16 @@ func (p *GetKubeconfig) Title() string {
 	return "Get admin kubeconfig"
 }
 
+var readKubeconfig = func(h *cluster.Host) (string, error) {
+	return h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h))
+}
+
 // Run the phase
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.Hosts.Controllers()[0]
-	output, err := h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h))
+	output, err := readKubeconfig(h)
 	if err != nil {
-		return err
+		return fmt.Errorf("read kubeconfig from host: %w", err)
 	}
 
 	if p.APIAddress == "" {
@@ -38,7 +44,11 @@ func (p *GetKubeconfig) Run() error {
 			port = p
 		}
 
-		p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)
+		if strings.Contains(address, ":") {
+			p.APIAddress = fmt.Sprintf("https://[%s]:%d", address, port)
+		} else {
+			p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)
+		}
 	}
 
 	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, p.APIAddress)
