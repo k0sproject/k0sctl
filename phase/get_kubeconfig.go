@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -38,7 +39,11 @@ func (p *GetKubeconfig) Run() error {
 			port = p
 		}
 
-		p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)
+		if strings.Contains(address, ":") {
+			p.APIAddress = fmt.Sprintf("https://[%s]:%d", address, port)
+		} else {
+			p.APIAddress = fmt.Sprintf("https://%s:%d", address, port)
+		}
 	}
 
 	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, p.APIAddress)
