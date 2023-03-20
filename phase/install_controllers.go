@@ -83,6 +83,10 @@ func (p *InstallControllers) Run() error {
 			}
 		}()
 
+		if p.Config.Spec.K0s.DynamicConfig {
+			h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+		}
+
 		log.Infof("%s: installing k0s controller", h)
 		cmd, err := h.K0sInstallCommand()
 		if err != nil {
