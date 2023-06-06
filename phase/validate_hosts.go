@@ -28,7 +28,9 @@ func (p *ValidateHosts) Run() error {
 	for _, h := range p.Config.Spec.Hosts {
 		p.hncount[h.Metadata.Hostname]++
 		p.machineidcount[h.Metadata.MachineID]++
-		p.privateaddrcount[h.PrivateAddress]++
+		if h.PrivateAddress != "" {
+			p.privateaddrcount[h.PrivateAddress]++
+		}
 	}
 
 	return p.parallelDo(
@@ -50,7 +52,7 @@ func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
 
 func (p *ValidateHosts) validateUniquePrivateAddress(h *cluster.Host) error {
 	if p.privateaddrcount[h.PrivateAddress] > 1 {
-		return fmt.Errorf("privateAddress %s is not unique: %s", h.PrivateAddress, h.Metadata.Hostname)
+		return fmt.Errorf("privateAddress %q is not unique: %s", h.PrivateAddress, h.Metadata.Hostname)
 	}
 
 	return nil
