@@ -2,12 +2,12 @@ package action
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -15,18 +15,15 @@ import (
 )
 
 type Reset struct {
-	Config      *v1beta1.Cluster
-	Concurrency int
-	Force       bool
+	// Manager is the phase manager
+	Manager *phase.Manager
+	Stdout  io.Writer
+	Force   bool
 }
 
 func (r Reset) Run() error {
-	if r.Config == nil {
-		return fmt.Errorf("config is nil")
-	}
-
 	if !r.Force {
-		if !isatty.IsTerminal(os.Stdout.Fd()) {
+		if stdoutFile, ok := r.Stdout.(*os.File); ok && !isatty.IsTerminal(stdoutFile.Fd()) {
 			return fmt.Errorf("reset requires --force")
 		}
 		confirmed := false
@@ -41,13 +38,12 @@ func (r Reset) Run() error {
 
 	start := time.Now()
 
-	manager := phase.Manager{Config: r.Config, Concurrency: r.Concurrency}
-	for _, h := range r.Config.Spec.Hosts {
+	for _, h := range r.Manager.Config.Spec.Hosts {
 		h.Reset = true
 	}
 
 	lockPhase := &phase.Lock{}
-	manager.AddPhase(
+	r.Manager.AddPhase(
 		&phase.Connect{},
 		&phase.DetectOS{},
 		lockPhase,
@@ -71,12 +67,12 @@ func (r Reset) Run() error {
 
 	analytics.Client.Publish("reset-start", map[string]interface{}{})
 
-	if err := manager.Run(); err != nil {
-		analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": r.Config.Spec.K0s.Metadata.ClusterID})
+	if err := r.Manager.Run(); err != nil {
+		analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": r.Manager.Config.Spec.K0s.Metadata.ClusterID})
 		return err
 	}
 
-	analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": r.Config.Spec.K0s.Metadata.ClusterID})
+	analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": r.Manager.Config.Spec.K0s.Metadata.ClusterID})
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)

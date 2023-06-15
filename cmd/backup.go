@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/k0sproject/k0sctl/action"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/phase"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,26 +22,17 @@ var backupCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initManager, displayLogo, initAnalytics, displayCopyright),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		logWriter, err := LogFile()
-		if err != nil {
-			return err
-		}
-
-		var lf *os.File
-
-		if l, ok := logWriter.(*os.File); ok && l != nil {
-			lf = l
-		}
-
 		backupAction := action.Backup{
-			Config:      ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
-			Concurrency: ctx.Int("concurrency"),
-			LogFile:     lf,
+			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 		}
 
-		return backupAction.Run()
+		if err := backupAction.Run(); err != nil {
+			return fmt.Errorf("backup failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
+		}
+
+		return nil
 	},
 }

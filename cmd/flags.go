@@ -30,6 +30,8 @@ import (
 )
 
 type ctxConfigKey struct{}
+type ctxManagerKey struct{}
+type ctxLogFileKey struct{}
 
 var (
 	debugFlag = &cli.BoolFlag{
@@ -212,6 +214,25 @@ func closeAnalytics(_ *cli.Context) error {
 	return nil
 }
 
+func initManager(ctx *cli.Context) error {
+	c, ok := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
+	if c == nil || !ok {
+		return fmt.Errorf("cluster config not available in context")
+	}
+
+	manager, err := phase.NewManager(c)
+	if err != nil {
+		return fmt.Errorf("failed to initialize phase manager: %w", err)
+	}
+
+	manager.Concurrency = ctx.Int("concurrency")
+	manager.ConcurrentUploads = ctx.Int("concurrent-uploads")
+
+	ctx.Context = context.WithValue(ctx.Context, ctxManagerKey{}, manager)
+
+	return nil
+}
+
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
@@ -219,7 +240,7 @@ func initLogging(ctx *cli.Context) error {
 	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
 	exec.DisableRedact = ctx.Bool("no-redact")
 	rig.SetLogger(log.StandardLogger())
-	return initFileLogger()
+	return initFileLogger(ctx)
 }
 
 // initSilentLogging initializes the logger in silent mode
@@ -230,7 +251,7 @@ func initSilentLogging(ctx *cli.Context) error {
 	exec.DisableRedact = ctx.Bool("no-redact")
 	initScreenLogger(logLevelFromCtx(ctx, log.FatalLevel))
 	rig.SetLogger(log.StandardLogger())
-	return initFileLogger()
+	return initFileLogger(ctx)
 }
 
 func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
@@ -247,18 +268,19 @@ func initScreenLogger(lvl log.Level) {
 	log.AddHook(screenLoggerHook(lvl))
 }
 
-func initFileLogger() error {
+func initFileLogger(ctx *cli.Context) error {
 	lf, err := LogFile()
 	if err != nil {
 		return err
 	}
 	log.AddHook(fileLoggerHook(lf))
+	ctx.Context = context.WithValue(ctx.Context, ctxLogFileKey{}, lf.Name())
 	return nil
 }
 
 const logPath = "k0sctl/k0sctl.log"
 
-func LogFile() (io.Writer, error) {
+func LogFile() (*os.File, error) {
 	fn, err := xdg.SearchCacheFile(logPath)
 	if err != nil {
 		fn, err = xdg.CacheFile(logPath)

@@ -15,11 +15,10 @@ import (
 )
 
 type ConfigEdit struct {
-	Config      *v1beta1.Cluster
-	Concurrency int
-	Stdout      io.Writer
-	Stderr      io.Writer
-	Stdin       io.Reader
+	Config *v1beta1.Cluster
+	Stdout io.Writer
+	Stderr io.Writer
+	Stdin  io.Reader
 }
 
 func (c ConfigEdit) Run() error {

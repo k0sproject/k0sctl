@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/action"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/phase"
 
 	"github.com/urfave/cli/v2"
 )
@@ -26,15 +28,19 @@ var resetCommand = &cli.Command{
 			Aliases: []string{"f"},
 		},
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics, displayCopyright),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initManager, initAnalytics, displayCopyright),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		resetAction := action.Reset{
-			Config:      ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
-			Concurrency: ctx.Int("concurrency"),
-			Force:       ctx.Bool("force"),
+			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
+			Force:   ctx.Bool("force"),
+			Stdout:  ctx.App.Writer,
 		}
 
-		return resetAction.Run()
+		if err := resetAction.Run(); err != nil {
+			return fmt.Errorf("reset failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
+		}
+
+		return nil
 	},
 }

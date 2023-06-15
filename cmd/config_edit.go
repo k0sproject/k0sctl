@@ -22,11 +22,10 @@ var configEditCommand = &cli.Command{
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		configEditAction := action.ConfigEdit{
-			Config:      ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
-			Concurrency: ctx.Int("concurrency"),
-			Stdout:      ctx.App.Writer,
-			Stderr:      ctx.App.ErrWriter,
-			Stdin:       ctx.App.Reader,
+			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
+			Stdout: ctx.App.Writer,
+			Stderr: ctx.App.ErrWriter,
+			Stdin:  ctx.App.Reader,
 		}
 
 		return configEditAction.Run()

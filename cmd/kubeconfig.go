@@ -5,7 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/action"
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/phase"
 	"github.com/urfave/cli/v2"
 )
 
@@ -19,7 +19,6 @@ var kubeconfigCommand = &cli.Command{
 			Value: "",
 		},
 		configFlag,
-		concurrencyFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -27,30 +26,22 @@ var kubeconfigCommand = &cli.Command{
 		retryTimeoutFlag,
 		analyticsFlag,
 	},
-	Before: actions(initSilentLogging, initConfig, initAnalytics),
+	Before: actions(initSilentLogging, initConfig, initManager, initAnalytics),
 	After: func(_ *cli.Context) error {
 		analytics.Client.Close()
 		return nil
 	},
 	Action: func(ctx *cli.Context) error {
-		var cfg *v1beta1.Cluster
-		if c, ok := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster); ok {
-			cfg = c
-		} else {
-			return fmt.Errorf("config is nil")
-		}
-
 		kubeconfigAction := action.Kubeconfig{
-			Config:               cfg,
-			Concurrency:          ctx.Int("concurrency"),
+			Manager:              ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 			KubeconfigAPIAddress: ctx.String("address"),
 		}
 
 		if err := kubeconfigAction.Run(); err != nil {
-			return err
+			return fmt.Errorf("getting kubeconfig failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 
-		_, err := fmt.Fprintf(ctx.App.Writer, "%s\n", cfg.Metadata.Kubeconfig)
+		_, err := fmt.Fprintf(ctx.App.Writer, "%s\n", kubeconfigAction.Manager.Config.Metadata.Kubeconfig)
 		return err
 	},
 }

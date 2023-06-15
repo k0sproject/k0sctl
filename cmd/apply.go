@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/k0sproject/k0sctl/action"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/phase"
 
 	"github.com/urfave/cli/v2"
 )
@@ -55,35 +57,35 @@ var applyCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright, warnOldCache),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initManager, displayLogo, initAnalytics, displayCopyright, warnOldCache),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
+		var kubeconfigOut io.Writer
 
-		logWriter, err := LogFile()
-		if err != nil {
-			return err
+		if kc := ctx.String("kubeconfig-out"); kc != "" {
+			out, err := os.OpenFile(kc, os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				return fmt.Errorf("failed to open kubeconfig-out file: %w", err)
+			}
+			defer out.Close()
+			kubeconfigOut = out
 		}
 
-		var lf *os.File
-
-		if l, ok := logWriter.(*os.File); ok && l != nil {
-			lf = l
-		}
-
-		applier := action.Apply{
+		applyAction := action.Apply{
 			Force:                 ctx.Bool("force"),
+			Manager:               ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
+			KubeconfigOut:         kubeconfigOut,
+			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
 			NoWait:                ctx.Bool("no-wait"),
 			NoDrain:               ctx.Bool("no-drain"),
-			Config:                ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
-			Concurrency:           ctx.Int("concurrency"),
-			ConcurrentUploads:     ctx.Int("concurrent-uploads"),
 			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
-			KubeconfigOut:         ctx.String("kubeconfig-out"),
-			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
 			RestoreFrom:           ctx.String("restore-from"),
-			LogFile:               lf,
 		}
 
-		return applier.Run()
+		if err := applyAction.Run(); err != nil {
+			return fmt.Errorf("apply failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
+		}
+
+		return nil
 	},
 }

@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/logrusorgru/aurora"
@@ -57,6 +59,15 @@ type Manager struct {
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
+}
+
+// NewManager creates a new Manager
+func NewManager(config *v1beta1.Cluster) (*Manager, error) {
+	if config == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	return &Manager{Config: config}, nil
 }
 
 // AddPhase adds a Phase to Manager
