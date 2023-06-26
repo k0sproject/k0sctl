@@ -9,9 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// WriteKey for analytics
-const WriteKey string = "oU2iC4shRUBfEboaO0FDuDIUk49Ime92"
-
 // Verbose controls the verbosity of segment analytics client
 var Verbose bool
 
@@ -35,8 +32,8 @@ type Client struct {
 }
 
 // NewClient returns a new segment analytics client
-func NewClient() (*Client, error) {
-	client, err := segment.NewWithConfig(WriteKey, segment.Config{Verbose: Verbose})
+func NewClient(writeKey string) (*Client, error) {
+	client, err := segment.NewWithConfig(writeKey, segment.Config{Verbose: Verbose})
 	if err != nil {
 		return nil, err
 	}

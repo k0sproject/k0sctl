@@ -169,18 +169,15 @@ func warnOldCache(_ *cli.Context) error {
 	return nil
 }
 
+const segmentWriteKey string = "oU2iC4shRUBfEboaO0FDuDIUk49Ime92"
+
 func initAnalytics(ctx *cli.Context) error {
 	if ctx.Bool("disable-telemetry") {
 		log.Tracef("disabling telemetry")
 		return nil
 	}
 
-	if segment.WriteKey == "" {
-		log.Tracef("segment write key not set, analytics disabled")
-		return nil
-	}
-
-	client, err := segment.NewClient()
+	client, err := segment.NewClient(segmentWriteKey)
 	if err != nil {
 		return err
 	}
