@@ -1,9 +1,5 @@
 package analytics
 
-import (
-	log "github.com/sirupsen/logrus"
-)
-
 type publisher interface {
 	Publish(string, map[string]interface{})
 	Close()
@@ -21,9 +17,7 @@ func (c *NullClient) Initialize() error {
 }
 
 // Publish would send a tracking event
-func (c *NullClient) Publish(event string, props map[string]interface{}) {
-	log.Tracef("analytics event %s - properties: %+v", event, props)
-}
+func (c *NullClient) Publish(_ string, _ map[string]interface{}) {}
 
 // Close the analytics connection
 func (c *NullClient) Close() {}
