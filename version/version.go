@@ -1,12 +1,16 @@
 package version
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/carlmjohnson/versioninfo"
+)
 
 var (
 	// Version of the product, is set during the build
-	Version = "0.0.0"
+	Version = versioninfo.Version
 	// GitCommit is set during the build
-	GitCommit = "HEAD"
+	GitCommit = versioninfo.Revision
 	// Environment of the product, is set during the build
 	Environment = "development"
 )
