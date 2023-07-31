@@ -169,6 +169,11 @@ func (k K0s) GetClusterID(h *Host) (string, error) {
 	return h.ExecOutput(h.Configurer.KubectlCmdf(h, "get --data-dir=%s -n kube-system namespace kube-system -o template={{.metadata.uid}}", h.DataDir), exec.Sudo(h))
 }
 
+// VersionEquals returns true when the k0s version is equal to a given version
+func (k K0s) VersionEquals(b string) bool {
+	return strings.TrimPrefix(k.Version, "v") == strings.TrimPrefix(b, "v")
+}
+
 // TokenID returns a token id from a token string that can be used to invalidate the token
 func TokenID(s string) (string, error) {
 	b64 := make([]byte, base64.StdEncoding.DecodedLen(len(s)))

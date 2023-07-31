@@ -35,7 +35,7 @@ func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		// The version is already correct
-		if h.Metadata.K0sBinaryVersion == p.Config.Spec.K0s.Version {
+		if p.Config.Spec.K0s.VersionEquals(h.Metadata.K0sBinaryVersion) {
 			return false
 		}
 
