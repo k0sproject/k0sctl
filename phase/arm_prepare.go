@@ -27,7 +27,7 @@ func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		arch := h.Metadata.Arch
-		return h.Role != "worker" && (strings.HasPrefix(arch, "arm") || strings.HasPrefix(arch, "aarch"))
+		return h.Role != "worker" && (strings.HasPrefix(arch, "arm") || strings.HasPrefix(arch, "aarch")) && !strings.HasSuffix(arch, "64")
 	})
 
 	return nil
