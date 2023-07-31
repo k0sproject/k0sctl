@@ -6,7 +6,6 @@ import (
 
 	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,19 +44,9 @@ func (m mockHost) Sudo(string) (string, error) {
 	return "", nil
 }
 
-type custompaths struct {
-	BaseLinux
-}
-
-func (l custompaths) InstallPackage(_ os.Host, pkg ...string) error {
-	return nil
-}
-func (l custompaths) K0sBinaryPath() string {
-	return "/opt/bin/k0s"
-}
-
+// TestPaths tests the slightly weird way to perform function overloading
 func TestPaths(t *testing.T) {
-	fc := &custompaths{}
+	fc := &Flatcar{}
 	fc.PathFuncs = interface{}(fc).(configurer.PathFuncs)
 
 	ubuntu := &Ubuntu{}

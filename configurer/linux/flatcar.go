@@ -30,3 +30,7 @@ func init() {
 func (l Flatcar) InstallPackage(h os.Host, pkg ...string) error {
 	return errors.New("FlatcarContainerLinux does not support installing packages manually")
 }
+
+func (l Flatcar) K0sBinaryPath() string {
+	return "/opt/bin/k0s"
+}
