@@ -40,7 +40,7 @@ require (
 )
 
 require (
-	github.com/alessio/shellescape v1.4.1
+	github.com/alessio/shellescape v1.4.2
 	github.com/carlmjohnson/versioninfo v0.22.4
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.14.1
