@@ -23,24 +23,30 @@ func (p *DownloadK0s) Title() string {
 // Prepare the phase
 func (p *DownloadK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
+
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		// Nothing to upload
+		// Nothing to download
 		if h.UploadBinary {
 			return false
 		}
 
-		// Nothing to upload
+		// No need to download, host is going to be reset
 		if h.Reset {
 			return false
 		}
 
 		// The version is already correct
-		if h.Metadata.K0sBinaryVersion == p.Config.Spec.K0s.Version {
+		err := p.Config.Spec.K0s.VersionMustEqual(h.Metadata.K0sBinaryVersion)
+		if err == nil {
+			log.Debugf("%s: k0s version on target host is already %s", h, h.Metadata.K0sBinaryVersion)
 			return false
 		}
 
+		log.Debugf("%s: %v", h, err)
+
 		return true
 	})
+
 	return nil
 }
 

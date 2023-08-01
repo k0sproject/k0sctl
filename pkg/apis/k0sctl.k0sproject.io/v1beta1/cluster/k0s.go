@@ -169,6 +169,34 @@ func (k K0s) GetClusterID(h *Host) (string, error) {
 	return h.ExecOutput(h.Configurer.KubectlCmdf(h, "get --data-dir=%s -n kube-system namespace kube-system -o template={{.metadata.uid}}", h.DataDir), exec.Sudo(h))
 }
 
+// VersionMustEqual returns an error if the k0s version in the struct does not match the given version or
+// if either of the version strings can't be parsed
+func (k K0s) VersionMustEqual(b string) error {
+	if k.Version == "" {
+		return fmt.Errorf("k0s version not set")
+	}
+
+	if b == "" {
+		return fmt.Errorf("empty k0s version given")
+	}
+
+	aVer, err := version.NewVersion(k.Version)
+	if err != nil {
+		return fmt.Errorf("failed to parse k0s version: %w", err)
+	}
+
+	bVer, err := version.NewVersion(b)
+	if err != nil {
+		return fmt.Errorf("failed to parse given k0s version: %w", err)
+	}
+
+	if aVer.String() != bVer.String() {
+		return fmt.Errorf("k0s version mismatch: expected %s, got %s", bVer, aVer)
+	}
+
+	return nil
+}
+
 // TokenID returns a token id from a token string that can be used to invalidate the token
 func TokenID(s string) (string, error) {
 	b64 := make([]byte, base64.StdEncoding.DecodedLen(len(s)))
