@@ -2,14 +2,13 @@ GO_SRCS := $(shell find . -type f -name '*.go' -a ! \( -name 'zz_generated*' -o 
 GO_TESTS := $(shell find . -type f -name '*_test.go')
 TAG_NAME = $(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
 GIT_COMMIT = $(shell git rev-parse --short=7 HEAD)
-K0SCTL_VERSION = $(or ${TAG_NAME},dev)
 ifdef TAG_NAME
 	ENVIRONMENT = production
 endif
 ENVIRONMENT ?= development
 PREFIX = /usr/local
 
-LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/k0sproject/k0sctl/version.GitCommit=$(GIT_COMMIT) -X github.com/k0sproject/k0sctl/version.Version=$(K0SCTL_VERSION)
+LD_FLAGS = -s -w -X github.com/k0sproject/k0sctl/version.Environment=$(ENVIRONMENT) -X github.com/carlmjohnson/versioninfo.Revision=$(GIT_COMMIT) -X github.com/carlmjohnson/versioninfo.Version=$(TAG_NAME)
 BUILD_FLAGS = -trimpath -a -tags "netgo,osusergo,static_build" -installsuffix netgo -ldflags "$(LD_FLAGS) -extldflags '-static'"
 
 k0sctl: $(GO_SRCS)
