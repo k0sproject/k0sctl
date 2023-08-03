@@ -9,6 +9,11 @@ import (
 
 // NoWait is used by various phases to decide if node ready state should be waited for or not
 var NoWait bool
+
+// Force is used by various phases to attempt a forced installation
+var Force bool
+
+// Colorize is an instance of "aurora", used to colorize the output
 var Colorize = aurora.NewAurora(false)
 
 type phase interface {

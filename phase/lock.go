@@ -37,6 +37,7 @@ func (p *Lock) Title() string {
 	return "Acquire exclusive host lock"
 }
 
+// Cancel releases the lock
 func (p *Lock) Cancel() {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -44,6 +45,11 @@ func (p *Lock) Cancel() {
 		f()
 	}
 	p.wg.Wait()
+}
+
+// CleanUp calls Cancel to release the lock
+func (p *Lock) CleanUp() {
+	p.Cancel()
 }
 
 // Run the phase
