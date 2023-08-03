@@ -37,6 +37,11 @@ type K0sMetadata struct {
 	VersionDefaulted bool
 }
 
+// IsZero implements the IsZeroer interface for yaml
+func (k K0sMetadata) IsZero() bool {
+	return k.ClusterID == "" && !k.VersionDefaulted
+}
+
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type k0s K0s
@@ -47,6 +52,11 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return defaults.Set(k)
+}
+
+// IsZero implements the IsZeroer interface for yaml
+func (k *K0s) IsZero() bool {
+	return k == nil || (k.Version == "" && (k.Config == nil || len(k.Config) == 0)) && k.Metadata.IsZero()
 }
 
 const k0sDynamicSince = "1.22.2+k0s.2"

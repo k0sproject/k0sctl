@@ -9,8 +9,8 @@ import (
 
 // Spec defines cluster config spec section
 type Spec struct {
-	Hosts Hosts `yaml:"hosts"`
-	K0s   *K0s  `yaml:"k0s"`
+	Hosts Hosts `yaml:"hosts,omitempty" json:"hosts,omitempty"`
+	K0s   *K0s  `yaml:"k0s,omitempty" json:"k0s,omitempty"`
 
 	k0sLeader *Host
 }
@@ -23,6 +23,11 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if err := unmarshal(ys); err != nil {
 		return err
+	}
+
+	// An empty "k0s:" in yaml will be treated as nil
+	if ys.K0s == nil {
+		ys.K0s = &K0s{}
 	}
 
 	return defaults.Set(s)

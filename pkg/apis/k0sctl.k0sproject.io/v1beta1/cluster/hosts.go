@@ -6,8 +6,13 @@ import (
 	"sync"
 )
 
-//Hosts are destnation hosts
+// Hosts are destnation hosts
 type Hosts []*Host
+
+// IsZero implements the IsZeroer interface for yaml
+func (hosts Hosts) IsZero() bool {
+	return len(hosts) == 0
+}
 
 func (hosts Hosts) Validate() error {
 	if len(hosts) == 0 {
