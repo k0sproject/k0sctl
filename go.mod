@@ -41,7 +41,7 @@ require (
 
 require (
 	github.com/alessio/shellescape v1.4.2
-	github.com/carlmjohnson/versioninfo v0.22.4
+	github.com/carlmjohnson/versioninfo v0.22.5-0.20230802113222-186e0577a42c
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/k0sproject/version v0.3.0
@@ -100,5 +100,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-replace github.com/carlmjohnson/versioninfo => github.com/kke/versioninfo v0.0.0-20230802075057-8c93d82afe5b
