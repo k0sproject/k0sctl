@@ -41,7 +41,7 @@ require (
 
 require (
 	github.com/alessio/shellescape v1.4.2
-	github.com/carlmjohnson/versioninfo v0.22.5-0.20230802113222-186e0577a42c
+	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.14.1
 	github.com/k0sproject/version v0.3.0
