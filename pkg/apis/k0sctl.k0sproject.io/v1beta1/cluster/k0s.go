@@ -127,6 +127,7 @@ func (k *K0s) NodeConfig() dig.Mapping {
 		},
 		"spec": dig.Mapping{
 			"api":     k.Config.DigMapping("spec", "api"),
+			"network": k.Config.DigMapping("spec", "network"),
 			"storage": k.Config.DigMapping("spec", "storage"),
 		},
 	}
