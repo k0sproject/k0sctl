@@ -24,6 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const k0sVersionWithForceFlag = "v1.27.4+k0s.0"
+
 // Host contains all the needed details to work with hosts
 type Host struct {
 	rig.Connection `yaml:",inline"`
@@ -299,6 +301,21 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		}
 		if extra != nil {
 			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
+		}
+	}
+
+	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != "" {
+		targetVersion, err := version.NewVersion(k0sVersionWithForceFlag)
+		if err != nil {
+			return "", fmt.Errorf("internal error: failed to parse k0s version with force flag constant: %w", err)
+		}
+		installedVersion, err := version.NewVersion(h.Metadata.K0sBinaryVersion)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse installed k0s version number: %w", err)
+		}
+		if installedVersion.LessThan(targetVersion) {
+			log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
+			flags.Delete("--force")
 		}
 	}
 

@@ -53,6 +53,11 @@ func (p *InitializeK0s) Run() error {
 		p.SetProp("dynamic-config", true)
 	}
 
+	if Force {
+		log.Warnf("%s: --force given, using k0s install with --force", h)
+		h.InstallFlags.AddOrReplace("--force=true")
+	}
+
 	log.Infof("%s: installing k0s controller", h)
 	cmd, err := h.K0sInstallCommand()
 	if err != nil {

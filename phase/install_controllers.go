@@ -27,7 +27,7 @@ func (p *InstallControllers) Prepare(config *v1beta1.Cluster) error {
 	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	p.leader = p.Config.Spec.K0sLeader()
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
-		return !h.Reset && (h != p.leader && h.Metadata.K0sRunningVersion == "")
+		return !h.Reset && !h.Metadata.NeedsUpgrade && (h != p.leader && h.Metadata.K0sRunningVersion == "")
 	})
 
 	return nil
@@ -85,6 +85,11 @@ func (p *InstallControllers) Run() error {
 
 		if p.Config.Spec.K0s.DynamicConfig {
 			h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+		}
+
+		if Force {
+			log.Warnf("%s: --force given, using k0s install with --force", h)
+			h.InstallFlags.AddOrReplace("--force=true")
 		}
 
 		log.Infof("%s: installing k0s controller", h)

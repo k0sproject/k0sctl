@@ -47,6 +47,10 @@ var applyCommand = &cli.Command{
 			Usage:  "Skip downgrade check",
 			Hidden: true,
 		},
+		&cli.BoolFlag{
+			Name:  "force",
+			Usage: "Attempt a forced installation in case of certain failures",
+		},
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -58,6 +62,7 @@ var applyCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		start := time.Now()
 		phase.NoWait = ctx.Bool("no-wait")
+		phase.Force = ctx.Bool("force")
 
 		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster), Concurrency: ctx.Int("concurrency"), ConcurrentUploads: ctx.Int("concurrent-uploads")}
 		lockPhase := &phase.Lock{}

@@ -35,14 +35,11 @@ func (p *DownloadK0s) Prepare(config *v1beta1.Cluster) error {
 			return false
 		}
 
-		// The version is already correct
-		err := p.Config.Spec.K0s.VersionMustEqual(h.Metadata.K0sBinaryVersion)
-		if err == nil {
+		// The version on host is already same as the target version
+		if p.Config.Spec.K0s.VersionEqual(h.Metadata.K0sBinaryVersion) {
 			log.Debugf("%s: k0s version on target host is already %s", h, h.Metadata.K0sBinaryVersion)
 			return false
 		}
-
-		log.Debugf("%s: %v", h, err)
 
 		return true
 	})

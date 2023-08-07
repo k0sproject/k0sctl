@@ -71,10 +71,12 @@ func (p *GatherK0sFacts) Run() error {
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
+		log.Debugf("%s: no 'k0s' binary in PATH", h)
 		return nil
 	}
 
-	h.Metadata.K0sBinaryVersion = strings.TrimPrefix(output, "v")
+	h.Metadata.K0sBinaryVersion = strings.TrimSpace(output)
+
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
 	if h.IsController() && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
@@ -87,9 +89,32 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
+	var existingServiceScript string
+
+	for _, svc := range []string{"k0scontroller", "k0sworker", "k0sserver"} {
+		if path, err := h.Configurer.ServiceScriptPath(h, svc); err == nil && path != "" {
+			existingServiceScript = path
+			break
+		}
+	}
+
 	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"), exec.Sudo(h))
 	if err != nil {
-		return nil
+		if existingServiceScript == "" {
+			log.Debugf("%s: an existing k0s instance is not running and does not seem to have been installed as a service", h)
+			return nil
+		}
+
+		if Force {
+			log.Warnf("%s: an existing k0s instance is not running but has been installed as a service at %s - ignoring because --force was given", h, existingServiceScript)
+			return nil
+		}
+
+		return fmt.Errorf("k0s doesn't appear to be running but has been installed as a service at %s - please remove it or start the service", existingServiceScript)
+	}
+
+	if existingServiceScript == "" {
+		return fmt.Errorf("k0s is running but has not been installed as a service, possibly a non-k0sctl managed host or a broken installation - you can try to reset the host by setting `reset: true` on it")
 	}
 
 	status := k0sstatus{}
