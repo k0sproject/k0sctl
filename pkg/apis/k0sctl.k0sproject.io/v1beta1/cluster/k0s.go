@@ -17,6 +17,7 @@ import (
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -105,12 +106,12 @@ func (k *K0s) validateMinDynamic() func(interface{}) error {
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
 func (k *K0s) SetDefaults() {
-	if k.Version != "" {
-		return
-	}
-
-	latest, err := version.LatestByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
-	if err == nil {
+	if k.Version == "" {
+		log.Debug("k0s version not set, defaulting to latest")
+		latest, err := version.LatestByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
+		if err != nil {
+			log.Warnf("failed to get the version of latest k0s: %s", err)
+		}
 		k.Version = latest.String()
 		k.Metadata.VersionDefaulted = true
 	}
