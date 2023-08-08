@@ -469,7 +469,7 @@ func (h *Host) WaitK0sDynamicConfigReady() error {
 					return nil
 				}
 			}
-			return fmt.Errorf("failed to find ReconcileSuccess event in kubectl output")
+			return fmt.Errorf("failed to find SuccessfulReconcile event in kubectl output")
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),
