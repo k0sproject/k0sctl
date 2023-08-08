@@ -465,7 +465,7 @@ func (h *Host) WaitK0sDynamicConfigReady() error {
 				return fmt.Errorf("failed to decode kubectl output: %w", err)
 			}
 			for _, e := range events.Items {
-				if e.Reason == "ReconcileSuccess" {
+				if e.Reason == "SuccessfulReconcile" {
 					return nil
 				}
 			}
