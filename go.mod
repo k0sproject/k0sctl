@@ -1,6 +1,6 @@
 module github.com/k0sproject/k0sctl
 
-go 1.20
+go 1.21
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
