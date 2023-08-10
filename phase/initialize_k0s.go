@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
@@ -90,6 +92,12 @@ func (p *InitializeK0s) Run() error {
 	log.Infof("%s: waiting for kubernetes api to respond", h)
 	if err := h.WaitKubeAPIReady(port); err != nil {
 		return err
+	}
+
+	if p.Config.Spec.K0s.DynamicConfig {
+		if err := h.WaitK0sDynamicConfigReady(); err != nil {
+			return fmt.Errorf("dynamic config reconciliation failed: %w", err)
+		}
 	}
 
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version

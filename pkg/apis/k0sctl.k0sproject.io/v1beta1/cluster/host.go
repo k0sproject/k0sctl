@@ -446,6 +446,39 @@ func (h *Host) WaitKubeNodeReady() error {
 	)
 }
 
+type statusEvents struct {
+	Items []struct {
+		Reason string `json:"reason"`
+	} `json:"items"`
+}
+
+// WaitK0sDynamicConfigReady blocks until dynamic config reconciliation has been performed
+func (h *Host) WaitK0sDynamicConfigReady() error {
+	return retry.Do(
+		func() error {
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.DataDir), exec.Sudo(h))
+			if err != nil {
+				return fmt.Errorf("failed to get k0s config status events: %w", err)
+			}
+			events := &statusEvents{}
+			if err := json.Unmarshal([]byte(output), &events); err != nil {
+				return fmt.Errorf("failed to decode kubectl output: %w", err)
+			}
+			for _, e := range events.Items {
+				if e.Reason == "SuccessfulReconcile" {
+					return nil
+				}
+			}
+			return fmt.Errorf("failed to find SuccessfulReconcile event in kubectl output")
+		},
+		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.MaxJitter(time.Second*2),
+		retry.Delay(time.Second*3),
+		retry.Attempts(120),
+		retry.LastErrorOnly(true),
+	)
+}
+
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --data-dir=%s --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
