@@ -155,8 +155,8 @@ func (l Linux) DataDirDefaultPath() string {
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (l Linux) KubectlCmdf(h os.Host, s string, args ...interface{}) string {
-	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.PathFuncs.KubeconfigPath(h), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
+func (l Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...interface{}) string {
+	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.PathFuncs.KubeconfigPath(h, dataDir), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
