@@ -390,7 +390,7 @@ func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 	return nil
 }
 
-// K0sDataDir returns the data dir for the host either from host.DataDir or the configurer's DataDirDefaultPath
+// K0sDataDir returns the data dir for the host either from host.DataDir or the default from configurer's DataDirDefaultPath
 func (h *Host) K0sDataDir() string {
 	if h.DataDir == "" {
 		return h.Configurer.DataDirDefaultPath()
