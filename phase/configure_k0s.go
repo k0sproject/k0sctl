@@ -41,7 +41,7 @@ func (p *ConfigureK0s) Run() error {
 
 		var cmd string
 		if p.leader.Exec(p.leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(p.leader)) == nil {
-			cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.DataDir)
+			cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
 		} else {
 			cmd = p.leader.Configurer.K0sCmdf("default-config")
 		}

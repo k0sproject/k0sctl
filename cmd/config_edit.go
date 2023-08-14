@@ -65,7 +65,7 @@ var configEditCommand = &cli.Command{
 			return err
 		}
 
-		oldCfg, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get clusterconfig k0s -o yaml", h.DataDir), exec.Sudo(h))
+		oldCfg, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get clusterconfig k0s -o yaml", h.K0sDataDir()), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}
@@ -102,7 +102,7 @@ var configEditCommand = &cli.Command{
 			return fmt.Errorf("configuration was not changed, aborting")
 		}
 
-		if err := h.Exec(h.Configurer.K0sCmdf("kubectl apply --data-dir=%s -n kube-system -f -", h.DataDir), exec.Stdin(newCfg), exec.Sudo(h)); err != nil {
+		if err := h.Exec(h.Configurer.K0sCmdf("kubectl apply --data-dir=%s -n kube-system -f -", h.K0sDataDir()), exec.Stdin(newCfg), exec.Sudo(h)); err != nil {
 			return err
 		}
 
