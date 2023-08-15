@@ -70,7 +70,7 @@ func (h *Host) SetDefaults() {
 		h.NoTaints = true
 	}
 
-	if dd := h.InstallFlags.Get("--data-dir"); dd != "" {
+	if dd := h.InstallFlags.GetValue("--data-dir"); dd != "" {
 		if h.DataDir != "" {
 			log.Debugf("%s: changed dataDir from '%s' to '%s' because of --data-dir installFlag", h, h.DataDir, dd)
 		}
