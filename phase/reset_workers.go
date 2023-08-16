@@ -94,7 +94,7 @@ func (p *ResetWorkers) Run() error {
 		}
 
 		log.Debugf("%s: resetting k0s...", h)
-		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.DataDir), exec.Sudo(h))
+		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h))
 		if err != nil {
 			log.Debugf("%s: k0s reset failed: %s", h, out)
 			log.Warnf("%s: k0s reported failure: %v", h, err)

@@ -20,7 +20,7 @@ func (p *GetKubeconfig) Title() string {
 }
 
 var readKubeconfig = func(h *cluster.Host) (string, error) {
-	return h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h))
+	return h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h, h.K0sDataDir()))
 }
 
 // Run the phase

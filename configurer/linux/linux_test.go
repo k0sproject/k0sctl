@@ -65,9 +65,9 @@ func TestPaths(t *testing.T) {
 	require.Equal(t, "/opt/bin/k0s --help", fc.K0sCmdf("--help"))
 	require.Equal(t, "/usr/local/bin/k0s --help", ubuntu.K0sCmdf("--help"))
 
-	require.Equal(t, "/var/lib/k0s/pki/admin.conf", fc.KubeconfigPath(h1))
-	require.Equal(t, "/var/lib/k0s/pki/admin.conf", ubuntu.KubeconfigPath(h1))
+	require.Equal(t, "/var/lib/k0s/pki/admin.conf", fc.KubeconfigPath(h1, fc.DataDirDefaultPath()))
+	require.Equal(t, "/var/lib/k0s/pki/admin.conf", ubuntu.KubeconfigPath(h1, ubuntu.DataDirDefaultPath()))
 
-	require.Equal(t, "/var/lib/k0s/kubelet.conf", fc.KubeconfigPath(h2))
-	require.Equal(t, "/var/lib/k0s/kubelet.conf", ubuntu.KubeconfigPath(h2))
+	require.Equal(t, "/var/lib/k0s/kubelet.conf", fc.KubeconfigPath(h2, fc.DataDirDefaultPath()))
+	require.Equal(t, "/var/lib/k0s/kubelet.conf", ubuntu.KubeconfigPath(h2, ubuntu.DataDirDefaultPath()))
 }

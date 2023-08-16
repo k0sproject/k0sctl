@@ -125,8 +125,8 @@ type configurer interface {
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
-	KubectlCmdf(os.Host, string, ...interface{}) string
-	KubeconfigPath(os.Host) string
+	KubectlCmdf(os.Host, string, string, ...interface{}) string
+	KubeconfigPath(os.Host, string) string
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
 	HTTPStatus(os.Host, string) (int, error)
@@ -260,7 +260,7 @@ func (h *Host) K0sInstallCommand() (string, error) {
 	role := h.Role
 	flags := h.InstallFlags
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.DataDir))
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
 
 	switch role {
 	case "controller+worker":
@@ -330,12 +330,12 @@ func (h *Host) K0sInstallCommand() (string, error) {
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.DataDir)
+	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.K0sDataDir())
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.DataDir, shellescape.Quote(backupfile))
+	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.K0sDataDir(), shellescape.Quote(backupfile))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -390,6 +390,14 @@ func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 	return nil
 }
 
+// K0sDataDir returns the data dir for the host either from host.DataDir or the default from configurer's DataDirDefaultPath
+func (h *Host) K0sDataDir() string {
+	if h.DataDir == "" {
+		return h.Configurer.DataDirDefaultPath()
+	}
+	return h.DataDir
+}
+
 type kubeNodeStatus struct {
 	Items []struct {
 		Status struct {
@@ -403,7 +411,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady() (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, "get node --data-dir=%s -l kubernetes.io/hostname=%s -o json", h.DataDir, h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -456,7 +464,7 @@ type statusEvents struct {
 func (h *Host) WaitK0sDynamicConfigReady() error {
 	return retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.DataDir), exec.Sudo(h))
+			output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.K0sDataDir()), exec.Sudo(h))
 			if err != nil {
 				return fmt.Errorf("failed to get k0s config status events: %w", err)
 			}
@@ -481,17 +489,17 @@ func (h *Host) WaitK0sDynamicConfigReady() error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "drain --data-dir=%s --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "uncordon --data-dir=%s %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, "delete node --data-dir=%s %s", h.DataDir, node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 func (h *Host) LeaveEtcd(node *Host) error {
@@ -499,7 +507,7 @@ func (h *Host) LeaveEtcd(node *Host) error {
 	if node.PrivateAddress != "" {
 		etcdAddress = node.PrivateAddress
 	}
-	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.DataDir), exec.Sudo(h))
+	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
