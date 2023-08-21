@@ -229,7 +229,7 @@ func (h *Host) K0sJoinTokenPath() string {
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (h *Host) K0sCmdf(template string, args ...any) string {
-	if template == "version" || strings.Contains(template, "--help") {
+	if template == "version" || strings.HasPrefix(template, "status") || strings.Contains(template, "--help") {
 		return fmt.Sprintf("%s %s", h.Configurer.K0sBinaryPath(), fmt.Sprintf(template, args...))
 	}
 	return fmt.Sprintf("%s --data-dir=%s %s", h.Configurer.K0sBinaryPath(), h.K0sDataDir(), fmt.Sprintf(template, args...))
