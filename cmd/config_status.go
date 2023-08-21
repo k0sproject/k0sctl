@@ -47,7 +47,7 @@ var configStatusCommand = &cli.Command{
 			format = "-o " + format
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s %s", h.K0sDataDir(), format), exec.Sudo(h))
+		output, err := h.ExecOutput(h.KubectlCmdf("-n kube-system get event --field-selector involvedObject.name=k0s %s", format), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}

@@ -139,7 +139,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 	k0sFlags.Add(fmt.Sprintf("--role %s", role))
 	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
 
-	out, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --help"), exec.Sudo(h))
+	out, err := h.ExecOutput(h.K0sCmdf("token create --help"), exec.Sudo(h))
 	if err == nil && strings.Contains(out, "--config") {
 		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
 	}
@@ -149,7 +149,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 	var token string
 	err = retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
+			output, err := h.ExecOutput(h.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
 			if err != nil {
 				return err
 			}
@@ -167,7 +167,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
 func (k K0s) GetClusterID(h *Host) (string, error) {
-	return h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
+	return h.ExecOutput(h.KubectlCmdf("get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
 }
 
 // VersionEqual returns true if the configured k0s version is equal to the given version string

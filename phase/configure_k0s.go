@@ -40,10 +40,10 @@ func (p *ConfigureK0s) Run() error {
 		log.Warnf("%s: generating default configuration", p.leader)
 
 		var cmd string
-		if p.leader.Exec(p.leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(p.leader)) == nil {
-			cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
+		if p.leader.Exec(p.leader.K0sCmdf("config create --help"), exec.Sudo(p.leader)) == nil {
+			cmd = p.leader.K0sCmdf("config create")
 		} else {
-			cmd = p.leader.Configurer.K0sCmdf("default-config")
+			cmd = p.leader.K0sCmdf("default-config")
 		}
 
 		cfg, err := p.leader.ExecOutput(cmd, exec.Sudo(p.leader))
@@ -65,10 +65,10 @@ func (p *ConfigureK0s) Run() error {
 func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
 	log.Infof("%s: validating configuration", h)
 	var cmd string
-	if h.Exec(h.Configurer.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
-		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, h.K0sConfigPath())
+	if h.Exec(h.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
+		cmd = h.K0sCmdf(`config validate --config "%s"`, h.K0sConfigPath())
 	} else {
-		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath())
+		cmd = h.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath())
 	}
 
 	output, err := h.ExecOutput(cmd, exec.Sudo(h))

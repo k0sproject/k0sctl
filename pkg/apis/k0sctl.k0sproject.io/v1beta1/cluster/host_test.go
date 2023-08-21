@@ -25,6 +25,10 @@ type mockconfigurer struct {
 	linux.Ubuntu
 }
 
+func (c mockconfigurer) Arch(_ os.Host) (string, error) {
+	return "mockarch", nil
+}
+
 func (c mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
 	return nil
 }
@@ -80,42 +84,42 @@ func TestK0sInstallCommand(t *testing.T) {
 
 	cmd, err := h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install worker --token-file "from-configurer"`, cmd)
 
 	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --config "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install controller --config "from-configurer"`, cmd)
 
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --token-file "from-configurer" --config "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install controller --token-file "from-configurer" --config "from-configurer"`, cmd)
 
 	h.Role = "controller+worker"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --config "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install controller --enable-worker --config "from-configurer"`, cmd)
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --token-file "from-configurer" --config "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install controller --enable-worker --token-file "from-configurer" --config "from-configurer"`, cmd)
 
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install worker --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, cmd)
 
 	h.InstallFlags = []string{`--kubelet-extra-args="--foo bar"`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --token-file "from-configurer"`, cmd)
 
 	h.InstallFlags = []string{`--enable-cloud-provider`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --enable-cloud-provider --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.Equal(t, `/usr/local/bin/k0s --data-dir=/tmp/k0s install worker --enable-cloud-provider --token-file "from-configurer"`, cmd)
 }

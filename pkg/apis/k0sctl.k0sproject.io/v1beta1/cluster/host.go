@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	gos "os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -102,9 +103,7 @@ type configurer interface {
 	RestartService(os.Host, string) error
 	ServiceIsRunning(os.Host, string) bool
 	Arch(os.Host) (string, error)
-	K0sCmdf(string, ...interface{}) string
 	K0sBinaryPath() string
-	K0sBinaryVersion(os.Host) (*version.Version, error)
 	K0sConfigPath() string
 	DataDirDefaultPath() string
 	K0sJoinTokenPath() string
@@ -125,8 +124,6 @@ type configurer interface {
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
-	KubectlCmdf(os.Host, string, string, ...interface{}) string
-	KubeconfigPath(os.Host, string) string
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
 	HTTPStatus(os.Host, string) (int, error)
@@ -230,6 +227,16 @@ func (h *Host) K0sJoinTokenPath() string {
 	return h.Configurer.K0sJoinTokenPath()
 }
 
+// K0sCmdf can be used to construct k0s commands in sprintf style.
+func (h *Host) K0sCmdf(template string, args ...any) string {
+	return fmt.Sprintf("%s --data-dir=%s %s", h.Configurer.K0sBinaryPath(), h.K0sDataDir(), fmt.Sprintf(template, args...))
+}
+
+// KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
+func (h *Host) KubectlCmdf(s string, args ...any) string {
+	return h.K0sCmdf(`kubectl --kubeconfig=%s %s`, h.KubeconfigPath(), fmt.Sprintf(s, args...))
+}
+
 // K0sConfigPath returns the config file path from install flags or configurer
 func (h *Host) K0sConfigPath() string {
 	if path := h.InstallFlags.GetValue("--config"); path != "" {
@@ -260,7 +267,7 @@ func (h *Host) K0sInstallCommand() (string, error) {
 	role := h.Role
 	flags := h.InstallFlags
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
+	flags.Delete("--data-dir") // data-dir is set in K0sCmdf
 
 	switch role {
 	case "controller+worker":
@@ -319,7 +326,7 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		}
 	}
 
-	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
+	cmd := h.K0sCmdf("install %s %s", role, flags.Join())
 	sudocmd, err := h.Sudo(cmd)
 	if err != nil {
 		log.Warnf("%s: %s", h, err.Error())
@@ -330,12 +337,12 @@ func (h *Host) K0sInstallCommand() (string, error) {
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.K0sDataDir())
+	return h.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.K0sDataDir())
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.K0sDataDir(), shellescape.Quote(backupfile))
+	return h.K0sCmdf("restore --data-dir=%s %s", h.K0sDataDir(), shellescape.Quote(backupfile))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -372,20 +379,25 @@ func (h *Host) InstallK0sBinary(path string) error {
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path
-func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
+func (h *Host) UpdateK0sBinary(path string, targetVersion *version.Version) error {
 	if err := h.InstallK0sBinary(path); err != nil {
 		return fmt.Errorf("update k0s binary: %w", err)
 	}
 
-	updatedVersion, err := h.Configurer.K0sBinaryVersion(h)
+	newVersion, err := h.ExecOutput(h.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
-		return fmt.Errorf("failed to get updated k0s binary version: %w", err)
-	}
-	if !version.Equal(updatedVersion) {
-		return fmt.Errorf("updated k0s binary version is %s not %s", updatedVersion, version)
+		return fmt.Errorf("failed to get k0s binary version after update: %w", err)
 	}
 
-	h.Metadata.K0sBinaryVersion = version.String()
+	updatedVersion, err := version.NewVersion(strings.TrimSpace(newVersion))
+	if err != nil {
+		return fmt.Errorf("failed to parse updated k0s binary version: %w", err)
+	}
+	if !updatedVersion.Equal(targetVersion) {
+		return fmt.Errorf("updated k0s binary version is %s not %s", updatedVersion, targetVersion)
+	}
+
+	h.Metadata.K0sBinaryVersion = updatedVersion.String()
 
 	return nil
 }
@@ -396,6 +408,16 @@ func (h *Host) K0sDataDir() string {
 		return h.Configurer.DataDirDefaultPath()
 	}
 	return h.DataDir
+}
+
+// KubeconfigPath returns the path to a kubeconfig on the host
+func (h *Host) KubeconfigPath() string {
+	// if admin.conf exists, use that
+	adminConfPath := path.Join(h.K0sDataDir(), "pki/admin.conf")
+	if h.Configurer.FileExist(h, adminConfPath) {
+		return adminConfPath
+	}
+	return path.Join(h.K0sDataDir(), "kubelet.conf")
 }
 
 type kubeNodeStatus struct {
@@ -411,7 +433,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady() (bool, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
@@ -464,7 +486,7 @@ type statusEvents struct {
 func (h *Host) WaitK0sDynamicConfigReady() error {
 	return retry.Do(
 		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.K0sDataDir()), exec.Sudo(h))
+			output, err := h.ExecOutput(h.KubectlCmdf("-n kube-system get event --field-selector involvedObject.name=k0s -o json"), exec.Sudo(h))
 			if err != nil {
 				return fmt.Errorf("failed to get k0s config status events: %w", err)
 			}
@@ -489,17 +511,17 @@ func (h *Host) WaitK0sDynamicConfigReady() error {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.KubectlCmdf("drain --grace-period=120 --force --timeout=5m --ignore-daemonsets --delete-emptydir-data %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable again
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.KubectlCmdf("uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.KubectlCmdf("delete node %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
 func (h *Host) LeaveEtcd(node *Host) error {
@@ -507,7 +529,7 @@ func (h *Host) LeaveEtcd(node *Host) error {
 	if node.PrivateAddress != "" {
 		etcdAddress = node.PrivateAddress
 	}
-	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h))
+	return h.Exec(h.K0sCmdf("etcd leave --peer-address %s", etcdAddress), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -548,7 +570,7 @@ func (h *Host) WaitK0sServiceRunning() error {
 			if !h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 				return fmt.Errorf("not running")
 			}
-			return h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h))
+			return h.Exec(h.K0sCmdf("status"), exec.Sudo(h))
 		},
 		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
 		retry.MaxJitter(time.Second*2),
@@ -565,7 +587,7 @@ func (h *Host) WaitK0sServiceStopped() error {
 			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 				return fmt.Errorf("k0s still running")
 			}
-			if h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h)) == nil {
+			if h.Exec(h.K0sCmdf("status"), exec.Sudo(h)) == nil {
 				return fmt.Errorf("k0s still running")
 			}
 			return nil

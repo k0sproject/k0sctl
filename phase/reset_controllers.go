@@ -103,7 +103,7 @@ func (p *ResetControllers) Run() error {
 		log.Debugf("%s: leaving etcd completed", h)
 
 		log.Debugf("%s: resetting k0s...", h)
-		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h))
+		out, err := h.ExecOutput(h.K0sCmdf("reset"), exec.Sudo(h))
 		if err != nil {
 			log.Debugf("%s: k0s reset failed: %s", h, out)
 			log.Warnf("%s: k0s reported failure: %v", h, err)
