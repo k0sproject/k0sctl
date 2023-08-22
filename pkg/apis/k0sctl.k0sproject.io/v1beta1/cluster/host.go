@@ -416,21 +416,11 @@ func (h *Host) K0sDataDir() string {
 
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (h *Host) KubeconfigPath() string {
-	if h.Metadata.KubeconfigPath != "" {
-		return h.Metadata.KubeconfigPath
+	if h.Role == "worker" {
+		return path.Join(h.K0sDataDir(), "pki/kubelet.conf")
 	}
 
-	// if admin.conf exists, use that
-	adminConfigPath := path.Join(h.K0sDataDir(), "pki/admin.conf")
-	if h.Configurer.FileExist(h, adminConfigPath) {
-		h.Metadata.KubeconfigPath = adminConfigPath
-		return adminConfigPath
-	}
-	workerConfigPath := path.Join(h.K0sDataDir(), "pki/kubelet.conf")
-	if h.Configurer.FileExist(h, workerConfigPath) {
-		h.Metadata.KubeconfigPath = workerConfigPath
-	}
-	return workerConfigPath
+	return path.Join(h.K0sDataDir(), "pki/admin.conf")
 }
 
 type kubeNodeStatus struct {
@@ -448,6 +438,7 @@ type kubeNodeStatus struct {
 func (h *Host) KubeNodeReady() (bool, error) {
 	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
+		log.Debugf("%s: failed to get node status: %s", h, err.Error())
 		return false, err
 	}
 	log.Tracef("node status output:\n%s\n", output)
