@@ -436,7 +436,8 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady() (bool, error) {
-	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+	//output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
