@@ -237,7 +237,7 @@ func (h *Host) K0sCmdf(template string, args ...any) string {
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
 func (h *Host) KubectlCmdf(s string, args ...any) string {
-	return h.K0sCmdf(`kubectl --kubeconfig=%s %s`, h.KubeconfigPath(), fmt.Sprintf(s, args...))
+	return fmt.Sprintf("env KUBECONFIG=%s %s", h.KubeconfigPath(), h.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
 // K0sConfigPath returns the config file path from install flags or configurer
@@ -436,8 +436,7 @@ type kubeNodeStatus struct {
 
 // KubeNodeReady runs kubectl on the host and returns true if the given node is marked as ready
 func (h *Host) KubeNodeReady() (bool, error) {
-	//output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
-	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.Sudo(h))
+	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		return false, err
 	}
