@@ -2,7 +2,6 @@ package configurer
 
 import (
 	"fmt"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,7 +17,6 @@ type PathFuncs interface {
 	K0sBinaryPath() string
 	K0sConfigPath() string
 	K0sJoinTokenPath() string
-	KubeconfigPath(os.Host, string) string
 	DataDirDefaultPath() string
 }
 
@@ -53,29 +51,9 @@ func (l Linux) Arch(h os.Host) (string, error) {
 	}
 }
 
-// K0sCmdf can be used to construct k0s commands in sprintf style.
-func (l Linux) K0sCmdf(template string, args ...interface{}) string {
-	return fmt.Sprintf("%s %s", l.PathFuncs.K0sBinaryPath(), fmt.Sprintf(template, args...))
-}
-
 // K0sBinaryPath returns the location of k0s binary
 func (l Linux) K0sBinaryPath() string {
 	return "/usr/local/bin/k0s"
-}
-
-func (l Linux) K0sBinaryVersion(h os.Host) (*version.Version, error) {
-	k0sVersionCmd := l.K0sCmdf("version")
-	output, err := h.ExecOutput(k0sVersionCmd, exec.Sudo(h))
-	if err != nil {
-		return nil, err
-	}
-
-	version, err := version.NewVersion(output)
-	if err != nil {
-		return nil, err
-	}
-
-	return version, nil
 }
 
 // K0sConfigPath returns the location of k0s configuration file
@@ -137,26 +115,9 @@ func (l Linux) MoveFile(h os.Host, src, dst string) error {
 	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
 }
 
-// KubeconfigPath returns the path to a kubeconfig on the host
-func (l Linux) KubeconfigPath(h os.Host, dataDir string) string {
-	linux := &os.Linux{}
-
-	// if admin.conf exists, use that
-	adminConfPath := path.Join(dataDir, "pki/admin.conf")
-	if linux.FileExist(h, adminConfPath) {
-		return adminConfPath
-	}
-	return path.Join(dataDir, "kubelet.conf")
-}
-
 // DataDirPath returns the location of k0s data dir
 func (l Linux) DataDirDefaultPath() string {
 	return "/var/lib/k0s"
-}
-
-// KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (l Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...interface{}) string {
-	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.PathFuncs.KubeconfigPath(h, dataDir), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error

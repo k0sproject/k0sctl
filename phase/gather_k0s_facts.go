@@ -69,7 +69,7 @@ func (p *GatherK0sFacts) Run() error {
 }
 
 func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
+	output, err := h.ExecOutput(h.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		log.Debugf("%s: no 'k0s' binary in PATH", h)
 		return nil
@@ -98,7 +98,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		}
 	}
 
-	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"), exec.Sudo(h))
+	output, err = h.ExecOutput(h.K0sCmdf("status -o json"), exec.Sudo(h))
 	if err != nil {
 		if existingServiceScript == "" {
 			log.Debugf("%s: an existing k0s instance is not running and does not seem to have been installed as a service", h)

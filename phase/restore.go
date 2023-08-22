@@ -33,7 +33,7 @@ func (p *Restore) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
-	if p.RestoreFrom != "" && p.leader.Exec(p.leader.Configurer.K0sCmdf("restore --help"), exec.Sudo(p.leader)) != nil {
+	if p.RestoreFrom != "" && p.leader.Exec(p.leader.K0sCmdf("restore --help"), exec.Sudo(p.leader)) != nil {
 		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
 	}
 
