@@ -439,6 +439,7 @@ func (h *Host) KubeNodeReady() (bool, error) {
 	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
 		log.Debugf("%s: failed to get node status: %s", h, err.Error())
+		log.Debugf("%s: kubectl output:\n%s", h, output)
 		return false, err
 	}
 	log.Tracef("node status output:\n%s\n", output)
