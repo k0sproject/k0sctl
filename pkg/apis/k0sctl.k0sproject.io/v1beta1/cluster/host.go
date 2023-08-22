@@ -417,7 +417,7 @@ func (h *Host) K0sDataDir() string {
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (h *Host) KubeconfigPath() string {
 	if h.Role == "worker" {
-		return path.Join(h.K0sDataDir(), "pki/kubelet.conf")
+		return path.Join(h.K0sDataDir(), "kubelet.conf")
 	}
 
 	return path.Join(h.K0sDataDir(), "pki/admin.conf")
@@ -438,9 +438,7 @@ type kubeNodeStatus struct {
 func (h *Host) KubeNodeReady() (bool, error) {
 	output, err := h.ExecOutput(h.KubectlCmdf("get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 	if err != nil {
-		log.Debugf("%s: failed to get node status: %s", h, err.Error())
-		log.Debugf("%s: kubectl output:\n%s", h, output)
-		return false, err
+		return false, fmt.Errorf("failed to get kube node status: %w", err)
 	}
 	log.Tracef("node status output:\n%s\n", output)
 	status := kubeNodeStatus{}
