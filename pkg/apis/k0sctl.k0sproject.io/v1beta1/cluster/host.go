@@ -417,7 +417,7 @@ func (h *Host) K0sDataDir() string {
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (h *Host) KubeconfigPath() string {
 	if h.Metadata.KubeconfigPath != "" {
-		eturn h.Metadata.KubeconfigPath
+		return h.Metadata.KubeconfigPath
 	}
 
 	// if admin.conf exists, use that
