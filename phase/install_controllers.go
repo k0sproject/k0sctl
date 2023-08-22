@@ -67,7 +67,7 @@ func (p *InstallControllers) Run() error {
 		}
 		log.Debugf("%s: join token ID: %s", p.leader, tokenID)
 		defer func() {
-			if err := p.leader.Exec(p.leader.K0sCmdf("token invalidate %s", tokenID), exec.Sudo(p.leader), exec.RedactString(token)); err != nil {
+			if err := p.leader.Exec(p.leader.K0sCmdf("token invalidate %s", tokenID), exec.Sudo(p.leader), exec.RedactString(token, tokenID)); err != nil {
 				log.Warnf("%s: failed to invalidate the controller join token", p.leader)
 			}
 		}()
