@@ -1,12 +1,15 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/gammazero/workerpool"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -106,7 +109,9 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
-	if err := h.WaitK0sServiceStopped(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := node.WaitServiceStopped(ctx, h, h.K0sServiceName()); err != nil {
 		return err
 	}
 	version, err := version.NewVersion(p.Config.Spec.K0s.Version)
@@ -129,19 +134,21 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
-	if !p.NoDrain {
-		log.Debugf("%s: marking node schedulable again", h)
-		if err := p.leader.UncordonNode(h); err != nil {
-			return err
-		}
-	}
 	if NoWait {
 		log.Debugf("%s: not waiting because --no-wait given", h)
 	} else {
 		log.Infof("%s: waiting for node to become ready again", h)
-		if err := h.WaitKubeNodeReady(); err != nil {
+		ctx, cancelNodeReady := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancelNodeReady()
+		if err := node.WaitKubeNodeReady(ctx, h); err != nil {
 			return err
 		}
+			if !p.NoDrain {
+				log.Debugf("%s: marking node schedulable again", h)
+				if err := p.leader.UncordonNode(h); err != nil {
+					return err
+				}
+			}
 		h.Metadata.Ready = true
 	}
 	log.Infof("%s: upgrade successful", h)

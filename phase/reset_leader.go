@@ -1,8 +1,12 @@
 package phase
 
 import (
+	"context"
+	"time"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
@@ -42,7 +46,9 @@ func (p *ResetLeader) Run() error {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
-		if err := p.leader.WaitK0sServiceStopped(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := node.WaitServiceStopped(ctx, p.leader, p.leader.K0sServiceName()); err != nil {
 			log.Warnf("%s: failed to wait for k0s to stop: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: stopping k0s completed", p.leader)

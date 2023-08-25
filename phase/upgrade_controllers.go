@@ -1,12 +1,15 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -72,7 +75,9 @@ func (p *UpgradeControllers) Run() error {
 				return err
 			}
 		}
-		if err := h.WaitK0sServiceStopped(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := node.WaitServiceStopped(ctx, h, h.K0sServiceName()); err != nil {
 			return err
 		}
 		version, err := version.NewVersion(p.Config.Spec.K0s.Version)
@@ -96,17 +101,21 @@ func (p *UpgradeControllers) Run() error {
 			return err
 		}
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := h.WaitK0sServiceRunning(); err != nil {
+		ctx, serviceStartCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer serviceStartCancel()
+		if err := node.WaitServiceRunning(ctx, h, h.K0sServiceName()); err != nil {
 			return err
 		}
 		port := 6443
 		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
 			port = p
 		}
-		if err := h.WaitKubeAPIReady(port); err != nil {
+		ctx, kubeAPIReadyCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer kubeAPIReadyCancel()
+
+		if err := node.WaitKubeAPIReady(ctx, h, port); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
