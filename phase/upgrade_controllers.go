@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -111,6 +112,29 @@ func (p *UpgradeControllers) Run() error {
 			return fmt.Errorf("kube api did not become ready: %w", err)
 		}
 	}
+
+	leader := p.Config.Spec.K0sLeader()
+	if NoWait {
+		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", leader)
+		return nil
+	}
+
+	log.Infof("%s: waiting for the scheduler to become ready", leader)
+	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ScheduledEventsAfterFunc(leader, time.Now())); err != nil {
+		if !Force {
+			return fmt.Errorf("failed to observe scheduling events after api start-up, you can ignore this check by using --force: %w", err)
+		}
+		log.Warnf("%s: failed to observe scheduling events after api start-up: %s", leader, err)
+	}
+
+	log.Infof("%s: waiting for system pods to become ready", leader)
+	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.SystemPodsRunningFunc(leader)); err != nil {
+		if !Force {
+			return fmt.Errorf("all system pods not running after api start-up, you can ignore this check by using --force: %w", err)
+		}
+		log.Warnf("%s: failed to observe system pods running after api start-up: %s", leader, err)
+	}
+
 	return nil
 }
 
@@ -127,7 +151,6 @@ func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
 }
 
 func (p *UpgradeControllers) migrateService(h *cluster.Host) error {
-
 	log.Infof("%s: updating legacy 'k0sserver' service to '%s'", h, h.K0sServiceName())
 	if err := h.Configurer.StopService(h, "k0sserver"); err != nil {
 		return err
