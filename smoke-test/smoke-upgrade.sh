@@ -17,7 +17,7 @@ echo "Installing ${K0S_VERSION}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 
 # Create config with blank version (to use latest) and apply as upgrade
-K0S_VERSION="$(curl https://api.github.com/repos/k0sproject/k0s/releases | grep tag_name | cut -d"\"" -f4 | grep "+k0s" | sed -r 's/^(v[0-9]+\.[0-9]+\.[0-9]+)\+/\19999+/g' | sort -r -t "." -k1,5n | head -1 | sed 's/9999//')"
+K0S_VERSION="$(curl -s https://docs.k0sproject.io/stable.txt)"
 
-echo "Upgrading to ${K0S_VERSION} using --force"
-../k0sctl apply --config "${K0SCTL_CONFIG}" --debug --force
+echo "Upgrading to ${K0S_VERSION}"
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
