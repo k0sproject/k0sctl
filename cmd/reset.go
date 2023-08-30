@@ -24,6 +24,8 @@ var resetCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		retryIntervalFlag,
+		retryTimeoutFlag,
 		analyticsFlag,
 		upgradeCheckFlag,
 		&cli.BoolFlag{
