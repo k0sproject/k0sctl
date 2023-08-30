@@ -18,6 +18,7 @@ import (
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
@@ -81,6 +82,26 @@ var (
 		Name:  "concurrent-uploads",
 		Usage: "Maximum number of files to upload in parallel, set to 0 for unlimited",
 		Value: 5,
+	}
+
+	retryTimeoutFlag = &cli.DurationFlag{
+		Name:  "default-timeout",
+		Usage: "Default timeout when waiting for node state changes",
+		Value: retry.DefaultTimeout,
+		Action: func(_ *cli.Context, d time.Duration) error {
+			retry.DefaultTimeout = d
+			return nil
+		},
+	}
+
+	retryIntervalFlag = &cli.DurationFlag{
+		Name:  "retry-interval",
+		Usage: "Retry interval when waiting for node state changes",
+		Value: retry.Interval,
+		Action: func(_ *cli.Context, d time.Duration) error {
+			retry.Interval = d
+			return nil
+		},
 	}
 
 	Colorize = aurora.NewAurora(false)

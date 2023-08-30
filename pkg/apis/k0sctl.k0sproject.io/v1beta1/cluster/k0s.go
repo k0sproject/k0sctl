@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -10,10 +11,10 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/alessio/shellescape"
-	"github.com/avast/retry-go"
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
@@ -147,21 +148,14 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
 
 	var token string
-	err = retry.Do(
-		func() error {
-			output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
-			if err != nil {
-				return err
-			}
-			token = output
-			return nil
-		},
-		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
-		retry.MaxJitter(time.Second*2),
-		retry.Delay(time.Second*3),
-		retry.Attempts(60),
-		retry.LastErrorOnly(true),
-	)
+	err = retry.Timeout(context.TODO(), retry.DefaultTimeout, func(_ context.Context) error {
+		output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
+		if err != nil {
+			return fmt.Errorf("create token: %w", err)
+		}
+		token = output
+		return nil
+	})
 	return token, err
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -188,9 +187,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := node.WaitKubeNodeReady(ctx, h); err != nil {
+		if err := node.KubeNodeReadyFunc(h)(context.Background()); err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
 		} else {
 			h.Metadata.Ready = true

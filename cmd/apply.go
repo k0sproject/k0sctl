@@ -54,6 +54,8 @@ var applyCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		retryIntervalFlag,
+		retryTimeoutFlag,
 		analyticsFlag,
 		upgradeCheckFlag,
 	},

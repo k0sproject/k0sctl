@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/gammazero/workerpool"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -109,9 +109,7 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	if err := node.WaitServiceStopped(ctx, h, h.K0sServiceName()); err != nil {
+	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 		return err
 	}
 	version, err := version.NewVersion(p.Config.Spec.K0s.Version)
@@ -138,17 +136,16 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 		log.Debugf("%s: not waiting because --no-wait given", h)
 	} else {
 		log.Infof("%s: waiting for node to become ready again", h)
-		ctx, cancelNodeReady := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancelNodeReady()
-		if err := node.WaitKubeNodeReady(ctx, h); err != nil {
-			return err
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+			return fmt.Errorf("node did not become ready: %w", err)
 		}
-			if !p.NoDrain {
-				log.Debugf("%s: marking node schedulable again", h)
-				if err := p.leader.UncordonNode(h); err != nil {
-					return err
-				}
+
+		if !p.NoDrain {
+			log.Debugf("%s: marking node schedulable again", h)
+			if err := p.leader.UncordonNode(h); err != nil {
+				return fmt.Errorf("uncordon node: %w", err)
 			}
+		}
 		h.Metadata.Ready = true
 	}
 	log.Infof("%s: upgrade successful", h)

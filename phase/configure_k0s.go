@@ -12,6 +12,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -125,9 +126,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 			}
 
 			log.Infof("%s: waiting for the k0s service to start", h)
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			defer cancel()
-			return node.WaitServiceRunning(ctx, h, h.K0sServiceName())
+			return retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName()))
 		}
 	}
 

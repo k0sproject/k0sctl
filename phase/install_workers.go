@@ -8,6 +8,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,9 +60,7 @@ func (p *InstallWorkers) Run() error {
 
 	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		log.Infof("%s: validating api connection to %s", h, url)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := node.WaitHTTPStatus(ctx, h, healthz, 200, 401); err != nil {
+		if err := retry.Times(context.Background(), 2, node.HTTPStatusFunc(h, healthz, 200, 401)); err != nil {
 			return fmt.Errorf("failed to connect from worker to kubernetes api at %s - check networking", url)
 		}
 		return nil
@@ -154,10 +153,8 @@ func (p *InstallWorkers) Run() error {
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready", h)
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			defer cancel()
 
-			if err := node.WaitKubeNodeReady(ctx, h); err != nil {
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
 				return err
 			}
 			h.Metadata.Ready = true
