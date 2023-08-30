@@ -437,6 +437,9 @@ func (h *Host) NeedCurl() bool {
 }
 
 // NeedIPTables returns true when the iptables package is needed on the host
+//
+// Deprecated: iptables is only required for k0s versions that are unsupported
+// for a long time already (< v1.22.1+k0s.0).
 func (h *Host) NeedIPTables() bool {
 	// Windows does not need iptables
 	if h.Configurer.Kind() == "windows" {

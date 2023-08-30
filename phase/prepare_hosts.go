@@ -5,6 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,8 +48,13 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		pkgs = append(pkgs, "curl")
 	}
 
-	if h.NeedIPTables() {
-		pkgs = append(pkgs, "iptables")
+	// iptables is only required for very old versions of k0s
+	if k0sVer, err := version.NewVersion(p.Config.Spec.K0s.Version); err == nil {
+		if thresholdVersion, err := version.NewVersion("v1.22.1+k0s.0"); err != nil {
+			panic(err)
+		} else if k0sVer.LessThan(thresholdVersion) && h.NeedIPTables() { //nolint:staticcheck
+			pkgs = append(pkgs, "iptables")
+		}
 	}
 
 	if h.NeedInetUtils() {
