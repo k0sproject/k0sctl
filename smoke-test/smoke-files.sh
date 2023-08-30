@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 K0SCTL_TEMPLATE=${K0SCTL_TEMPLATE:-"k0sctl.yaml.tpl"}
 
@@ -15,8 +15,7 @@ createCluster
 remoteCommand() {
   local userhost="$1"
   shift
-  local cmd="$@"
-  footloose ssh "${userhost}" -- ${cmd}
+  footloose ssh "${userhost}" -- "$@"
 }
 
 remoteFileExist() {
@@ -54,67 +53,67 @@ echo "* Starting apply"
 echo "* Verifying uploads"
 remoteCommand root@manager0 "apt-get update > /dev/null && apt-get install tree > /dev/null && tree -fp"
 
-echo -n "  - Single file using destination file path and user:group .. "
+printf %s "  - Single file using destination file path and user:group .. "
 remoteFileExist root@manager0 /root/singlefile/renamed.txt
-echo -n "[exist]"
+printf %s "[exist]"
 remoteCommand root@manager0 stat -c '%U:%G' /root/singlefile/renamed.txt | grep -q test:test
-echo -n "[stat]"
+printf %s "[stat]"
 echo "OK"
 
-echo -n "  - Single file using destination dir .. "
+printf %s "  - Single file using destination dir .. "
 remoteFileExist root@manager0 /root/destdir/toplevel.txt
 echo "OK"
 
-echo -n "  - PermMode 644 .. "
+printf %s "  - PermMode 644 .. "
 remoteFileExist root@manager0 /root/chmod/script.sh
-echo -n "[exist]"
+printf %s "[exist]"
 remoteCommand root@manager0 stat -c '%a' /root/chmod/script.sh | grep -q 644
-echo -n "[stat] "
+printf %s "[stat] "
 echo "OK"
 
-echo -n "  - PermMode transfer .."
+printf %s "  - PermMode transfer .."
 remoteFileExist root@manager0 /root/chmod_exec/script.sh
-echo -n "[exist] "
+printf %s "[exist] "
 remoteCommand root@manager0 stat -c '%a' /root/chmod_exec/script.sh | grep -q 744
-echo -n "[stat] "
+printf %s "[stat] "
 remoteCommand root@manager0 /root/chmod_exec/script.sh | grep -q hello
-echo -n "[run] "
+printf %s "[run] "
 echo "OK"
 
-echo -n "  - Directory using destination dir .. "
+printf %s "  - Directory using destination dir .. "
 remoteFileExist root@manager0 /root/dir/toplevel.txt
-echo -n "[1] "
+printf %s "[1] "
 remoteFileExist root@manager0 /root/dir/nested/nested.txt
-echo -n "[2] "
+printf %s "[2] "
 remoteFileExist root@manager0 /root/dir/nested/exclude-on-glob
-echo -n "[3] "
+printf %s "[3] "
 echo "OK"
 
-echo -n "  - Glob using destination dir .. "
+printf %s "  - Glob using destination dir .. "
 remoteFileExist root@manager0 /root/glob/toplevel.txt
-echo -n "[1] "
+printf %s "[1] "
 remoteFileExist root@manager0 /root/glob/nested/nested.txt
-echo -n "[2] "
-! remoteFileExist root@manager0 /root/glob/nested/exclude-on-glob
-echo -n "[3] "
+printf %s "[2] "
+if remoteFileExist root@manager0 /root/glob/nested/exclude-on-glob; then exit 1; fi
+printf %s "[3] "
 remoteCommand root@manager0 stat -c '%a' /root/glob | grep -q 700
-echo -n "[stat1]"
+printf %s "[stat1]"
 remoteCommand root@manager0 stat -c '%a' /root/glob/nested | grep -q 700
-echo -n "[stat2]"
+printf %s "[stat2]"
 echo "OK"
 
-echo -n "  - URL using destination file .. "
+printf %s "  - URL using destination file .. "
 remoteFileExist root@manager0 /root/url/releases.json
-echo -n "[exist] "
+printf %s "[exist] "
 remoteFileContent root@manager0 /root/url/releases.json | grep -q html_url
-echo -n "[content] "
+printf %s "[content] "
 echo "OK"
 
-echo -n "  - URL using destination dir .. "
+printf %s "  - URL using destination dir .. "
 remoteFileExist root@manager0 /root/url_destdir/releases
-echo -n "[exist] "
+printf %s "[exist] "
 remoteFileContent root@manager0 /root/url_destdir/releases | grep -q html_url
-echo -n "[content] "
+printf %s "[content] "
 echo "OK"
 
 echo "* Done"

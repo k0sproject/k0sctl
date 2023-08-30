@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
@@ -23,7 +23,7 @@ footloose ssh root@manager0 -- k0s stop
 K0S_VERSION="$(curl https://api.github.com/repos/k0sproject/k0s/releases | grep tag_name | cut -d"\"" -f4 | grep "+k0s" | sed -r 's/^(v[0-9]+\.[0-9]+\.[0-9]+)\+/\19999+/g' | sort -r -t "." -k1,5n | head -1 | sed 's/9999//')"
 
 echo "Upgrading to ${K0S_VERSION} (should fail)"
-! ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug 
+if ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug; then exit 1; fi
 
 echo "Upgrading to ${K0S_VERSION} using --force"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug --force
