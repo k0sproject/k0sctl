@@ -161,7 +161,7 @@ func (l Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...interface{}) st
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
 func (l Linux) HTTPStatus(h os.Host, url string) (int, error) {
-	output, err := h.ExecOutput(fmt.Sprintf(`curl -kso /dev/null -w "%%{http_code}" "%s"`, url))
+	output, err := h.ExecOutput(fmt.Sprintf(`curl -kso /dev/null --connect-timeout 20 -w "%%{http_code}" "%s"`, url))
 	if err != nil {
 		return -1, err
 	}
