@@ -14,7 +14,7 @@ k0sctl:
 	$(MAKE) -C .. k0sctl
 
 $(footloose):
-	go install github.com/weaveworks/footloose/...@0.6.3
+	go install github.com/k0sproject/footloose/...@0c5714351bb4f88c5de4cc859a7a3f02ffd04479
 
 id_rsa_k0s:
 	ssh-keygen -t rsa -f ./id_rsa_k0s -N ""
