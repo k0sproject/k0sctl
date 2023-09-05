@@ -119,7 +119,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		log.Debugf("%s: configuration did not change", h)
 	} else {
 		log.Infof("%s: configuration was changed", h)
-		if h.Metadata.K0sRunningVersion != "" && !h.Metadata.NeedsUpgrade {
+		if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
 			log.Infof("%s: restarting the k0s service", h)
 			if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
 				return err
@@ -165,7 +165,7 @@ func addUnlessExist(slice *[]string, s string) {
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	var cfg dig.Mapping
 	// Leader will get a full config on initialize only
-	if !p.Config.Spec.K0s.DynamicConfig || (h == p.leader && h.Metadata.K0sRunningVersion == "") {
+	if !p.Config.Spec.K0s.DynamicConfig || (h == p.leader && h.Metadata.K0sRunningVersion == nil) {
 		cfg = p.Config.Spec.K0s.Config.Dup()
 	} else {
 		cfg = p.Config.Spec.K0s.NodeConfig()

@@ -114,7 +114,8 @@ func (l Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Opti
 
 // DownloadK0s performs k0s binary download from github on the host
 func (l Linux) DownloadK0s(h os.Host, path string, version *version.Version, arch string) error {
-	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/%s/k0s-%s-%s", version, version, arch)
+	v := strings.ReplaceAll(strings.TrimPrefix(version.String(), "v"), "+", "%2B")
+	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%[1]s/k0s-v%[1]s-%[2]s", v, arch)
 	if err := l.DownloadURL(h, url, path); err != nil {
 		return fmt.Errorf("download k0s: %w", err)
 	}

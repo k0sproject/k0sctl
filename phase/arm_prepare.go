@@ -10,6 +10,8 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
+var etcdSupportedArchArm64Since = version.MustConstraint(">= v1.22.1+k0s.0")
+
 // PrepareArm implements a phase which fixes arm quirks
 type PrepareArm struct {
 	GenericPhase
@@ -39,17 +41,7 @@ func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 
 		if strings.HasSuffix(arch, "64") {
 			// 64-bit arm is supported on etcd 3.5.0+ which is included in k0s v1.22.1+k0s.0 and newer
-			minVer, err := version.NewVersion("v1.22.1+k0s.0")
-			if err != nil {
-				log.Warnf("failed to parse constraint k0s version: %v", err)
-				return false
-			}
-			k0sVer, err := version.NewVersion(p.Config.Spec.K0s.Version)
-			if err != nil {
-				log.Warnf("failed to parse target k0s version: %v", err)
-				return false
-			}
-			if k0sVer.GreaterThanOrEqual(minVer) {
+			if etcdSupportedArchArm64Since.Check(p.Config.Spec.K0s.Version) {
 				return false
 			}
 		}

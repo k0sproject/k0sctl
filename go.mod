@@ -6,7 +6,6 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
-	github.com/Masterminds/semver v1.5.0
 	github.com/a8m/envsubst v1.4.2
 	github.com/adrg/xdg v0.4.0
 	github.com/bmatcuk/doublestar/v4 v4.6.0
@@ -43,7 +42,7 @@ require (
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-playground/validator/v10 v10.15.1
-	github.com/k0sproject/version v0.3.0
+	github.com/k0sproject/version v0.4.2
 )
 
 require (

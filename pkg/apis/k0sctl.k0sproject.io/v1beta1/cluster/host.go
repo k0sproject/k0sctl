@@ -22,7 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const k0sVersionWithForceFlag = "v1.27.4+k0s.0"
+var k0sForceFlagSince = version.MustConstraint(">= v1.27.4+k0s.0")
 
 // Host contains all the needed details to work with hosts
 type Host struct {
@@ -144,9 +144,9 @@ type configurer interface {
 
 // HostMetadata resolved metadata for host
 type HostMetadata struct {
-	K0sBinaryVersion  string
+	K0sBinaryVersion  *version.Version
 	K0sBinaryTempFile string
-	K0sRunningVersion string
+	K0sRunningVersion *version.Version
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
@@ -302,19 +302,9 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		}
 	}
 
-	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != "" {
-		targetVersion, err := version.NewVersion(k0sVersionWithForceFlag)
-		if err != nil {
-			return "", fmt.Errorf("internal error: failed to parse k0s version with force flag constant: %w", err)
-		}
-		installedVersion, err := version.NewVersion(h.Metadata.K0sBinaryVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse installed k0s version number: %w", err)
-		}
-		if installedVersion.LessThan(targetVersion) {
-			log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
-			flags.Delete("--force")
-		}
+	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && !k0sForceFlagSince.Check(h.Metadata.K0sBinaryVersion) {
+		log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
+		flags.Delete("--force")
 	}
 
 	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
@@ -383,7 +373,7 @@ func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 		return fmt.Errorf("updated k0s binary version is %s not %s", updatedVersion, version)
 	}
 
-	h.Metadata.K0sBinaryVersion = version.String()
+	h.Metadata.K0sBinaryVersion = version
 
 	return nil
 }

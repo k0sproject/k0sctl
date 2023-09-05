@@ -36,7 +36,7 @@ func (s *Spec) K0sLeader() *Host {
 
 		// Pick the first controller that reports to be running and persist the choice
 		for _, h := range controllers {
-			if !h.Reset && h.Metadata.K0sBinaryVersion != "" && h.Metadata.K0sRunningVersion != "" {
+			if !h.Reset && h.Metadata.K0sBinaryVersion != nil && h.Metadata.K0sRunningVersion != nil {
 				s.k0sLeader = h
 				break
 			}

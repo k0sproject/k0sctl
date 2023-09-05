@@ -17,16 +17,16 @@ import (
 )
 
 type k0sstatus struct {
-	Version       string      `json:"Version"`
-	Pid           int         `json:"Pid"`
-	PPid          int         `json:"PPid"`
-	Role          string      `json:"Role"`
-	SysInit       string      `json:"SysInit"`
-	StubFile      string      `json:"StubFile"`
-	Workloads     bool        `json:"Workloads"`
-	Args          []string    `json:"Args"`
-	ClusterConfig dig.Mapping `json:"ClusterConfig"`
-	K0sVars       dig.Mapping `json:"K0sVars"`
+	Version       *version.Version `json:"Version"`
+	Pid           int              `json:"Pid"`
+	PPid          int              `json:"PPid"`
+	Role          string           `json:"Role"`
+	SysInit       string           `json:"SysInit"`
+	StubFile      string           `json:"StubFile"`
+	Workloads     bool             `json:"Workloads"`
+	Args          []string         `json:"Args"`
+	ClusterConfig dig.Mapping      `json:"ClusterConfig"`
+	K0sVars       dig.Mapping      `json:"K0sVars"`
 }
 
 func (k *k0sstatus) isSingle() bool {
@@ -77,7 +77,12 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
-	h.Metadata.K0sBinaryVersion = strings.TrimSpace(output)
+	binVersion, err := version.NewVersion(strings.TrimSpace(output))
+	if err != nil {
+		return fmt.Errorf("failed to parse installed k0s version: %w", err)
+	}
+
+	h.Metadata.K0sBinaryVersion = binVersion
 
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
@@ -126,7 +131,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return nil
 	}
 
-	if status.Version == "" || status.Role == "" || status.Pid == 0 {
+	if status.Version == nil || status.Role == "" || status.Pid == 0 {
 		log.Debugf("%s: k0s is not running", h)
 		return nil
 	}
@@ -150,7 +155,7 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
 	}
 
-	h.Metadata.K0sRunningVersion = strings.TrimPrefix(status.Version, "v")
+	h.Metadata.K0sRunningVersion = status.Version
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
@@ -226,17 +231,5 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 		return true
 	}
 
-	log.Debugf("%s: checking if %s is an upgrade from %s", h, p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
-	target, err := version.NewVersion(p.Config.Spec.K0s.Version)
-	if err != nil {
-		log.Warnf("%s: failed to parse target version: %s", h, err.Error())
-		return false
-	}
-	current, err := version.NewVersion(h.Metadata.K0sRunningVersion)
-	if err != nil {
-		log.Warnf("%s: failed to parse running version: %s", h, err.Error())
-		return false
-	}
-
-	return target.GreaterThan(current)
+	return p.Config.Spec.K0s.Version.GreaterThan(h.Metadata.K0sRunningVersion)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -109,15 +108,13 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 		return err
 	}
+
 	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 		return err
 	}
-	version, err := version.NewVersion(p.Config.Spec.K0s.Version)
-	if err != nil {
-		return err
-	}
+
 	log.Debugf("%s: update binary", h)
-	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, version); err != nil {
+	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
 		return err
 	}
 
