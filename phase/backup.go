@@ -31,7 +31,7 @@ func (p *Backup) Title() string {
 func (p *Backup) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	leader := p.Config.Spec.K0sLeader()
-	if leader.Metadata.K0sRunningVersion == "" {
+	if leader.Metadata.K0sRunningVersion == nil {
 		return fmt.Errorf("failed to find a running controller")
 	}
 

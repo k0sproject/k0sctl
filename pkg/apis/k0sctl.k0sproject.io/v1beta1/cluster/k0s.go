@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/alessio/shellescape"
 	"github.com/creasty/defaults"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -21,15 +20,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// K0sMinVersion is the minimum k0s version supported
+// K0sMinVersion is the minimum supported k0s version
 const K0sMinVersion = "0.11.0-rc1"
+
+var (
+	k0sSupportedVersion   = version.MustConstraint(">= " + K0sMinVersion)
+	k0sDynamicConfigSince = version.MustConstraint(">= 1.22.2+k0s.2")
+)
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
-	Version       string      `yaml:"version"`
-	DynamicConfig bool        `yaml:"dynamicConfig"`
-	Config        dig.Mapping `yaml:"config,omitempty"`
-	Metadata      K0sMetadata `yaml:"-"`
+	Version       *version.Version `yaml:"version"`
+	DynamicConfig bool             `yaml:"dynamicConfig"`
+	Config        dig.Mapping      `yaml:"config"`
+	Metadata      K0sMetadata      `yaml:"-"`
 }
 
 // K0sMetadata contains gathered information about k0s cluster
@@ -49,27 +53,14 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	return defaults.Set(k)
 }
-
-const k0sDynamicSince = "1.22.2+k0s.2"
-
 func validateVersion(value interface{}) error {
-	vs, ok := value.(string)
+	v, ok := value.(*version.Version)
 	if !ok {
-		return fmt.Errorf("not a string")
+		return fmt.Errorf("not a version")
 	}
 
-	v, err := version.NewVersion(vs)
-	if err != nil {
-		return err
-	}
-
-	min, err := version.NewVersion(K0sMinVersion)
-	if err != nil {
-		return fmt.Errorf("internal error: k0sminversion can't be parsed: %s", err)
-	}
-
-	if v.LessThan(min) {
-		return fmt.Errorf("version: minimum supported k0s version is %s", K0sMinVersion)
+	if v != nil && !k0sSupportedVersion.Check(v) {
+		return fmt.Errorf("minimum supported k0s version is %s", k0sSupportedVersion)
 	}
 
 	return nil
@@ -92,31 +83,26 @@ func (k *K0s) validateMinDynamic() func(interface{}) error {
 		if !dc {
 			return nil
 		}
-		v, err := semver.NewVersion(k.Version)
-		if err != nil {
-			return fmt.Errorf("failed to parse k0s version: %w", err)
+
+		if k.Version != nil && !k0sDynamicConfigSince.Check(k.Version) {
+			return fmt.Errorf("dynamic config only available since k0s version %s", k0sDynamicConfigSince)
 		}
-		dynamicSince, _ := semver.NewVersion(k0sDynamicSince)
-		if v.LessThan(dynamicSince) {
-			return fmt.Errorf("dynamic config only available since k0s version %s", k0sDynamicSince)
-		}
+
 		return nil
 	}
 }
 
 // SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
 func (k *K0s) SetDefaults() {
-	if k.Version != "" {
+	if k.Version != nil && !k.Version.IsZero() {
 		return
 	}
 
 	latest, err := version.LatestByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
 	if err == nil {
-		k.Version = latest.String()
+		k.Version = latest
 		k.Metadata.VersionDefaulted = true
 	}
-
-	k.Version = strings.TrimPrefix(k.Version, "v")
 }
 
 func (k *K0s) NodeConfig() dig.Mapping {
@@ -162,29 +148,6 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
 func (k K0s) GetClusterID(h *Host) (string, error) {
 	return h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
-}
-
-// VersionEqual returns true if the configured k0s version is equal to the given version string
-func (k K0s) VersionEqual(b string) bool {
-	if k.Version == "" {
-		return false
-	}
-
-	if b == "" {
-		return false
-	}
-
-	aVer, err := version.NewVersion(k.Version)
-	if err != nil {
-		return false
-	}
-
-	bVer, err := version.NewVersion(b)
-	if err != nil {
-		return false
-	}
-
-	return aVer.Equal(bVer)
 }
 
 // TokenID returns a token id from a token string that can be used to invalidate the token

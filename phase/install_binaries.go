@@ -5,7 +5,6 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,12 +45,7 @@ func (p *InstallBinaries) Run() error {
 }
 
 func (p *InstallBinaries) installBinary(h *cluster.Host) error {
-	targetVersion, err := version.NewVersion(p.Config.Spec.K0s.Version)
-	if err != nil {
-		return fmt.Errorf("parse k0s version: %w", err)
-	}
-
-	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, targetVersion); err != nil {
+	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
 		return fmt.Errorf("failed to install k0s binary: %w", err)
 	}
 

@@ -26,7 +26,7 @@ func (p *InitializeK0s) Title() string {
 func (p *InitializeK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	leader := p.Config.Spec.K0sLeader()
-	if leader.Metadata.K0sRunningVersion == "" {
+	if leader.Metadata.K0sRunningVersion == nil {
 		p.leader = leader
 	}
 	return nil
