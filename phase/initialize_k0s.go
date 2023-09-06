@@ -1,10 +1,13 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,7 +84,7 @@ func (p *InitializeK0s) Run() error {
 	}
 
 	log.Infof("%s: waiting for the k0s service to start", h)
-	if err := h.WaitK0sServiceRunning(); err != nil {
+	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 		return err
 	}
 
@@ -90,12 +93,12 @@ func (p *InitializeK0s) Run() error {
 		port = p
 	}
 	log.Infof("%s: waiting for kubernetes api to respond", h)
-	if err := h.WaitKubeAPIReady(port); err != nil {
+	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
 		return err
 	}
 
 	if p.Config.Spec.K0s.DynamicConfig {
-		if err := h.WaitK0sDynamicConfigReady(); err != nil {
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.K0sDynamicConfigReadyFunc(h)); err != nil {
 			return fmt.Errorf("dynamic config reconciliation failed: %w", err)
 		}
 	}

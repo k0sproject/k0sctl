@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -185,11 +187,11 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
-		ready, err := h.KubeNodeReady()
-		if err != nil {
+		if err := node.KubeNodeReadyFunc(h)(context.Background()); err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
+		} else {
+			h.Metadata.Ready = true
 		}
-		h.Metadata.Ready = ready
 	}
 
 	return nil

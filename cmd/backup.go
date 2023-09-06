@@ -20,6 +20,8 @@ var backupCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		retryIntervalFlag,
+		retryTimeoutFlag,
 		analyticsFlag,
 		upgradeCheckFlag,
 	},

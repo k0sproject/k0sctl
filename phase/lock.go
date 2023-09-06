@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	retry "github.com/avast/retry-go"
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
@@ -92,21 +92,9 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 }
 
 func (p *Lock) startLock(h *cluster.Host) error {
-	return retry.Do(
-		func() error {
-			return p.tryLock(h)
-		},
-		retry.OnRetry(
-			func(n uint, err error) {
-				log.Errorf("%s: attempt %d of %d.. trying to obtain a lock on host: %s", h, n+1, retries, err.Error())
-			},
-		),
-		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
-		retry.MaxJitter(time.Second*2),
-		retry.Delay(time.Second*3),
-		retry.Attempts(5),
-		retry.LastErrorOnly(true),
-	)
+	return retry.Times(context.TODO(), 10, func(_ context.Context) error {
+		return p.tryLock(h)
+	})
 }
 
 func (p *Lock) tryLock(h *cluster.Host) error {

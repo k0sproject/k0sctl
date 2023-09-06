@@ -1,10 +1,13 @@
 package phase
 
 import (
+	"context"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/node"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
@@ -114,7 +117,7 @@ func (p *InstallControllers) Run() error {
 		}
 
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := h.WaitK0sServiceRunning(); err != nil {
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
@@ -133,5 +136,5 @@ func (p *InstallControllers) waitJoined(h *cluster.Host) error {
 	}
 
 	log.Infof("%s: waiting for kubernetes api to respond", h)
-	return h.WaitKubeAPIReady(port)
+	return retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port))
 }
