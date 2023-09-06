@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var iptablesEmbeddedSince = version.MustConstraint(">= v1.22.1+k0s.0")
+
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
 	GenericPhase
@@ -49,12 +51,8 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 	}
 
 	// iptables is only required for very old versions of k0s
-	if k0sVer, err := version.NewVersion(p.Config.Spec.K0s.Version); err == nil {
-		if thresholdVersion, err := version.NewVersion("v1.22.1+k0s.0"); err != nil {
-			panic(err)
-		} else if k0sVer.LessThan(thresholdVersion) && h.NeedIPTables() { //nolint:staticcheck
-			pkgs = append(pkgs, "iptables")
-		}
+	if !iptablesEmbeddedSince.Check(p.Config.Spec.K0s.Version) && h.NeedIPTables() { //nolint:staticcheck
+		pkgs = append(pkgs, "iptables")
 	}
 
 	if h.NeedInetUtils() {
