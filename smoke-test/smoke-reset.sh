@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 

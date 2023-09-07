@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
@@ -16,8 +16,6 @@ K0S_VERSION="${K0S_FROM}"
 echo "Installing ${K0S_VERSION}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
 
-# Create config with blank version (to use latest) and apply as upgrade
-K0S_VERSION="$(curl -s https://docs.k0sproject.io/stable.txt)"
-
+# Create config with latest version and apply as upgrade
 echo "Upgrading to ${K0S_VERSION}"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug

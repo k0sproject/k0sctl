@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
 K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl.yaml"}
 
@@ -34,9 +34,8 @@ echo "* Using k0sctl kubecofig locally"
 ../k0sctl kubeconfig --config k0sctl.yaml > kubeconfig
 
 echo "* Output:"
-cat kubeconfig | grep -v -- "-data"
+grep -v -- -data kubeconfig
 
 echo "* Running kubectl"
 ./kubectl --kubeconfig kubeconfig get nodes
 echo "* Done"
-
