@@ -5,8 +5,11 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
+
+var iptablesEmbeddedSince = version.MustConstraint(">= v1.22.1+k0s.0")
 
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
@@ -47,7 +50,8 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		pkgs = append(pkgs, "curl")
 	}
 
-	if h.NeedIPTables() {
+	// iptables is only required for very old versions of k0s
+	if !iptablesEmbeddedSince.Check(p.Config.Spec.K0s.Version) && h.NeedIPTables() { //nolint:staticcheck
 		pkgs = append(pkgs, "iptables")
 	}
 
