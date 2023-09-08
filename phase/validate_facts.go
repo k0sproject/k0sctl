@@ -3,7 +3,6 @@ package phase
 import (
 	"fmt"
 
-	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,22 +34,13 @@ func (p *ValidateFacts) validateDowngrade() error {
 	if p.SkipDowngradeCheck {
 		return nil
 	}
-	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == "" {
+
+	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == nil || p.Config.Spec.K0s.Version == nil {
 		return nil
 	}
 
-	cfgV, err := version.NewVersion(p.Config.Spec.K0s.Version)
-	if err != nil {
-		return err
-	}
-
-	runV, err := version.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
-	if err != nil {
-		return err
-	}
-
-	if runV.GreaterThan(cfgV) {
-		return fmt.Errorf("can't perform a downgrade: %s > %s", runV.String(), cfgV.String())
+	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion.GreaterThan(p.Config.Spec.K0s.Version) {
+		return fmt.Errorf("can't perform a downgrade: %s > %s", p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
 	}
 
 	return nil
@@ -63,25 +53,15 @@ func (p *ValidateFacts) validateDefaultVersion() error {
 	}
 
 	// Installing a fresh latest is ok
-	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == "" {
+	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == nil {
 		return nil
 	}
 
-	cfgV, err := version.NewVersion(p.Config.Spec.K0s.Version)
-	if err != nil {
-		return err
-	}
-
-	runV, err := version.NewVersion(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
-	if err != nil {
-		return err
-	}
-
 	// Upgrading should not be performed if the config version was defaulted
-	if cfgV.GreaterThan(runV) {
-		log.Warnf("spec.k0s.version was automatically defaulted to %s but the cluster is running %s", p.Config.Spec.K0s.Version, runV.String())
+	if p.Config.Spec.K0s.Version.GreaterThan(p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion) {
+		log.Warnf("spec.k0s.version was automatically defaulted to %s but the cluster is running %s", p.Config.Spec.K0s.Version, p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion)
 		log.Warnf("to perform an upgrade, set the k0s version in the configuration explicitly")
-		p.Config.Spec.K0s.Version = runV.String()
+		p.Config.Spec.K0s.Version = p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion
 		for _, h := range p.Config.Spec.Hosts {
 			h.Metadata.NeedsUpgrade = false
 		}

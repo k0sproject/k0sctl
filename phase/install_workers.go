@@ -30,7 +30,7 @@ func (p *InstallWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {
-		return !h.Reset && !h.Metadata.NeedsUpgrade && (h.Metadata.K0sRunningVersion == "" || !h.Metadata.Ready)
+		return !h.Reset && !h.Metadata.NeedsUpgrade && (h.Metadata.K0sRunningVersion == nil || !h.Metadata.Ready)
 	})
 	p.leader = p.Config.Spec.K0sLeader()
 

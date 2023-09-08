@@ -3,15 +3,12 @@ package phase
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -66,25 +63,15 @@ func (p *UpgradeControllers) Run() error {
 			return fmt.Errorf("k0s binary tempfile not found on host")
 		}
 		log.Infof("%s: starting upgrade", h)
-		if p.needsMigration(h) {
-			if err := p.migrateService(h); err != nil {
-				return err
-			}
-		} else {
-			log.Debugf("%s: stop service", h)
-			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
-				return err
-			}
+		log.Debugf("%s: stop service", h)
+		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+			return err
 		}
 		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 			return fmt.Errorf("wait for k0s service stop: %w", err)
 		}
-		version, err := version.NewVersion(p.Config.Spec.K0s.Version)
-		if err != nil {
-			return err
-		}
 		log.Debugf("%s: update binary", h)
-		if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, version); err != nil {
+		if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
 			return err
 		}
 
@@ -133,42 +120,6 @@ func (p *UpgradeControllers) Run() error {
 			return fmt.Errorf("all system pods not running after api start-up, you can ignore this check by using --force: %w", err)
 		}
 		log.Warnf("%s: failed to observe system pods running after api start-up: %s", leader, err)
-	}
-
-	return nil
-}
-
-func (p *UpgradeControllers) needsMigration(h *cluster.Host) bool {
-	log.Debugf("%s: checking need for 0.10 --> 0.11 migration", h)
-	c, _ := semver.NewConstraint("< 0.11-0")
-	current, err := semver.NewVersion(h.Metadata.K0sRunningVersion)
-	if err != nil {
-		log.Warnf("%s: failed to parse version info: %s", h, err.Error())
-		return false
-	}
-
-	return c.Check(current)
-}
-
-func (p *UpgradeControllers) migrateService(h *cluster.Host) error {
-	log.Infof("%s: updating legacy 'k0sserver' service to '%s'", h, h.K0sServiceName())
-	if err := h.Configurer.StopService(h, "k0sserver"); err != nil {
-		return err
-	}
-	sp, err := h.Configurer.ServiceScriptPath(h, "k0sserver")
-	if err != nil {
-		return err
-	}
-	if sp == "" {
-		return fmt.Errorf("service script path resolved to empty string")
-	}
-	log.Debugf("%s: found old service path: %s", h, sp)
-	newPath := strings.Replace(sp, "k0sserver", h.K0sServiceName(), 1)
-	if err != nil {
-		return err
-	}
-	if err := h.Configurer.MoveFile(h, sp, newPath); err != nil {
-		return err
 	}
 
 	return nil
