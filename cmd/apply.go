@@ -2,13 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
-	"time"
 
-	"github.com/k0sproject/k0sctl/analytics"
+	"github.com/k0sproject/k0sctl/action"
 	"github.com/k0sproject/k0sctl/phase"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
@@ -59,104 +57,34 @@ var applyCommand = &cli.Command{
 		analyticsFlag,
 		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, displayLogo, initAnalytics, displayCopyright, warnOldCache),
+	Before: actions(initLogging, startCheckUpgrade, initConfig, initManager, displayLogo, initAnalytics, displayCopyright, warnOldCache),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		start := time.Now()
-		phase.NoWait = ctx.Bool("no-wait")
-		phase.Force = ctx.Bool("force")
+		var kubeconfigOut io.Writer
 
-		manager := phase.Manager{Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster), Concurrency: ctx.Int("concurrency"), ConcurrentUploads: ctx.Int("concurrent-uploads")}
-		lockPhase := &phase.Lock{}
-
-		manager.AddPhase(
-			&phase.Connect{},
-			&phase.DetectOS{},
-			lockPhase,
-			&phase.PrepareHosts{},
-			&phase.GatherFacts{},
-			&phase.DownloadBinaries{},
-			&phase.UploadFiles{},
-			&phase.ValidateHosts{},
-			&phase.GatherK0sFacts{},
-			&phase.ValidateFacts{SkipDowngradeCheck: ctx.Bool("disable-downgrade-check")},
-			&phase.UploadBinaries{},
-			&phase.DownloadK0s{},
-			&phase.InstallBinaries{},
-			&phase.RunHooks{Stage: "before", Action: "apply"},
-			&phase.PrepareArm{},
-			&phase.ConfigureK0s{},
-			&phase.Restore{
-				RestoreFrom: ctx.String("restore-from"),
-			},
-			&phase.InitializeK0s{},
-			&phase.InstallControllers{},
-			&phase.InstallWorkers{},
-			&phase.UpgradeControllers{},
-			&phase.UpgradeWorkers{
-				NoDrain: ctx.Bool("no-drain"),
-			},
-			&phase.ResetWorkers{
-				NoDrain: ctx.Bool("no-drain"),
-			},
-			&phase.ResetControllers{
-				NoDrain: ctx.Bool("no-drain"),
-			},
-			&phase.RunHooks{Stage: "after", Action: "apply"},
-		)
-
-		kubecfgOut := ctx.String("kubeconfig-out")
-		var kubeCfgPhase *phase.GetKubeconfig
-		if kubecfgOut != "" {
-			kubeCfgPhase = &phase.GetKubeconfig{APIAddress: ctx.String("kubeconfig-api-address")}
-			manager.AddPhase(kubeCfgPhase)
-		}
-
-		manager.AddPhase(
-			&phase.Unlock{Cancel: lockPhase.Cancel},
-			&phase.Disconnect{},
-		)
-
-		analytics.Client.Publish("apply-start", map[string]interface{}{})
-
-		var result error
-
-		if result = manager.Run(); result != nil {
-			analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
-			if lf, err := LogFile(); err == nil {
-				if ln, ok := lf.(interface{ Name() string }); ok {
-					log.Errorf("apply failed - log file saved to %s", ln.Name())
-				}
+		if kc := ctx.String("kubeconfig-out"); kc != "" {
+			out, err := os.OpenFile(kc, os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				return fmt.Errorf("failed to open kubeconfig-out file: %w", err)
 			}
-			return result
+			defer out.Close()
+			kubeconfigOut = out
 		}
 
-		analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": manager.Config.Spec.K0s.Metadata.ClusterID})
-		if kubecfgOut != "" {
-			if err := os.WriteFile(kubecfgOut, []byte(manager.Config.Metadata.Kubeconfig), 0644); err != nil {
-				log.Warnf("failed to write kubeconfig to %s: %v", kubecfgOut, err)
-			} else {
-				log.Infof("kubeconfig written to %s", kubecfgOut)
-			}
+		applyAction := action.Apply{
+			Force:                 ctx.Bool("force"),
+			Manager:               ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
+			KubeconfigOut:         kubeconfigOut,
+			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
+			NoWait:                ctx.Bool("no-wait"),
+			NoDrain:               ctx.Bool("no-drain"),
+			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
+			RestoreFrom:           ctx.String("restore-from"),
 		}
 
-		duration := time.Since(start).Truncate(time.Second)
-		text := fmt.Sprintf("==> Finished in %s", duration)
-		log.Infof(Colorize.Green(text).String())
-
-		uninstalled := false
-		for _, host := range manager.Config.Spec.Hosts {
-			if host.Reset {
-				uninstalled = true
-			}
+		if err := applyAction.Run(); err != nil {
+			return fmt.Errorf("apply failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
-		if uninstalled {
-			log.Info("There were nodes that got uninstalled during the apply phase. Please remove them from your k0sctl config file")
-		}
-
-		log.Infof("k0s cluster version %s is now installed", manager.Config.Spec.K0s.Version)
-		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Infof("     " + Colorize.Cyan("k0sctl kubeconfig").String())
 
 		return nil
 	},

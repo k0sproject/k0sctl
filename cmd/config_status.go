@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/k0sproject/k0sctl/analytics"
+	"github.com/k0sproject/k0sctl/action"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/k0sproject/rig/exec"
 
 	"github.com/urfave/cli/v2"
 )
@@ -29,30 +26,12 @@ var configStatusCommand = &cli.Command{
 	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
 	After:  actions(reportCheckUpgrade, closeAnalytics),
 	Action: func(ctx *cli.Context) error {
-		analytics.Client.Publish("config-status-start", map[string]interface{}{})
-
-		c := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
-		h := c.Spec.K0sLeader()
-
-		if err := h.Connect(); err != nil {
-			return fmt.Errorf("failed to connect: %w", err)
-		}
-		defer h.Disconnect()
-
-		if err := h.ResolveConfigurer(); err != nil {
-			return err
-		}
-		format := ctx.String("output")
-		if format != "" {
-			format = "-o " + format
+		configStatusAction := action.ConfigStatus{
+			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
+			Format: ctx.String("output"),
+			Writer: ctx.App.Writer,
 		}
 
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s %s", h.K0sDataDir(), format), exec.Sudo(h))
-		if err != nil {
-			return fmt.Errorf("%s: %w", h, err)
-		}
-		fmt.Println(output)
-
-		return nil
+		return configStatusAction.Run()
 	},
 }
