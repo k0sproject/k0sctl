@@ -77,6 +77,28 @@ func (h *Host) SetDefaults() {
 	}
 }
 
+func checkQuotes(s string) error {
+	quoteCount := make(map[rune]int)
+
+	for i, ch := range s {
+		if i > 0 && s[i-1] == '\\' {
+			continue
+		}
+
+		if ch == '\'' || ch == '"' {
+			quoteCount[ch]++
+		}
+	}
+
+	for _, count := range quoteCount {
+		if count%2 != 0 {
+			return fmt.Errorf("unbalanced quotes in %s", s)
+		}
+	}
+
+	return nil
+}
+
 func (h *Host) Validate() error {
 	// For rig validation
 	v := validator.New()
@@ -89,6 +111,19 @@ func (h *Host) Validate() error {
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
+		validation.Field(&h.InstallFlags, validation.By(func(val any) error {
+			fl, ok := val.(Flags)
+			if !ok {
+				return nil
+			}
+
+			for _, flag := range fl {
+				if err := checkQuotes(flag); err != nil {
+					return err
+				}
+			}
+			return nil
+		})),
 	)
 }
 
