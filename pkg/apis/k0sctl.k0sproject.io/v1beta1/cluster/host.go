@@ -77,7 +77,12 @@ func (h *Host) SetDefaults() {
 	}
 }
 
-func checkQuotes(s string) error {
+func validateBalancedQuotes(val any) error {
+	s, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("invalid type")
+	}
+
 	quoteCount := make(map[rune]int)
 
 	for i, ch := range s {
@@ -111,19 +116,7 @@ func (h *Host) Validate() error {
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
-		validation.Field(&h.InstallFlags, validation.By(func(val any) error {
-			fl, ok := val.(Flags)
-			if !ok {
-				return nil
-			}
-
-			for _, flag := range fl {
-				if err := checkQuotes(flag); err != nil {
-					return err
-				}
-			}
-			return nil
-		})),
+		validation.Field(&h.InstallFlags, validation.Each(validation.By(validateBalancedQuotes))),
 	)
 }
 
