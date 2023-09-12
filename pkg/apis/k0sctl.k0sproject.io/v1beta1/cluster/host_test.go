@@ -119,3 +119,22 @@ func TestK0sInstallCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, `k0s install worker --enable-cloud-provider --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
 }
+
+func TestValidation(t *testing.T) {
+	t.Run("installFlags", func(t *testing.T) {
+		h := Host{
+			Role:         "worker",
+			InstallFlags: []string{"--foo"},
+		}
+		require.NoError(t, h.Validate())
+
+		h.InstallFlags = []string{`--foo=""`, `--bar=''`}
+		require.NoError(t, h.Validate())
+		
+		h.InstallFlags = []string{`--foo="`, "--bar"}
+		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
+		
+		h.InstallFlags = []string{"--bar='"}
+		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
+	})
+}
