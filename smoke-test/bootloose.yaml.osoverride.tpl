@@ -5,7 +5,7 @@ machines:
 - count: 1
   backend: docker
   spec:
-    image: quay.io/footloose/ubuntu18.04
+    image: quay.io/k0sproject/bootloose-ubuntu20.04
     name: manager%d
     privileged: true
     volumes:
