@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -111,7 +112,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
-	
+
 	if err := h.Configurer.WriteFile(h, tempConfigPath, cfg, "0600"); err != nil {
 		return err
 	}
@@ -119,12 +120,21 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	if err := p.validateConfig(h, tempConfigPath); err != nil {
 		return err
 	}
-	
+
 	if equalConfig(oldcfg, cfg) {
 		log.Debugf("%s: configuration did not change", h)
 	} else {
 		log.Infof("%s: configuration was changed, installing new configuration", h)
-		if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, h.Configurer.K0sConfigPath(), exec.Sudo(h)); err != nil {
+		configPath := h.K0sConfigPath()
+		configDir := filepath.Dir(configPath)
+
+		if !h.Configurer.FileExist(h, configDir) {
+			if err := h.Execf(`install -d 0750 -o root -g root "%s"`, configDir, exec.Sudo(h)); err != nil {
+				return fmt.Errorf("failed to create k0s configuration directory: %w", err)
+			}
+		}
+
+		if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, configPath, exec.Sudo(h)); err != nil {
 			return fmt.Errorf("failed to install k0s configuration: %w", err)
 		}
 
