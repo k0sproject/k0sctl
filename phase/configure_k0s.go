@@ -65,13 +65,13 @@ func (p *ConfigureK0s) Run() error {
 	return p.parallelDo(controllers, p.configureK0s)
 }
 
-func (p *ConfigureK0s) validateConfig(h *cluster.Host) error {
+func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
 	var cmd string
 	if h.Exec(h.Configurer.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
-		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, h.K0sConfigPath())
+		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
 	} else {
-		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, h.K0sConfigPath())
+		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 	}
 
 	output, err := h.ExecOutput(cmd, exec.Sudo(h))
@@ -107,18 +107,27 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 		return err
 	}
 
-	if err := h.Configurer.WriteFile(h, h.K0sConfigPath(), cfg, "0600"); err != nil {
+	tempConfigPath, err := h.Configurer.TempFile(h)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for config: %w", err)
+	}
+	
+	if err := h.Configurer.WriteFile(h, tempConfigPath, cfg, "0600"); err != nil {
 		return err
 	}
 
-	if err := p.validateConfig(h); err != nil {
+	if err := p.validateConfig(h, tempConfigPath); err != nil {
 		return err
 	}
-
+	
 	if equalConfig(oldcfg, cfg) {
 		log.Debugf("%s: configuration did not change", h)
 	} else {
-		log.Infof("%s: configuration was changed", h)
+		log.Infof("%s: configuration was changed, installing new configuration", h)
+		if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, h.Configurer.K0sConfigPath(), exec.Sudo(h)); err != nil {
+			return fmt.Errorf("failed to install k0s configuration: %w", err)
+		}
+
 		if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
 			log.Infof("%s: restarting the k0s service", h)
 			if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
