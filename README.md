@@ -34,7 +34,7 @@ INFO Tip: To access the cluster you can now fetch the admin kubeconfig using:
 INFO      k0sctl kubeconfig
 ```
 
-You can find example Terraform and Footloose configurations in the [examples/](examples/) directory.
+You can find example Terraform and [bootloose](https://github.com/k0sproject/bootloose) configurations in the [examples/](examples/) directory.
 
 ## Installation
 

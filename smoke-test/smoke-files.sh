@@ -15,7 +15,7 @@ createCluster
 remoteCommand() {
   local userhost="$1"
   shift
-  footloose ssh "${userhost}" -- "$@"
+  bootloose ssh "${userhost}" -- "$@"
 }
 
 remoteFileExist() {
