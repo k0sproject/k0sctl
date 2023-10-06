@@ -14,7 +14,7 @@ k0sctl:
 	$(MAKE) -C .. k0sctl
 
 $(bootloose):
-	go install github.com/k0sproject/bootloose/...@latest
+	go install github.com/k0sproject/bootloose@latest
 
 id_rsa_k0s:
 	ssh-keygen -t rsa -f ./id_rsa_k0s -N ""
