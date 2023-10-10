@@ -1,0 +1,20 @@
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: cluster
+spec:
+  hosts:
+    - role: controller
+      uploadBinary: true
+      openSSH:
+        address: controller
+        configPath: ssh/config
+    - role: worker
+      uploadBinary: true
+      openSSH:
+        address: worker
+        configPath: ssh/config
+  k0s:
+    version: "${K0S_VERSION}"
+    config:
+      spec:
+        telemetry:
+          enabled: false

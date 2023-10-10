@@ -22,6 +22,9 @@ id_rsa_k0s:
 smoke-basic: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-basic.sh
 
+smoke-basic-openssh: $(bootloose) id_rsa_k0s k0sctl
+	./smoke-basic-openssh.sh
+
 smoke-dynamic: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-dynamic.sh
 
@@ -42,3 +45,4 @@ smoke-os-override: $(bootloose) id_rsa_k0s k0sctl
 
 smoke-backup-restore: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-backup-restore.sh
+
