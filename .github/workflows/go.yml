@@ -109,7 +109,7 @@ jobs:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-basic
   
-  smoke-basic:
+  smoke-basic-openssh:
     strategy:
       matrix:
         image:
