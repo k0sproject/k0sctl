@@ -51,7 +51,7 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 	}
 
 	// iptables is only required for very old versions of k0s
-	if !iptablesEmbeddedSince.Check(p.Config.Spec.K0s.Version) && h.NeedIPTables() { //nolint:staticcheck
+	if p.Config.Spec.K0s.Version != nil && !iptablesEmbeddedSince.Check(p.Config.Spec.K0s.Version) && h.NeedIPTables() { //nolint:staticcheck
 		pkgs = append(pkgs, "iptables")
 	}
 

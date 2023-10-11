@@ -15,7 +15,6 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	"gopkg.in/yaml.v2"
@@ -31,10 +30,11 @@ var (
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
-	Version       *version.Version `yaml:"version"`
-	DynamicConfig bool             `yaml:"dynamicConfig"`
-	Config        dig.Mapping      `yaml:"config"`
-	Metadata      K0sMetadata      `yaml:"-"`
+	Version        *version.Version `yaml:"version"`
+	VersionChannel string           `yaml:"versionChannel" default:"stable"`
+	DynamicConfig  bool             `yaml:"dynamicConfig"`
+	Config         dig.Mapping      `yaml:"config"`
+	Metadata       K0sMetadata      `yaml:"-"`
 }
 
 // K0sMetadata contains gathered information about k0s cluster
@@ -54,13 +54,29 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	return defaults.Set(k)
 }
+
+// SetDefaults sets default values
+func (k *K0s) SetDefaults() {
+	if k.Version == nil {
+		return
+	}
+
+	if k.Version.IsZero() {
+		k.Version = nil
+	}
+}
+
 func validateVersion(value interface{}) error {
 	v, ok := value.(*version.Version)
 	if !ok {
 		return fmt.Errorf("not a version")
 	}
 
-	if v != nil && !k0sSupportedVersion.Check(v) {
+	if v == nil || v.IsZero() {
+		return nil
+	}
+
+	if !k0sSupportedVersion.Check(v) {
 		return fmt.Errorf("minimum supported k0s version is %s", k0sSupportedVersion)
 	}
 
@@ -69,9 +85,9 @@ func validateVersion(value interface{}) error {
 
 func (k *K0s) Validate() error {
 	return validation.ValidateStruct(k,
-		validation.Field(&k.Version, validation.Required),
 		validation.Field(&k.Version, validation.By(validateVersion)),
 		validation.Field(&k.DynamicConfig, validation.By(k.validateMinDynamic())),
+		validation.Field(&k.VersionChannel, validation.In("stable", "latest")),
 	)
 }
 
@@ -85,24 +101,11 @@ func (k *K0s) validateMinDynamic() func(interface{}) error {
 			return nil
 		}
 
-		if k.Version != nil && !k0sDynamicConfigSince.Check(k.Version) {
+		if k.Version != nil && !k.Version.IsZero() && !k0sDynamicConfigSince.Check(k.Version) {
 			return fmt.Errorf("dynamic config only available since k0s version %s", k0sDynamicConfigSince)
 		}
 
 		return nil
-	}
-}
-
-// SetDefaults (implements defaults Setter interface) defaults the version to latest k0s version
-func (k *K0s) SetDefaults() {
-	if k.Version != nil && !k.Version.IsZero() {
-		return
-	}
-
-	latest, err := version.LatestByPrerelease(k0sctl.IsPre() || k0sctl.Version == "0.0.0")
-	if err == nil {
-		k.Version = latest
-		k.Metadata.VersionDefaulted = true
 	}
 }
 
