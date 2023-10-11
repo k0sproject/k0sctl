@@ -43,14 +43,13 @@ func TestVersionDefaulting(t *testing.T) {
 	})
 
 	t.Run("version not given", func(t *testing.T) {
+		latestVersionFunc = func(_ bool) (*version.Version, error) {
+			return version.MustParse("v1.28.0+k0s.1"), nil
+		}
 		k0s := &K0s{}
 		require.NoError(t, defaults.Set(k0s))
 		require.NoError(t, k0s.Validate())
-		require.NotEmpty(t, k0s.Version.String())
-		require.True(t, len(k0s.Version.String()) > 6, "version too short")
-		newV, err := version.NewVersion(k0s.Version.String())
-		require.NoError(t, err)
-		require.Equal(t, newV.String(), k0s.Version.String())
+		require.Equal(t, k0s.Version.String(), "v1.28.0+k0s.1")
 		require.True(t, k0s.Metadata.VersionDefaulted)
 	})
 }
