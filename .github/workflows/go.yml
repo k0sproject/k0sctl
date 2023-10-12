@@ -28,12 +28,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v3.7.0
-      with:
-        version: latest
-        args: --timeout=30m
-
     - name: Build
       run: make k0sctl
 
