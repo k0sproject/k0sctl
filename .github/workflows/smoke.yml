@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - '**.go'
+      - go.mod
+      - go.sum
       - Makefile
-      - .github
-      - smoke-test
+      - .github/workflows/smoke.yml
+      - smoke-test/**
 
 jobs:
 

@@ -2,7 +2,7 @@ name: Lint (actionlint)
 on:
   pull_request:
     paths:
-      - .github
+      - .github/**
 
 jobs:
   actionlint:
