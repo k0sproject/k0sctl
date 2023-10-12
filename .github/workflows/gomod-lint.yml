@@ -1,0 +1,23 @@
+name: Lint (go.mod/go.sum)
+on:
+  pull_request:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+
+jobs:
+  gomod-lint:
+    name: Validate go module file consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Check go.mod/go.sum to be consistent
+        run: go mod tidy -v && git diff --exit-code

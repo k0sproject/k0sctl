@@ -12,13 +12,10 @@ jobs:
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
-
-      # Ugly hack to get the tag name
-      # github.ref gives the full reference like refs.tags.v0.0.1-beta1
-      - name: Branch name
-        id: branch_name
-        run: |
-          echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
+    
+      - name: Tag name
+        id: tag-name
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -30,7 +27,7 @@ jobs:
         id: build_bins
         env:
           SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          TAG_NAME: ${{ steps.branch_name.outputs.TAG_NAME }}
+          TAG_NAME: ${{ steps.tag-name.outputs.tag }}
         run: make build-all
 
       - name: Create release and upload binaries
@@ -41,7 +38,7 @@ jobs:
             bin/k0sctl-*
             bin/checksums.txt
           body_path: bin/checksums.md
-          tag_name: ${{ steps.branch_name.outputs.TAG_NAME }}
-          name: ${{ steps.branch_name.outputs.TAG_NAME }}
+          tag_name: ${{ steps.tag-name.outputs.tag }}
+          name: ${{ steps.tag-name.outputs.tag }}
           draft: true # So we can manually edit before publishing
-          prerelease: ${{ contains(steps.branch_name.outputs.TAG_NAME, '-') }} # v0.1.2-beta1, 1.2.3-rc1
+          prerelease: ${{ contains(steps.tag-name.outputs.tag, '-') }} # v0.1.2-beta1, 1.2.3-rc1
