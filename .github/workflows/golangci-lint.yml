@@ -24,4 +24,4 @@ jobs:
           version: latest
           skip-cache: true
           only-new-issues: false
-          args: --verbose
+          args: --verbose --timeout=10m
