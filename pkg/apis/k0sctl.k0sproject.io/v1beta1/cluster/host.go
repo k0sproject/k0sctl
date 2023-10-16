@@ -11,9 +11,9 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/creasty/defaults"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/go-playground/validator/v10"
+	"github.com/jellydator/validation"
+	"github.com/jellydator/validation/is"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"

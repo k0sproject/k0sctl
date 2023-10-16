@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/creasty/defaults"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/jellydator/validation"
 )
 
 // Spec defines cluster config spec section

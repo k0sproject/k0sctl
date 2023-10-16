@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jellydator/validation"
+
 	"github.com/alessio/shellescape"
 	"github.com/creasty/defaults"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
