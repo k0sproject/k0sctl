@@ -156,6 +156,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 	}
 
 	h.Metadata.K0sRunningVersion = status.Version
+	if p.Config.Spec.K0s.Version == nil {
+		p.Config.Spec.K0s.Version = status.Version
+	}
+
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
@@ -203,6 +207,10 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 }
 
 func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
+	if h.Reset {
+		return false
+	}
+
 	// If supplimental files or a k0s binary have been specified explicitly,
 	// always upgrade.  This covers the scenario where a user moves from a
 	// default-install cluster to one fed by OCI image bundles (ie. airgap)

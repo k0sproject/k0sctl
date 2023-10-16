@@ -571,6 +571,12 @@ If set to `true` k0sctl will remove the node from kubernetes and reset k0s on th
 
 The version of k0s to deploy. When left out, k0sctl will default to using the latest released version of k0s or the version already running on the cluster.
 
+##### `spec.k0s.versionChannel` &lt;string&gt; (optional) (default: `stable`)
+
+Possible values are `stable` and `latest`.
+
+When `spec.k0s.version` is left undefined, this setting can be set to `latest` to allow k0sctl to include k0s pre-releases when looking for the latest version. The default is to only look for stable releases.
+
 ##### `spec.k0s.dynamicConfig` &lt;boolean&gt; (optional) (default: false)
 
 Enable k0s dynamic config. The setting will be automatically set to true if:

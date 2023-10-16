@@ -1,7 +1,11 @@
 package v1beta1
 
 import (
+	"fmt"
+
+	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
@@ -34,6 +38,10 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if err := unmarshal(yc); err != nil {
 		return err
+	}
+
+	if err := defaults.Set(c); err != nil {
+		return fmt.Errorf("failed to set defaults: %w", err)
 	}
 
 	return nil

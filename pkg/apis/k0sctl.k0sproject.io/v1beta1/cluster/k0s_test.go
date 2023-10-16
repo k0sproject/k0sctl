@@ -39,18 +39,5 @@ func TestVersionDefaulting(t *testing.T) {
 		k0s := &K0s{Version: version.MustParse("v0.11.0-rc1")}
 		require.NoError(t, defaults.Set(k0s))
 		require.NoError(t, k0s.Validate())
-		require.False(t, k0s.Metadata.VersionDefaulted)
-	})
-
-	t.Run("version not given", func(t *testing.T) {
-		k0s := &K0s{}
-		require.NoError(t, defaults.Set(k0s))
-		require.NoError(t, k0s.Validate())
-		require.NotEmpty(t, k0s.Version.String())
-		require.True(t, len(k0s.Version.String()) > 6, "version too short")
-		newV, err := version.NewVersion(k0s.Version.String())
-		require.NoError(t, err)
-		require.Equal(t, newV.String(), k0s.Version.String())
-		require.True(t, k0s.Metadata.VersionDefaulted)
 	})
 }

@@ -28,6 +28,14 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return defaults.Set(s)
 }
 
+// SetDefaults sets defaults
+func (s *Spec) SetDefaults() {
+	if s.K0s == nil {
+		s.K0s = &K0s{}
+		_ = defaults.Set(s.K0s)
+	}
+}
+
 // K0sLeader returns a controller host that is selected to be a "leader",
 // or an initial node, a node that creates join tokens for other controllers.
 func (s *Spec) K0sLeader() *Host {

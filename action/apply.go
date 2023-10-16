@@ -39,6 +39,7 @@ func (a Apply) Run() error {
 	lockPhase := &phase.Lock{}
 
 	a.Manager.AddPhase(
+		&phase.DefaultK0sVersion{},
 		&phase.Connect{},
 		&phase.DetectOS{},
 		lockPhase,
