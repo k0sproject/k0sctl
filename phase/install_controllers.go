@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -54,6 +55,21 @@ func (p *InstallControllers) CleanUp() {
 
 // Run the phase
 func (p *InstallControllers) Run() error {
+	url := p.Config.Spec.KubeAPIURL()
+	healthz := fmt.Sprintf("%s/healthz", url)
+
+	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+		log.Infof("%s: validating api connection to %s", h, url)
+		if err := retry.Times(context.Background(), 2, node.HTTPStatusFunc(h, healthz, 200, 401)); err != nil {
+			return fmt.Errorf("failed to connect from controller to kubernetes api at %s - check networking", url)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
 	for _, h := range p.hosts {
 		log.Infof("%s: generating token", p.leader)
 		token, err := p.Config.Spec.K0s.GenerateToken(
