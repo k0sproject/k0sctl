@@ -72,8 +72,9 @@ func (p *ConfigureK0s) Run() error {
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
+
 	var cmd string
-	if h.Exec(h.Configurer.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
+	if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
 		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
 	} else {
 		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
