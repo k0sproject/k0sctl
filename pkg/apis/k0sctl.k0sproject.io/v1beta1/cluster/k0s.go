@@ -24,8 +24,9 @@ import (
 const K0sMinVersion = "0.11.0-rc1"
 
 var (
-	k0sSupportedVersion   = version.MustConstraint(">= " + K0sMinVersion)
-	k0sDynamicConfigSince = version.MustConstraint(">= 1.22.2+k0s.2")
+	k0sSupportedVersion           = version.MustConstraint(">= " + K0sMinVersion)
+	k0sDynamicConfigSince         = version.MustConstraint(">= 1.22.2+k0s.2")
+	k0sTokenCreateConfigFlagUntil = version.MustConstraint("< v1.23.4-rc.1+k0s.0")
 )
 
 // K0s holds configuration for bootstraping a k0s cluster
@@ -130,15 +131,14 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 	k0sFlags.Add(fmt.Sprintf("--role %s", role))
 	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
 
-	out, err := h.ExecOutput(h.Configurer.K0sCmdf("token create --help"), exec.Sudo(h))
-	if err == nil && strings.Contains(out, "--config") {
+	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
+
+	if k0sTokenCreateConfigFlagUntil.Check(k.Version) {
 		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
 	}
 
-	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
-
 	var token string
-	err = retry.Timeout(context.TODO(), retry.DefaultTimeout, func(_ context.Context) error {
+	err := retry.Timeout(context.TODO(), retry.DefaultTimeout, func(_ context.Context) error {
 		output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("create token: %w", err)
