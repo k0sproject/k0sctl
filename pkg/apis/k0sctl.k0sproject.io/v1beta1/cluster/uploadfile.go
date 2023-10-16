@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/jellydator/validation"
 	log "github.com/sirupsen/logrus"
 )
 
