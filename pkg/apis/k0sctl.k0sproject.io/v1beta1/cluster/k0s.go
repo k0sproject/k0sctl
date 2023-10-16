@@ -126,7 +126,7 @@ func (k *K0s) NodeConfig() dig.Mapping {
 }
 
 // GenerateToken runs the k0s token create command
-func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, error) {
+func (k *K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, error) {
 	var k0sFlags Flags
 	k0sFlags.Add(fmt.Sprintf("--role %s", role))
 	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
@@ -150,7 +150,7 @@ func (k K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, 
 }
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
-func (k K0s) GetClusterID(h *Host) (string, error) {
+func (k *K0s) GetClusterID(h *Host) (string, error) {
 	return h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
 }
 
