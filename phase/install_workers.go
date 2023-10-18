@@ -137,6 +137,8 @@ func (p *InstallWorkers) Run() error {
 			return err
 		}
 
+		h.Metadata.K0sInstalled = true
+
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
 			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {

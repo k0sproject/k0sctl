@@ -119,6 +119,7 @@ func (p *InstallControllers) Run() error {
 		if err = h.Exec(cmd); err != nil {
 			return err
 		}
+		h.Metadata.K0sInstalled = true
 
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)

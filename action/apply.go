@@ -84,6 +84,22 @@ func (a Apply) Run() error {
 
 	if result = a.Manager.Run(); result != nil {
 		analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": a.Manager.Config.Spec.K0s.Metadata.ClusterID})
+		log.Info(phase.Colorize.Red("==> Apply failed").String())
+
+		var installedHosts []string
+		for _, h := range a.Manager.Config.Spec.Hosts {
+			if h.Metadata.K0sInstalled {
+				installedHosts = append(installedHosts, h.String())
+			}
+		}
+		if len(installedHosts) > 0 {
+			log.Warn("Cluster setup failed, but 'k0s install' has been run on the following hosts:")
+			for _, h := range installedHosts {
+				log.Warnf("  - %s", h)
+			}
+			log.Warn("You may need to reset them before retrying 'k0sctl apply'. See 'k0sctl reset --help' for more information.")
+		}
+
 		return result
 	}
 
