@@ -8,6 +8,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,9 +41,16 @@ func (p *InitializeK0s) ShouldRun() bool {
 // CleanUp cleans up the environment override file
 func (p *InitializeK0s) CleanUp() {
 	h := p.leader
+
+	log.Infof("%s: cleaning up", h)
 	if len(h.Environment) > 0 {
 		if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 			log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+		}
+	}
+	if h.Metadata.K0sInstalled {
+		if err := h.Exec(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h)); err != nil {
+			log.Warnf("%s: k0s reset failed", h)
 		}
 	}
 }
@@ -71,6 +79,8 @@ func (p *InitializeK0s) Run() error {
 	if err = h.Exec(cmd); err != nil {
 		return err
 	}
+
+	h.Metadata.K0sInstalled = true
 
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating service environment", h)
@@ -105,6 +115,7 @@ func (p *InitializeK0s) Run() error {
 
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
+	h.Metadata.Ready = true
 
 	if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
 		p.Config.Spec.K0s.Metadata.ClusterID = id

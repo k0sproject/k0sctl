@@ -28,8 +28,7 @@ func (p *InstallWorkers) Title() string {
 // Prepare the phase
 func (p *InstallWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
-	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
-	p.hosts = workers.Filter(func(h *cluster.Host) bool {
+	p.hosts = p.Config.Spec.Hosts.Workers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && !h.Metadata.NeedsUpgrade && (h.Metadata.K0sRunningVersion == nil || !h.Metadata.Ready)
 	})
 	p.leader = p.Config.Spec.K0sLeader()
@@ -42,15 +41,24 @@ func (p *InstallWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
-// CleanUp cleans up the environment override files on hosts
+// CleanUp attempts to clean up any changes after a failed install
 func (p *InstallWorkers) CleanUp() {
-	for _, h := range p.hosts {
+	_ = p.hosts.Filter(func(h *cluster.Host) bool {
+		return !h.Metadata.Ready
+	}).ParallelEach(func(h *cluster.Host) error {
+		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+				log.Warnf("%s: failed to clean up service environment: %v", h, err)
 			}
 		}
-	}
+		if h.Metadata.K0sInstalled {
+			if err := h.Exec(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h)); err != nil {
+				log.Warnf("%s: k0s reset failed", h)
+			}
+		}
+		return nil
+	})
 }
 
 // Run the phase
@@ -136,6 +144,8 @@ func (p *InstallWorkers) Run() error {
 		if err = h.Exec(cmd); err != nil {
 			return err
 		}
+
+		h.Metadata.K0sInstalled = true
 
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
