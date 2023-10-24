@@ -175,6 +175,7 @@ type HostMetadata struct {
 	K0sBinaryVersion  *version.Version
 	K0sBinaryTempFile string
 	K0sRunningVersion *version.Version
+	K0sInstalled      bool
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string

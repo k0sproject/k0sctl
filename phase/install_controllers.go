@@ -28,9 +28,8 @@ func (p *InstallControllers) Title() string {
 // Prepare the phase
 func (p *InstallControllers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
 	p.leader = p.Config.Spec.K0sLeader()
-	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
+	p.hosts = p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && !h.Metadata.NeedsUpgrade && (h != p.leader && h.Metadata.K0sRunningVersion == nil)
 	})
 
@@ -44,13 +43,22 @@ func (p *InstallControllers) ShouldRun() bool {
 
 // CleanUp cleans up the environment override files on hosts
 func (p *InstallControllers) CleanUp() {
-	for _, h := range p.hosts {
+	_ = p.hosts.Filter(func(h *cluster.Host) bool {
+		return !h.Metadata.Ready
+	}).ParallelEach(func(h *cluster.Host) error {
+		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+				log.Warnf("%s: failed to clean up service environment: %v", h, err)
 			}
 		}
-	}
+		if h.Metadata.K0sInstalled {
+			if err := h.Exec(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h)); err != nil {
+				log.Warnf("%s: k0s reset failed", h)
+			}
+		}
+		return nil
+	})
 }
 
 // Run the phase
@@ -119,6 +127,7 @@ func (p *InstallControllers) Run() error {
 		if err = h.Exec(cmd); err != nil {
 			return err
 		}
+		h.Metadata.K0sInstalled = true
 
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
@@ -140,6 +149,7 @@ func (p *InstallControllers) Run() error {
 		if err := p.waitJoined(h); err != nil {
 			return err
 		}
+		h.Metadata.Ready = true
 	}
 
 	return nil

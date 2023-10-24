@@ -84,6 +84,7 @@ func (a Apply) Run() error {
 
 	if result = a.Manager.Run(); result != nil {
 		analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": a.Manager.Config.Spec.K0s.Metadata.ClusterID})
+		log.Info(phase.Colorize.Red("==> Apply failed").String())
 		return result
 	}
 
