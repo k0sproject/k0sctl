@@ -29,13 +29,18 @@ func (p *Restore) ShouldRun() bool {
 
 // Prepare the phase
 func (p *Restore) Prepare(config *v1beta1.Cluster) error {
-	log.Tracef("restore from: %s", p.RestoreFrom)
 	p.Config = config
-	p.leader = p.Config.Spec.K0sLeader()
 
-	if p.RestoreFrom != "" && p.leader.Exec(p.leader.Configurer.K0sCmdf("restore --help"), exec.Sudo(p.leader)) != nil {
+	if p.RestoreFrom == "" {
+		return nil
+	}
+
+	// defined in backup.go
+	if !backupSinceVersion.Check(p.Config.Spec.K0s.Version) {
 		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
 	}
+
+	p.leader = p.Config.Spec.K0sLeader()
 
 	log.Tracef("restore leader: %s", p.leader)
 	log.Tracef("restore leader state: %+v", p.leader.Metadata)

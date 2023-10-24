@@ -15,9 +15,13 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
+
+// "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
+var configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
 
 // ConfigureK0s writes the k0s configuration to host k0s config dir
 type ConfigureK0s struct {
@@ -44,7 +48,7 @@ func (p *ConfigureK0s) Run() error {
 		log.Warnf("%s: generating default configuration", p.leader)
 
 		var cmd string
-		if p.leader.Exec(p.leader.Configurer.K0sCmdf("config create --help"), exec.Sudo(p.leader)) == nil {
+		if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
 			cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
 		} else {
 			cmd = p.leader.Configurer.K0sCmdf("default-config")
@@ -68,8 +72,9 @@ func (p *ConfigureK0s) Run() error {
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
+
 	var cmd string
-	if h.Exec(h.Configurer.K0sCmdf("config validate --help"), exec.Sudo(h)) == nil {
+	if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
 		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
 	} else {
 		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)

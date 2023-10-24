@@ -10,10 +10,13 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
 var _ phase = &Backup{}
+
+var backupSinceVersion = version.MustConstraint(">= v1.21.0-rc.1+k0s.0")
 
 // Backup connect to one of the controllers and takes a backup
 type Backup struct {
@@ -30,13 +33,14 @@ func (p *Backup) Title() string {
 // Prepare the phase
 func (p *Backup) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
+
+	if !backupSinceVersion.Check(p.Config.Spec.K0s.Version) {
+		return fmt.Errorf("the version of k0s on the host does not support taking backups")
+	}
+
 	leader := p.Config.Spec.K0sLeader()
 	if leader.Metadata.K0sRunningVersion == nil {
 		return fmt.Errorf("failed to find a running controller")
-	}
-
-	if leader.Exec(leader.Configurer.K0sCmdf("backup --help"), exec.Sudo(leader)) != nil {
-		return fmt.Errorf("the version of k0s on the host does not support taking backups")
 	}
 
 	p.leader = leader
