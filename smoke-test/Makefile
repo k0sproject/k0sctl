@@ -46,3 +46,5 @@ smoke-os-override: $(bootloose) id_rsa_k0s k0sctl
 smoke-backup-restore: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-backup-restore.sh
 
+%.iid: Dockerfile.%
+	docker build --iidfile '$@' - < '$<'

@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"strings"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 
 	// anonymous import is needed to load the os configurers
@@ -31,6 +33,16 @@ func (p *DetectOS) Run() error {
 		}
 		if err := h.ResolveConfigurer(); err != nil {
 			p.SetProp("missing-support", h.OSVersion.String())
+			if h.OSVersion.IDLike != "" {
+				log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE '%s'", h, h.OSVersion.String(), h.OSVersion.IDLike)
+				for _, id := range strings.Split(h.OSVersion.IDLike, " ") {
+					h.OSVersion.ID = id
+					if err := h.ResolveConfigurer(); err == nil {
+						log.Warnf("%s: using '%s' as OS support fallback for %s", h, id, h.OSVersion.String())
+						return nil
+					}
+				}
+			}
 			return err
 		}
 		os := h.OSVersion.String()
