@@ -12,6 +12,7 @@ var configEditCommand = &cli.Command{
 	Usage: "Edit k0s dynamic config in SHELL's default editor",
 	Flags: []cli.Flag{
 		configFlag,
+		confirmFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,

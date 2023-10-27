@@ -12,6 +12,7 @@ var configStatusCommand = &cli.Command{
 	Usage: "Show k0s dynamic config reconciliation events",
 	Flags: []cli.Flag{
 		configFlag,
+		confirmFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,

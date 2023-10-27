@@ -34,6 +34,15 @@ type ctxManagerKey struct{}
 type ctxLogFileKey struct{}
 
 var (
+	confirmFlag = &cli.BoolFlag{
+		Name:  "confirm-exec",
+		Usage: "Prompt for confirmation before running remote commands",
+		Action: func(_ *cli.Context, confirm bool) error {
+			exec.Confirm = confirm
+			return nil
+		},
+	}
+
 	debugFlag = &cli.BoolFlag{
 		Name:    "debug",
 		Usage:   "Enable debug logging",
