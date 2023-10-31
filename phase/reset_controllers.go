@@ -87,13 +87,18 @@ func (p *ResetControllers) Run() error {
 			log.Debugf("%s: stopping k0s completed", h)
 		}
 
-		log.Debugf("%s: leaving etcd...", h)
 		if !p.NoLeave {
-			if err := p.leader.LeaveEtcd(h); err != nil {
+			log.Debugf("%s: leaving etcd...", h)
+
+			etcdAddress := h.SSH.Address
+			if h.PrivateAddress != "" {
+				etcdAddress = h.PrivateAddress
+			}
+			if err := h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h)); err != nil {
 				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
 			}
+			log.Debugf("%s: leaving etcd completed", h)
 		}
-		log.Debugf("%s: leaving etcd completed", h)
 
 		log.Debugf("%s: resetting k0s...", h)
 		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h))

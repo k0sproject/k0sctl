@@ -432,14 +432,6 @@ func (h *Host) DeleteNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
-func (h *Host) LeaveEtcd(node *Host) error {
-	etcdAddress := node.SSH.Address
-	if node.PrivateAddress != "" {
-		etcdAddress = node.PrivateAddress
-	}
-	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h))
-}
-
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
 func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
 	status, err := h.Configurer.HTTPStatus(h, url)
