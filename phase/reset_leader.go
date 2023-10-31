@@ -29,15 +29,6 @@ func (p *ResetLeader) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
-// CleanUp cleans up the environment override files on hosts
-func (p *ResetLeader) CleanUp() {
-	if len(p.leader.Environment) > 0 {
-		if err := p.leader.Configurer.CleanupServiceEnvironment(p.leader, p.leader.K0sServiceName()); err != nil {
-			log.Warnf("%s: failed to clean up service environment: %s", p.leader, err.Error())
-		}
-	}
-}
-
 // Run the phase
 func (p *ResetLeader) Run() error {
 	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
@@ -65,6 +56,12 @@ func (p *ResetLeader) Run() error {
 		log.Warnf("%s: failed to remove existing configuration %s: %s", p.leader, p.leader.Configurer.K0sConfigPath(), dErr)
 	}
 	log.Debugf("%s: removing config completed", p.leader)
+
+	if len(p.leader.Environment) > 0 {
+		if err := p.leader.Configurer.CleanupServiceEnvironment(p.leader, p.leader.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to clean up service environment: %s", p.leader, err.Error())
+		}
+	}
 
 	log.Infof("%s: reset", p.leader)
 
