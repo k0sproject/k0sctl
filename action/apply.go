@@ -49,13 +49,18 @@ func (a Apply) Run() error {
 		&phase.GatherK0sFacts{},
 		&phase.ValidateFacts{SkipDowngradeCheck: a.DisableDowngradeCheck},
 		&phase.RunHooks{Stage: "before", Action: "apply"},
-		&phase.DownloadBinaries{},
-		&phase.UploadK0s{},
-		&phase.DownloadK0s{},
-		&phase.UploadFiles{},
+
+		// if UploadBinaries: true
+		&phase.DownloadBinaries{}, // downloads k0s binaries to local cache
+		&phase.UploadK0s{},        // uploads k0s binaries to hosts from cache
+
+		// if UploadBinaries: false
+		&phase.DownloadK0s{}, // downloads k0s binaries directly from hosts
+
 		&phase.InstallBinaries{}, // need to think how to handle validation if this is faked on plan
 		&phase.PrepareArm{},
 		&phase.ConfigureK0s{},
+		&phase.UploadFiles{},
 		&phase.Restore{
 			RestoreFrom: a.RestoreFrom,
 		},

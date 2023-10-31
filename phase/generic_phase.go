@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"fmt"
+
 	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -23,6 +25,21 @@ func (p *GenericPhase) GetConfig() *v1beta1.Cluster {
 func (p *GenericPhase) Prepare(c *v1beta1.Cluster) error {
 	p.Config = c
 	return nil
+}
+
+// Wet is a shorthand for manager.Wet
+func (p *GenericPhase) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
+	return p.manager.Wet(host, msg, funcs...)
+}
+
+// IsWet returns true if manager is in dry-run mode
+func (p *GenericPhase) IsWet() bool {
+	return !p.manager.DryRun
+}
+
+// DryMsg is a shorthand for manager.DryMsg
+func (p *GenericPhase) DryMsg(host fmt.Stringer, msg string) {
+	p.manager.DryMsg(host, msg)
 }
 
 // SetManager adds a reference to the phase manager

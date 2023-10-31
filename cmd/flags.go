@@ -41,6 +41,12 @@ var (
 		EnvVars: []string{"DEBUG"},
 	}
 
+	dryRunFlag = &cli.BoolFlag{
+		Name:    "dry-run",
+		Usage:   "Do not alter cluster state, just print what would be done",
+		EnvVars: []string{"DRY_RUN"},
+	}
+
 	traceFlag = &cli.BoolFlag{
 		Name:    "trace",
 		Usage:   "Enable trace logging",
@@ -227,6 +233,7 @@ func initManager(ctx *cli.Context) error {
 
 	manager.Concurrency = ctx.Int("concurrency")
 	manager.ConcurrentUploads = ctx.Int("concurrent-uploads")
+	manager.DryRun = ctx.Bool("dry-run")
 
 	ctx.Context = context.WithValue(ctx.Context, ctxManagerKey{}, manager)
 

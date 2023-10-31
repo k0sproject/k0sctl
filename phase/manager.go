@@ -6,6 +6,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/logrusorgru/aurora"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -53,12 +54,17 @@ type withmanager interface {
 	SetManager(*Manager)
 }
 
+type withDryRun interface {
+	DryRun() error
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases            []phase
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
+	DryRun            bool
 }
 
 // NewManager creates a new Manager
@@ -73,6 +79,35 @@ func NewManager(config *v1beta1.Cluster) (*Manager, error) {
 // AddPhase adds a Phase to Manager
 func (m *Manager) AddPhase(p ...phase) {
 	m.phases = append(m.phases, p...)
+}
+
+var dryRunPrefix = Colorize.Gray(8, "dry-run:").String()
+
+type errorfunc func() error
+
+// DryMsg prints a message in dry-run mode
+func (m *Manager) DryMsg(host fmt.Stringer, msg string) {
+	logrus.Println(dryRunPrefix, Colorize.Gray(16, host.String()), Colorize.Gray(23, msg))
+}
+
+// Wet runs the first given function when not in dry-run mode. The second function will be
+// run when in dry-mode and the message will be displayed. Any error returned from the
+// functions will be returned and will halt the operation.
+func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
+	if !m.DryRun {
+		if len(funcs) > 0 && funcs[0] != nil {
+			return funcs[0]()
+		}
+		return nil
+	}
+
+	m.DryMsg(host, msg)
+
+	if m.DryRun && len(funcs) == 2 && funcs[1] != nil {
+		return funcs[1]()
+	}
+
+	return nil
 }
 
 // Run executes all the added Phases in order
@@ -129,6 +164,14 @@ func (m *Manager) Run() error {
 
 		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
+
+		if dp, ok := p.(withDryRun); ok && m.DryRun {
+			if err := dp.DryRun(); err != nil {
+				return err
+			}
+			continue
+		}
+
 		result = p.Run()
 		ran = append(ran, p)
 

@@ -13,6 +13,7 @@ var backupCommand = &cli.Command{
 	Usage: "Take backup of existing clusters state",
 	Flags: []cli.Flag{
 		configFlag,
+		dryRunFlag,
 		concurrencyFlag,
 		debugFlag,
 		traceFlag,

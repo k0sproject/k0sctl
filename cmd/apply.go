@@ -18,6 +18,7 @@ var applyCommand = &cli.Command{
 		configFlag,
 		concurrencyFlag,
 		concurrentUploadsFlag,
+		dryRunFlag,
 		&cli.BoolFlag{
 			Name:  "no-wait",
 			Usage: "Do not wait for worker nodes to join",
