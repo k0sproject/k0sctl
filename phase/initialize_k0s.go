@@ -35,7 +35,7 @@ func (p *InitializeK0s) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there is a leader host
 func (p *InitializeK0s) ShouldRun() bool {
-	return p.leader != nil
+	return p.leader != nil && !p.leader.Reset
 }
 
 // CleanUp cleans up the environment override file

@@ -29,7 +29,7 @@ func (p *UploadFiles) Title() string {
 func (p *UploadFiles) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return len(h.Files) > 0
+		return !h.Reset && len(h.Files) > 0
 	})
 
 	return nil

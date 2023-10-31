@@ -77,6 +77,10 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 	}
 
 	for _, h := range p.Config.Spec.Hosts.Controllers() {
+		if h.Reset {
+			continue
+		}
+
 		cfgNew, err := p.configFor(h)
 		if err != nil {
 			return fmt.Errorf("failed to build k0s config for %s: %w", h, err)

@@ -24,6 +24,10 @@ func (p *InstallBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 
+		if h.Reset && h.Metadata.K0sBinaryVersion != nil {
+			return false
+		}
+
 		// Upgrade is handled in UpgradeControllers/UpgradeWorkers phases
 		if h.Metadata.NeedsUpgrade {
 			return false
