@@ -50,10 +50,10 @@ func (a Apply) Run() error {
 		&phase.ValidateFacts{SkipDowngradeCheck: a.DisableDowngradeCheck},
 		&phase.RunHooks{Stage: "before", Action: "apply"},
 		&phase.DownloadBinaries{},
-		&phase.UploadBinaries{},
+		&phase.UploadK0s{},
 		&phase.DownloadK0s{},
 		&phase.UploadFiles{},
-		&phase.InstallBinaries{},
+		&phase.InstallBinaries{}, // need to think how to handle validation if this is faked on plan
 		&phase.PrepareArm{},
 		&phase.ConfigureK0s{},
 		&phase.Restore{
