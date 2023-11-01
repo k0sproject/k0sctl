@@ -179,12 +179,15 @@ type HostMetadata struct {
 	K0sInstalled      bool
 	K0sExistingConfig string
 	K0sNewConfig      string
+	K0sJoinToken      string
+	K0sJoinTokenID    string
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
 	Ready             bool
 	NeedsUpgrade      bool
 	MachineID         string
+	DryRunFakeLeader  bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml

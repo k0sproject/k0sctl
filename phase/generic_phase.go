@@ -42,6 +42,11 @@ func (p *GenericPhase) DryMsg(host fmt.Stringer, msg string) {
 	p.manager.DryMsg(host, msg)
 }
 
+// DryMsgf is a shorthand for manager.DryMsg + fmt.Sprintf
+func (p *GenericPhase) DryMsgf(host fmt.Stringer, msg string, args ...any) {
+	p.manager.DryMsg(host, fmt.Sprintf(msg, args...))
+}
+
 // SetManager adds a reference to the phase manager
 func (p *GenericPhase) SetManager(m *Manager) {
 	p.manager = m

@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -76,38 +77,62 @@ func (p *InitializeK0s) Run() error {
 	if err != nil {
 		return err
 	}
-	if err = h.Exec(cmd); err != nil {
+
+	err = p.Wet(p.leader, fmt.Sprintf("install first k0s controller using `%s`", strings.ReplaceAll(cmd, p.leader.Configurer.K0sBinaryPath(), "k0s")), func() error {
+		return h.Exec(cmd)
+	}, func() error {
+		p.leader.Metadata.DryRunFakeLeader = true
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
 	h.Metadata.K0sInstalled = true
 
 	if len(h.Environment) > 0 {
-		log.Infof("%s: updating service environment", h)
-		if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+		err = p.Wet(h, "configure k0s service environment variables", func() error {
+			log.Infof("%s: updating service environment", h)
+			return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+		}, func() error {
+			for k, v := range h.Environment {
+				p.DryMsgf(h, "%s=<%d characters>", k, len(v))
+			}
+			return nil
+		})
+
+		if err != nil {
 			return err
 		}
 	}
 
-	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+	err = p.Wet(h, "start k0s service", func() error {
+		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+			return err
+		}
+
+		log.Infof("%s: waiting for the k0s service to start", h)
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			return err
+		}
+
+		port := 6443
+		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+			port = p
+		}
+		log.Infof("%s: waiting for kubernetes api to respond", h)
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return err
 	}
 
-	log.Infof("%s: waiting for the k0s service to start", h)
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
-		return err
-	}
-
-	port := 6443
-	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		port = p
-	}
-	log.Infof("%s: waiting for kubernetes api to respond", h)
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
-		return err
-	}
-
-	if p.Config.Spec.K0s.DynamicConfig {
+	if p.IsWet() && p.Config.Spec.K0s.DynamicConfig {
 		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.K0sDynamicConfigReadyFunc(h)); err != nil {
 			return fmt.Errorf("dynamic config reconciliation failed: %w", err)
 		}
@@ -117,9 +142,11 @@ func (p *InitializeK0s) Run() error {
 	h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 	h.Metadata.Ready = true
 
-	if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
-		p.Config.Spec.K0s.Metadata.ClusterID = id
-		p.SetProp("clusterID", id)
+	if p.IsWet() {
+		if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
+			p.Config.Spec.K0s.Metadata.ClusterID = id
+			p.SetProp("clusterID", id)
+		}
 	}
 
 	return nil

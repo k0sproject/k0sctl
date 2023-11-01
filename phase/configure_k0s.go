@@ -1,10 +1,10 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/k0sproject/dig"
@@ -14,6 +14,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -21,7 +22,6 @@ import (
 var (
 	// "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
 	configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
-	stripCommentsRegex       = regexp.MustCompile(`(?m)^\s*#.*$[\r\n]*`)
 )
 
 const (
@@ -58,7 +58,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		log.Debug("using existing k0s config")
 		p.configSource = configSourceExisting
 		p.newBaseConfig = make(dig.Mapping)
-		err := yaml.Unmarshal([]byte(p.leader.Metadata.K0sExistingConfig), p.newBaseConfig)
+		err := yaml.Unmarshal([]byte(p.leader.Metadata.K0sExistingConfig), &p.newBaseConfig)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal existing k0s config: %w", err)
 		}
@@ -70,7 +70,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 			return fmt.Errorf("failed to generate default k0s config: %w", err)
 		}
 		p.newBaseConfig = make(dig.Mapping)
-		err = yaml.Unmarshal([]byte(cfg), p.newBaseConfig)
+		err = yaml.Unmarshal([]byte(cfg), &p.newBaseConfig)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal default k0s config: %w", err)
 		}
@@ -103,7 +103,24 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 			return err
 		}
 
-		if stripCommentsRegex.ReplaceAllString(cfgNew, "") == stripCommentsRegex.ReplaceAllString(h.Metadata.K0sExistingConfig, "") {
+		cfgA := make(map[string]any)
+		cfgB := make(map[string]any)
+		if err := yaml.Unmarshal([]byte(cfgNew), &cfgA); err != nil {
+			return fmt.Errorf("failed to unmarshal new config: %w", err)
+		}
+		if err := yaml.Unmarshal([]byte(h.Metadata.K0sExistingConfig), &cfgB); err != nil {
+			return fmt.Errorf("failed to unmarshal existing config: %w", err)
+		}
+		cfgAString, err := yaml.Marshal(cfgA)
+		if err != nil {
+			return fmt.Errorf("failed to marshal new config: %w", err)
+		}
+		cfgBString, err := yaml.Marshal(cfgB)
+		if err != nil {
+			return fmt.Errorf("failed to marshal existing config: %w", err)
+		}
+
+		if bytes.Equal(cfgAString, cfgBString) {
 			log.Debugf("%s: configuration will not change", h)
 			continue
 		}
@@ -116,6 +133,32 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
+// DryRun prints the actions that would be taken
+func (p *ConfigureK0s) DryRun() error {
+	for _, h := range p.hosts {
+		p.DryMsgf(h, "write k0s configuration to %s", h.Configurer.K0sConfigPath())
+		switch p.configSource {
+		case configSourceDefault:
+			p.DryMsg(h, "k0s configuration is based on a generated k0s default configuration")
+		case configSourceExisting:
+			p.DryMsgf(h, "k0s configuration is based on an existing k0s configuration found on %s", p.Config.Spec.K0sLeader())
+		case configSourceProvided:
+			p.DryMsg(h, "k0s configuration is based on spec.k0s.config in k0sctl config")
+		case configSourceNodeConfig:
+			p.DryMsg(h, "k0s configuration is a generated node specific config for dynamic config clusters")
+		}
+
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain(h.Metadata.K0sExistingConfig, h.Metadata.K0sNewConfig, false)
+		p.DryMsgf(h, "configuration changes:\n%s", dmp.DiffPrettyText(diffs))
+
+		if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
+			p.DryMsg(h, Colorize.BrightRed("restart the k0s service").String())
+		}
+	}
+	return nil
+}
+
 // ShouldRun is true when there are controllers to configure
 func (p *ConfigureK0s) ShouldRun() bool {
 	return len(p.hosts) > 0
@@ -124,7 +167,7 @@ func (p *ConfigureK0s) ShouldRun() bool {
 func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 	log.Debugf("%s: generating default configuration", p.leader)
 	var cmd string
-	if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
+	if configCreateSinceVersion.Check(p.leader.Metadata.K0sBinaryVersion) {
 		cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
 	} else {
 		cmd = p.leader.Configurer.K0sCmdf("default-config")
@@ -148,9 +191,21 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	log.Infof("%s: validating configuration", h)
 
 	var cmd string
+	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSinceVersion)
+
+	if h.Metadata.K0sBinaryTempFile != "" {
+		oldK0sBinaryPath := h.Configurer.K0sBinaryPath()
+		h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
+		defer func() {
+			h.Configurer.SetPath("K0sBinaryPath", oldK0sBinaryPath)
+		}()
+	}
+
 	if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
+		log.Debugf("%s: comparison result true", h)
 		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
 	} else {
+		log.Debugf("%s: comparison result false", h)
 		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 	}
 
@@ -235,6 +290,8 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 			log.Debugf("%s: using a stripped down config for dynamic config", h)
 			cfg = p.Config.Spec.K0s.NodeConfig()
 		}
+	} else {
+		cfg = p.newBaseConfig.Dup()
 	}
 
 	var sans []string

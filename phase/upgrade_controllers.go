@@ -64,44 +64,65 @@ func (p *UpgradeControllers) Run() error {
 		}
 		log.Infof("%s: starting upgrade", h)
 		log.Debugf("%s: stop service", h)
-		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+		err := p.Wet(h, "stop k0s service", func() error {
+			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+				return fmt.Errorf("wait for k0s service stop: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
 			return err
 		}
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
-			return fmt.Errorf("wait for k0s service stop: %w", err)
-		}
+
 		log.Debugf("%s: update binary", h)
-		if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
+		err = p.Wet(h, "replace k0s binary", func() error {
+			return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
+		})
+		if err != nil {
 			return err
 		}
 
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
-			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+			err := p.Wet(h, "update service environment", func() error {
+				return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+			})
+			if err != nil {
 				return err
 			}
 		}
 
 		log.Debugf("%s: restart service", h)
-		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		err = p.Wet(h, "start k0s service with the new binary", func() error {
+			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+				return err
+			}
+			log.Infof("%s: waiting for the k0s service to start", h)
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+				return fmt.Errorf("k0s service start: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
 			return err
-		}
-		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
-			return fmt.Errorf("k0s service start: %w", err)
 		}
 		port := 6443
 		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
 			port = p
 		}
 
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
-			return fmt.Errorf("kube api did not become ready: %w", err)
+		if p.IsWet() {
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
+				return fmt.Errorf("kube api did not become ready: %w", err)
+			}
 		}
 	}
 
 	leader := p.Config.Spec.K0sLeader()
-	if NoWait {
+	if NoWait || !p.IsWet() {
 		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", leader)
 		return nil
 	}

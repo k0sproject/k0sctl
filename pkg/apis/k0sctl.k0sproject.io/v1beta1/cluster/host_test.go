@@ -40,7 +40,6 @@ func (c *mockconfigurer) K0sCmdf(s string, args ...interface{}) string {
 func TestK0sJoinTokenPath(t *testing.T) {
 	h := Host{}
 	h.Configurer = &mockconfigurer{}
-	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
 	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
 
 	require.Equal(t, "from-configurer", h.K0sJoinTokenPath())
@@ -52,6 +51,7 @@ func TestK0sJoinTokenPath(t *testing.T) {
 func TestK0sConfigPath(t *testing.T) {
 	h := Host{}
 	h.Configurer = &mockconfigurer{}
+	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
 
 	require.Equal(t, "from-configurer", h.K0sConfigPath())
 
@@ -71,6 +71,8 @@ func TestUnQE(t *testing.T) {
 func TestK0sInstallCommand(t *testing.T) {
 	h := Host{Role: "worker", DataDir: "/tmp/k0s"}
 	h.Configurer = &mockconfigurer{}
+	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
+	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
 
 	cmd, err := h.K0sInstallCommand()
 	require.NoError(t, err)

@@ -43,6 +43,7 @@ require (
 	github.com/go-playground/validator/v10 v10.15.5
 	github.com/jellydator/validation v1.1.0
 	github.com/k0sproject/version v0.4.2
+	github.com/sergi/go-diff v1.3.1
 )
 
 require (

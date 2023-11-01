@@ -2,11 +2,11 @@ package phase
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/logrusorgru/aurora"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -65,6 +65,9 @@ type Manager struct {
 	Concurrency       int
 	ConcurrentUploads int
 	DryRun            bool
+
+	dryMessages map[string][]string
+	dryMu       sync.Mutex
 }
 
 // NewManager creates a new Manager
@@ -81,13 +84,22 @@ func (m *Manager) AddPhase(p ...phase) {
 	m.phases = append(m.phases, p...)
 }
 
-var dryRunPrefix = Colorize.Gray(8, "dry-run:").String()
-
 type errorfunc func() error
 
 // DryMsg prints a message in dry-run mode
 func (m *Manager) DryMsg(host fmt.Stringer, msg string) {
-	logrus.Println(dryRunPrefix, Colorize.Gray(16, host.String()), Colorize.Gray(23, msg))
+	m.dryMu.Lock()
+	defer m.dryMu.Unlock()
+	if m.dryMessages == nil {
+		m.dryMessages = make(map[string][]string)
+	}
+	var key string
+	if host == nil {
+		key = "local"
+	} else {
+		key = host.String()
+	}
+	m.dryMessages[key] = append(m.dryMessages[key], msg)
 }
 
 // Wet runs the first given function when not in dry-run mode. The second function will be
@@ -116,6 +128,21 @@ func (m *Manager) Run() error {
 	var result error
 
 	defer func() {
+		if m.DryRun {
+			if len(m.dryMessages) == 0 {
+				fmt.Println(Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
+				return
+			}
+
+			fmt.Println(Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
+			for host, msgs := range m.dryMessages {
+				fmt.Println(Colorize.Bold(fmt.Sprintf("* %s :", host)))
+				for _, msg := range msgs {
+					fmt.Println(Colorize.Red(" -"), msg)
+				}
+			}
+			return
+		}
 		if result != nil {
 			for _, p := range ran {
 				if c, ok := p.(withcleanup); ok {

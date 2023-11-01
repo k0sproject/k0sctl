@@ -60,13 +60,16 @@ func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
 	return nil
 }
 
-func ensureDir(h *cluster.Host, dir, perm, owner string) error {
+func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error {
 	log.Debugf("%s: ensuring directory %s", h, dir)
 	if h.Configurer.FileExist(h, dir) {
 		return nil
 	}
 
-	if err := h.Configurer.MkDir(h, dir, exec.Sudo(h)); err != nil {
+	err := p.Wet(h, fmt.Sprintf("create a directory for uploading: `mkdir -p \"%s\"`", dir), func() error {
+		return h.Configurer.MkDir(h, dir, exec.Sudo(h))
+	})
+	if err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
@@ -74,12 +77,18 @@ func ensureDir(h *cluster.Host, dir, perm, owner string) error {
 		perm = "0755"
 	}
 
-	if err := h.Configurer.Chmod(h, dir, perm, exec.Sudo(h)); err != nil {
+	err = p.Wet(h, fmt.Sprintf("set permissions for directory %s to %s", dir, perm), func() error {
+		return h.Configurer.Chmod(h, dir, perm, exec.Sudo(h))
+	})
+	if err != nil {
 		return fmt.Errorf("failed to set permissions for directory %s: %w", dir, err)
 	}
 
 	if owner != "" {
-		if err := h.Execf(`chown "%s" "%s"`, owner, dir, exec.Sudo(h)); err != nil {
+		err = p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
+			return h.Execf(`chown "%s" "%s"`, owner, dir, exec.Sudo(h))
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -104,12 +113,15 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 
 		owner := f.Owner()
 
-		if err := ensureDir(h, path.Dir(dest), f.DirPermString, owner); err != nil {
+		if err := p.ensureDir(h, path.Dir(dest), f.DirPermString, owner); err != nil {
 			return err
 		}
 
 		if h.FileChanged(src, dest) {
-			if err := h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h)); err != nil {
+			err := p.Wet(h, fmt.Sprintf("upload file %s => %s", src, dest), func() error {
+				return h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h))
+			})
+			if err != nil {
 				return err
 			}
 		} else {
@@ -117,21 +129,30 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 		}
 
 		if owner != "" {
-			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-			if err := h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h)); err != nil {
+			err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
+				log.Debugf("%s: setting owner %s for %s", h, owner, dest)
+				return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h))
+			})
+			if err != nil {
 				return err
 			}
 		}
-		log.Debugf("%s: setting permissions %s for %s", h, s.PermMode, dest)
-		if err := h.Configurer.Chmod(h, dest, s.PermMode, exec.Sudo(h)); err != nil {
+		err := p.Wet(h, fmt.Sprintf("set permissions for %s to %s", dest, s.PermMode), func() error {
+			log.Debugf("%s: setting permissions %s for %s", h, s.PermMode, dest)
+			return h.Configurer.Chmod(h, dest, s.PermMode, exec.Sudo(h))
+		})
+		if err != nil {
 			return err
 		}
 		stat, err := os.Stat(src)
 		if err != nil {
 			return fmt.Errorf("failed to stat %s: %s", src, err)
 		}
-		log.Debugf("%s: touching %s", h, dest)
-		if err := h.Configurer.Touch(h, dest, stat.ModTime(), exec.Sudo(h)); err != nil {
+		err = p.Wet(h, fmt.Sprintf("set timestamp for %s to %s", dest, stat.ModTime()), func() error {
+			log.Debugf("%s: touching %s", h, dest)
+			return h.Configurer.Touch(h, dest, stat.ModTime(), exec.Sudo(h))
+		})
+		if err != nil {
 			return fmt.Errorf("failed to touch %s: %w", dest, err)
 		}
 	}
@@ -143,23 +164,33 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 	log.Infof("%s: downloading %s to host %s", h, f, f.DestinationFile)
 	owner := f.Owner()
 
-	if err := ensureDir(h, path.Dir(f.DestinationFile), f.DirPermString, owner); err != nil {
+	if err := p.ensureDir(h, path.Dir(f.DestinationFile), f.DirPermString, owner); err != nil {
 		return err
 	}
 
-	if err := h.Configurer.DownloadURL(h, f.Source, f.DestinationFile, exec.Sudo(h)); err != nil {
+	err := p.Wet(h, fmt.Sprintf("download file %s => %s", f.Source, f.DestinationFile), func() error {
+
+		return h.Configurer.DownloadURL(h, f.Source, f.DestinationFile, exec.Sudo(h))
+	})
+	if err != nil {
 		return err
 	}
 
 	if f.PermString != "" {
-		if err := h.Configurer.Chmod(h, f.DestinationFile, f.PermString, exec.Sudo(h)); err != nil {
+		err := p.Wet(h, fmt.Sprintf("set permissions for %s to %s", f.DestinationFile, f.PermString), func() error {
+			return h.Configurer.Chmod(h, f.DestinationFile, f.PermString, exec.Sudo(h))
+		})
+		if err != nil {
 			return err
 		}
 	}
 
 	if owner != "" {
-		log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
-		if err := h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(f.DestinationFile), exec.Sudo(h)); err != nil {
+		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", f.DestinationFile, owner), func() error {
+			log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
+			return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(f.DestinationFile), exec.Sudo(h))
+		})
+		if err != nil {
 			return err
 		}
 	}
