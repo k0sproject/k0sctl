@@ -19,9 +19,7 @@ func init() {
 			return os.ID == "almalinux"
 		},
 		func() interface{} {
-			linuxType := &AlmaLinux{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &AlmaLinux{}
 		},
 	)
 }

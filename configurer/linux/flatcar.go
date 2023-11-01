@@ -3,7 +3,6 @@ package linux
 import (
 	"errors"
 
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -20,17 +19,13 @@ func init() {
 			return os.ID == "flatcar"
 		},
 		func() interface{} {
-			linuxType := &Flatcar{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			fc := &Flatcar{}
+			fc.SetPath("K0sBinaryPath", "/opt/bin/k0s")
+			return fc
 		},
 	)
 }
 
-func (l Flatcar) InstallPackage(h os.Host, pkg ...string) error {
+func (l *Flatcar) InstallPackage(h os.Host, pkg ...string) error {
 	return errors.New("FlatcarContainerLinux does not support installing packages manually")
-}
-
-func (l Flatcar) K0sBinaryPath() string {
-	return "/opt/bin/k0s"
 }

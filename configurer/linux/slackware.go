@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -22,15 +21,13 @@ func init() {
 			return os.ID == "slackware"
 		},
 		func() interface{} {
-			linuxType := &Slackware{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &Slackware{}
 		},
 	)
 }
 
 // InstallPackage installs packages via slackpkg
-func (l Slackware) InstallPackage(h os.Host, pkg ...string) error {
+func (l *Slackware) InstallPackage(h os.Host, pkg ...string) error {
 	updatecmd, err := h.Sudo("slackpkg update")
 	if err != nil {
 		return err

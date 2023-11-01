@@ -25,29 +25,23 @@ type mockconfigurer struct {
 	linux.Ubuntu
 }
 
-func (c mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
 	return nil
 }
 
-func (c mockconfigurer) MkDir(_ os.Host, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) MkDir(_ os.Host, _ string, _ ...exec.Option) error {
 	return nil
 }
 
-func (c mockconfigurer) K0sJoinTokenPath() string {
-	return "from-configurer"
-}
-
-func (c mockconfigurer) K0sConfigPath() string {
-	return "from-configurer"
-}
-
-func (c mockconfigurer) K0sCmdf(s string, args ...interface{}) string {
+func (c *mockconfigurer) K0sCmdf(s string, args ...interface{}) string {
 	return fmt.Sprintf("k0s %s", fmt.Sprintf(s, args...))
 }
 
 func TestK0sJoinTokenPath(t *testing.T) {
 	h := Host{}
 	h.Configurer = &mockconfigurer{}
+	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
+	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
 
 	require.Equal(t, "from-configurer", h.K0sJoinTokenPath())
 
@@ -130,10 +124,10 @@ func TestValidation(t *testing.T) {
 
 		h.InstallFlags = []string{`--foo=""`, `--bar=''`}
 		require.NoError(t, h.Validate())
-		
+
 		h.InstallFlags = []string{`--foo="`, "--bar"}
 		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
-		
+
 		h.InstallFlags = []string{"--bar='"}
 		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
 	})

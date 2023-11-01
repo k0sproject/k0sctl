@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -22,13 +21,11 @@ func init() {
 			return strings.Contains(os.Name, "CoreOS") && (os.ID == "fedora" || os.ID == "rhel")
 		},
 		func() interface{} {
-			linuxType := &CoreOS{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &CoreOS{}
 		},
 	)
 }
 
-func (l CoreOS) InstallPackage(h os.Host, pkg ...string) error {
+func (l *CoreOS) InstallPackage(h os.Host, pkg ...string) error {
 	return errors.New("CoreOS does not support installing packages manually")
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig/exec"
 	"github.com/stretchr/testify/require"
 )
@@ -44,13 +43,11 @@ func (m mockHost) Sudo(string) (string, error) {
 	return "", nil
 }
 
-// TestPaths tests the slightly weird way to perform function overloading
 func TestPaths(t *testing.T) {
 	fc := &Flatcar{}
-	fc.PathFuncs = interface{}(fc).(configurer.PathFuncs)
+	fc.SetPath("K0sBinaryPath", "/opt/bin/k0s")
 
 	ubuntu := &Ubuntu{}
-	ubuntu.PathFuncs = interface{}(ubuntu).(configurer.PathFuncs)
 
 	h1 := &mockHost{
 		ExecFError: false,

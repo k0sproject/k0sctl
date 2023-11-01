@@ -8,5 +8,5 @@ import (
 
 func TestAlpineConfigurerInterface(t *testing.T) {
 	h := cluster.Host{}
-	h.Configurer = Alpine{}
+	h.Configurer = &Alpine{}
 }

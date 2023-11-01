@@ -15,7 +15,7 @@ type AmazonLinux struct {
 }
 
 // Hostname on amazon linux will return the full hostname
-func (l AmazonLinux) Hostname(h os.Host) string {
+func (l *AmazonLinux) Hostname(h os.Host) string {
 	hostname, _ := h.ExecOutput("hostname")
 
 	return hostname
@@ -27,9 +27,7 @@ func init() {
 			return os.ID == "amzn"
 		},
 		func() interface{} {
-			linuxType := &AmazonLinux{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &AmazonLinux{}
 		},
 	)
 }
