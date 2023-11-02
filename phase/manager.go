@@ -136,9 +136,9 @@ func (m *Manager) Run() error {
 
 			fmt.Println(Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
 			for host, msgs := range m.dryMessages {
-				fmt.Println(Colorize.Bold(fmt.Sprintf("* %s :", host)))
+				fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
 				for _, msg := range msgs {
-					fmt.Println(Colorize.Red(" -"), msg)
+					fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
 				}
 			}
 			return

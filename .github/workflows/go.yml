@@ -6,6 +6,7 @@ on:
       - '**.go'
       - go.mod
       - go.sum
+      - Makefile
 
 jobs:
   gotest:

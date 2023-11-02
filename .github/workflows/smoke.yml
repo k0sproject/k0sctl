@@ -59,7 +59,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -82,7 +82,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Build image
@@ -112,7 +112,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -140,7 +140,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -165,7 +165,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -186,7 +186,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run OS override smoke test
@@ -216,7 +216,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -247,7 +247,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -277,7 +277,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -307,7 +307,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run smoke tests
@@ -330,7 +330,7 @@ jobs:
 
       - {"name":"Compiled binary cache","uses":"actions/download-artifact@v3","with":{"name":"k0sctl","path":"."}}
       - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh) }}","restore-keys":"kubectl-"}}
+      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
       - {"name":"Make binaries executable","run":"chmod +x k0sctl\nchmod +x smoke-test/kubectl"}
 
       - name: Run init smoke test

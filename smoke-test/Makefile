@@ -37,6 +37,9 @@ smoke-init: $(bootloose) id_rsa_k0s k0sctl
 smoke-upgrade: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-upgrade.sh
 
+smoke-dryrun: $(bootloose) id_rsa_k0s k0sctl
+	./smoke-dryrun.sh
+
 smoke-reset: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-reset.sh
 
