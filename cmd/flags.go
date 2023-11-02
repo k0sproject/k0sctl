@@ -43,7 +43,7 @@ var (
 
 	dryRunFlag = &cli.BoolFlag{
 		Name:    "dry-run",
-		Usage:   "Do not alter cluster state, just print what would be done",
+		Usage:   "Do not alter cluster state, just print what would be done (EXPERIMENTAL)",
 		EnvVars: []string{"DRY_RUN"},
 	}
 
