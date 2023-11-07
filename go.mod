@@ -40,7 +40,7 @@ require (
 require (
 	github.com/alessio/shellescape v1.4.2
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/go-playground/validator/v10 v10.15.5
+	github.com/go-playground/validator/v10 v10.16.0
 	github.com/jellydator/validation v1.1.0
 	github.com/k0sproject/version v0.4.2
 )
