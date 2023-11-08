@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -26,9 +27,10 @@ func (p *Connect) Run() error {
 	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
 		return retry.Timeout(context.TODO(), 10*time.Minute, func(_ context.Context) error {
 			if err := h.Connect(); err != nil {
-				if errors.Is(err, rig.ErrCantConnect) {
+				if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
 					return errors.Join(retry.ErrAbort, err)
 				}
+
 				return err
 			}
 
