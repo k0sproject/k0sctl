@@ -96,6 +96,19 @@ func (hosts Hosts) Workers() Hosts {
 	return hosts.WithRole("worker")
 }
 
+// Each runs a function (or multiple functions chained) on every Host.
+func (hosts Hosts) Each(filters ...func(h *Host) error) error {
+	for _, filter := range filters {
+		for _, h := range hosts {
+			if err := filter(h); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // ParallelEach runs a function (or multiple functions chained) on every Host parallelly.
 // Any errors will be concatenated and returned.
 func (hosts Hosts) ParallelEach(filters ...func(h *Host) error) error {
