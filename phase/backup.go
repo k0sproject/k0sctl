@@ -44,6 +44,7 @@ func (p *Backup) Prepare(config *v1beta1.Cluster) error {
 	}
 
 	p.leader = leader
+	p.leader.Metadata.IsK0sLeader = true
 	return nil
 }
 
@@ -55,32 +56,56 @@ func (p *Backup) ShouldRun() bool {
 // Run the phase
 func (p *Backup) Run() error {
 	h := p.leader
-	h.Metadata.IsK0sLeader = true
 
 	log.Infof("%s: backing up", h)
-	backupDir, err := h.Configurer.TempDir(h)
+	var backupDir string
+	err := p.Wet(h, "create a tempdir using `mktemp -d`", func() error {
+		b, err := h.Configurer.TempDir(h)
+		if err != nil {
+			return err
+		}
+		backupDir = b
+		return nil
+	}, func() error {
+		backupDir = "/tmp/k0s_backup.dryrun"
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	if err := h.Exec(h.K0sBackupCommand(backupDir), exec.Sudo(h)); err != nil {
+	cmd := h.K0sBackupCommand(backupDir)
+	err = p.Wet(h, fmt.Sprintf("create backup using `%s`", cmd), func() error {
+		return h.Exec(h.K0sBackupCommand(backupDir), exec.Sudo(h))
+	})
+	if err != nil {
 		return err
 	}
 
 	// get the name of the backup file
-	remoteFile, err := h.ExecOutputf(`ls "%s"`, backupDir)
-	if err != nil {
-		return err
+	var remoteFile string
+	if p.IsWet() {
+		r, err := h.ExecOutputf(`ls "%s"`, backupDir)
+		if err != nil {
+			return err
+		}
+		remoteFile = r
+	} else {
+		remoteFile = "k0s_backup.dryrun.tar.gz"
 	}
 	remotePath := path.Join(backupDir, remoteFile)
 
 	defer func() {
-		log.Debugf("%s: cleaning up %s", h, remotePath)
-		if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
-			log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
-		}
-		if err := h.Configurer.DeleteDir(h, backupDir, exec.Sudo(h)); err != nil {
-			log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
+		if p.IsWet() {
+			log.Debugf("%s: cleaning up %s", h, remotePath)
+			if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
+				log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
+			}
+			if err := h.Configurer.DeleteDir(h, backupDir, exec.Sudo(h)); err != nil {
+				log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
+			}
+		} else {
+			p.DryMsg(h, "delete the tempdir")
 		}
 	}()
 
@@ -89,17 +114,21 @@ func (p *Backup) Run() error {
 		return err
 	}
 
-	// Download the file
-	f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+	if p.IsWet() {
+		// Download the file
+		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
 
-	if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(f)); err != nil {
-		return err
-	}
+		if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(f)); err != nil {
+			return err
+		}
 
-	log.Infof("backup file written to %s", localFile)
+		log.Infof("backup file written to %s", localFile)
+	} else {
+		p.DryMsgf(nil, "download the backup file to local host as %s", localFile)
+	}
 	return nil
 }

@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -53,12 +54,20 @@ type withmanager interface {
 	SetManager(*Manager)
 }
 
+type withDryRun interface {
+	DryRun() error
+}
+
 // Manager executes phases to construct the cluster
 type Manager struct {
 	phases            []phase
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
+	DryRun            bool
+
+	dryMessages map[string][]string
+	dryMu       sync.Mutex
 }
 
 // NewManager creates a new Manager
@@ -75,12 +84,65 @@ func (m *Manager) AddPhase(p ...phase) {
 	m.phases = append(m.phases, p...)
 }
 
+type errorfunc func() error
+
+// DryMsg prints a message in dry-run mode
+func (m *Manager) DryMsg(host fmt.Stringer, msg string) {
+	m.dryMu.Lock()
+	defer m.dryMu.Unlock()
+	if m.dryMessages == nil {
+		m.dryMessages = make(map[string][]string)
+	}
+	var key string
+	if host == nil {
+		key = "local"
+	} else {
+		key = host.String()
+	}
+	m.dryMessages[key] = append(m.dryMessages[key], msg)
+}
+
+// Wet runs the first given function when not in dry-run mode. The second function will be
+// run when in dry-mode and the message will be displayed. Any error returned from the
+// functions will be returned and will halt the operation.
+func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
+	if !m.DryRun {
+		if len(funcs) > 0 && funcs[0] != nil {
+			return funcs[0]()
+		}
+		return nil
+	}
+
+	m.DryMsg(host, msg)
+
+	if m.DryRun && len(funcs) == 2 && funcs[1] != nil {
+		return funcs[1]()
+	}
+
+	return nil
+}
+
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
 	var ran []phase
 	var result error
 
 	defer func() {
+		if m.DryRun {
+			if len(m.dryMessages) == 0 {
+				fmt.Println(Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
+				return
+			}
+
+			fmt.Println(Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
+			for host, msgs := range m.dryMessages {
+				fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
+				for _, msg := range msgs {
+					fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
+				}
+			}
+			return
+		}
 		if result != nil {
 			for _, p := range ran {
 				if c, ok := p.(withcleanup); ok {
@@ -129,6 +191,14 @@ func (m *Manager) Run() error {
 
 		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
+
+		if dp, ok := p.(withDryRun); ok && m.DryRun {
+			if err := dp.DryRun(); err != nil {
+				return err
+			}
+			continue
+		}
+
 		result = p.Run()
 		ran = append(ran, p)
 

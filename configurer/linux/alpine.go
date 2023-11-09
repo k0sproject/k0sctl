@@ -27,18 +27,16 @@ func init() {
 			return os.ID == "alpine"
 		},
 		func() interface{} {
-			linuxType := &Alpine{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &Alpine{}
 		},
 	)
 }
 
 // InstallPackage installs packages via slackpkg
-func (l Alpine) InstallPackage(h os.Host, pkg ...string) error {
+func (l *Alpine) InstallPackage(h os.Host, pkg ...string) error {
 	return h.Execf("apk add --update %s", strings.Join(pkg, " "), exec.Sudo(h))
 }
 
-func (l Alpine) Prepare(h os.Host) error {
+func (l *Alpine) Prepare(h os.Host) error {
 	return l.InstallPackage(h, "findutils", "coreutils")
 }

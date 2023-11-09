@@ -29,6 +29,10 @@ func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		if h.Reset {
+			return false
+		}
+
 		if h.Role == "worker" {
 			return false
 		}

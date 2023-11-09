@@ -1,7 +1,7 @@
 package phase
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/os"
@@ -59,9 +59,12 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 		pkgs = append(pkgs, "inetutils")
 	}
 
-	if len(pkgs) > 0 {
-		log.Infof("%s: installing packages (%s)", h, strings.Join(pkgs, ", "))
-		if err := h.Configurer.InstallPackage(h, pkgs...); err != nil {
+	for _, pkg := range pkgs {
+		err := p.Wet(h, fmt.Sprintf("install package %s", pkg), func() error {
+			log.Infof("%s: installing package %s", h, pkg)
+			return h.Configurer.InstallPackage(h, pkg)
+		})
+		if err != nil {
 			return err
 		}
 	}

@@ -168,6 +168,7 @@ type configurer interface {
 	K0sctlLockFilePath(os.Host) string
 	UpsertFile(os.Host, string, string) error
 	MachineID(os.Host) (string, error)
+	SetPath(string, string)
 }
 
 // HostMetadata resolved metadata for host
@@ -176,12 +177,17 @@ type HostMetadata struct {
 	K0sBinaryTempFile string
 	K0sRunningVersion *version.Version
 	K0sInstalled      bool
+	K0sExistingConfig string
+	K0sNewConfig      string
+	K0sJoinToken      string
+	K0sJoinTokenID    string
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
 	Ready             bool
 	NeedsUpgrade      bool
 	MachineID         string
+	DryRunFakeLeader  bool
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -428,14 +434,6 @@ func (h *Host) UncordonNode(node *Host) error {
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
-}
-
-func (h *Host) LeaveEtcd(node *Host) error {
-	etcdAddress := node.SSH.Address
-	if node.PrivateAddress != "" {
-		etcdAddress = node.PrivateAddress
-	}
-	return h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

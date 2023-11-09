@@ -45,17 +45,22 @@ func (a Apply) Run() error {
 		lockPhase,
 		&phase.PrepareHosts{},
 		&phase.GatherFacts{},
-		&phase.DownloadBinaries{},
-		&phase.UploadFiles{},
 		&phase.ValidateHosts{},
 		&phase.GatherK0sFacts{},
 		&phase.ValidateFacts{SkipDowngradeCheck: a.DisableDowngradeCheck},
-		&phase.UploadBinaries{},
-		&phase.DownloadK0s{},
-		&phase.InstallBinaries{},
 		&phase.RunHooks{Stage: "before", Action: "apply"},
+
+		// if UploadBinaries: true
+		&phase.DownloadBinaries{}, // downloads k0s binaries to local cache
+		&phase.UploadK0s{},        // uploads k0s binaries to hosts from cache
+
+		// if UploadBinaries: false
+		&phase.DownloadK0s{}, // downloads k0s binaries directly from hosts
+
+		&phase.InstallBinaries{},
 		&phase.PrepareArm{},
 		&phase.ConfigureK0s{},
+		&phase.UploadFiles{},
 		&phase.Restore{
 			RestoreFrom: a.RestoreFrom,
 		},
@@ -99,19 +104,18 @@ func (a Apply) Run() error {
 	text := fmt.Sprintf("==> Finished in %s", duration)
 	log.Infof(phase.Colorize.Green(text).String())
 
-	uninstalled := false
 	for _, host := range a.Manager.Config.Spec.Hosts {
 		if host.Reset {
-			uninstalled = true
+			log.Info("There were nodes that got uninstalled during the apply phase. Please remove them from your k0sctl config file")
+			break
 		}
 	}
-	if uninstalled {
-		log.Info("There were nodes that got uninstalled during the apply phase. Please remove them from your k0sctl config file")
+
+	if !a.Manager.DryRun {
+		log.Infof("k0s cluster version %s is now installed", a.Manager.Config.Spec.K0s.Version)
 	}
 
-	log.Infof("k0s cluster version %s is now installed", a.Manager.Config.Spec.K0s.Version)
-
-	if a.KubeconfigOut != nil {
+	if a.KubeconfigOut == nil {
 		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
 		log.Infof("     " + phase.Colorize.Cyan("k0sctl kubeconfig").String())
 	}

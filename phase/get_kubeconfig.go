@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -23,9 +25,38 @@ var readKubeconfig = func(h *cluster.Host) (string, error) {
 	return h.Configurer.ReadFile(h, h.Configurer.KubeconfigPath(h, h.K0sDataDir()))
 }
 
+var k0sConfig = func(h *cluster.Host) (dig.Mapping, error) {
+	cfgContent, err := h.Configurer.ReadFile(h, h.Configurer.K0sConfigPath())
+	if err != nil {
+		return nil, fmt.Errorf("read k0s config from host: %w", err)
+	}
+
+	var cfg dig.Mapping
+	if err := yaml.Unmarshal([]byte(cfgContent), &cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal k0s config: %w", err)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("parse k0s config: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func (p *GetKubeconfig) DryRun() error {
+	p.DryMsg(p.Config.Spec.Hosts.Controllers()[0], "get admin kubeconfig")
+	return nil
+}
+
 // Run the phase
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.Hosts.Controllers()[0]
+
+	cfg, err := k0sConfig(h)
+	if err != nil {
+		return err
+	}
+
 	output, err := readKubeconfig(h)
 	if err != nil {
 		return fmt.Errorf("read kubeconfig from host: %w", err)
@@ -35,12 +66,12 @@ func (p *GetKubeconfig) Run() error {
 		// the controller admin.conf is aways pointing to localhost, thus we need to change the address
 		// something usable from outside
 		address := h.Address()
-		if a, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "externalAddress").(string); ok {
+		if a, ok := cfg.Dig("spec", "api", "externalAddress").(string); ok && a != "" {
 			address = a
 		}
 
 		port := 6443
-		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		if p, ok := cfg.Dig("spec", "api", "port").(int); ok && p != 0 {
 			port = p
 		}
 

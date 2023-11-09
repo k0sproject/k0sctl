@@ -19,9 +19,7 @@ func init() {
 			return os.ID == "arch" || os.IDLike == "arch"
 		},
 		func() interface{} {
-			linuxType := &Archlinux{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &Archlinux{}
 		},
 	)
 }

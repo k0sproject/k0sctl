@@ -6,22 +6,24 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/rig/exec"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
-// UploadBinaries uploads k0s binaries from localhost to target
-type UploadBinaries struct {
+// UploadK0s uploads k0s binaries from localhost to target
+type UploadK0s struct {
 	GenericPhase
 	hosts cluster.Hosts
 }
 
 // Title for the phase
-func (p *UploadBinaries) Title() string {
+func (p *UploadK0s) Title() string {
 	return "Upload k0s binaries to hosts"
 }
 
 // Prepare the phase
-func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
+func (p *UploadK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		// Nothing to upload
@@ -46,16 +48,16 @@ func (p *UploadBinaries) Prepare(config *v1beta1.Cluster) error {
 }
 
 // ShouldRun is true when there are hosts that need binary uploading
-func (p *UploadBinaries) ShouldRun() bool {
+func (p *UploadK0s) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
 // Run the phase
-func (p *UploadBinaries) Run() error {
+func (p *UploadK0s) Run() error {
 	return p.parallelDoUpload(p.hosts, p.uploadBinary)
 }
 
-func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
+func (p *UploadK0s) uploadBinary(h *cluster.Host) error {
 	tmp, err := h.Configurer.TempFile(h)
 	if err != nil {
 		return fmt.Errorf("failed to create tempfile %w", err)
@@ -73,6 +75,9 @@ func (p *UploadBinaries) uploadBinary(h *cluster.Host) error {
 
 	if err := h.Configurer.Touch(h, tmp, stat.ModTime()); err != nil {
 		return fmt.Errorf("failed to touch %s: %w", tmp, err)
+	}
+	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
+		logrus.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
 	}
 
 	h.Metadata.K0sBinaryTempFile = tmp

@@ -14,6 +14,7 @@ var _ phase = &RunHooks{}
 
 // RunHooks phase runs a set of hooks configured for the host
 type RunHooks struct {
+	GenericPhase
 	Action string
 	Stage  string
 	hosts  cluster.Hosts
@@ -47,7 +48,9 @@ func (p *RunHooks) Run() error {
 func (p *RunHooks) runHooksForHost(h *cluster.Host) error {
 	steps := h.Hooks.ForActionAndStage(p.Action, p.Stage)
 	for _, s := range steps {
-		err := h.Exec(s)
+		err := p.Wet(h, fmt.Sprintf("run hook: `%s`", s), func() error {
+			return h.Exec(s)
+		})
 		if err != nil {
 			return err
 		}

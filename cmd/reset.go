@@ -15,6 +15,7 @@ var resetCommand = &cli.Command{
 	Flags: []cli.Flag{
 		configFlag,
 		concurrencyFlag,
+		dryRunFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,

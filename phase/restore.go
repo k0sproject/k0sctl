@@ -24,7 +24,7 @@ func (p *Restore) Title() string {
 
 // ShouldRun is true when there path to backup file
 func (p *Restore) ShouldRun() bool {
-	return p.RestoreFrom != "" && p.leader.Metadata.K0sRunningVersion == nil
+	return p.RestoreFrom != "" && p.leader.Metadata.K0sRunningVersion == nil && !p.leader.Reset
 }
 
 // Prepare the phase

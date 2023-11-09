@@ -47,17 +47,6 @@ func (p *ResetWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
-// CleanUp cleans up the environment override files on hosts
-func (p *ResetWorkers) CleanUp() {
-	for _, h := range p.hosts {
-		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
-			}
-		}
-	}
-}
-
 // Run the phase
 func (p *ResetWorkers) Run() error {
 	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
@@ -110,6 +99,12 @@ func (p *ResetWorkers) Run() error {
 			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing config completed", h)
+		
+		if len(h.Environment) > 0 {
+			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+			}
+		}
 
 		log.Infof("%s: reset", h)
 		return err

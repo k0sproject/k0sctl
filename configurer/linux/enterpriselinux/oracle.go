@@ -19,9 +19,7 @@ func init() {
 			return os.ID == "ol"
 		},
 		func() interface{} {
-			linuxType := &OracleLinux{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &OracleLinux{}
 		},
 	)
 }

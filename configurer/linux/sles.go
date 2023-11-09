@@ -1,7 +1,6 @@
 package linux
 
 import (
-	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/linux"
@@ -21,9 +20,7 @@ func init() {
 			return os.ID == "sles"
 		},
 		func() interface{} {
-			linuxType := &SLES{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &SLES{}
 		},
 	)
 }

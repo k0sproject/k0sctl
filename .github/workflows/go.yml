@@ -6,6 +6,7 @@ on:
       - '**.go'
       - go.mod
       - go.sum
+      - Makefile
 
 jobs:
   gotest:
@@ -22,3 +23,6 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+    - name: Verify all binaries can be built
+      run: make build-all

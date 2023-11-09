@@ -13,7 +13,6 @@ import (
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 type k0sstatus struct {
@@ -86,13 +85,11 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.IsController() && len(p.Config.Spec.K0s.Config) == 0 && h.Configurer.FileExist(h, h.K0sConfigPath()) {
+	if h.IsController() && h.Configurer.FileExist(h, h.K0sConfigPath()) {
 		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)
-			if err := yaml.Unmarshal([]byte(cfg), &p.Config.Spec.K0s.Config); err != nil {
-				return fmt.Errorf("failed to parse existing configuration: %s", err.Error())
-			}
+			h.Metadata.K0sExistingConfig = cfg
 		}
 	}
 

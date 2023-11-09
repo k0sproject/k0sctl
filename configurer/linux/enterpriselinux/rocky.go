@@ -19,9 +19,7 @@ func init() {
 			return os.ID == "rocky"
 		},
 		func() interface{} {
-			linuxType := &RockyLinux{}
-			linuxType.PathFuncs = interface{}(linuxType).(configurer.PathFuncs)
-			return linuxType
+			return &RockyLinux{}
 		},
 	)
 }

@@ -98,53 +98,78 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 
 	if !p.NoDrain {
 		log.Debugf("%s: draining...", h)
-		if err := p.leader.DrainNode(h); err != nil {
+		err := p.Wet(h, "drain node", func() error {
+			return p.leader.DrainNode(h)
+		})
+		if err != nil {
 			return err
 		}
 		log.Debugf("%s: draining complete", h)
 	}
 
 	log.Debugf("%s: stop service", h)
-	if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
-		return err
-	}
+	err := p.Wet(h, "stop k0s service", func() error {
+		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+			return err
+		}
 
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
 	log.Debugf("%s: update binary", h)
-	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
+	err = p.Wet(h, "replace k0s binary", func() error {
+		return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
+	})
+	if err != nil {
 		return err
 	}
 
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating service environment", h)
-		if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+		err := p.Wet(h, "update service environment", func() error {
+			return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+		})
+		if err != nil {
 			return err
 		}
 	}
 
 	log.Debugf("%s: restart service", h)
-	if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
-		return err
-	}
-	if NoWait {
-		log.Debugf("%s: not waiting because --no-wait given", h)
-	} else {
-		log.Infof("%s: waiting for node to become ready again", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
-			return fmt.Errorf("node did not become ready: %w", err)
+	err = p.Wet(h, "restart k0s service", func() error {
+		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+			return err
 		}
-
-		if !p.NoDrain {
-			log.Debugf("%s: marking node schedulable again", h)
-			if err := p.leader.UncordonNode(h); err != nil {
-				return fmt.Errorf("uncordon node: %w", err)
+		if NoWait {
+			log.Debugf("%s: not waiting because --no-wait given", h)
+		} else {
+			log.Infof("%s: waiting for node to become ready again", h)
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}
-		h.Metadata.Ready = true
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
+	if !p.NoDrain {
+		log.Debugf("%s: marking node schedulable again", h)
+		err := p.Wet(h, "uncordon node", func() error {
+			return p.leader.UncordonNode(h)
+		})
+		if err != nil {
+			return fmt.Errorf("uncordon node: %w", err)
+		}
+	}
+	h.Metadata.Ready = true
 	log.Infof("%s: upgrade successful", h)
 	return nil
 }
