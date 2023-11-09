@@ -23,6 +23,10 @@ var versionCommand = &cli.Command{
 			Usage: "Retrieve the latest k0s version number",
 		},
 		&cli.BoolFlag{
+			Name:  "k0sctl",
+			Usage: "Retrieve the latest k0sctl version number",
+		},
+		&cli.BoolFlag{
 			Name:  "pre",
 			Usage: "When used in conjunction with --k0s, a pre release is accepted as the latest version",
 		},
@@ -34,6 +38,15 @@ var versionCommand = &cli.Command{
 				return err
 			}
 			fmt.Println(v)
+			os.Exit(0)
+		}
+
+		if ctx.Bool("k0sctl") {
+			v, err := github.LatestRelease(ctx.Bool("pre"))
+			if err != nil {
+				return err
+			}
+			fmt.Println(v.TagName)
 			os.Exit(0)
 		}
 

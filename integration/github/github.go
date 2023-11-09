@@ -58,33 +58,30 @@ func LatestK0sVersion(preok bool) (string, error) {
 	return strings.TrimPrefix(r.String(), "v"), nil
 }
 
-// LatestRelease returns the semantically sorted latest k0sctl version from github
+// LatestRelease returns the latest k0sctl version from github
 func LatestRelease(preok bool) (Release, error) {
-	var releases []Release
-	if err := unmarshalURLBody("https://api.github.com/repos/k0sproject/k0sctl/releases?per_page=20&page=1", &releases); err != nil {
+	latestRelease, err := fetchLatestRelease()
+	if err != nil {
+		return Release{}, fmt.Errorf("failed to fetch the latest release: %w", err)
+	}
+
+	if latestRelease.PreRelease && !preok {
+		latestRelease, err = fetchLatestNonPrereleaseRelease()
+		if err != nil {
+			return Release{}, fmt.Errorf("failed to fetch the latest non-prerelease release: %w", err)
+		}
+	}
+
+	return latestRelease, nil
+}
+
+// fetchLatestRelease fetches the latest release from the GitHub API
+func fetchLatestRelease() (Release, error) {
+	var release Release
+	if err := unmarshalURLBody("https://api.github.com/repos/k0sproject/k0sctl/releases/latest", &release); err != nil {
 		return Release{}, err
 	}
-
-	var versions k0sversion.Collection
-	for _, v := range releases {
-		if v.PreRelease && !preok {
-			continue
-		}
-		if version, err := k0sversion.NewVersion(strings.TrimPrefix(v.TagName, "v")); err == nil {
-			versions = append(versions, version)
-		}
-	}
-	sort.Sort(versions)
-
-	latest := versions[len(versions)-1].String()
-
-	for _, v := range releases {
-		if strings.TrimPrefix(v.TagName, "v") == latest {
-			return v, nil
-		}
-	}
-
-	return Release{}, fmt.Errorf("failed to get the latest version information")
+	return release, nil
 }
 
 func unmarshalURLBody(url string, o interface{}) error {
@@ -115,4 +112,33 @@ func unmarshalURLBody(url string, o interface{}) error {
 	}
 
 	return json.Unmarshal(body, o)
+}
+
+// fetchLatestNonPrereleaseRelease fetches the latest non-prerelease from the GitHub API
+func fetchLatestNonPrereleaseRelease() (Release, error) {
+	var releases []Release
+	if err := unmarshalURLBody("https://api.github.com/repos/k0sproject/k0sctl/releases", &releases); err != nil {
+		return Release{}, err
+	}
+
+	var versions k0sversion.Collection
+	for _, v := range releases {
+		if v.PreRelease {
+			continue
+		}
+		if version, err := k0sversion.NewVersion(v.TagName); err == nil {
+			versions = append(versions, version)
+		}
+	}
+	sort.Sort(versions)
+
+	latest := versions[len(versions)-1].String()
+
+	for _, v := range releases {
+		if v.TagName == latest {
+			return v, nil
+		}
+	}
+
+	return Release{}, fmt.Errorf("no release found")
 }
