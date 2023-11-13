@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-//Hosts are destnation hosts
+// Hosts are destnation hosts
 type Hosts []*Host
 
 func (hosts Hosts) Validate() error {
@@ -96,35 +96,38 @@ func (hosts Hosts) Workers() Hosts {
 	return hosts.WithRole("worker")
 }
 
+// Each runs a function (or multiple functions chained) on every Host.
+func (hosts Hosts) Each(filters ...func(h *Host) error) error {
+	for _, filter := range filters {
+		for _, h := range hosts {
+			if err := filter(h); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // ParallelEach runs a function (or multiple functions chained) on every Host parallelly.
 // Any errors will be concatenated and returned.
-func (hosts Hosts) ParallelEach(filter ...func(h *Host) error) error {
+func (hosts Hosts) ParallelEach(filters ...func(h *Host) error) error {
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 	var errors []string
-	type erritem struct {
-		address string
-		err     error
-	}
-	ec := make(chan erritem, 1)
 
-	for _, f := range filter {
-		wg.Add(len(hosts))
-
+	for _, filter := range filters {
 		for _, h := range hosts {
+			wg.Add(1)
 			go func(h *Host) {
-				ec <- erritem{h.String(), f(h)}
+				defer wg.Done()
+				if err := filter(h); err != nil {
+					mu.Lock()
+					errors = append(errors, fmt.Sprintf("%s: %s", h.String(), err.Error()))
+					mu.Unlock()
+				}
 			}(h)
 		}
-
-		go func() {
-			for e := range ec {
-				if e.err != nil {
-					errors = append(errors, fmt.Sprintf("%s: %s", e.address, e.err.Error()))
-				}
-				wg.Done()
-			}
-		}()
-
 		wg.Wait()
 	}
 

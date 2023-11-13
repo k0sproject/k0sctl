@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/gammazero/workerpool"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
@@ -40,6 +39,15 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
+	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+			return fmt.Errorf("k0s binary tempfile not found on host")
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 	log.Debugf("UpgradeWorkers phase prepared, %d workers needs upgrade", len(p.hosts))
 
 	return nil
@@ -52,61 +60,98 @@ func (p *UpgradeWorkers) ShouldRun() bool {
 
 // CleanUp cleans up the environment override files on hosts
 func (p *UpgradeWorkers) CleanUp() {
-	for _, h := range p.hosts {
+	if !p.IsWet() {
+		return
+	}
+	_ = p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
 		}
-	}
+		_ = p.leader.UncordonNode(h)
+		return nil
+	})
 }
 
 // Run the phase
 func (p *UpgradeWorkers) Run() error {
+	if err := p.hosts.Each(p.cordonWorker); err != nil {
+		return err
+	}
+
 	// Upgrade worker hosts parallelly in 10% chunks
 	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * 0.10))
 	if concurrentUpgrades == 0 {
 		concurrentUpgrades = 1
 	}
-	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
-	wp := workerpool.New(concurrentUpgrades)
-	errors := make(map[string]error)
-	for _, w := range p.hosts {
-		h := w
-		wp.Submit(func() {
-			err := p.upgradeWorker(h)
-			if err != nil {
-				errors[h.String()] = err
-				log.Errorf("%s: upgrade failed: %s", h, err.Error())
-			}
-		})
-	}
-	wp.StopWait()
 
-	if len(errors) > 0 {
-		return fmt.Errorf("upgrading %d workers failed", len(errors))
+	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
+	return p.hosts.BatchedParallelEach(concurrentUpgrades,
+		p.start,
+		p.cordonWorker,
+		p.drainWorker,
+		p.upgradeWorker,
+		p.uncordonWorker,
+		p.finish,
+	)
+}
+
+func (p *UpgradeWorkers) cordonWorker(h *cluster.Host) error {
+	if p.NoDrain {
+		log.Debugf("%s: not cordoning because --no-drain given", h)
+		return nil
+	}
+	if !p.IsWet() {
+		p.DryMsg(h, "cordon node")
+		return nil
+	}
+	log.Debugf("%s: cordon", h)
+	if err := p.leader.CordonNode(h); err != nil {
+		return fmt.Errorf("cordon node: %w", err)
 	}
 	return nil
 }
 
-func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
-	if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
-		return fmt.Errorf("k0s binary tempfile not found on host")
+func (p *UpgradeWorkers) uncordonWorker(h *cluster.Host) error {
+	if !p.IsWet() {
+		p.DryMsg(h, "uncordon node")
+		return nil
 	}
+	log.Debugf("%s: uncordon", h)
+	if err := p.leader.UncordonNode(h); err != nil {
+		return fmt.Errorf("uncordon node: %w", err)
+	}
+	return nil
+}
 
+func (p *UpgradeWorkers) drainWorker(h *cluster.Host) error {
+	if p.NoDrain {
+		log.Debugf("%s: not draining because --no-drain given", h)
+		return nil
+	}
+	if !p.IsWet() {
+		p.DryMsg(h, "drain node")
+		return nil
+	}
+	log.Debugf("%s: drain", h)
+	if err := p.leader.DrainNode(h); err != nil {
+		return fmt.Errorf("drain node: %w", err)
+	}
+	return nil
+}
+
+func (p *UpgradeWorkers) start(h *cluster.Host) error {
 	log.Infof("%s: starting upgrade", h)
+	return nil
+}
 
-	if !p.NoDrain {
-		log.Debugf("%s: draining...", h)
-		err := p.Wet(h, "drain node", func() error {
-			return p.leader.DrainNode(h)
-		})
-		if err != nil {
-			return err
-		}
-		log.Debugf("%s: draining complete", h)
-	}
+func (p *UpgradeWorkers) finish(h *cluster.Host) error {
+	log.Infof("%s: upgrade finished", h)
+	return nil
+}
 
+func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 	log.Debugf("%s: stop service", h)
 	err := p.Wet(h, "stop k0s service", func() error {
 		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
@@ -160,16 +205,6 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 		return err
 	}
 
-	if !p.NoDrain {
-		log.Debugf("%s: marking node schedulable again", h)
-		err := p.Wet(h, "uncordon node", func() error {
-			return p.leader.UncordonNode(h)
-		})
-		if err != nil {
-			return fmt.Errorf("uncordon node: %w", err)
-		}
-	}
 	h.Metadata.Ready = true
-	log.Infof("%s: upgrade successful", h)
 	return nil
 }
