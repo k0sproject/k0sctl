@@ -210,14 +210,9 @@ func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Address returns an address for the host
 func (h *Host) Address() string {
-	if h.SSH != nil {
-		return h.SSH.Address
+	if addr := h.Connection.Address(); addr != "" {
+		return addr
 	}
-
-	if h.WinRM != nil {
-		return h.WinRM.Address
-	}
-
 	return "127.0.0.1"
 }
 
