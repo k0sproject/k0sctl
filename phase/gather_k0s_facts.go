@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/rig/exec"
@@ -41,6 +42,7 @@ func (k *k0sstatus) isSingle() bool {
 type GatherK0sFacts struct {
 	GenericPhase
 	leader *cluster.Host
+	hosts  cluster.Hosts
 }
 
 // Title for the phase
@@ -48,9 +50,24 @@ func (p *GatherK0sFacts) Title() string {
 	return "Gather k0s facts"
 }
 
+// Prepare finds hosts with k0s installed
+func (p *GatherK0sFacts) Prepare(config *v1beta1.Cluster) error {
+	p.Config = config
+	p.hosts = config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		return h.Configurer.CommandExist(h, "k0s")
+	})
+
+	return nil
+}
+
+// ShouldRun is true when there are hosts that need to be connected
+func (p *GatherK0sFacts) ShouldRun() bool {
+	return len(p.hosts) > 0
+}
+
 // Run the phase
 func (p *GatherK0sFacts) Run() error {
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
+	var controllers cluster.Hosts = p.hosts.Controllers()
 	if err := p.parallelDo(controllers, p.investigateK0s); err != nil {
 		return err
 	}
@@ -61,7 +78,7 @@ func (p *GatherK0sFacts) Run() error {
 		p.SetProp("clusterID", id)
 	}
 
-	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
+	var workers cluster.Hosts = p.hosts.Workers()
 	if err := p.parallelDo(workers, p.investigateK0s); err != nil {
 		return err
 	}
