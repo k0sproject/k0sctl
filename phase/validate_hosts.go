@@ -25,12 +25,21 @@ func (p *ValidateHosts) Run() error {
 	p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))
 	p.privateaddrcount = make(map[string]int, len(p.Config.Spec.Hosts))
 
+	controllerCount := len(p.Config.Spec.Hosts.Controllers())
+	var resetControllerCount int
 	for _, h := range p.Config.Spec.Hosts {
 		p.hncount[h.Metadata.Hostname]++
 		p.machineidcount[h.Metadata.MachineID]++
 		if h.PrivateAddress != "" {
 			p.privateaddrcount[h.PrivateAddress]++
 		}
+		if h.IsController() && h.Reset {
+			resetControllerCount++
+		}
+	}
+
+	if resetControllerCount >= controllerCount {
+		return fmt.Errorf("all controllers are marked to be reset - this will break the cluster. use `k0sctl reset` instead if that is intentional")
 	}
 
 	return p.parallelDo(
