@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	gos "os"
+	gopath "path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
-	"github.com/k0sproject/k0sctl/pkg/paths"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -377,7 +377,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 		return fmt.Errorf("k0s binary tempfile not found")
 	}
 
-	dir := paths.Dir(h.Configurer.K0sBinaryPath())
+	dir := gopath.Dir(h.Configurer.K0sBinaryPath())
 	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, dir, exec.Sudo(h)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}

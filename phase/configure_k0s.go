@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	gopath "path"
 	"time"
 
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
-	"github.com/k0sproject/k0sctl/pkg/paths"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
@@ -241,7 +241,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 
 	log.Infof("%s: installing new configuration", h)
 	configPath := h.K0sConfigPath()
-	configDir := paths.Dir(configPath)
+	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
 		if err := h.Execf(`install -d 0750 -o root -g root "%s"`, configDir, exec.Sudo(h)); err != nil {
