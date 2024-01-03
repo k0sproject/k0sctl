@@ -371,13 +371,17 @@ func (h *Host) K0sServiceName() string {
 	}
 }
 
+func (h *Host) k0sBinaryPathDir() string {
+	return gopath.Dir(h.Configurer.K0sBinaryPath())
+}
+
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
 func (h *Host) InstallK0sBinary(path string) error {
 	if !h.Configurer.FileExist(h, path) {
 		return fmt.Errorf("k0s binary tempfile not found")
 	}
 
-	dir := gopath.Dir(h.Configurer.K0sBinaryPath())
+	dir := h.k0sBinaryPathDir()
 	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, dir, exec.Sudo(h)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
