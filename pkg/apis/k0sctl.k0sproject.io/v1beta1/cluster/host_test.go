@@ -134,3 +134,10 @@ func TestValidation(t *testing.T) {
 		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
 	})
 }
+
+func TestBinaryPath(t *testing.T) {
+	h := Host{}
+	h.Configurer = &mockconfigurer{}
+	h.Configurer.SetPath("K0sBinaryPath", "/foo/bar/k0s")
+	require.Equal(t, "/foo/bar", h.k0sBinaryPathDir())
+}

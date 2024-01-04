@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"path/filepath"
+	gopath "path"
 	"time"
 
 	"github.com/k0sproject/dig"
@@ -241,7 +241,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 
 	log.Infof("%s: installing new configuration", h)
 	configPath := h.K0sConfigPath()
-	configDir := filepath.Dir(configPath)
+	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
 		if err := h.Execf(`install -d 0750 -o root -g root "%s"`, configDir, exec.Sudo(h)); err != nil {
