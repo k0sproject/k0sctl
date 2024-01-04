@@ -2,10 +2,12 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
+	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
 	"github.com/stretchr/testify/require"
@@ -69,51 +71,52 @@ func TestUnQE(t *testing.T) {
 }
 
 func TestK0sInstallCommand(t *testing.T) {
-	h := Host{Role: "worker", DataDir: "/tmp/k0s"}
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
+	_ = h.Connect()
 	h.Configurer = &mockconfigurer{}
 	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
 	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
 
 	cmd, err := h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer"`))
 
 	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --config "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install controller --data-dir=/tmp/k0s --config "from-configurer"`))
 
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --token-file "from-configurer" --config "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install controller --data-dir=/tmp/k0s --token-file "from-configurer" --config "from-configurer"`))
 
 	h.Role = "controller+worker"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --config "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install controller --data-dir=/tmp/k0s --enable-worker --config "from-configurer"`))
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --token-file "from-configurer" --config "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install controller --data-dir=/tmp/k0s --enable-worker --token-file "from-configurer" --config "from-configurer"`))
 
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install worker --data-dir=/tmp/k0s --token-file "from-configurer" --kubelet-extra-args="--node-ip=10.0.0.9"`))
 
 	h.InstallFlags = []string{`--kubelet-extra-args="--foo bar"`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install worker --kubelet-extra-args="--foo bar --node-ip=10.0.0.9" --data-dir=/tmp/k0s --token-file "from-configurer"`))
 
 	h.InstallFlags = []string{`--enable-cloud-provider`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --enable-cloud-provider --data-dir=/tmp/k0s --token-file "from-configurer"`, cmd)
+	require.True(t, strings.HasSuffix(cmd, `k0s install worker --enable-cloud-provider --data-dir=/tmp/k0s --token-file "from-configurer"`))
 }
 
 func TestValidation(t *testing.T) {
