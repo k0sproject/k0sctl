@@ -244,7 +244,7 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.Execf(`install -d 0750 -o root -g root "%s"`, configDir, exec.Sudo(h)); err != nil {
+		if err := h.Execf(`install -m 0750 -o root -g root -d "%s"`, configDir, exec.Sudo(h)); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}
