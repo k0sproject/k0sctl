@@ -2,6 +2,7 @@ package linux
 
 import (
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/k0sproject/rig/exec"
@@ -33,6 +34,10 @@ func (m mockHost) Execf(string, ...interface{}) error {
 
 func (m mockHost) ExecOutputf(string, ...interface{}) (string, error) {
 	return "", nil
+}
+
+func (m mockHost) ExecStreams(cmd string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer, opts ...exec.Option) (exec.Waiter, error) {
+	return nil, nil
 }
 
 func (m mockHost) String() string {
