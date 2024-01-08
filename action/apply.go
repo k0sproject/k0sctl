@@ -48,7 +48,6 @@ func (a Apply) Run() error {
 		&phase.ValidateHosts{},
 		&phase.GatherK0sFacts{},
 		&phase.ValidateFacts{SkipDowngradeCheck: a.DisableDowngradeCheck},
-		&phase.RunHooks{Stage: "before", Action: "apply"},
 
 		// if UploadBinaries: true
 		&phase.DownloadBinaries{}, // downloads k0s binaries to local cache
@@ -57,13 +56,14 @@ func (a Apply) Run() error {
 		// if UploadBinaries: false
 		&phase.DownloadK0s{}, // downloads k0s binaries directly from hosts
 
+		&phase.UploadFiles{},
 		&phase.InstallBinaries{},
 		&phase.PrepareArm{},
 		&phase.ConfigureK0s{},
-		&phase.UploadFiles{},
 		&phase.Restore{
 			RestoreFrom: a.RestoreFrom,
 		},
+		&phase.RunHooks{Stage: "before", Action: "apply"},
 		&phase.InitializeK0s{},
 		&phase.InstallControllers{},
 		&phase.InstallWorkers{},
