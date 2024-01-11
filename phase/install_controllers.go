@@ -154,7 +154,7 @@ func (p *InstallControllers) Run() error {
 		}
 		log.Infof("%s: installing k0s controller", h)
 		err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
-			return h.Exec(cmd)
+			return h.Exec(cmd, exec.Sudo(h))
 		})
 		if err != nil {
 			return err

@@ -187,7 +187,7 @@ func (p *InstallWorkers) Run() error {
 			return err
 		}
 		err = p.Wet(h, fmt.Sprintf("install k0s worker with `%s`", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
-			return h.Exec(cmd)
+			return h.Exec(cmd, exec.Sudo(h))
 		})
 		if err != nil {
 			return err

@@ -337,13 +337,7 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		flags.Delete("--force")
 	}
 
-	cmd := h.Configurer.K0sCmdf("install %s %s", role, flags.Join())
-	sudocmd, err := h.Sudo(cmd)
-	if err != nil {
-		log.Warnf("%s: %s", h, err.Error())
-		return cmd, nil
-	}
-	return sudocmd, nil
+	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join()), nil
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
