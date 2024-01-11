@@ -2,6 +2,8 @@ module github.com/k0sproject/k0sctl
 
 go 1.21
 
+toolchain go1.21.6
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
