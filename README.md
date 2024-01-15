@@ -584,7 +584,7 @@ Enable k0s dynamic config. The setting will be automatically set to true if:
 * Any controller node has `--enable-dynamic-config` in `installFlags`
 * Any existing controller node has `--enable-dynamic-config` in run arguments (`k0s status -o json`)
 
-**Note:**: When running k0s in dynamic config mode, k0sctl will ONLY configure the cluster-wide configuration during the first time initialization, after that the configuration has to be managed via `k0s config edit` or `k0sctl config edit`. The node specific configuration will be updated on each apply.
+**Note:** When running k0s in dynamic config mode, k0sctl will ONLY configure the cluster-wide configuration during the first time initialization, after that the configuration has to be managed via `k0s config edit` or `k0sctl config edit`. The node specific configuration will be updated on each apply.
 
 See also:
 
