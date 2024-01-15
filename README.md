@@ -9,7 +9,7 @@
 
 Example output of k0sctl deploying a k0s cluster:
 
-```sh
+```text
 INFO ==> Running phase: Connect to hosts
 INFO ==> Running phase: Detect host operating systems
 INFO [ssh] 10.0.0.1:22: is running Ubuntu 20.10
