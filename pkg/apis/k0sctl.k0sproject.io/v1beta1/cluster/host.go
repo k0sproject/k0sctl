@@ -120,55 +120,80 @@ func (h *Host) Validate() error {
 	)
 }
 
-type configurer interface {
-	Kind() string
-	CheckPrivilege(os.Host) error
-	StartService(os.Host, string) error
-	StopService(os.Host, string) error
-	RestartService(os.Host, string) error
-	ServiceIsRunning(os.Host, string) bool
-	Arch(os.Host) (string, error)
-	K0sCmdf(string, ...interface{}) string
-	K0sBinaryPath() string
-	K0sBinaryVersion(os.Host) (*version.Version, error)
-	K0sConfigPath() string
-	DataDirDefaultPath() string
-	K0sJoinTokenPath() string
-	WriteFile(os.Host, string, string, string) error
-	UpdateEnvironment(os.Host, map[string]string) error
+type serviceOps interface {
+	CleanupServiceEnvironment(os.Host, string) error
 	DaemonReload(os.Host) error
 	ReplaceK0sTokenPath(os.Host, string) error
+	RestartService(os.Host, string) error
+	ServiceIsRunning(os.Host, string) bool
 	ServiceScriptPath(os.Host, string) (string, error)
-	ReadFile(os.Host, string) (string, error)
-	FileExist(os.Host, string) bool
+	StartService(os.Host, string) error
+	StopService(os.Host, string) error
+	UpdateServiceEnvironment(os.Host, string, map[string]string) error
+}
+
+type fileOps interface {
 	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, string, *version.Version, string) error
-	DownloadURL(os.Host, string, string, ...exec.Option) error
-	InstallPackage(os.Host, ...string) error
-	FileContains(os.Host, string, string) bool
-	MoveFile(os.Host, string, string) error
-	MkDir(os.Host, string, ...exec.Option) error
+	DeleteDir(os.Host, string, ...exec.Option) error
 	DeleteFile(os.Host, string) error
-	CommandExist(os.Host, string) bool
-	Hostname(os.Host) string
-	KubectlCmdf(os.Host, string, string, ...interface{}) string
-	KubeconfigPath(os.Host, string) string
-	IsContainer(os.Host) bool
-	FixContainer(os.Host) error
-	HTTPStatus(os.Host, string) (int, error)
-	PrivateInterface(os.Host) (string, error)
-	PrivateAddress(os.Host, string, string) (string, error)
+	FileContains(os.Host, string, string) bool
+	FileExist(os.Host, string) bool
+	MkDir(os.Host, string, ...exec.Option) error
+	MoveFile(os.Host, string, string) error
+	ReadFile(os.Host, string) (string, error)
+	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
 	TempDir(os.Host) (string, error)
 	TempFile(os.Host) (string, error)
-	UpdateServiceEnvironment(os.Host, string, map[string]string) error
-	CleanupServiceEnvironment(os.Host, string) error
-	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
 	Touch(os.Host, string, time.Time, ...exec.Option) error
-	DeleteDir(os.Host, string, ...exec.Option) error
-	K0sctlLockFilePath(os.Host) string
 	UpsertFile(os.Host, string, string) error
+	WriteFile(os.Host, string, string, string) error
+}
+
+type systemOps interface {
+	Arch(os.Host) (string, error)
+	CommandExist(os.Host, string) bool
+	Hostname(os.Host) string
+	InstallPackage(os.Host, ...string) error
 	MachineID(os.Host) (string, error)
+	PrivateAddress(os.Host, string, string) (string, error)
+	PrivateInterface(os.Host) (string, error)
+}
+
+type k0sBinaryOps interface {
+	DownloadK0s(os.Host, string, *version.Version, string) error
+	K0sBinaryVersion(os.Host) (*version.Version, error)
+	K0sCmdf(string, ...interface{}) string
+	KubectlCmdf(os.Host, string, string, ...interface{}) string
+}
+
+type pathFuncs interface {
+	DataDirDefaultPath() string
+	K0sBinaryPath() string
+	K0sConfigPath() string
+	K0sJoinTokenPath() string
+	K0sctlLockFilePath(os.Host) string
+	KubeconfigPath(os.Host, string) string
 	SetPath(string, string)
+}
+
+
+type utilityOps interface {
+	CheckPrivilege(os.Host) error
+	DownloadURL(os.Host, string, string, ...exec.Option) error
+	FixContainer(os.Host) error
+	HTTPStatus(os.Host, string) (int, error)
+	IsContainer(os.Host) bool
+	Kind() string
+	UpdateEnvironment(os.Host, map[string]string) error
+}
+
+type configurer interface {
+	serviceOps
+	fileOps
+	systemOps
+	k0sBinaryOps
+	pathFuncs
+	utilityOps
 }
 
 // HostMetadata resolved metadata for host
