@@ -104,7 +104,9 @@ func (p *InstallWorkers) Run() error {
 	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s", h, url)
-			if err := retry.Times(context.Background(), 2, node.HTTPStatusFunc(h, healthz, 200, 401)); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := retry.Context(ctx, node.HTTPStatusFunc(h, healthz, 200, 401)); err != nil {
 				return fmt.Errorf("failed to connect from worker to kubernetes api at %s - check networking", url)
 			}
 		} else {
