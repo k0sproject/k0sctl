@@ -30,6 +30,28 @@ type prepare interface {
 	Prepare(os.Host) error
 }
 
+// updateEnvironment updates the environment variables on the host and reconnects to
+// it if necessary.
+func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
+	if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {
+		return err
+	}
+	if h.Connection.Protocol() != "SSH" {
+		return nil
+	}
+	// XXX: this is a workaround. UpdateEnvironment on rig's os/linux.go writes
+	// the environment to /etc/environment and then exports the same variables
+	// using 'export' command. This is not enough for the environment to be
+	// preserved across multiple ssh sessions. We need to write the environment
+	// and then reopen the ssh session. Go's ssh client.Setenv() depends on ssh
+	// server configuration (sshd only accepts LC_* variables by default).
+	h.Connection.Disconnect()
+	if err := h.Connection.Connect(); err != nil {
+		return fmt.Errorf("failed to reconnect to %s: %w", h, err)
+	}
+	return nil
+}
+
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 	if c, ok := h.Configurer.(prepare); ok {
 		if err := c.Prepare(h); err != nil {
@@ -39,8 +61,8 @@ func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
 
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating environment", h)
-		if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {
-			return err
+		if err := p.updateEnvironment(h); err != nil {
+			return fmt.Errorf("failed to updated environment: %w", err)
 		}
 	}
 
