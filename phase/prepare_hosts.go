@@ -51,8 +51,8 @@ func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
 	// preserved across multiple ssh sessions. We need to write the environment
 	// and then reopen the ssh session. Go's ssh client.Setenv() depends on ssh
 	// server configuration (sshd only accepts LC_* variables by default).
+	log.Infof("%s: reconnecting to apply new environment", h)
 	h.Disconnect()
-	log.Infof("%s: Reconnecting", h)
 	return retry.Timeout(context.TODO(), 10*time.Minute, func(_ context.Context) error {
 		if err := h.Connect(); err != nil {
 			if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
