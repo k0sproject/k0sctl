@@ -1,9 +1,15 @@
 package phase
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/retry"
+	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -45,11 +51,17 @@ func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
 	// preserved across multiple ssh sessions. We need to write the environment
 	// and then reopen the ssh session. Go's ssh client.Setenv() depends on ssh
 	// server configuration (sshd only accepts LC_* variables by default).
-	h.Connection.Disconnect()
-	if err := h.Connection.Connect(); err != nil {
-		return fmt.Errorf("failed to reconnect to %s: %w", h, err)
-	}
-	return nil
+	h.Disconnect()
+	log.Infof("%s: Reconnecting", h)
+	return retry.Timeout(context.TODO(), 10*time.Minute, func(_ context.Context) error {
+		if err := h.Connect(); err != nil {
+			if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
+				return errors.Join(retry.ErrAbort, err)
+			}
+			return fmt.Errorf("failed to reconnect to %s: %w", h, err)
+		}
+		return nil
+	})
 }
 
 func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
