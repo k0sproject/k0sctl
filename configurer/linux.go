@@ -142,9 +142,29 @@ func (l *Linux) TempDir(h os.Host) (string, error) {
 	return h.ExecOutput("mktemp -d")
 }
 
+var trailingNumberRegex = regexp.MustCompile(`(\d+)$`)
+
+func trailingNumber(s string) (int, bool) {
+	match := trailingNumberRegex.FindStringSubmatch(s)
+	if len(match) > 0 {
+		i, err := strconv.Atoi(match[1])
+		if err == nil {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 // DownloadURL performs a download from a URL on the host
 func (l *Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Option) error {
-	return h.Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)), opts...)
+	err := h.Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)), opts...)
+	if err != nil {
+		if exitCode, ok := trailingNumber(err.Error()); ok && exitCode == 22 {
+			return fmt.Errorf("download failed: http 404 - not found: %w", err)
+		}
+		return fmt.Errorf("download failed: %w", err)
+	}
+	return nil
 }
 
 // DownloadK0s performs k0s binary download from github on the host
