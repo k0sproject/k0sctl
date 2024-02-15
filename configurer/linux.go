@@ -172,7 +172,7 @@ func (l *Linux) DownloadK0s(h os.Host, path string, version *version.Version, ar
 	v := strings.ReplaceAll(strings.TrimPrefix(version.String(), "v"), "+", "%2B")
 	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%[1]s/k0s-v%[1]s-%[2]s", v, arch)
 	if err := l.DownloadURL(h, url, path); err != nil {
-		return fmt.Errorf("download k0s: %w", err)
+		return fmt.Errorf("failed to download k0s - check connectivity and k0s version validity: %w", err)
 	}
 
 	return nil
