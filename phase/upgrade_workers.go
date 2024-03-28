@@ -76,10 +76,6 @@ func (p *UpgradeWorkers) CleanUp() {
 
 // Run the phase
 func (p *UpgradeWorkers) Run() error {
-	if err := p.hosts.Each(p.cordonWorker); err != nil {
-		return err
-	}
-
 	// Upgrade worker hosts parallelly in 10% chunks
 	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * 0.10))
 	if concurrentUpgrades == 0 {
@@ -87,9 +83,14 @@ func (p *UpgradeWorkers) Run() error {
 	}
 
 	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
-	return p.hosts.BatchedParallelEach(concurrentUpgrades,
+	err := p.hosts.BatchedParallelEach(concurrentUpgrades,
 		p.start,
 		p.cordonWorker,
+	)
+	if err != nil {
+		return err
+	}
+	return p.hosts.BatchedParallelEach(concurrentUpgrades,
 		p.drainWorker,
 		p.upgradeWorker,
 		p.uncordonWorker,
