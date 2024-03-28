@@ -48,6 +48,7 @@ func (r Reset) Run() error {
 		&phase.DetectOS{},
 		lockPhase,
 		&phase.PrepareHosts{},
+		&phase.GatherFacts{},
 		&phase.GatherK0sFacts{},
 		&phase.RunHooks{Stage: "before", Action: "reset"},
 		&phase.ResetWorkers{
