@@ -21,7 +21,7 @@ func (p *DefaultK0sVersion) Title() string {
 }
 
 func (p *DefaultK0sVersion) Run() error {
-	isStable := p.Config.Spec.K0s.VersionChannel == "stable"
+	isStable := p.Config.Spec.K0s.VersionChannel == "" || p.Config.Spec.K0s.VersionChannel == "stable"
 
 	var msg string
 	if isStable {

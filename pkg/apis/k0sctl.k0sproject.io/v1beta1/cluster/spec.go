@@ -9,8 +9,8 @@ import (
 
 // Spec defines cluster config spec section
 type Spec struct {
-	Hosts Hosts `yaml:"hosts"`
-	K0s   *K0s  `yaml:"k0s"`
+	Hosts Hosts `yaml:"hosts,omitempty"`
+	K0s   *K0s  `yaml:"k0s,omitempty"`
 
 	k0sLeader *Host
 }
@@ -26,6 +26,19 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return defaults.Set(s)
+}
+
+// MarshalYAML implements yaml.Marshaler interface
+func (s *Spec) MarshalYAML() (interface{}, error) {
+	k0s, err := s.K0s.MarshalYAML()
+	if err != nil {
+		return nil, err
+	}
+	if k0s == nil {
+		return Spec{Hosts: s.Hosts}, nil
+	}
+
+	return s, nil
 }
 
 // SetDefaults sets defaults
