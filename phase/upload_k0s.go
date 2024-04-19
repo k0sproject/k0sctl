@@ -3,6 +3,8 @@ package phase
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -58,17 +60,14 @@ func (p *UploadK0s) Run() error {
 }
 
 func (p *UploadK0s) uploadBinary(h *cluster.Host) error {
-	tmp, err := h.Configurer.TempFile(h)
-	if err != nil {
-		return fmt.Errorf("failed to create tempfile %w", err)
-	}
+	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	stat, err := os.Stat(h.UploadBinaryPath)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", h.UploadBinaryPath, err)
 	}
 
-	log.Infof("%s: uploading k0s binary from %s", h, h.UploadBinaryPath)
+	log.Infof("%s: uploading k0s binary from %s to %s", h, h.UploadBinaryPath, tmp)
 	if err := h.Upload(h.UploadBinaryPath, tmp); err != nil {
 		return fmt.Errorf("upload k0s binary: %w", err)
 	}
