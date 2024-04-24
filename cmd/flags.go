@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
 	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -72,12 +70,6 @@ var (
 		Name:    "disable-telemetry",
 		Usage:   "Do not send anonymous telemetry",
 		EnvVars: []string{"DISABLE_TELEMETRY"},
-	}
-
-	upgradeCheckFlag = &cli.BoolFlag{
-		Name:    "disable-upgrade-check",
-		Usage:   "Do not check for a k0sctl upgrade",
-		EnvVars: []string{"DISABLE_UPGRADE_CHECK"},
 	}
 
 	concurrencyFlag = &cli.IntFlag{
@@ -419,91 +411,5 @@ func fileLoggerHook(logFile io.Writer) *loghook {
 
 func displayLogo(_ *cli.Context) error {
 	fmt.Print(logo)
-	return nil
-}
-
-var upgradeChan = make(chan *github.Release)
-
-func githubOrCachedRelease() (*github.Release, error) {
-	cached, err := xdg.SearchCacheFile("k0sctl.github.latest.json")
-	if err == nil {
-		log.Tracef("found a cached github response in %s", cached)
-		stat, err := os.Stat(cached)
-		if err == nil && time.Since(stat.ModTime()) < time.Hour {
-			log.Tracef("cached github release is fresh enough")
-			if content, err := os.ReadFile(cached); err == nil {
-				release := &github.Release{}
-				if err := json.Unmarshal(content, release); err == nil {
-					log.Tracef("json unmarshal ok, returning")
-					return release, nil
-				}
-			}
-		}
-	}
-	log.Tracef("starting online k0sctl upgrade check")
-	latest, err := github.LatestRelease(k0sctl.IsPre())
-	if err != nil {
-		return nil, err
-	}
-	cached, err = xdg.CacheFile("k0sctl.github.latest.json")
-	if err != nil {
-		return nil, err
-	}
-
-	cf, err := os.Create(cached)
-	if err != nil {
-		return nil, err
-	}
-	log.Tracef("caching github response to %s", cached)
-	enc := json.NewEncoder(cf)
-	if err := enc.Encode(latest); err != nil {
-		log.Tracef("failed to cache the response: %s", err)
-	}
-	return &latest, nil
-}
-
-func startCheckUpgrade(ctx *cli.Context) error {
-	if ctx.Bool("disable-upgrade-check") || k0sctl.Environment == "development" {
-		return nil
-	}
-
-	go func() {
-		log.Tracef("starting k0sctl upgrade check")
-		latest, err := githubOrCachedRelease()
-		log.Tracef("upgrade check response received")
-		if err != nil {
-			log.Debugf("upgrade check failed: %s", err)
-			upgradeChan <- nil
-			return
-		}
-		if latest.IsNewer(k0sctl.Version) {
-			upgradeChan <- latest
-		} else {
-			upgradeChan <- nil
-		}
-	}()
-
-	return nil
-}
-
-func reportCheckUpgrade(ctx *cli.Context) error {
-	if ctx.Bool("disable-upgrade-check") || k0sctl.Environment == "development" {
-		return nil
-	}
-
-	log.Tracef("waiting for upgrade check response")
-	var release *github.Release
-	select {
-	case release = <-upgradeChan:
-		log.Tracef("upgrade check response received")
-		if release == nil {
-			log.Tracef("no upgrade available")
-		} else {
-			fmt.Println(Colorize.BrightCyan(fmt.Sprintf("A new version %s of k0sctl is available: %s", release.TagName, release.URL)))
-		}
-	case <-time.After(5 * time.Second):
-		log.Tracef("upgrade check timed out")
-	}
-
 	return nil
 }

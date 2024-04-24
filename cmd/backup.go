@@ -21,10 +21,9 @@ var backupCommand = &cli.Command{
 		retryIntervalFlag,
 		retryTimeoutFlag,
 		analyticsFlag,
-		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initManager, displayLogo, initAnalytics, displayCopyright),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: actions(initLogging, initConfig, initManager, displayLogo, initAnalytics, displayCopyright),
+	After:  actions(closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		backupAction := action.Backup{
 			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),

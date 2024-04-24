@@ -16,10 +16,9 @@ var configEditCommand = &cli.Command{
 		traceFlag,
 		redactFlag,
 		analyticsFlag,
-		upgradeCheckFlag,
 	},
-	Before: actions(initLogging, startCheckUpgrade, initConfig, initAnalytics),
-	After:  actions(reportCheckUpgrade, closeAnalytics),
+	Before: actions(initLogging, initConfig, initAnalytics),
+	After:  actions(closeAnalytics),
 	Action: func(ctx *cli.Context) error {
 		configEditAction := action.ConfigEdit{
 			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
