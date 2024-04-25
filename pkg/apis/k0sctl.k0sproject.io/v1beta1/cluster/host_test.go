@@ -9,6 +9,7 @@ import (
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -143,4 +144,15 @@ func TestBinaryPath(t *testing.T) {
 	h.Configurer = &mockconfigurer{}
 	h.Configurer.SetPath("K0sBinaryPath", "/foo/bar/k0s")
 	require.Equal(t, "/foo/bar", h.k0sBinaryPathDir())
+}
+
+func TestExpandTokens(t *testing.T) {
+	h := Host{
+		Metadata: HostMetadata{
+			Arch: "amd64",
+		},
+	}
+	ver, err := version.NewVersion("v1.0.0+k0s.0")
+	require.NoError(t, err)
+	require.Equal(t, "test%20expand/k0s-v1.0.0%2Bk0s.0-amd64", h.ExpandTokens("test%20expand/k0s-%v-%p%x", ver))
 }

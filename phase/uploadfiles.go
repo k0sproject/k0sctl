@@ -168,9 +168,9 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 		return err
 	}
 
-	err := p.Wet(h, fmt.Sprintf("download file %s => %s", f.Source, f.DestinationFile), func() error {
-
-		return h.Configurer.DownloadURL(h, f.Source, f.DestinationFile, exec.Sudo(h))
+	expandedURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
+	err := p.Wet(h, fmt.Sprintf("download file %s => %s", expandedURL, f.DestinationFile), func() error {
+		return h.Configurer.DownloadURL(h, expandedURL, f.DestinationFile, exec.Sudo(h))
 	})
 	if err != nil {
 		return err

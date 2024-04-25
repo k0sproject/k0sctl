@@ -304,6 +304,10 @@ When `false`, the k0s binary downloading is performed on the target host itself
 
 A path to a file on the local host that contains a k0s binary to be uploaded to the host. Can be used to test drive a custom development build of k0s.
 
+###### `spec.hosts[*].k0sDownloadURL` &lt;string&gt; (optional)
+
+A URL to download the k0s binary from. The default is to download from the [k0s repository](https://github.com/k0sproject/k0s). The URL can contain '%'-prefixed tokens that will be replaced with the host's information, see [tokens](#tokens).
+
 ###### `spec.hosts[*].hostname` &lt;string&gt; (optional)
 
 Override host's hostname. When not set, the hostname reported by the operating system is used.
@@ -341,7 +345,7 @@ Example:
 ```
 
 * `name`: name of the file "bundle", used only for logging purposes (optional)
-* `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host (required)
+* `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host. If the value is a URL, '%'-prefixed tokens can be used, see [tokens](#tokens). (required)
 * `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host (default: user home)
 * `dst`: Destination filename for the file. Only usable for single file uploads (default: basename of file)
 * `perm`: File permission mode for uploaded file(s) (default: same as local)
@@ -595,3 +599,23 @@ See also:
 Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
 
 When left out, the output of `k0s config create` will be used.
+
+#### Tokens
+
+The following tokens can be used in the `k0sDownloadURL` and `files.[*].src` fields:
+
+- `%%` - literal `%`
+- `%p` - host architecture (arm, arm64, amd64)
+- `%v` - k0s version (v1.21.0+k0s.0)
+- `%x` - k0s binary extension (currently always empty)
+
+Any other tokens will be output as-is including the `%` character.
+
+Example:
+
+```yaml
+  - role: controller
+    k0sDownloadURL: https://files.example.com/k0s%20files/k0s-%v-%p%x
+    # Expands to https://files.example.com/k0s%20files/k0s-v1.21.0+k0s.0-amd64
+```
+

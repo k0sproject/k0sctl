@@ -1,0 +1,21 @@
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: cluster
+spec:
+  hosts:
+    - role: single
+      k0sDownloadURL: https://github.com/k0sproject/k0s/releases/download/%v/k0s-%v-%p
+      ssh:
+        address: "127.0.0.1"
+        port: 9022
+        keyPath: ./id_rsa_k0s
+      hooks:
+        apply:
+          before:
+            - "echo hello > apply.hook"
+          after:
+            - "grep -q hello apply.hook"
+  k0s:
+    config:
+      spec:
+        telemetry:
+          enabled: false

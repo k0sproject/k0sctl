@@ -65,9 +65,16 @@ func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 	}
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)
-	if err := h.Configurer.DownloadK0s(h, tmp, p.Config.Spec.K0s.Version, h.Metadata.Arch); err != nil {
+	if h.K0sDownloadURL != "" {
+		expandedURL := h.ExpandTokens(h.K0sDownloadURL, p.Config.Spec.K0s.Version)
+		log.Infof("%s: downloading k0s binary from %s", h, expandedURL)
+		if err := h.Configurer.DownloadURL(h, expandedURL, tmp); err != nil {
+			return fmt.Errorf("failed to download k0s binary: %w", err)
+		}
+	} else if err := h.Configurer.DownloadK0s(h, tmp, p.Config.Spec.K0s.Version, h.Metadata.Arch); err != nil {
 		return err
 	}
+
 	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
 		logrus.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
 	}

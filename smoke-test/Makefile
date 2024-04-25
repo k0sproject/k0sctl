@@ -46,6 +46,9 @@ smoke-reset: $(bootloose) id_rsa_k0s k0sctl
 smoke-os-override: $(bootloose) id_rsa_k0s k0sctl
 	BOOTLOOSE_TEMPLATE=bootloose.yaml.osoverride.tpl K0SCTL_CONFIG=k0sctl-single.yaml OS_RELEASE_PATH=$(realpath os-release) OS_OVERRIDE="ubuntu" ./smoke-basic.sh
 
+smoke-downloadurl: $(bootloose) id_rsa_k0s k0sctl
+	BOOTLOOSE_TEMPLATE=bootloose.yaml.single.tpl K0SCTL_CONFIG=k0sctl-downloadurl.yaml ./smoke-basic.sh
+
 smoke-backup-restore: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-backup-restore.sh
 

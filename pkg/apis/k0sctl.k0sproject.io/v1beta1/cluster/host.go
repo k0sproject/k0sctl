@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"net/url"
 	gos "os"
 	gopath "path"
 	"regexp"
@@ -36,6 +37,7 @@ type Host struct {
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
+	K0sDownloadURL   string            `yaml:"k0sDownloadURL,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []*UploadFile     `yaml:"files,omitempty"`
 	OSIDOverride     string            `yaml:"os,omitempty"`
@@ -448,7 +450,6 @@ func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
 	}
 
 	return fmt.Errorf("expected response code %d but received %d", expected, status)
-
 }
 
 // NeedCurl returns true when the curl package is needed on the host
@@ -514,4 +515,56 @@ func (h *Host) FileChanged(lpath, rpath string) bool {
 	}
 
 	return false
+}
+
+// ExpandTokens expands percent-sign prefixed tokens in a string, mainly for the download URLs.
+// The supported tokens are:
+//
+//   - %% - literal %
+//   - %p - host architecture (arm, arm64, amd64)
+//   - %v - k0s version (v1.21.0+k0s.0)
+//   - %x - k0s binary extension (.exe on Windows)
+//
+// Any unknown token is output as-is with the leading % included.
+func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
+	if input == "" {
+		return ""
+	}
+	builder := strings.Builder{}
+	var inPercent bool
+	for i := 0; i < len(input); i++ {
+		currCh := input[i]
+		if inPercent {
+			inPercent = false
+			switch currCh {
+			case '%':
+				// Literal %.
+				builder.WriteByte('%')
+			case 'p':
+				// Host architecture (arm, arm64, amd64).
+				builder.WriteString(h.Metadata.Arch)
+			case 'v':
+				// K0s version (v1.21.0+k0s.0)
+				builder.WriteString(url.QueryEscape(k0sVersion.String()))
+			case 'x':
+				// K0s binary extension (.exe on Windows).
+				if h.IsConnected() && h.IsWindows() {
+					builder.WriteString(".exe")
+				}
+			default:
+				// Unknown token, just output it with the leading %.
+				builder.WriteByte('%')
+				builder.WriteByte(currCh)
+			}
+		} else if currCh == '%' {
+			inPercent = true
+		} else {
+			builder.WriteByte(currCh)
+		}
+	}
+	if inPercent {
+		// Trailing %.
+		builder.WriteByte('%')
+	}
+	return builder.String()
 }
