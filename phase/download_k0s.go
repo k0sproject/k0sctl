@@ -1,12 +1,12 @@
 package phase
 
 import (
-	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -59,10 +59,7 @@ func (p *DownloadK0s) Run() error {
 }
 
 func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
-	tmp, err := h.Configurer.TempFile(h)
-	if err != nil {
-		return fmt.Errorf("failed to create tempfile %w", err)
-	}
+	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)
 	if h.K0sDownloadURL != "" {
@@ -76,7 +73,7 @@ func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
 	}
 
 	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
-		logrus.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
+		log.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
 	}
 
 	h.Metadata.K0sBinaryTempFile = tmp
