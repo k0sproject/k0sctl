@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -57,7 +58,7 @@ type podStatusList struct {
 // KubeNodeReady returns a function that returns an error unless the node is ready according to "kubectl get node"
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node -l kubernetes.io/hostname=%s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
+		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node -l kubernetes.io/hostname=%s -o json", strings.ToLower(h.Metadata.Hostname)), exec.HideOutput(), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("failed to get node status: %w", err)
 		}
