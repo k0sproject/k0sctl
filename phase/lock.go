@@ -3,11 +3,11 @@ package phase
 import (
 	"context"
 	"fmt"
+	"os"
 	gos "os"
 	"sync"
 	"time"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
@@ -27,8 +27,11 @@ type Lock struct {
 // Prepare the phase
 func (p *Lock) Prepare(c *v1beta1.Cluster) error {
 	p.Config = c
-	mid, _ := analytics.MachineID()
-	p.instanceID = fmt.Sprintf("%s-%d", mid, gos.Getpid())
+	hn, err := os.Hostname()
+	if err != nil {
+		hn = "unknown"
+	}
+	p.instanceID = fmt.Sprintf("%s-%d", hn, gos.Getpid())
 	return nil
 }
 

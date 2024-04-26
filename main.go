@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/cmd"
 	log "github.com/sirupsen/logrus"
 
@@ -34,7 +33,6 @@ func handlepanic() {
 			bt = append(bt, strings.TrimSpace(row))
 		}
 
-		analytics.Client.Publish("panic", map[string]interface{}{"backtrace": strings.Join(bt, "\n")})
 		log.Fatalf("PANIC: %v\n", err)
 	}
 }

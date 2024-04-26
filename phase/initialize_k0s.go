@@ -65,7 +65,6 @@ func (p *InitializeK0s) Run() error {
 	if p.Config.Spec.K0s.DynamicConfig || (h.InstallFlags.Include("--enable-dynamic-config") && h.InstallFlags.GetValue("--enable-dynamic-config") != "false") {
 		p.Config.Spec.K0s.DynamicConfig = true
 		h.InstallFlags.AddOrReplace("--enable-dynamic-config")
-		p.SetProp("dynamic-config", true)
 	}
 
 	if Force {
@@ -151,7 +150,6 @@ func (p *InitializeK0s) Run() error {
 	if p.IsWet() {
 		if id, err := p.Config.Spec.K0s.GetClusterID(h); err == nil {
 			p.Config.Spec.K0s.Metadata.ClusterID = id
-			p.SetProp("clusterID", id)
 		}
 	}
 

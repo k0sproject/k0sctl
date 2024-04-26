@@ -30,8 +30,6 @@ func (p *GatherFacts) Run() error {
 }
 
 func (p *GatherFacts) investigateHost(h *cluster.Host) error {
-	p.IncProp(h.Role)
-
 	output, err := h.Configurer.Arch(h)
 	if err != nil {
 		return err
@@ -45,8 +43,6 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 		}
 		h.Metadata.MachineID = id
 	}
-
-	p.IncProp(h.Metadata.Arch)
 
 	if extra := h.InstallFlags.GetValue("--kubelet-extra-args"); extra != "" {
 		ef := cluster.Flags{extra}
