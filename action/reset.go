@@ -61,6 +61,7 @@ func (r Reset) Run() error {
 			NoLeave:  true,
 		},
 		&phase.ResetLeader{},
+		&phase.DaemonReload{},
 		&phase.RunHooks{Stage: "after", Action: "reset"},
 		&phase.Unlock{Cancel: lockPhase.Cancel},
 		&phase.Disconnect{},
