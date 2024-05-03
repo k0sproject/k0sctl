@@ -19,10 +19,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	// "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
-	configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
-)
+// "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
+var configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
 
 const (
 	configSourceExisting int = iota
@@ -209,9 +207,13 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 	}
 
-	output, err := h.ExecOutput(cmd, exec.Sudo(h))
+	var stderrBuf bytes.Buffer
+	command, err := h.ExecStreams(cmd, nil, nil, &stderrBuf, exec.Sudo(h))
 	if err != nil {
-		return fmt.Errorf("spec.k0s.config fails validation:\n%s", output)
+		return fmt.Errorf("can't run spec.k0s.config validation: %w", err)
+	}
+	if err := command.Wait(); err != nil {
+		return fmt.Errorf("spec.k0s.config validation failed:: %w (%s)", err, stderrBuf.String())
 	}
 
 	return nil
