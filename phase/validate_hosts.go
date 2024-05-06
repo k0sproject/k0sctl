@@ -22,14 +22,18 @@ func (p *ValidateHosts) Title() string {
 // Run the phase
 func (p *ValidateHosts) Run() error {
 	p.hncount = make(map[string]int, len(p.Config.Spec.Hosts))
-	p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))
+	if uniqueMachineIDVersion.Check(p.Config.Spec.K0s.Version) {
+		p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))
+	}
 	p.privateaddrcount = make(map[string]int, len(p.Config.Spec.Hosts))
 
 	controllerCount := len(p.Config.Spec.Hosts.Controllers())
 	var resetControllerCount int
 	for _, h := range p.Config.Spec.Hosts {
 		p.hncount[h.Metadata.Hostname]++
-		p.machineidcount[h.Metadata.MachineID]++
+		if p.machineidcount != nil {
+			p.machineidcount[h.Metadata.MachineID]++
+		}
 		if h.PrivateAddress != "" {
 			p.privateaddrcount[h.PrivateAddress]++
 		}

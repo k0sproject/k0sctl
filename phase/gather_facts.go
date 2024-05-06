@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -12,7 +13,11 @@ import (
 // GatherFacts gathers information about hosts, such as if k0s is already up and running
 type GatherFacts struct {
 	GenericPhase
+	SkipMachineIDs bool
 }
+
+// K0s doesn't rely on unique machine IDs anymore since v1.30.
+var uniqueMachineIDVersion = version.MustConstraint("< v1.30")
 
 // Title for the phase
 func (p *GatherFacts) Title() string {
@@ -33,11 +38,13 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	}
 	h.Metadata.Arch = output
 
-	id, err := h.Configurer.MachineID(h)
-	if err != nil {
-		return err
+	if !p.SkipMachineIDs && uniqueMachineIDVersion.Check(p.Config.Spec.K0s.Version) {
+		id, err := h.Configurer.MachineID(h)
+		if err != nil {
+			return err
+		}
+		h.Metadata.MachineID = id
 	}
-	h.Metadata.MachineID = id
 
 	p.IncProp(h.Metadata.Arch)
 

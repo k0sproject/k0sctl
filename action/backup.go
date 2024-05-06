@@ -24,7 +24,7 @@ func (b Backup) Run() error {
 		&phase.DetectOS{},
 		lockPhase,
 		&phase.PrepareHosts{},
-		&phase.GatherFacts{},
+		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
 		&phase.RunHooks{Stage: "before", Action: "backup"},
 		&phase.Backup{},
