@@ -31,10 +31,10 @@ var (
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
-	Version        *version.Version `yaml:"version"`
-	VersionChannel string           `yaml:"versionChannel" default:"stable"`
-	DynamicConfig  bool             `yaml:"dynamicConfig"`
-	Config         dig.Mapping      `yaml:"config"`
+	Version        *version.Version `yaml:"version,omitempty"`
+	VersionChannel string           `yaml:"versionChannel,omitempty"`
+	DynamicConfig  bool             `yaml:"dynamicConfig,omitempty" default:"false"`
+	Config         dig.Mapping      `yaml:"config,omitempty"`
 	Metadata       K0sMetadata      `yaml:"-"`
 }
 
@@ -54,6 +54,26 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return defaults.Set(k)
+}
+
+// MarshalYAML implements yaml.Marshaler interface
+func (k *K0s) MarshalYAML() (interface{}, error) {
+	if k == nil {
+		return nil, nil
+	}
+	type k0s K0s
+	yk := (*k0s)(k)
+
+	yml, err := yaml.Marshal(yk)
+	if err != nil {
+		return nil, fmt.Errorf("marshal k0s: %w", err)
+	}
+
+	if string(yml) == "{}\n" {
+		return nil, nil
+	}
+
+	return yk, nil
 }
 
 // SetDefaults sets default values
@@ -88,7 +108,7 @@ func (k *K0s) Validate() error {
 	return validation.ValidateStruct(k,
 		validation.Field(&k.Version, validation.By(validateVersion)),
 		validation.Field(&k.DynamicConfig, validation.By(k.validateMinDynamic())),
-		validation.Field(&k.VersionChannel, validation.In("stable", "latest")),
+		validation.Field(&k.VersionChannel, validation.In("stable", "latest"), validation.When(k.VersionChannel != "")),
 	)
 }
 
