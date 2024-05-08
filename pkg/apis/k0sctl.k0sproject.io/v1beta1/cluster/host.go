@@ -144,7 +144,7 @@ type configurer interface {
 	ReadFile(os.Host, string) (string, error)
 	FileExist(os.Host, string) bool
 	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, string, *version.Version, string) error
+	DownloadK0s(os.Host, string, *version.Version, string, ...exec.Option) error
 	DownloadURL(os.Host, string, string, ...exec.Option) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
