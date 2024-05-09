@@ -12,7 +12,6 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/creasty/defaults v1.7.0
-	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/k0sproject/dig v0.2.0
@@ -21,13 +20,10 @@ require (
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20231227165926-e811dad5ac77 // indirect
 	github.com/mattn/go-isatty v0.0.20
-	github.com/segmentio/analytics-go v3.1.0+incompatible
-	github.com/segmentio/backo-go v1.1.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.2
-	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect

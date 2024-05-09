@@ -12,8 +12,6 @@ import (
 
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
-	"github.com/k0sproject/k0sctl/analytics"
-	"github.com/k0sproject/k0sctl/integration/segment"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/retry"
@@ -27,9 +25,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ctxConfigKey struct{}
-type ctxManagerKey struct{}
-type ctxLogFileKey struct{}
+type (
+	ctxConfigKey  struct{}
+	ctxManagerKey struct{}
+	ctxLogFileKey struct{}
+)
 
 var (
 	debugFlag = &cli.BoolFlag{
@@ -64,12 +64,6 @@ var (
 		Aliases:   []string{"c"},
 		Value:     "k0sctl.yaml",
 		TakesFile: true,
-	}
-
-	analyticsFlag = &cli.BoolFlag{
-		Name:    "disable-telemetry",
-		Usage:   "Do not send anonymous telemetry",
-		EnvVars: []string{"DISABLE_TELEMETRY"},
 	}
 
 	concurrencyFlag = &cli.IntFlag{
@@ -165,9 +159,6 @@ func initConfig(ctx *cli.Context) error {
 
 func displayCopyright(ctx *cli.Context) error {
 	fmt.Printf("k0sctl %s Copyright 2023, k0sctl authors.\n", k0sctl.Version)
-	if !ctx.Bool("disable-telemetry") {
-		fmt.Println("Anonymized telemetry of usage will be sent to the authors.")
-	}
 	fmt.Println("By continuing to use k0sctl you agree to these terms:")
 	fmt.Println("https://k0sproject.io/licenses/eula")
 	return nil
@@ -187,28 +178,6 @@ func warnOldCache(_ *cli.Context) error {
 			log.Warnf("An old cache directory still exists at %s, k0sctl now uses %s", p, path.Join(xdg.CacheHome, "k0sctl"))
 		}
 	}
-	return nil
-}
-
-const segmentWriteKey string = "oU2iC4shRUBfEboaO0FDuDIUk49Ime92"
-
-func initAnalytics(ctx *cli.Context) error {
-	if ctx.Bool("disable-telemetry") {
-		log.Tracef("disabling telemetry")
-		return nil
-	}
-
-	client, err := segment.NewClient(segmentWriteKey)
-	if err != nil {
-		return err
-	}
-	analytics.Client = client
-
-	return nil
-}
-
-func closeAnalytics(_ *cli.Context) error {
-	analytics.Client.Close()
 	return nil
 }
 
@@ -288,7 +257,7 @@ func LogFile() (*os.File, error) {
 		}
 	}
 
-	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
+	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open log %s: %s", fn, err.Error())
 	}

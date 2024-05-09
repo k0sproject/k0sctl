@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/rig/exec"
 )
@@ -17,8 +16,6 @@ type ConfigStatus struct {
 }
 
 func (c ConfigStatus) Run() error {
-	analytics.Client.Publish("config-status-start", map[string]interface{}{})
-
 	h := c.Config.Spec.K0sLeader()
 
 	if err := h.Connect(); err != nil {

@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 	log "github.com/sirupsen/logrus"
 
@@ -67,14 +66,9 @@ func (r Reset) Run() error {
 		&phase.Disconnect{},
 	)
 
-	analytics.Client.Publish("reset-start", map[string]interface{}{})
-
 	if err := r.Manager.Run(); err != nil {
-		analytics.Client.Publish("reset-failure", map[string]interface{}{"clusterID": r.Manager.Config.Spec.K0s.Metadata.ClusterID})
 		return err
 	}
-
-	analytics.Client.Publish("reset-success", map[string]interface{}{"duration": time.Since(start), "clusterID": r.Manager.Config.Spec.K0s.Metadata.ClusterID})
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)

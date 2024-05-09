@@ -5,7 +5,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 
 	log "github.com/sirupsen/logrus"
@@ -83,17 +82,13 @@ func (a Apply) Run() error {
 		&phase.Disconnect{},
 	)
 
-	analytics.Client.Publish("apply-start", map[string]interface{}{})
-
 	var result error
 
 	if result = a.Manager.Run(); result != nil {
-		analytics.Client.Publish("apply-failure", map[string]interface{}{"clusterID": a.Manager.Config.Spec.K0s.Metadata.ClusterID})
 		log.Info(phase.Colorize.Red("==> Apply failed").String())
 		return result
 	}
 
-	analytics.Client.Publish("apply-success", map[string]interface{}{"duration": time.Since(start), "clusterID": a.Manager.Config.Spec.K0s.Metadata.ClusterID})
 	if a.KubeconfigOut != nil {
 		if _, err := a.KubeconfigOut.Write([]byte(a.Manager.Config.Metadata.Kubeconfig)); err != nil {
 			log.Warnf("failed to write kubeconfig to %s: %v", a.KubeconfigOut, err)

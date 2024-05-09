@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/action"
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/urfave/cli/v2"
 )
@@ -25,13 +24,8 @@ var kubeconfigCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
-		analyticsFlag,
 	},
-	Before: actions(initSilentLogging, initConfig, initManager, initAnalytics),
-	After: func(_ *cli.Context) error {
-		analytics.Client.Close()
-		return nil
-	},
+	Before: actions(initSilentLogging, initConfig, initManager),
 	Action: func(ctx *cli.Context) error {
 		kubeconfigAction := action.Kubeconfig{
 			Manager:              ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),

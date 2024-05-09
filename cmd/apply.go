@@ -55,10 +55,8 @@ var applyCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
-		analyticsFlag,
 	},
-	Before: actions(initLogging, initConfig, initManager, displayLogo, initAnalytics, displayCopyright, warnOldCache),
-	After:  actions(closeAnalytics),
+	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright, warnOldCache),
 	Action: func(ctx *cli.Context) error {
 		var kubeconfigOut io.Writer
 

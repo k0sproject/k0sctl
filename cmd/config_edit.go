@@ -15,10 +15,8 @@ var configEditCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
-		analyticsFlag,
 	},
-	Before: actions(initLogging, initConfig, initAnalytics),
-	After:  actions(closeAnalytics),
+	Before: actions(initLogging, initConfig),
 	Action: func(ctx *cli.Context) error {
 		configEditAction := action.ConfigEdit{
 			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),

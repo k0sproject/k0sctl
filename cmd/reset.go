@@ -21,15 +21,13 @@ var resetCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
-		analyticsFlag,
 		&cli.BoolFlag{
 			Name:    "force",
 			Usage:   "Don't ask for confirmation",
 			Aliases: []string{"f"},
 		},
 	},
-	Before: actions(initLogging, initConfig, initManager, initAnalytics, displayCopyright),
-	After:  actions(closeAnalytics),
+	Before: actions(initLogging, initConfig, initManager, displayCopyright),
 	Action: func(ctx *cli.Context) error {
 		resetAction := action.Reset{
 			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/integration/github"
 	"github.com/k0sproject/k0sctl/version"
 	"github.com/urfave/cli/v2"
@@ -14,10 +13,6 @@ var versionCommand = &cli.Command{
 	Name:  "version",
 	Usage: "Output k0sctl version",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:   "machine-id",
-			Hidden: true,
-		},
 		&cli.BoolFlag{
 			Name:  "k0s",
 			Usage: "Retrieve the latest k0s version number",
@@ -47,16 +42,6 @@ var versionCommand = &cli.Command{
 				return err
 			}
 			fmt.Println(v.TagName)
-			os.Exit(0)
-		}
-
-		if ctx.Bool("machine-id") {
-			id, err := analytics.MachineID()
-			if err != nil {
-				println(err.Error())
-				os.Exit(1)
-			}
-			fmt.Println(id)
 			os.Exit(0)
 		}
 

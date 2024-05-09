@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/phase"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,14 +32,9 @@ func (b Backup) Run() error {
 		&phase.Disconnect{},
 	)
 
-	analytics.Client.Publish("backup-start", map[string]interface{}{})
-
 	if err := b.Manager.Run(); err != nil {
-		analytics.Client.Publish("backup-failure", map[string]interface{}{"clusterID": b.Manager.Config.Spec.K0s.Metadata.ClusterID})
 		return err
 	}
-
-	analytics.Client.Publish("backup-success", map[string]interface{}{"duration": time.Since(start), "clusterID": b.Manager.Config.Spec.K0s.Metadata.ClusterID})
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)

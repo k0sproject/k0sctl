@@ -32,7 +32,6 @@ func (p *DetectOS) Run() error {
 			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
 		}
 		if err := h.ResolveConfigurer(); err != nil {
-			p.SetProp("missing-support", h.OSVersion.String())
 			if h.OSVersion.IDLike != "" {
 				log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE '%s'", h, h.OSVersion.String(), h.OSVersion.IDLike)
 				for _, id := range strings.Split(h.OSVersion.IDLike, " ") {
@@ -46,7 +45,6 @@ func (p *DetectOS) Run() error {
 			return err
 		}
 		os := h.OSVersion.String()
-		p.IncProp(os)
 		log.Infof("%s: is running %s", h, os)
 
 		return nil
