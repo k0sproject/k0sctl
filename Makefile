@@ -56,7 +56,7 @@ smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-r
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
 
-golint := $(shell which golangci-lint)
+golint := $(shell which golangci-lint 2>/dev/null)
 ifeq ($(golint),)
 golint := $(shell go env GOPATH)/bin/golangci-lint
 endif
