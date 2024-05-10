@@ -61,7 +61,7 @@ ifeq ($(golint),)
 golint := $(shell go env GOPATH)/bin/golangci-lint
 endif
 
-gotest := $(shell which gotest)
+gotest := $(shell which gotest 2>/dev/null)
 ifeq ($(gotest),)
 gotest := go test
 endif
