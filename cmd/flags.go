@@ -27,9 +27,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ctxConfigKey struct{}
-type ctxManagerKey struct{}
-type ctxLogFileKey struct{}
+type (
+	ctxConfigKey  struct{}
+	ctxManagerKey struct{}
+	ctxLogFileKey struct{}
+)
 
 var (
 	debugFlag = &cli.BoolFlag{
@@ -70,6 +72,13 @@ var (
 		Name:    "disable-telemetry",
 		Usage:   "Do not send anonymous telemetry",
 		EnvVars: []string{"DISABLE_TELEMETRY"},
+	}
+
+	ignoredUpgradeCheckFlag = &cli.BoolFlag{
+		Name:    "disable-upgrade-check",
+		Usage:   "Do not check for a k0sctl upgrade",
+		EnvVars: []string{"DISABLE_UPGRADE_CHECK"},
+		Hidden:  true,
 	}
 
 	concurrencyFlag = &cli.IntFlag{
@@ -288,7 +297,7 @@ func LogFile() (*os.File, error) {
 		}
 	}
 
-	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0600)
+	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open log %s: %s", fn, err.Error())
 	}
