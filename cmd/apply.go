@@ -55,6 +55,7 @@ var applyCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
+		ignoredUpgradeCheckFlag,
 		analyticsFlag,
 	},
 	Before: actions(initLogging, initConfig, initManager, displayLogo, initAnalytics, displayCopyright, warnOldCache),

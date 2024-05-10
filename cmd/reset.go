@@ -21,6 +21,7 @@ var resetCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
+		ignoredUpgradeCheckFlag,
 		analyticsFlag,
 		&cli.BoolFlag{
 			Name:    "force",
