@@ -56,14 +56,9 @@ smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-r
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
 
-golint := $(shell which golangci-lint)
+golint := $(shell which golangci-lint 2>/dev/null)
 ifeq ($(golint),)
 golint := $(shell go env GOPATH)/bin/golangci-lint
-endif
-
-gotest := $(shell which gotest)
-ifeq ($(gotest),)
-gotest := go test
 endif
 
 $(golint):
@@ -75,7 +70,7 @@ lint: $(golint)
 
 .PHONY: test
 test: $(GO_SRCS) $(GO_TESTS)
-	$(gotest) -v ./...
+	go test -v ./...
 
 .PHONY: install
 install: k0sctl
