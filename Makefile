@@ -61,11 +61,6 @@ ifeq ($(golint),)
 golint := $(shell go env GOPATH)/bin/golangci-lint
 endif
 
-gotest := $(shell which gotest)
-ifeq ($(gotest),)
-gotest := go test
-endif
-
 $(golint):
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
@@ -75,7 +70,7 @@ lint: $(golint)
 
 .PHONY: test
 test: $(GO_SRCS) $(GO_TESTS)
-	$(gotest) -v ./...
+	go test -v ./...
 
 .PHONY: install
 install: k0sctl
