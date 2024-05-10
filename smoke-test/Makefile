@@ -22,6 +22,9 @@ id_rsa_k0s:
 smoke-basic: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-basic.sh
 
+smoke-basic-rootless: $(bootloose) id_rsa_k0s k0sctl
+	./smoke-basic-rootless.sh
+
 smoke-basic-openssh: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-basic-openssh.sh
 

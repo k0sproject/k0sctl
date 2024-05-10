@@ -51,7 +51,7 @@ build-all: $(addprefix bin/,$(bins)) bin/checksums.md
 clean:
 	rm -rf bin/ k0sctl
 
-smoketests := smoke-basic smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl
+smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
