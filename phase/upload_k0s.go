@@ -67,7 +67,7 @@ func (p *UploadK0s) uploadBinary(h *cluster.Host) error {
 	}
 
 	log.Infof("%s: uploading k0s binary from %s to %s", h, h.UploadBinaryPath, tmp)
-	if err := h.Upload(h.UploadBinaryPath, tmp, exec.Sudo(h)); err != nil {
+	if err := h.Upload(h.UploadBinaryPath, tmp, exec.Sudo(h), exec.LogError(true)); err != nil {
 		return fmt.Errorf("upload k0s binary: %w", err)
 	}
 
