@@ -30,7 +30,7 @@ echo "* Starting apply"
 echo "* Apply OK"
 
 echo "* Verify hooks were executed on the host"
-bootloose ssh root@manager0 -- grep -q hello apply.hook
+bootloose ssh root@manager0 -- grep -q hello "~${SSH_USER}/apply.hook"
 
 echo "* Verify 'k0sctl kubeconfig' output includes 'data' block"
 ../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
