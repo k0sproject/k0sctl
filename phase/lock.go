@@ -70,17 +70,17 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 	p.m.Unlock()
 
 	go func() {
-		log.Debugf("%s: started periodic update of lock file %s timestamp", h, lfp)
+		log.Tracef("%s: started periodic update of lock file %s timestamp", h, lfp)
 		for {
 			select {
 			case <-ticker.C:
-				if err := h.Configurer.Touch(h, lfp, time.Now(), exec.Sudo(h)); err != nil {
-					log.Warnf("%s: failed to touch lock file: %s", h, err)
+				if err := h.Configurer.Touch(h, lfp, time.Now(), exec.Sudo(h), exec.HideCommand()); err != nil {
+					log.Debugf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():
-				log.Debugf("%s: stopped lock cycle, removing file", h)
+				log.Tracef("%s: stopped lock cycle, removing file", h)
 				if err := h.Configurer.DeleteFile(h, lfp); err != nil {
-					log.Warnf("%s: failed to remove host lock file: %s", h, err)
+					log.Debugf("%s: failed to remove host lock file, k0sctl may have been previously aborted or crashed. the start of next invocation may be delayed until it expires: %s", h, err)
 				}
 				p.wg.Done()
 				return
@@ -101,7 +101,7 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 
 	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
-		stat, err := h.Configurer.Stat(h, lfp, exec.Sudo(h))
+		stat, err := h.Configurer.Stat(h, lfp, exec.Sudo(h), exec.HideCommand())
 		if err != nil {
 			return fmt.Errorf("lock file disappeared: %w", err)
 		}
@@ -111,10 +111,10 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 		}
 		if content != p.instanceID {
 			if time.Since(stat.ModTime()) < 30*time.Second {
-				return fmt.Errorf("another instance of k0sctl is currently operating on the host")
+				return fmt.Errorf("another instance of k0sctl is currently operating on the host, delete %s or wait 30 seconds for it to expire", lfp)
 			}
 			_ = h.Configurer.DeleteFile(h, lfp)
-			return fmt.Errorf("removed existing expired lock file")
+			return fmt.Errorf("removed existing expired lock file, will retry")
 		}
 	}
 
