@@ -2,6 +2,7 @@ package phase
 
 import (
 	"fmt"
+	"slices"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -24,6 +25,10 @@ func (p *ValidateFacts) Run() error {
 	}
 
 	if err := p.validateDefaultVersion(); err != nil {
+		return err
+	}
+
+	if err := p.validateControllerSwap(); err != nil {
 		return err
 	}
 
@@ -65,6 +70,46 @@ func (p *ValidateFacts) validateDefaultVersion() error {
 		for _, h := range p.Config.Spec.Hosts {
 			h.Metadata.NeedsUpgrade = false
 		}
+	}
+
+	return nil
+}
+
+func (p *ValidateFacts) validateControllerSwap() error {
+	log.Debugf("validating controller list vs etcd member list")
+	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == nil {
+		log.Debugf("%s: leader has no k0s running, assuming a fresh cluster", p.Config.Spec.K0sLeader())
+		return nil
+	}
+
+	if p.Config.Spec.K0sLeader().Role == "single" {
+		log.Debugf("%s: leader is a single node, assuming no etcd", p.Config.Spec.K0sLeader())
+		return nil
+	}
+
+	if len(p.Config.Metadata.EtcdMembers) > len(p.Config.Spec.Hosts.Controllers()) {
+		log.Warnf("there are more etcd members in the cluster than controllers listed in the k0sctl configuration")
+	}
+
+	for _, h := range p.Config.Spec.Hosts.Controllers() {
+		if h.Metadata.K0sRunningVersion != nil {
+			log.Debugf("%s: host has k0s running, no need to check if it was replaced", h)
+			continue
+		}
+
+		log.Debugf("%s: host is new, checking if etcd members list already contains %s", h, h.PrivateAddress)
+		if slices.Contains(p.Config.Metadata.EtcdMembers, h.PrivateAddress) {
+			if Force {
+				log.Infof("%s: force used, running 'k0s etcd leave' for the host", h)
+				leader := p.Config.Spec.K0sLeader()
+				if err := leader.Exec(leader.Configurer.K0sCmdf("etcd leave --peer-address %s", h.PrivateAddress)); err != nil {
+					return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. attempted etcd leave for the address %s but it failed: %w", h, h.PrivateAddress, err)
+				}
+				continue
+			}
+			return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. check the host and use `k0s etcd leave --peer-address %s on a controller or re-run apply with --force", h, h.PrivateAddress)
+		}
+		log.Debugf("%s: no match, assuming its safe to install", h)
 	}
 
 	return nil

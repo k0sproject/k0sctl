@@ -90,11 +90,7 @@ func (p *ResetControllers) Run() error {
 		if !p.NoLeave {
 			log.Debugf("%s: leaving etcd...", h)
 
-			etcdAddress := h.SSH.Address
-			if h.PrivateAddress != "" {
-				etcdAddress = h.PrivateAddress
-			}
-			if err := h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", etcdAddress, h.K0sDataDir()), exec.Sudo(h)); err != nil {
+			if err := h.Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", h.PrivateAddress, h.K0sDataDir()), exec.Sudo(h)); err != nil {
 				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
 			}
 			log.Debugf("%s: leaving etcd completed", h)

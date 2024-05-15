@@ -181,7 +181,9 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 
 // Run the phase
 func (p *ConfigureK0s) Run() error {
-	controllers := p.Config.Spec.Hosts.Controllers()
+	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
+		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
+	})	
 	return p.parallelDo(controllers, p.configureK0s)
 }
 

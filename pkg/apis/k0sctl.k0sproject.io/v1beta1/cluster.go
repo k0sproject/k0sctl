@@ -14,8 +14,9 @@ const APIVersion = "k0sctl.k0sproject.io/v1beta1"
 
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
-	Name       string `yaml:"name" validate:"required" default:"k0s-cluster"`
-	Kubeconfig string `yaml:"-"`
+	Name        string   `yaml:"name" validate:"required" default:"k0s-cluster"`
+	Kubeconfig  string   `yaml:"-"`
+	EtcdMembers []string `yaml:"-"`
 }
 
 // Cluster describes launchpad.yaml configuration
