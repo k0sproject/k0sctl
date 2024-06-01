@@ -131,7 +131,21 @@ func (p *UpgradeWorkers) drainWorker(h *cluster.Host) error {
 		return nil
 	}
 	log.Debugf("%s: drain", h)
-	if err := p.leader.DrainNode(h); err != nil {
+	upgradeSettings := p.Config.Spec.UpgradeSettings
+	if upgradeSettings == nil {
+		upgradeSettings = &cluster.UpgradeSettings{}
+	}
+
+	gracePeriod := upgradeSettings.DrainGracePeriod
+	if gracePeriod == "" {
+		gracePeriod = "120"
+	}
+	timeout := upgradeSettings.DrainTimeout
+	if timeout == "" {
+		timeout = "5m"
+	}
+
+	if err := p.leader.DrainNode(h, gracePeriod, timeout); err != nil {
 		return fmt.Errorf("drain node: %w", err)
 	}
 	return nil
