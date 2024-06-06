@@ -102,7 +102,11 @@ func (p *ValidateFacts) validateControllerSwap() error {
 			if Force {
 				log.Infof("%s: force used, running 'k0s etcd leave' for the host", h)
 				leader := p.Config.Spec.K0sLeader()
-				if err := leader.Exec(leader.Configurer.K0sCmdf("etcd leave --peer-address %s", h.PrivateAddress)); err != nil {
+				leaveCommand := leader.Configurer.K0sCmdf("etcd leave --peer-address %s", h.PrivateAddress)
+				err := p.Wet(h, fmt.Sprintf("remove host from etcd using %v", leaveCommand), func() error {
+					return leader.Exec(leaveCommand)
+				})
+				if err != nil {
 					return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. attempted etcd leave for the address %s but it failed: %w", h, h.PrivateAddress, err)
 				}
 				continue
