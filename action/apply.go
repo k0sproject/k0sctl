@@ -3,6 +3,10 @@ package action
 import (
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/analytics"
@@ -28,6 +32,8 @@ type Apply struct {
 	KubeconfigOut io.Writer
 	// KubeconfigAPIAddress is the API address to use in the kubeconfig
 	KubeconfigAPIAddress string
+	// ConfigPath is the path to the configuration file (used for kubeconfig command tip on success)
+	ConfigPath string
 }
 
 func (a Apply) Run() error {
@@ -116,8 +122,27 @@ func (a Apply) Run() error {
 	}
 
 	if a.KubeconfigOut == nil {
+		cmd := &strings.Builder{}
+		executable, err := os.Executable()
+		if err != nil {
+			executable = "k0sctl"
+		} else {
+			// check if the basename of executable is in the PATH, if so, just use the basename
+			if _, err := exec.LookPath(filepath.Base(executable)); err == nil {
+				executable = filepath.Base(executable)
+			}
+		}
+
+		cmd.WriteString(executable)
+		cmd.WriteString(" kubeconfig")
+
+		if a.ConfigPath != "" && a.ConfigPath != "-" && a.ConfigPath != "k0sctl.yaml" {
+			cmd.WriteString(" --config ")
+			cmd.WriteString(a.ConfigPath)
+		}
+
 		log.Infof("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Infof("     " + phase.Colorize.Cyan("k0sctl kubeconfig").String())
+		log.Infof("     " + phase.Colorize.Cyan(cmd.String()).String())
 	}
 
 	return nil
