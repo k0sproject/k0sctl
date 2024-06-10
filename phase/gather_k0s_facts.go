@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
 	"path"
 	"strings"
 
@@ -78,11 +80,104 @@ func (p *GatherK0sFacts) Run() error {
 		p.SetProp("clusterID", id)
 	}
 
+	if err := p.investigateEtcd(); err != nil {
+		return err
+	}
+
 	var workers cluster.Hosts = p.hosts.Workers()
 	if err := p.parallelDo(workers, p.investigateK0s); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func (p *GatherK0sFacts) isInternalEtcd() bool {
+	if p.leader.Role != "controller" && p.leader.Role != "controller+worker" {
+		return false
+	}
+
+	if p.leader.Metadata.K0sRunningVersion == nil {
+		return false
+	}
+
+	if p.Config.Spec.K0s == nil || p.Config.Spec.K0s.Config == nil {
+		log.Debugf("%s: k0s config not found, expecting default internal etcd", p.leader)
+		return true
+	}
+
+	log.Debugf("%s: checking storage config for etcd", p.leader)
+	if storageConfig, ok := p.Config.Spec.K0s.Config.Dig("spec", "storage").(dig.Mapping); ok {
+		storageType := storageConfig.DigString("type")
+		switch storageType {
+		case "etcd":
+			if _, ok := storageConfig.Dig("etcd", "externalCluster").(dig.Mapping); ok {
+				log.Debugf("%s: storage is configured with external etcd", p.leader)
+				return false
+			}
+			log.Debugf("%s: storage type is etcd", p.leader)
+			return true
+		case "":
+			log.Debugf("%s: storage type is default", p.leader)
+			return true
+		default:
+			log.Debugf("%s: storage type is %s", p.leader, storageType)
+			return false
+		}
+	}
+
+	log.Debugf("%s: storage config not found, expecting default internal etcd", p.leader)
+	return true
+}
+
+func (p *GatherK0sFacts) investigateEtcd() error {
+	if !p.isInternalEtcd() {
+		log.Debugf("%s: skipping etcd member list", p.leader)
+		return nil
+	}
+
+	if err := p.listEtcdMembers(p.leader); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
+	log.Infof("%s: listing etcd members", h)
+	// etcd member-list outputs json like:
+	// {"members":{"controller0":"https://172.17.0.2:2380","controller1":"https://172.17.0.3:2380"}}
+	// on versions like ~1.21.x etcd member-list outputs to stderr with extra fields (from logrus).
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("etcd member-list --data-dir=%s 2>&1", h.K0sDataDir()), exec.Sudo(h))
+	if err != nil {
+		return fmt.Errorf("failed to run list etcd members command: %w", err)
+	}
+
+	result := make(map[string]any)
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		return fmt.Errorf("failed to decode etcd member-list output: %w", err)
+	}
+
+	etcdMembers := []string{}
+	if members, ok := result["members"].(map[string]any); ok {
+		for _, urlField := range members {
+			urlFieldStr, ok := urlField.(string)
+			if ok {
+				memberURL, err := url.Parse(urlFieldStr)
+				if err != nil {
+					return fmt.Errorf("failed to parse etcd member URL: %w", err)
+				}
+				memberHost, _, err := net.SplitHostPort(memberURL.Host)
+				if err != nil {
+					return fmt.Errorf("failed to split etcd member URL: %w", err)
+				}
+				log.Debugf("%s: detected etcd member %s", h, memberHost)
+				etcdMembers = append(etcdMembers, memberHost)
+			}
+		}
+	}
+
+	p.Config.Metadata.EtcdMembers = etcdMembers
 	return nil
 }
 

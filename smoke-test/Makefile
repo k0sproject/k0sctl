@@ -55,5 +55,8 @@ smoke-downloadurl: $(bootloose) id_rsa_k0s k0sctl
 smoke-backup-restore: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-backup-restore.sh
 
+smoke-controller-swap: $(bootloose) id_rsa_k0s k0sctl
+	BOOTLOOSE_TEMPLATE=bootloose-controller-swap.yaml.tpl K0SCTL_CONFIG=k0sctl-controller-swap.yaml ./smoke-controller-swap.sh
+
 %.iid: Dockerfile.%
 	docker build --iidfile '$@' - < '$<'
