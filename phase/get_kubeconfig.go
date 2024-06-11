@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -37,7 +38,7 @@ func (p *GetKubeconfig) DryRun() error {
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.K0sLeader()
 
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin"), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --config=%s", shellescape.Quote(h.Configurer.KubeconfigPath(h, h.K0sDataDir()))), exec.Sudo(h))
 	if err != nil {
 		return fmt.Errorf("read kubeconfig from host: %w", err)
 	}
