@@ -38,7 +38,7 @@ func (p *GetKubeconfig) DryRun() error {
 func (p *GetKubeconfig) Run() error {
 	h := p.Config.Spec.K0sLeader()
 
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --config=%s", shellescape.Quote(h.Configurer.K0sConfigPath())), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --config=%s --data-dir=%s", shellescape.Quote(h.Configurer.K0sConfigPath()), shellescape.Quote(h.K0sDataDir())), exec.Sudo(h))
 	if err != nil {
 		return fmt.Errorf("read kubeconfig from host: %w", err)
 	}
