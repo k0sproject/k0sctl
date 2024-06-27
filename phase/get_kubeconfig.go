@@ -24,7 +24,7 @@ func (p *GetKubeconfig) Title() string {
 }
 
 var readKubeconfig = func(h *cluster.Host) (string, error) {
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", shellescape.Quote(h.K0sDataDir())), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", shellescape.Quote(h.K0sDataDir())), exec.Sudo(h), exec.HideOutput())
 	if err != nil {
 		return "", fmt.Errorf("get kubeconfig from host: %w", err)
 	}
