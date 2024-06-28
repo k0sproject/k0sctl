@@ -1,0 +1,36 @@
+name: Smoke test cache steps
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        check-latest: true
+
+    - name: Download compiled binary artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: k0sctl
+        path: .
+
+    - name: k0sctl cache
+      uses: actions/cache@v3
+      with:
+        key: k0sctl-cache
+        path: |
+          /var/cache/k0sctl/k0s
+          ~/.cache/k0sctl/k0s
+    
+    - name: kubectl cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          smoke-test/kubectl
+        key: "kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}"
+
+    - name: Make binaries executable
+      shell: bash
+      run: |
+        chmod +x k0sctl || true
+        chmod +x smoke-test/kubectl || true

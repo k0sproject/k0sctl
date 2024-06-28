@@ -49,19 +49,8 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -80,17 +69,7 @@ jobs:
     steps:
 
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -103,16 +82,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
+      - uses: ./.github/actions/smoke-test-cache
 
       - name: Build image
         run: |
@@ -133,17 +103,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -161,17 +121,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         run: make smoke-files
 
@@ -186,17 +136,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         run: make smoke-dynamic
 
@@ -207,17 +147,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run OS override smoke test
         run: make smoke-os-override
 
@@ -228,17 +158,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run k0sDownloadURL smoke test
         run: make smoke-downloadurl
 
@@ -258,17 +178,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -289,17 +199,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -319,17 +219,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -349,17 +239,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -377,17 +257,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
@@ -400,17 +270,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-
-      - {"name":"Compiled binary cache","uses":"actions/download-artifact@v4","with":{"name":"k0sctl","path":"."}}
-      - {"name":"K0sctl cache","uses":"actions/cache@v3","with":{"path":"/var/cache/k0sctl/k0s\n~/.cache/k0sctl/k0s\n","key":"k0sctl-cache"}}
-      - {"name":"Kubectl cache","uses":"actions/cache@v3","with":{"path":"smoke-test/kubectl\n","key":"kubectl-${{ hashFiles('smoke-test/smoke.common.sh') }}","restore-keys":"kubectl-"}}
-      - {"name":"Make binaries executable","run":"chmod +x k0sctl || true\nchmod +x smoke-test/kubectl || true"}
-
+      - uses: ./.github/actions/smoke-test-cache
       - name: Run init smoke test
         run: make smoke-init
 
