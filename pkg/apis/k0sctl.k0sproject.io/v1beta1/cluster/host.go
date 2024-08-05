@@ -399,7 +399,8 @@ func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 	if err != nil {
 		return fmt.Errorf("failed to get updated k0s binary version: %w", err)
 	}
-	if !version.Equal(updatedVersion) {
+	// verify the installed version matches the expected version, unless a custom k0sbinarypath is used
+	if !version.Equal(updatedVersion) && h.K0sBinaryPath == "" {
 		return fmt.Errorf("updated k0s binary version is %s not %s", updatedVersion, version)
 	}
 
