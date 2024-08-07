@@ -14,8 +14,8 @@ BUILD_FLAGS = -trimpath -a -tags "netgo,osusergo,static_build" -installsuffix ne
 k0sctl: $(GO_SRCS)
 	go build $(BUILD_FLAGS) -o k0sctl main.go
 
-bin/k0sctl-linux-x64: $(GO_SRCS)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-x64 main.go
+bin/k0sctl-linux-amd64: $(GO_SRCS)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-amd64 main.go
 
 bin/k0sctl-linux-arm64: $(GO_SRCS)
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm64 main.go
@@ -23,16 +23,16 @@ bin/k0sctl-linux-arm64: $(GO_SRCS)
 bin/k0sctl-linux-arm: $(GO_SRCS)
 	GOOS=linux GOARCH=arm CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm main.go
 
-bin/k0sctl-win-x64.exe: $(GO_SRCS)
-	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-x64.exe main.go
+bin/k0sctl-win-amd64.exe: $(GO_SRCS)
+	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-amd64.exe main.go
 
-bin/k0sctl-darwin-x64: $(GO_SRCS)
-	GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-x64 main.go
+bin/k0sctl-darwin-amd64: $(GO_SRCS)
+	GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-amd64 main.go
 
 bin/k0sctl-darwin-arm64: $(GO_SRCS)
 	GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
 
-bins := k0sctl-linux-x64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-x64.exe k0sctl-darwin-x64 k0sctl-darwin-arm64
+bins := k0sctl-linux-amd64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-amd64.exe k0sctl-darwin-amd64 k0sctl-darwin-arm64
 
 bin/checksums.txt: $(addprefix bin/,$(bins))
 	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
