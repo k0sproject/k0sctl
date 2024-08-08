@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	log "github.com/sirupsen/logrus"
 )
 
 // ValidateHosts performs remote OS detection
@@ -48,11 +49,20 @@ func (p *ValidateHosts) Run() error {
 
 	return p.parallelDo(
 		p.Config.Spec.Hosts,
+		p.warnK0sBinaryPath,
 		p.validateUniqueHostname,
 		p.validateUniqueMachineID,
 		p.validateUniquePrivateAddress,
 		p.validateSudo,
 	)
+}
+
+func (p *ValidateHosts) warnK0sBinaryPath(h *cluster.Host) error {
+	if h.Configurer.K0sBinaryPath() != "" {
+		log.Warnf("%s: k0s binary path is set to %q, version checking for the host is disabled. The k0s version for other hosts is %q.", h, h.Configurer.K0sBinaryPath(), p.Config.Spec.K0s.Version)
+	}
+
+	return nil
 }
 
 func (p *ValidateHosts) validateUniqueHostname(h *cluster.Host) error {
