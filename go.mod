@@ -11,7 +11,7 @@ require (
 	github.com/a8m/envsubst v1.4.2
 	github.com/adrg/xdg v0.5.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
-	github.com/creasty/defaults v1.7.0
+	github.com/creasty/defaults v1.8.0
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
