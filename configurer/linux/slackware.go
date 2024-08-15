@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/registry"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/os/registry"
 )
 
 // Slackware provides OS support for Slackware Linux

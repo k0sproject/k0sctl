@@ -2,9 +2,9 @@ package linux
 
 import (
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/linux"
-	"github.com/k0sproject/rig/os/registry"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/os/linux"
+	"github.com/k0sproject/rig/v2/os/registry"
 )
 
 // Archlinux provides OS support for Archlinux systems

@@ -7,7 +7,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/exec"
 	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/tools/clientcmd"
 )

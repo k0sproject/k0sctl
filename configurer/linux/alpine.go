@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/registry"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/exec"
+	"github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/os/registry"
 )
 
 // BaseLinux for tricking go interfaces

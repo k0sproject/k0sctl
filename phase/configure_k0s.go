@@ -12,7 +12,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/exec"
 	"github.com/k0sproject/version"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"

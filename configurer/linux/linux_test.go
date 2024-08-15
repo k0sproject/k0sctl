@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/exec"
 	"github.com/stretchr/testify/require"
 )
 
