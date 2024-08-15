@@ -10,7 +10,7 @@ import (
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/v2"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"

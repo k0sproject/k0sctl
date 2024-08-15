@@ -15,7 +15,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/exec"
 	"github.com/k0sproject/version"
 	"gopkg.in/yaml.v2"
 )

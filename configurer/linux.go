@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/alessio/shellescape"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/rig/v2/exec"
+	"github.com/k0sproject/rig/v2/os"
 	"github.com/k0sproject/version"
 )
 

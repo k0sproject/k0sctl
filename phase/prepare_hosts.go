@@ -9,8 +9,8 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/os"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )

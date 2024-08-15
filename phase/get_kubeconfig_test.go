@@ -7,7 +7,7 @@ import (
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/v2"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 )

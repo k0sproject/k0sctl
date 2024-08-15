@@ -1,10 +1,10 @@
 package linux
 
 import (
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/linux"
-	"github.com/k0sproject/rig/os/registry"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/os/linux"
+	"github.com/k0sproject/rig/v2/os/registry"
 )
 
 // SLES provides OS support for Suse SUSE Linux Enterprise Server
