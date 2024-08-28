@@ -9,6 +9,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -95,6 +96,27 @@ func (p *UpgradeControllers) Run() error {
 			}
 		}
 
+		err = p.Wet(h, "reinstall k0s service", func() error {
+			if p.Config.Spec.K0s.DynamicConfig {
+				h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+			}
+
+			h.InstallFlags.AddOrReplace("--force")
+
+			cmd, err := h.K0sInstallCommand()
+			if err != nil {
+				return err
+			}
+			if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+				return fmt.Errorf("failed to reinstall k0s: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		h.Metadata.K0sInstalled = true
+
 		log.Debugf("%s: restart service", h)
 		err = p.Wet(h, "start k0s service with the new binary", func() error {
 			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
@@ -119,6 +141,8 @@ func (p *UpgradeControllers) Run() error {
 				return fmt.Errorf("kube api did not become ready: %w", err)
 			}
 		}
+
+		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	}
 
 	leader := p.Config.Spec.K0sLeader()

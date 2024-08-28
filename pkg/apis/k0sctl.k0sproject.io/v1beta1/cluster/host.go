@@ -6,6 +6,7 @@ import (
 	gos "os"
 	gopath "path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +24,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var k0sForceFlagSince = version.MustConstraint(">= v1.27.4+k0s.0")
+var K0sForceFlagSince = version.MustConstraint(">= v1.27.4+k0s.0")
 
 // Host contains all the needed details to work with hosts
 type Host struct {
@@ -183,6 +184,7 @@ type HostMetadata struct {
 	K0sNewConfig      string
 	K0sJoinToken      string
 	K0sJoinTokenID    string
+	K0sStatusArgs     []string
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
@@ -334,7 +336,7 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		}
 	}
 
-	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && !k0sForceFlagSince.Check(h.Metadata.K0sBinaryVersion) {
+	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && !K0sForceFlagSince.Check(h.Metadata.K0sBinaryVersion) {
 		log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
 		flags.Delete("--force")
 	}
@@ -568,4 +570,122 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 		builder.WriteByte('%')
 	}
 	return builder.String()
+}
+
+var flagParseRe = regexp.MustCompile(`--?([\w\-]+)(?:[=\s](\S+))?`)
+
+// FlagsChanged returns true when the flags have changed by comparing the host.Metadata.K0sStatusArgs to what host.InstallFlags would produce
+func (h *Host) FlagsChanged() bool {
+	var formattedFlags []string
+
+	cmd, err := h.K0sInstallCommand()
+	if err != nil {
+		log.Warnf("%s: could not get install command: %s", h, err)
+		return false
+	}
+	flags, err := shellSplit(cmd)
+	if err != nil {
+		log.Warnf("%s: could not split install command: %s", h, err)
+		return false
+	}
+	if len(flags) < 4 {
+		// ["k0s", "install", <role>, <flags..>]
+		log.Debugf("%s: no installFlags", h)
+		return false
+	}
+	flags = flags[3:] // discard the first 3 elements
+
+	// format the flags the same way as spf13/cobra does in k0s
+	for i := 0; i < len(flags); i++ {
+		flag := flags[i]
+		var key string
+		var value string
+		match := flagParseRe.FindStringSubmatch(flag)
+		if len(match) < 2 {
+			log.Warnf("%s: could not parse flag: %s", h, flag)
+			continue
+		}
+
+		key = match[1]
+
+		if len(match) > 2 && len(match[2]) > 0 {
+			value = match[2]
+		} else if len(flags) > i+1 && !strings.HasPrefix(flags[i+1], "-") {
+			value = flags[i+1]
+			i++
+		} else {
+			value = "true"
+		}
+		if s, err := strconv.Unquote(value); err == nil {
+			value = s
+		}
+		formattedFlags = append(formattedFlags, fmt.Sprintf("--%s=%s", key, value))
+	}
+
+	k0sArgs := h.Metadata.K0sStatusArgs
+	if len(k0sArgs) != len(formattedFlags) {
+		log.Debugf("%s: installFlags seem to have changed because of different length: %d %v vs %d %v", h, len(k0sArgs), k0sArgs, len(formattedFlags), formattedFlags)
+		return true
+	}
+	sort.Strings(formattedFlags)
+	sort.Strings(k0sArgs)
+	for i := range formattedFlags {
+		if formattedFlags[i] != k0sArgs[i] {
+			log.Debugf("%s: installFlags seem to have changed because of different flags: %v vs %v", h, formattedFlags, k0sArgs)
+			return true
+		}
+	}
+
+	log.Debugf("%s: installFlags have not changed", h)
+
+	return false
+}
+
+// Split splits the input string respecting shell-like quoted segments -- borrowed from rig v2 until migration
+func shellSplit(input string) ([]string, error) { //nolint:cyclop
+	var segments []string
+
+	currentSegment := &strings.Builder{}
+
+	var inDoubleQuotes, inSingleQuotes, isEscaped bool
+
+	for i := range len(input) {
+		currentChar := input[i]
+
+		if isEscaped {
+			currentSegment.WriteByte(currentChar)
+			isEscaped = false
+			continue
+		}
+
+		switch {
+		case currentChar == '\\' && !inSingleQuotes:
+			isEscaped = true
+		case currentChar == '"' && !inSingleQuotes:
+			inDoubleQuotes = !inDoubleQuotes
+		case currentChar == '\'' && !inDoubleQuotes:
+			inSingleQuotes = !inSingleQuotes
+		case currentChar == ' ' && !inDoubleQuotes && !inSingleQuotes:
+			// Space outside quotes; delimiter for a new segment
+			segments = append(segments, currentSegment.String())
+			currentSegment.Reset()
+		default:
+			currentSegment.WriteByte(currentChar)
+		}
+	}
+
+	if inDoubleQuotes || inSingleQuotes {
+		return nil, fmt.Errorf("split `%q`: mismatched quotes", input)
+	}
+
+	if isEscaped {
+		return nil, fmt.Errorf("split `%q`: trailing backslash", input)
+	}
+
+	// Add the last segment if present
+	if currentSegment.Len() > 0 {
+		segments = append(segments, currentSegment.String())
+	}
+
+	return segments, nil
 }

@@ -77,7 +77,6 @@ func (p *InstallControllers) After() error {
 			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
-
 			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
@@ -105,7 +104,6 @@ func (p *InstallControllers) Run() error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -162,6 +160,7 @@ func (p *InstallControllers) Run() error {
 			return err
 		}
 		h.Metadata.K0sInstalled = true
+		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 
 		if p.IsWet() {
 			if len(h.Environment) > 0 {

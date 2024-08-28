@@ -44,6 +44,6 @@ func (b Backup) Run() error {
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)
-	log.Infof(phase.Colorize.Green(text).String())
+	log.Info(phase.Colorize.Green(text).String())
 	return nil
 }
