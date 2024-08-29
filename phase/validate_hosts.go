@@ -58,8 +58,8 @@ func (p *ValidateHosts) Run() error {
 }
 
 func (p *ValidateHosts) warnK0sBinaryPath(h *cluster.Host) error {
-	if h.Configurer.K0sBinaryPath() != "" {
-		log.Warnf("%s: k0s binary path is set to %q, version checking for the host is disabled. The k0s version for other hosts is %q.", h, h.Configurer.K0sBinaryPath(), p.Config.Spec.K0s.Version)
+	if h.K0sBinaryPath != "" {
+		log.Warnf("%s: k0s binary path is set to %q, version checking for the host is disabled. The k0s version for other hosts is %s.", h, h.K0sBinaryPath, p.Config.Spec.K0s.Version)
 	}
 
 	return nil
