@@ -143,7 +143,7 @@ func (a Apply) Run() error {
 		}
 
 		log.Info("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Infof("     " + phase.Colorize.Cyan(cmd.String()).String())
+		log.Info("     " + phase.Colorize.Cyan(cmd.String()).String())
 	}
 
 	return nil
