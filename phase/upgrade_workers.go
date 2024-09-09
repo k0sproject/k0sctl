@@ -9,6 +9,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
+	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -181,6 +182,23 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 			return err
 		}
 	}
+
+	err = p.Wet(h, "reinstall k0s service", func() error {
+		h.InstallFlags.AddOrReplace("--force")
+
+		cmd, err := h.K0sInstallCommand()
+		if err != nil {
+			return err
+		}
+		if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+			return fmt.Errorf("failed to reinstall k0s: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	h.Metadata.K0sInstalled = true
 
 	log.Debugf("%s: restart service", h)
 	err = p.Wet(h, "restart k0s service", func() error {

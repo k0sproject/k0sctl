@@ -1,4 +1,5 @@
 name: Smoke test cache steps
+description: Cache smoke test binaries
 runs:
   using: composite
   steps:

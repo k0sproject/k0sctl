@@ -74,6 +74,7 @@ func (p *GatherK0sFacts) Run() error {
 		return err
 	}
 	p.leader = p.Config.Spec.K0sLeader()
+	p.leader.Metadata.IsK0sLeader = true
 
 	if id, err := p.Config.Spec.K0s.GetClusterID(p.leader); err == nil {
 		p.Config.Spec.K0s.Metadata.ClusterID = id
@@ -271,9 +272,14 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
+	if len(status.Args) > 2 {
+		// status.Args contains the binary path and the role as the first two elements, which we can ignore here.
+		h.Metadata.K0sStatusArgs = status.Args[2:]
+	}
+
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 	if h.IsController() {
-		for _, a := range status.Args {
+		for _, a := range h.Metadata.K0sStatusArgs {
 			if strings.HasPrefix(a, "--enable-dynamic-config") && !strings.HasSuffix(a, "false") {
 				if !p.Config.Spec.K0s.DynamicConfig {
 					log.Warnf("%s: controller has dynamic config enabled, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode", h)
