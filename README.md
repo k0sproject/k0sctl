@@ -108,12 +108,7 @@ The data is used to estimate the number of users and to identify failure hotspot
 
 ## Development status
 
-K0sctl is ready for use and in continuous development. It is still at a stage where maintaining backwards compatibility is not a high priority goal.
-
-Missing major features include at least:
-
-* The released binaries have not been signed
-* The configuration specification and command-line interface options are still evolving
+K0sctl is ready for use and in continuous development.
 
 ## Usage
 
@@ -153,7 +148,7 @@ k0sctl init 10.0.0.1 10.0.0.2 ubuntu@10.0.0.3:8022 | k0sctl apply --config -
 
 ### `k0sctl backup & restore`
 
-Takes a [backup](https://docs.k0sproject.io/main/backup/) of the cluster control plane state into the current working directory.
+Takes a [backup](https://docs.k0sproject.io/stable/backup/) of the cluster control plane state into the current working directory.
 
 The files are currently named with a running (unix epoch) timestamp, e.g. `k0s_backup_1623220591.tar.gz`.
 
@@ -250,7 +245,7 @@ In the future, some of the configuration APIs can support multiple types of obje
 
 ###### `spec` &lt;mapping&gt; (required)
 
-The main object definition, see [below](#configuration-spec)
+The main object definition, see [below](#spec-fields)
 
 ###### `metadata` &lt;mapping&gt; (optional)
 
@@ -288,7 +283,7 @@ See [k0s object documentation](#k0s-fields) below.
 One of:
 - `controller` - a controller host
 - `controller+worker` - a controller host that will also run workloads
-- `single` - a [single-node cluster](https://docs.k0sproject.io/main/k0s-single-node/) host, the configuration can only contain one host
+- `single` - a [single-node cluster](https://docs.k0sproject.io/stable/k0s-single-node/) host, the configuration can only contain one host
 - `worker` - a worker host
 
 ###### `spec.hosts[*].noTaints` &lt;boolean&gt; (optional) (default: `false`)
@@ -592,11 +587,11 @@ Enable k0s dynamic config. The setting will be automatically set to true if:
 
 See also:
 
-* [k0s Dynamic Configuration](https://docs.k0sproject.io/main/dynamic-configuration/)
+* [k0s Dynamic Configuration](https://docs.k0sproject.io/stable/dynamic-configuration/)
 
 ##### `spec.k0s.config` &lt;mapping&gt; (optional) (default: auto-generated)
 
-Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/main/configuration/) for details.
+Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/stable/configuration/) for details.
 
 When left out, the output of `k0s config create` will be used.
 
