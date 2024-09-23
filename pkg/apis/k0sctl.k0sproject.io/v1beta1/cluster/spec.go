@@ -9,10 +9,16 @@ import (
 
 // Spec defines cluster config spec section
 type Spec struct {
-	Hosts Hosts `yaml:"hosts,omitempty"`
-	K0s   *K0s  `yaml:"k0s,omitempty"`
+	Hosts           Hosts            `yaml:"hosts,omitempty"`
+	K0s             *K0s             `yaml:"k0s,omitempty"`
+	UpgradeSettings *UpgradeSettings `yaml:"upgrade,omitempty"`
 
 	k0sLeader *Host
+}
+
+type UpgradeSettings struct {
+	DrainGracePeriod string `yaml:"drainGracePeriod,omitempty"`
+	DrainTimeout     string `yaml:"drainTimeout,omitempty"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -20,6 +26,7 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type spec Spec
 	ys := (*spec)(s)
 	ys.K0s = &K0s{}
+	ys.UpgradeSettings = &UpgradeSettings{}
 
 	if err := unmarshal(ys); err != nil {
 		return err
