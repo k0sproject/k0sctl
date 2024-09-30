@@ -14,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var _ phase = &Backup{}
+var _ Phase = &Backup{}
 
 var backupSinceVersion = version.MustConstraint(">= v1.21.0-rc.1+k0s.0")
 

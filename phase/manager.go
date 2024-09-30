@@ -19,7 +19,8 @@ var Force bool
 // Colorize is an instance of "aurora", used to colorize the output
 var Colorize = aurora.NewAurora(false)
 
-type phase interface {
+// Phase represents a runnable phase which can be added to Manager.
+type Phase interface {
 	Run() error
 	Title() string
 }
@@ -60,7 +61,7 @@ type withDryRun interface {
 
 // Manager executes phases to construct the cluster
 type Manager struct {
-	phases            []phase
+	phases            []Phase
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
@@ -80,7 +81,7 @@ func NewManager(config *v1beta1.Cluster) (*Manager, error) {
 }
 
 // AddPhase adds a Phase to Manager
-func (m *Manager) AddPhase(p ...phase) {
+func (m *Manager) AddPhase(p ...Phase) {
 	m.phases = append(m.phases, p...)
 }
 
@@ -124,7 +125,7 @@ func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
-	var ran []phase
+	var ran []Phase
 	var result error
 
 	defer func() {
