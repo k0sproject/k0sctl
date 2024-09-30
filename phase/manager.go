@@ -134,6 +134,11 @@ func (m *Manager) AddPhase(p ...Phase) {
 	m.phases = append(m.phases, p...)
 }
 
+// SetPhases sets the list of phases
+func (m *Manager) SetPhases(p Phases) {
+	m.phases = p
+}
+
 type errorfunc func() error
 
 // DryMsg prints a message in dry-run mode
