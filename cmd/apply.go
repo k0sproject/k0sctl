@@ -72,7 +72,7 @@ var applyCommand = &cli.Command{
 			kubeconfigOut = out
 		}
 
-		applyAction := action.Apply{
+		applyOpts := action.ApplyOptions{
 			Force:                 ctx.Bool("force"),
 			Manager:               ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 			KubeconfigOut:         kubeconfigOut,
@@ -83,6 +83,8 @@ var applyCommand = &cli.Command{
 			RestoreFrom:           ctx.String("restore-from"),
 			ConfigPath:            ctx.String("config"),
 		}
+
+		applyAction := action.NewApply(applyOpts)
 
 		if err := applyAction.Run(); err != nil {
 			return fmt.Errorf("apply failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
