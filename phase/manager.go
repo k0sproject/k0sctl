@@ -25,6 +25,55 @@ type Phase interface {
 	Title() string
 }
 
+// Phases is a slice of Phases
+type Phases []Phase
+
+// Index returns the index of the first occurrence matching the given phase title or -1 if not found
+func (p Phases) Index(title string) int {
+	for i, phase := range p {
+		if phase.Title() == title {
+			return i
+		}
+	}
+	return -1
+}
+
+// Remove removes the first occurrence of a phase with the given title
+func (p *Phases) Remove(title string) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i], (*p)[i+1:]...)
+}
+
+// InsertAfter inserts a phase after the first occurrence of a phase with the given title
+func (p *Phases) InsertAfter(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i+1], append(Phases{phase}, (*p)[i+1:]...)...)
+}
+
+// InsertBefore inserts a phase before the first occurrence of a phase with the given title
+func (p *Phases) InsertBefore(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i], append(Phases{phase}, (*p)[i:]...)...)
+}
+
+// Replace replaces the first occurrence of a phase with the given title
+func (p *Phases) Replace(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	(*p)[i] = phase
+}
+
 type withconfig interface {
 	Title() string
 	Prepare(*v1beta1.Cluster) error
@@ -61,7 +110,7 @@ type withDryRun interface {
 
 // Manager executes phases to construct the cluster
 type Manager struct {
-	phases            []Phase
+	phases            Phases
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
