@@ -19,9 +19,59 @@ var Force bool
 // Colorize is an instance of "aurora", used to colorize the output
 var Colorize = aurora.NewAurora(false)
 
-type phase interface {
+// Phase represents a runnable phase which can be added to Manager.
+type Phase interface {
 	Run() error
 	Title() string
+}
+
+// Phases is a slice of Phases
+type Phases []Phase
+
+// Index returns the index of the first occurrence matching the given phase title or -1 if not found
+func (p Phases) Index(title string) int {
+	for i, phase := range p {
+		if phase.Title() == title {
+			return i
+		}
+	}
+	return -1
+}
+
+// Remove removes the first occurrence of a phase with the given title
+func (p *Phases) Remove(title string) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i], (*p)[i+1:]...)
+}
+
+// InsertAfter inserts a phase after the first occurrence of a phase with the given title
+func (p *Phases) InsertAfter(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i+1], append(Phases{phase}, (*p)[i+1:]...)...)
+}
+
+// InsertBefore inserts a phase before the first occurrence of a phase with the given title
+func (p *Phases) InsertBefore(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	*p = append((*p)[:i], append(Phases{phase}, (*p)[i:]...)...)
+}
+
+// Replace replaces the first occurrence of a phase with the given title
+func (p *Phases) Replace(title string, phase Phase) {
+	i := p.Index(title)
+	if i == -1 {
+		return
+	}
+	(*p)[i] = phase
 }
 
 type withconfig interface {
@@ -60,7 +110,7 @@ type withDryRun interface {
 
 // Manager executes phases to construct the cluster
 type Manager struct {
-	phases            []phase
+	phases            Phases
 	Config            *v1beta1.Cluster
 	Concurrency       int
 	ConcurrentUploads int
@@ -80,8 +130,13 @@ func NewManager(config *v1beta1.Cluster) (*Manager, error) {
 }
 
 // AddPhase adds a Phase to Manager
-func (m *Manager) AddPhase(p ...phase) {
+func (m *Manager) AddPhase(p ...Phase) {
 	m.phases = append(m.phases, p...)
+}
+
+// SetPhases sets the list of phases
+func (m *Manager) SetPhases(p Phases) {
+	m.phases = p
 }
 
 type errorfunc func() error
@@ -124,7 +179,7 @@ func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
 
 // Run executes all the added Phases in order
 func (m *Manager) Run() error {
-	var ran []phase
+	var ran []Phase
 	var result error
 
 	defer func() {

@@ -52,6 +52,11 @@ func (p *Lock) CleanUp() {
 	p.Cancel()
 }
 
+// UnlockPhase returns an unlock phase for this lock phase
+func (p *Lock) UnlockPhase() Phase {
+	return &Unlock{Cancel: p.Cancel}
+}
+
 // Run the phase
 func (p *Lock) Run() error {
 	if err := p.parallelDo(p.Config.Spec.Hosts, p.startLock); err != nil {

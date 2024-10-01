@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Apply struct {
+type ApplyOptions struct {
 	// Manager is the phase manager
 	Manager *phase.Manager
 	// DisableDowngradeCheck skips the downgrade check
@@ -36,59 +36,80 @@ type Apply struct {
 	ConfigPath string
 }
 
+type Apply struct {
+	ApplyOptions
+	Phases phase.Phases
+}
+
+// NewApply creates a new Apply action. The list of phases can be modified via the Phases field, for example:
+//
+//	apply := NewApply(opts)
+//	gatherK0sFacts := &phase.GatherK0sFacts{} // advisable to get the title from the phase itself instead of hardcoding the title.
+//	apply.Phases.InsertBefore(gatherK0sFacts.Title(), &myCustomPhase{}) // insert a custom phase before the GatherK0sFacts phase
+func NewApply(opts ApplyOptions) *Apply {
+	lockPhase := &phase.Lock{}
+	unlockPhase := lockPhase.UnlockPhase()
+	apply := &Apply{
+		ApplyOptions: opts,
+		Phases: phase.Phases{
+			&phase.DefaultK0sVersion{},
+			&phase.Connect{},
+			&phase.DetectOS{},
+			lockPhase,
+			&phase.PrepareHosts{},
+			&phase.GatherFacts{},
+			&phase.ValidateHosts{},
+			&phase.GatherK0sFacts{},
+			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck},
+
+			// if UploadBinaries: true
+			&phase.DownloadBinaries{}, // downloads k0s binaries to local cache
+			&phase.UploadK0s{},        // uploads k0s binaries to hosts from cache
+
+			// if UploadBinaries: false
+			&phase.DownloadK0s{}, // downloads k0s binaries directly from hosts
+
+			&phase.UploadFiles{},
+			&phase.InstallBinaries{},
+			&phase.PrepareArm{},
+			&phase.ConfigureK0s{},
+			&phase.Restore{
+				RestoreFrom: opts.RestoreFrom,
+			},
+			&phase.RunHooks{Stage: "before", Action: "apply"},
+			&phase.InitializeK0s{},
+			&phase.InstallControllers{},
+			&phase.InstallWorkers{},
+			&phase.UpgradeControllers{},
+			&phase.UpgradeWorkers{NoDrain: opts.NoDrain},
+			&phase.Reinstall{},
+			&phase.ResetWorkers{NoDrain: opts.NoDrain},
+			&phase.ResetControllers{NoDrain: opts.NoDrain},
+			&phase.RunHooks{Stage: "after", Action: "apply"},
+			unlockPhase,
+			&phase.Disconnect{},
+		},
+	}
+	if opts.KubeconfigOut != nil {
+		apply.Phases.InsertBefore(unlockPhase.Title(), &phase.GetKubeconfig{APIAddress: opts.KubeconfigAPIAddress})
+	}
+
+	return apply
+}
+
+// Run the Apply action
 func (a Apply) Run() error {
+	if len(a.Phases) == 0 {
+		// for backwards compatibility with the old Apply struct without NewApply(..)
+		tmpApply := NewApply(a.ApplyOptions)
+		a.Phases = tmpApply.Phases
+	}
 	start := time.Now()
 
 	phase.NoWait = a.NoWait
 	phase.Force = a.Force
 
-	lockPhase := &phase.Lock{}
-
-	a.Manager.AddPhase(
-		&phase.DefaultK0sVersion{},
-		&phase.Connect{},
-		&phase.DetectOS{},
-		lockPhase,
-		&phase.PrepareHosts{},
-		&phase.GatherFacts{},
-		&phase.ValidateHosts{},
-		&phase.GatherK0sFacts{},
-		&phase.ValidateFacts{SkipDowngradeCheck: a.DisableDowngradeCheck},
-
-		// if UploadBinaries: true
-		&phase.DownloadBinaries{}, // downloads k0s binaries to local cache
-		&phase.UploadK0s{},        // uploads k0s binaries to hosts from cache
-
-		// if UploadBinaries: false
-		&phase.DownloadK0s{}, // downloads k0s binaries directly from hosts
-
-		&phase.UploadFiles{},
-		&phase.InstallBinaries{},
-		&phase.PrepareArm{},
-		&phase.ConfigureK0s{},
-		&phase.Restore{
-			RestoreFrom: a.RestoreFrom,
-		},
-		&phase.RunHooks{Stage: "before", Action: "apply"},
-		&phase.InitializeK0s{},
-		&phase.InstallControllers{},
-		&phase.InstallWorkers{},
-		&phase.UpgradeControllers{},
-		&phase.UpgradeWorkers{NoDrain: a.NoDrain},
-		&phase.Reinstall{},
-		&phase.ResetWorkers{NoDrain: a.NoDrain},
-		&phase.ResetControllers{NoDrain: a.NoDrain},
-		&phase.RunHooks{Stage: "after", Action: "apply"},
-	)
-
-	if a.KubeconfigOut != nil {
-		a.Manager.AddPhase(&phase.GetKubeconfig{APIAddress: a.KubeconfigAPIAddress})
-	}
-
-	a.Manager.AddPhase(
-		&phase.Unlock{Cancel: lockPhase.Cancel},
-		&phase.Disconnect{},
-	)
+	a.Manager.SetPhases(a.Phases)
 
 	analytics.Client.Publish("apply-start", map[string]interface{}{})
 
