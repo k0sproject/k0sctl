@@ -88,7 +88,7 @@ func (p *InstallControllers) After() error {
 
 // Run the phase
 func (p *InstallControllers) Run() error {
-	url := p.Config.Spec.KubeAPIURL()
+	url := p.Config.Spec.InternalKubeAPIURL()
 	healthz := fmt.Sprintf("%s/healthz", url)
 
 	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {

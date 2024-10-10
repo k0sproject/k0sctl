@@ -2,9 +2,11 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"github.com/k0sproject/dig"
 )
 
 // Spec defines cluster config spec section
@@ -80,24 +82,54 @@ func (s *Spec) Validate() error {
 	)
 }
 
-// KubeAPIURL returns an url to the cluster's kube api
-func (s *Spec) KubeAPIURL() string {
-	var caddr string
+func (s *Spec) clusterExternalAddress() string {
 	if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
-		caddr = a
-	} else {
-		leader := s.K0sLeader()
-		if leader.PrivateAddress != "" {
-			caddr = leader.PrivateAddress
-		} else {
-			caddr = leader.Address()
+		return a
+	}
+
+	if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
+		if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled {
+			vrrpAddresses := cplb.Dig("virtualServers").([]string)
+			if len(vrrpAddresses) > 0 {
+				return vrrpAddresses[0]
+			}
 		}
 	}
 
-	cport := 6443
-	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		cport = p
-	}
+	return s.K0sLeader().Address()
+}
 
-	return fmt.Sprintf("https://%s:%d", caddr, cport)
+func (s *Spec) clusterInternalAddress() string {
+	leader := s.K0sLeader()
+	if leader.PrivateAddress != "" {
+		return leader.PrivateAddress
+	} else {
+		return leader.Address()
+	}
+}
+
+const defaultAPIPort = 6443
+
+func (s *Spec) apiPort() int {
+	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
+		return p
+	}
+	return defaultAPIPort
+}
+
+// KubeAPIURL returns an external url to the cluster's kube API
+func (s *Spec) KubeAPIURL() string {
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterExternalAddress()), s.apiPort())
+}
+
+// InternalKubeAPIURL returns a cluster internal url to the cluster's kube API
+func (s *Spec) InternalKubeAPIURL() string {
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterInternalAddress()), s.apiPort())
+}
+
+func formatIPV6(address string) string {
+	if strings.Contains(address, ":") {
+		return fmt.Sprintf("[%s]", address)
+	}
+	return address
 }

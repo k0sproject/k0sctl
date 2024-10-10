@@ -49,12 +49,6 @@ func TestGetKubeconfig(t *testing.T) {
 	defer func() { readKubeconfig = origReadKubeconfig }()
 	readKubeconfig = fakeReader
 
-	origK0sConfig := k0sConfig
-	defer func() { k0sConfig = origK0sConfig }()
-	k0sConfig = func(h *cluster.Host) (dig.Mapping, error) {
-		return cfg.Spec.K0s.Config, nil
-	}
-
 	p := GetKubeconfig{GenericPhase: GenericPhase{Config: cfg}}
 	require.NoError(t, p.Run())
 	conf, err := clientcmd.Load([]byte(cfg.Metadata.Kubeconfig))
