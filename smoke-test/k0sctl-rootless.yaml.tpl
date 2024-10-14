@@ -28,7 +28,5 @@ spec:
     version: "${K0S_VERSION}"
     config:
       spec:
-        api:
-          externalAddress: "${K0S_API_EXTERNAL_ADDRESS}"
         telemetry:
           enabled: false

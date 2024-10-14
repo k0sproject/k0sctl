@@ -4,7 +4,6 @@ export LINUX_IMAGE="${LINUX_IMAGE:-"quay.io/k0sproject/bootloose-ubuntu20.04"}"
 export PRESERVE_CLUSTER="${PRESERVE_CLUSTER:-""}"
 export DISABLE_TELEMETRY=true
 export K0S_VERSION
-export K0S_API_EXTERNAL_ADDRESS="${K0S_API_EXTERNAL_ADDRESS:-172.20.0.1}"
 
 createCluster() {
   envsubst < "${BOOTLOOSE_TEMPLATE}" > bootloose.yaml
