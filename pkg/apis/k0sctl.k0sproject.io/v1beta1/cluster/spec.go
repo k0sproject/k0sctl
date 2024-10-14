@@ -110,7 +110,7 @@ func (s *Spec) clusterInternalAddress() string {
 
 const defaultAPIPort = 6443
 
-func (s *Spec) apiPort() int {
+func (s *Spec) APIPort() int {
 	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
 		return p
 	}
@@ -119,12 +119,29 @@ func (s *Spec) apiPort() int {
 
 // KubeAPIURL returns an external url to the cluster's kube API
 func (s *Spec) KubeAPIURL() string {
-	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterExternalAddress()), s.apiPort())
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterExternalAddress()), s.APIPort())
 }
 
 // InternalKubeAPIURL returns a cluster internal url to the cluster's kube API
 func (s *Spec) InternalKubeAPIURL() string {
-	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterInternalAddress()), s.apiPort())
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterInternalAddress()), s.APIPort())
+}
+
+// NodeInternalKubeAPIURL returns a cluster internal url to the node's kube API
+func (s *Spec) NodeInternalKubeAPIURL(h *Host) string {
+	addr := "localhost"
+
+	// spec.api.onlyBindToAddress was introduced in k0s 1.30. Setting it to true will make the API server only
+	// listen on the IP address configured by the `address` option.
+	if onlyBindAddr, ok := s.K0s.Config.Dig("spec", "api", "onlyBindToAddress").(bool); ok && onlyBindAddr {
+		if h.PrivateAddress != "" {
+			addr = h.PrivateAddress
+		} else {
+			addr = h.Address()
+		}
+	}
+
+	return fmt.Sprintf("https://%s:%d", formatIPV6(addr), s.APIPort())
 }
 
 func formatIPV6(address string) string {

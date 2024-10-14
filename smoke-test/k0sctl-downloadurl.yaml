@@ -17,5 +17,7 @@ spec:
   k0s:
     config:
       spec:
+        api:
+          externalAddress: "${K0S_API_EXTERNAL_ADDRESS}"
         telemetry:
           enabled: false
