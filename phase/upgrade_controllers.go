@@ -131,13 +131,9 @@ func (p *UpgradeControllers) Run() error {
 		if err != nil {
 			return err
 		}
-		port := 6443
-		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-			port = p
-		}
 
 		if p.IsWet() {
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
+			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, p.Config)); err != nil {
 				return fmt.Errorf("kube api did not become ready: %w", err)
 			}
 		}
