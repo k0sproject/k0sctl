@@ -129,7 +129,7 @@ func (s *Spec) InternalKubeAPIURL() string {
 
 // NodeInternalKubeAPIURL returns a cluster internal url to the node's kube API
 func (s *Spec) NodeInternalKubeAPIURL(h *Host) string {
-	addr := "localhost"
+	addr := "127.0.0.1"
 
 	// spec.api.onlyBindToAddress was introduced in k0s 1.30. Setting it to true will make the API server only
 	// listen on the IP address configured by the `address` option.
