@@ -56,7 +56,7 @@ func (p *ResetWorkers) Run() error {
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
 				},
-			}); err != nil {
+			}, "120", "5m"); err != nil {
 				log.Warnf("%s: failed to drain node: %s", h, err.Error())
 			}
 		}
@@ -99,7 +99,7 @@ func (p *ResetWorkers) Run() error {
 			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing config completed", h)
-		
+
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
