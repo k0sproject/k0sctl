@@ -88,7 +88,7 @@ func (p *InstallControllers) After() error {
 
 // Run the phase
 func (p *InstallControllers) Run() error {
-	url := p.Config.Spec.KubeAPIURL()
+	url := p.Config.Spec.InternalKubeAPIURL()
 	healthz := fmt.Sprintf("%s/healthz", url)
 
 	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
@@ -191,11 +191,6 @@ func (p *InstallControllers) Run() error {
 }
 
 func (p *InstallControllers) waitJoined(h *cluster.Host) error {
-	port := 6443
-	if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		port = p
-	}
-
 	log.Infof("%s: waiting for kubernetes api to respond", h)
-	return retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port))
+	return retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, p.Config))
 }

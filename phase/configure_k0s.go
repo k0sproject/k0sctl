@@ -183,7 +183,7 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 func (p *ConfigureK0s) Run() error {
 	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
-	})	
+	})
 	return p.parallelDo(controllers, p.configureK0s)
 }
 
@@ -308,6 +308,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	}
 	cfg.DigMapping("spec", "api")["address"] = addr
 	addUnlessExist(&sans, addr)
+
+	if externalAddr := cfg.DigString("spec", "api", "externalAddress"); externalAddr != "" {
+		addUnlessExist(&sans, externalAddr)
+	}
 
 	oldsans := cfg.Dig("spec", "api", "sans")
 	switch oldsans := oldsans.(type) {
