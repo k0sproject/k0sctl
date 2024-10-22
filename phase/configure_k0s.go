@@ -183,7 +183,7 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 func (p *ConfigureK0s) Run() error {
 	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
-	})	
+	})
 	return p.parallelDo(controllers, p.configureK0s)
 }
 
@@ -270,19 +270,6 @@ func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
 	return nil
 }
 
-func addUnlessExist(slice *[]string, s string) {
-	var found bool
-	for _, v := range *slice {
-		if v == s {
-			found = true
-			break
-		}
-	}
-	if !found {
-		*slice = append(*slice, s)
-	}
-}
-
 func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	var cfg dig.Mapping
 
@@ -298,40 +285,12 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		cfg = p.newBaseConfig.Dup()
 	}
 
-	var sans []string
-
 	var addr string
 	if h.PrivateAddress != "" {
 		addr = h.PrivateAddress
 	} else {
 		addr = h.Address()
 	}
-	cfg.DigMapping("spec", "api")["address"] = addr
-	addUnlessExist(&sans, addr)
-
-	oldsans := cfg.Dig("spec", "api", "sans")
-	switch oldsans := oldsans.(type) {
-	case []interface{}:
-		for _, v := range oldsans {
-			if s, ok := v.(string); ok {
-				addUnlessExist(&sans, s)
-			}
-		}
-	case []string:
-		for _, v := range oldsans {
-			addUnlessExist(&sans, v)
-		}
-	}
-
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
-	for _, c := range controllers {
-		addUnlessExist(&sans, c.Address())
-		if c.PrivateAddress != "" {
-			addUnlessExist(&sans, c.PrivateAddress)
-		}
-	}
-	addUnlessExist(&sans, "127.0.0.1")
-	cfg.DigMapping("spec", "api")["sans"] = sans
 
 	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr

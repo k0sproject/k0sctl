@@ -2,9 +2,11 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"github.com/k0sproject/dig"
 )
 
 // Spec defines cluster config spec section
@@ -80,24 +82,71 @@ func (s *Spec) Validate() error {
 	)
 }
 
-// KubeAPIURL returns an url to the cluster's kube api
-func (s *Spec) KubeAPIURL() string {
-	var caddr string
+func (s *Spec) clusterExternalAddress() string {
 	if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
-		caddr = a
-	} else {
-		leader := s.K0sLeader()
-		if leader.PrivateAddress != "" {
-			caddr = leader.PrivateAddress
-		} else {
-			caddr = leader.Address()
+		return a
+	}
+
+	if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
+		if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled {
+			vrrpAddresses := cplb.Dig("virtualServers").([]string)
+			if len(vrrpAddresses) > 0 {
+				return vrrpAddresses[0]
+			}
 		}
 	}
 
-	cport := 6443
+	return s.K0sLeader().Address()
+}
+
+func (s *Spec) clusterInternalAddress() string {
+	leader := s.K0sLeader()
+	if leader.PrivateAddress != "" {
+		return leader.PrivateAddress
+	} else {
+		return leader.Address()
+	}
+}
+
+const defaultAPIPort = 6443
+
+func (s *Spec) APIPort() int {
 	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		cport = p
+		return p
+	}
+	return defaultAPIPort
+}
+
+// KubeAPIURL returns an external url to the cluster's kube API
+func (s *Spec) KubeAPIURL() string {
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterExternalAddress()), s.APIPort())
+}
+
+// InternalKubeAPIURL returns a cluster internal url to the cluster's kube API
+func (s *Spec) InternalKubeAPIURL() string {
+	return fmt.Sprintf("https://%s:%d", formatIPV6(s.clusterInternalAddress()), s.APIPort())
+}
+
+// NodeInternalKubeAPIURL returns a cluster internal url to the node's kube API
+func (s *Spec) NodeInternalKubeAPIURL(h *Host) string {
+	addr := "127.0.0.1"
+
+	// spec.api.onlyBindToAddress was introduced in k0s 1.30. Setting it to true will make the API server only
+	// listen on the IP address configured by the `address` option.
+	if onlyBindAddr, ok := s.K0s.Config.Dig("spec", "api", "onlyBindToAddress").(bool); ok && onlyBindAddr {
+		if h.PrivateAddress != "" {
+			addr = h.PrivateAddress
+		} else {
+			addr = h.Address()
+		}
 	}
 
-	return fmt.Sprintf("https://%s:%d", caddr, cport)
+	return fmt.Sprintf("https://%s:%d", formatIPV6(addr), s.APIPort())
+}
+
+func formatIPV6(address string) string {
+	if strings.Contains(address, ":") {
+		return fmt.Sprintf("[%s]", address)
+	}
+	return address
 }

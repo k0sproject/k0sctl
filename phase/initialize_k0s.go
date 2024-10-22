@@ -100,7 +100,6 @@ func (p *InitializeK0s) Run() error {
 			}
 			return nil
 		})
-
 		if err != nil {
 			return err
 		}
@@ -116,18 +115,13 @@ func (p *InitializeK0s) Run() error {
 			return err
 		}
 
-		port := 6443
-		if p, ok := p.Config.Spec.K0s.Config.Dig("spec", "api", "port").(int); ok {
-			port = p
-		}
 		log.Infof("%s: waiting for kubernetes api to respond", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, port)); err != nil {
+		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, p.Config)); err != nil {
 			return err
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
