@@ -88,10 +88,11 @@ func (s *Spec) clusterExternalAddress() string {
 	}
 
 	if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
-		if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled {
-			vrrpAddresses := cplb.Dig("virtualServers").([]string)
-			if len(vrrpAddresses) > 0 {
-				return vrrpAddresses[0]
+		if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled && cplb.DigString("type") == "Keepalived" {
+			if vrrpAddresses, ok := cplb.Dig("keepalived", "virtualServers").([]dig.Mapping); ok && len(vrrpAddresses) > 0 {
+				if addr, ok := vrrpAddresses[0]["ipAddress"].(string); ok && addr != "" {
+					return addr
+				}
 			}
 		}
 	}
