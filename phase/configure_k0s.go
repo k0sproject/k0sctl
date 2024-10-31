@@ -292,6 +292,12 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		addr = h.Address()
 	}
 
+	if cfg.DigString("spec", "api", "address") == "" {
+		if onlyBindAddr, ok := cfg.Dig("spec", "api", "onlyBindToAddress").(bool); ok && onlyBindAddr {
+			cfg.DigMapping("spec", "api")["address"] = addr
+		}
+	}
+
 	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 	}
