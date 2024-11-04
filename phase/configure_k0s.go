@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	gopath "path"
+	"slices"
 	"time"
 
 	"github.com/k0sproject/dig"
@@ -285,12 +286,48 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		cfg = p.newBaseConfig.Dup()
 	}
 
-	var addr string
+	var (
+		sans []string
+		addr string
+	)
+
 	if h.PrivateAddress != "" {
 		addr = h.PrivateAddress
 	} else {
 		addr = h.Address()
 	}
+
+	// convert sans from unmarshaled config into []string
+	oldsans := cfg.Dig("spec", "api", "sans")
+	switch oldsans := oldsans.(type) {
+	case []interface{}:
+		for _, v := range oldsans {
+			if s, ok := v.(string); ok {
+				sans = append(sans, s)
+			}
+		}
+	case []string:
+		sans = append(sans, oldsans...)
+	}
+
+	if !slices.Contains(sans, addr) {
+		sans = append(sans, addr)
+		log.Infof("%s: added %s to spec.api.sans", h, addr)
+	}
+
+	for i, c := range p.Config.Spec.Hosts.Controllers() {
+		if !slices.Contains(sans, c.Address()) {
+			sans = append(sans, c.Address())
+			log.Infof("%s: added controller %d address %s to spec.api.sans", h, i+1, c.Address())
+		}
+		if c.PrivateAddress != "" && !slices.Contains(sans, c.PrivateAddress) {
+			sans = append(sans, c.PrivateAddress)
+			log.Infof("%s: added controller %d private address %s to spec.api.sans", h, i+1, c.PrivateAddress)
+		}
+	}
+
+	log.Debugf("%s: using k0s spec.api.sans: %v", h, sans)
+	cfg.DigMapping("spec", "api")["sans"] = sans
 
 	if cfg.DigString("spec", "api", "address") == "" {
 		if onlyBindAddr, ok := cfg.Dig("spec", "api", "onlyBindToAddress").(bool); ok && onlyBindAddr {
