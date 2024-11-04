@@ -83,21 +83,31 @@ func (s *Spec) Validate() error {
 }
 
 func (s *Spec) clusterExternalAddress() string {
-	if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
-		return a
-	}
+	if s.K0s != nil {
+		if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
+			return a
+		}
 
-	if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
-		if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled && cplb.DigString("type") == "Keepalived" {
-			if vrrpAddresses, ok := cplb.Dig("keepalived", "virtualServers").([]dig.Mapping); ok && len(vrrpAddresses) > 0 {
-				if addr, ok := vrrpAddresses[0]["ipAddress"].(string); ok && addr != "" {
-					return addr
+		if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
+			if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled && cplb.DigString("type") == "Keepalived" {
+				if virtualServers, ok := cplb.Dig("keepalived", "virtualServers").([]any); ok {
+					for _, vs := range virtualServers {
+						if vserver, ok := vs.(dig.Mapping); ok {
+							if addr := vserver.DigString("ipAddress"); addr != "" {
+								return addr
+							}
+						}
+					}
 				}
 			}
 		}
 	}
 
-	return s.K0sLeader().Address()
+	if leader := s.K0sLeader(); leader != nil {
+		return leader.Address()
+	}
+
+	return ""
 }
 
 func (s *Spec) clusterInternalAddress() string {
@@ -112,8 +122,10 @@ func (s *Spec) clusterInternalAddress() string {
 const defaultAPIPort = 6443
 
 func (s *Spec) APIPort() int {
-	if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
-		return p
+	if s.K0s != nil {
+		if p, ok := s.K0s.Config.Dig("spec", "api", "port").(int); ok {
+			return p
+		}
 	}
 	return defaultAPIPort
 }
