@@ -6,7 +6,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
-	"github.com/k0sproject/dig"
+	"gopkg.in/yaml.v2"
 )
 
 // Spec defines cluster config spec section
@@ -82,20 +82,36 @@ func (s *Spec) Validate() error {
 	)
 }
 
+type k0sCPLBConfig struct {
+	Spec struct {
+		Network struct {
+			ControlPlaneLoadBalancing struct {
+				Enabled    bool   `yaml:"enabled"`
+				Type       string `yaml:"type"`
+				Keepalived struct {
+					VirtualServers []struct {
+						IPAddress string `yaml:"ipAddress"`
+					} `yaml:"virtualServers"`
+				} `yaml:"keepalived"`
+			} `yaml:"controlPlaneLoadBalancing"`
+		} `yaml:"network"`
+	} `yaml:"spec"`
+}
+
 func (s *Spec) clusterExternalAddress() string {
 	if s.K0s != nil {
 		if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
 			return a
 		}
 
-		if cplb, ok := s.K0s.Config.Dig("spec", "network", "controlPlaneLoadBalancing").(dig.Mapping); ok {
-			if enabled, ok := cplb.Dig("enabled").(bool); ok && enabled && cplb.DigString("type") == "Keepalived" {
-				if virtualServers, ok := cplb.Dig("keepalived", "virtualServers").([]any); ok {
-					for _, vs := range virtualServers {
-						if vserver, ok := vs.(dig.Mapping); ok {
-							if addr := vserver.DigString("ipAddress"); addr != "" {
-								return addr
-							}
+		if cfg, err := yaml.Marshal(s.K0s.Config); err == nil {
+			k0scfg := k0sCPLBConfig{}
+			if err := yaml.Unmarshal(cfg, &k0scfg); err == nil {
+				cplb := k0scfg.Spec.Network.ControlPlaneLoadBalancing
+				if cplb.Enabled && cplb.Type == "Keepalived" {
+					for _, vs := range cplb.Keepalived.VirtualServers {
+						if addr := vs.IPAddress; addr != "" {
+							return addr
 						}
 					}
 				}
