@@ -200,6 +200,9 @@ func (f Flags) Equals(b Flags) bool {
 		return false
 	}
 	for _, flag := range f {
+		if !b.Include(flag) {
+			return false
+		}
 		ourValue := f.GetValue(flag)
 		theirValue := b.GetValue(flag)
 		if ourValue != theirValue {

@@ -294,7 +294,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 			flags.AddUnlessExist("--no-taints")
 		}
 	case "single":
-		flags.AddUnlessExist("--single")
+		flags.AddUnlessExist("--single=true")
 	}
 
 	if !h.Metadata.IsK0sLeader {

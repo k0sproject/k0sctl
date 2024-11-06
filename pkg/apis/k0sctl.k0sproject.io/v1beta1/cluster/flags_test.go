@@ -132,6 +132,6 @@ func TestEquals(t *testing.T) {
 	flags2 = Flags{"--flag1", "--flag2=foo"}
 	require.False(t, flags1.Equals(flags2))
 
-	flags2 = Flags{"--flag1", "--flag2=foo", "--flag3=baz"}
+	flags2 = Flags{"-f", "--flag2=foo", "--flag3=baz"}
 	require.False(t, flags1.Equals(flags2))
 }

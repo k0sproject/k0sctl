@@ -153,3 +153,62 @@ func TestExpandTokens(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test%20expand/k0s-v1.0.0%2Bk0s.0-amd64", h.ExpandTokens("test%20expand/k0s-%v-%p%x", ver))
 }
+
+func TestFlagsChanged(t *testing.T) {
+	cfg := &mockconfigurer{}
+	cfg.SetPath("K0sConfigPath", "/tmp/foo.yaml")
+	cfg.SetPath("K0sJoinTokenPath", "/tmp/token")
+	t.Run("simple", func(t *testing.T) {
+		h := Host{
+			Configurer:     cfg,
+			DataDir:        "/tmp/data",
+			Role:           "controller",
+			PrivateAddress: "10.0.0.1",
+			InstallFlags:   []string{"--foo"},
+			Metadata: HostMetadata{
+				K0sStatusArgs: []string{"--foo", "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
+			},
+		}
+		require.False(t, h.FlagsChanged())
+		h.InstallFlags = []string{"--bar"}
+		require.True(t, h.FlagsChanged())
+	})
+	t.Run("quoted values", func(t *testing.T) {
+		h := Host{
+			Configurer:     cfg,
+			DataDir:        "/tmp/data",
+			Role:           "controller",
+			PrivateAddress: "10.0.0.1",
+			InstallFlags:   []string{"--foo='bar'", "--bar=foo"},
+			Metadata: HostMetadata{
+				K0sStatusArgs: []string{"--foo=bar", `--bar="foo"`, "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
+			},
+		}
+		require.False(t, h.FlagsChanged())
+		h.InstallFlags = []string{"--foo=bar", `--bar="foo"`}
+		require.False(t, h.FlagsChanged())
+		h.InstallFlags = []string{"--foo=baz", `--bar="foo"`}
+		require.True(t, h.FlagsChanged())
+	})
+	t.Run("kubelet-extra-args and single", func(t *testing.T) {
+		h := Host{
+			Configurer:     cfg,
+			DataDir:        "/tmp/data",
+			Role:           "single",
+			PrivateAddress: "10.0.0.1",
+			InstallFlags:   []string{"--foo='bar'", `--kubelet-extra-args="--bar=foo --foo='bar'"`},
+			Metadata: HostMetadata{
+				K0sStatusArgs: []string{"--foo=bar", `--kubelet-extra-args="--bar=foo --foo='bar'"`, "--data-dir=/tmp/data", "--single=true", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
+			},
+		}
+		flags, err := h.K0sInstallFlags()
+		require.NoError(t, err)
+		require.Equal(t, `--foo=bar --kubelet-extra-args='--bar=foo --foo='"'"'bar'"'"'' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.False(t, h.FlagsChanged())
+		h.InstallFlags = []string{"--foo='baz'", `--kubelet-extra-args='--bar=baz --foo="bar"'`}
+		flags, err = h.K0sInstallFlags()
+		require.NoError(t, err)
+		require.Equal(t, `--foo=baz --kubelet-extra-args='--bar=baz --foo="bar"' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.True(t, h.FlagsChanged())
+	})
+}
