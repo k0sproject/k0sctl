@@ -77,7 +77,7 @@ func (p *Reinstall) reinstall(h *cluster.Host) error {
 		h.InstallFlags.AddOrReplace("--enable-dynamic-config")
 	}
 
-	h.InstallFlags.AddOrReplace("--force")
+	h.InstallFlags.AddOrReplace("--force=true")
 
 	cmd, err := h.K0sInstallCommand()
 	if err != nil {

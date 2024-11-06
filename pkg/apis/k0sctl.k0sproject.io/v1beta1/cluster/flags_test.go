@@ -99,6 +99,39 @@ func TestGetBoolean(t *testing.T) {
 		result, err := flags.GetBoolean("--flag3")
 		require.NoError(t, err)
 		require.Equal(t, result, false)
-
 	})
+}
+
+func TestEach(t *testing.T) {
+	flags := Flags{"--flag1", "--flag2=foo", "--flag3=bar"}
+	var countF, countV int
+	flags.Each(func(flag string, value string) {
+		countF++
+		if value != "" {
+			countV++
+		}
+	})
+	require.Equal(t, 3, countF)
+	require.Equal(t, 2, countV)
+}
+
+func TestMap(t *testing.T) {
+	flags := Flags{"--flag1", "--flag2=foo", "--flag3=bar"}
+	m := flags.Map()
+	require.Len(t, m, 3)
+	require.Equal(t, "", m["--flag1"])
+	require.Equal(t, "foo", m["--flag2"])
+	require.Equal(t, "bar", m["--flag3"])
+}
+
+func TestEquals(t *testing.T) {
+	flags1 := Flags{"--flag1", "--flag2=foo", "--flag3=bar"}
+	flags2 := Flags{"--flag1", "--flag2=foo", "--flag3=bar"}
+	require.True(t, flags1.Equals(flags2))
+
+	flags2 = Flags{"--flag1", "--flag2=foo"}
+	require.False(t, flags1.Equals(flags2))
+
+	flags2 = Flags{"-f", "--flag2=foo", "--flag3=baz"}
+	require.False(t, flags1.Equals(flags2))
 }

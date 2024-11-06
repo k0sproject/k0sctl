@@ -5,9 +5,6 @@ import (
 	"net/url"
 	gos "os"
 	gopath "path"
-	"regexp"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
+	"github.com/k0sproject/k0sctl/internal/shell"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -184,7 +182,7 @@ type HostMetadata struct {
 	K0sNewConfig      string
 	K0sJoinToken      string
 	K0sJoinTokenID    string
-	K0sStatusArgs     []string
+	K0sStatusArgs     Flags
 	Arch              string
 	IsK0sLeader       bool
 	Hostname          string
@@ -275,64 +273,63 @@ func (h *Host) K0sConfigPath() string {
 	return h.Configurer.K0sConfigPath()
 }
 
-// unquote + unescape a string
-func unQE(s string) string {
-	unq, err := strconv.Unquote(s)
-	if err != nil {
-		return s
+func (h *Host) K0sRole() string {
+	switch h.Role {
+	case "controller+worker", "single":
+		return "controller"
+	default:
+		return h.Role
 	}
-
-	c := string(s[0])                                           // string was quoted, c now has the quote char
-	re := regexp.MustCompile(fmt.Sprintf(`(?:^|[^\\])\\%s`, c)) // replace \" with " (remove escaped quotes inside quoted string)
-	return string(re.ReplaceAllString(unq, c))
 }
 
-// K0sInstallCommand returns a full command that will install k0s service with necessary flags
-func (h *Host) K0sInstallCommand() (string, error) {
-	role := h.Role
-	flags := h.InstallFlags
+func (h *Host) K0sInstallFlags() (Flags, error) {
+	flags := Flags(h.InstallFlags)
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", shellescape.Quote(h.K0sDataDir())))
 
-	switch role {
+	switch h.Role {
 	case "controller+worker":
-		role = "controller"
 		flags.AddUnlessExist("--enable-worker")
 		if h.NoTaints {
 			flags.AddUnlessExist("--no-taints")
 		}
 	case "single":
-		role = "controller"
-		flags.AddUnlessExist("--single")
+		flags.AddUnlessExist("--single=true")
 	}
 
 	if !h.Metadata.IsK0sLeader {
-		flags.AddUnlessExist(fmt.Sprintf(`--token-file "%s"`, h.K0sJoinTokenPath()))
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, shellescape.Quote(h.K0sJoinTokenPath())))
 	}
 
 	if h.IsController() {
-		flags.AddUnlessExist(fmt.Sprintf(`--config "%s"`, h.K0sConfigPath()))
+		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, shellescape.Quote(h.K0sConfigPath())))
 	}
 
 	if strings.HasSuffix(h.Role, "worker") {
 		var extra Flags
 		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
-			extra = Flags{unQE(old)}
+			parts, err := shell.Split(old)
+			if err != nil {
+				return flags, fmt.Errorf("failed to split kubelet-extra-args: %w", err)
+			}
+			for _, part := range parts {
+				extra.Add(part)
+			}
 		}
 		// set worker's private address to --node-ip in --extra-kubelet-args if cloud ins't enabled
 		enableCloudProvider, err := h.InstallFlags.GetBoolean("--enable-cloud-provider")
 		if err != nil {
-			return "", fmt.Errorf("--enable-cloud-provider flag is set to invalid value: %s. (%v)", h.InstallFlags.GetValue("--enable-cloud-provider"), err)
+			return flags, fmt.Errorf("--enable-cloud-provider flag is set to invalid value: %s. (%v)", h.InstallFlags.GetValue("--enable-cloud-provider"), err)
 		}
 		if !enableCloudProvider && h.PrivateAddress != "" {
-			extra.AddUnlessExist(fmt.Sprintf("--node-ip=%s", h.PrivateAddress))
+			extra.AddUnlessExist("--node-ip=" + h.PrivateAddress)
 		}
 
 		if h.HostnameOverride != "" {
-			extra.AddOrReplace(fmt.Sprintf("--hostname-override=%s", h.HostnameOverride))
+			extra.AddOrReplace("--hostname-override=" + h.HostnameOverride)
 		}
 		if extra != nil {
-			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", strconv.Quote(extra.Join())))
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", shellescape.Quote(extra.Join())))
 		}
 	}
 
@@ -341,7 +338,17 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		flags.Delete("--force")
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", role, flags.Join()), nil
+	return flags, nil
+}
+
+// K0sInstallCommand returns a full command that will install k0s service with necessary flags
+func (h *Host) K0sInstallCommand() (string, error) {
+	flags, err := h.K0sInstallFlags()
+	if err != nil {
+		return "", err
+	}
+
+	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join()), nil
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
@@ -572,120 +579,19 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 	return builder.String()
 }
 
-var flagParseRe = regexp.MustCompile(`--?([\w\-]+)(?:[=\s](\S+))?`)
-
 // FlagsChanged returns true when the flags have changed by comparing the host.Metadata.K0sStatusArgs to what host.InstallFlags would produce
 func (h *Host) FlagsChanged() bool {
-	var formattedFlags []string
-
-	cmd, err := h.K0sInstallCommand()
+	installFlags, err := h.K0sInstallFlags()
 	if err != nil {
-		log.Warnf("%s: could not get install command: %s", h, err)
+		log.Warnf("%s: could not get install flags: %s", h, err)
+		installFlags = Flags{}
+	}
+
+	if installFlags.Equals(h.Metadata.K0sStatusArgs) {
+		log.Debugf("%s: installFlags have not changed", h)
 		return false
 	}
-	flags, err := shellSplit(cmd)
-	if err != nil {
-		log.Warnf("%s: could not split install command: %s", h, err)
-		return false
-	}
-	if len(flags) < 4 {
-		// ["k0s", "install", <role>, <flags..>]
-		log.Debugf("%s: no installFlags", h)
-		return false
-	}
-	flags = flags[3:] // discard the first 3 elements
 
-	// format the flags the same way as spf13/cobra does in k0s
-	for i := 0; i < len(flags); i++ {
-		flag := flags[i]
-		var key string
-		var value string
-		match := flagParseRe.FindStringSubmatch(flag)
-		if len(match) < 2 {
-			log.Warnf("%s: could not parse flag: %s", h, flag)
-			continue
-		}
-
-		key = match[1]
-
-		if len(match) > 2 && len(match[2]) > 0 {
-			value = match[2]
-		} else if len(flags) > i+1 && !strings.HasPrefix(flags[i+1], "-") {
-			value = flags[i+1]
-			i++
-		} else {
-			value = "true"
-		}
-		if s, err := strconv.Unquote(value); err == nil {
-			value = s
-		}
-		formattedFlags = append(formattedFlags, fmt.Sprintf("--%s=%s", key, value))
-	}
-
-	k0sArgs := h.Metadata.K0sStatusArgs
-	if len(k0sArgs) != len(formattedFlags) {
-		log.Debugf("%s: installFlags seem to have changed because of different length: %d %v vs %d %v", h, len(k0sArgs), k0sArgs, len(formattedFlags), formattedFlags)
-		return true
-	}
-	sort.Strings(formattedFlags)
-	sort.Strings(k0sArgs)
-	for i := range formattedFlags {
-		if formattedFlags[i] != k0sArgs[i] {
-			log.Debugf("%s: installFlags seem to have changed because of different flags: %v vs %v", h, formattedFlags, k0sArgs)
-			return true
-		}
-	}
-
-	log.Debugf("%s: installFlags have not changed", h)
-
-	return false
-}
-
-// Split splits the input string respecting shell-like quoted segments -- borrowed from rig v2 until migration
-func shellSplit(input string) ([]string, error) { //nolint:cyclop
-	var segments []string
-
-	currentSegment := &strings.Builder{}
-
-	var inDoubleQuotes, inSingleQuotes, isEscaped bool
-
-	for i := range len(input) {
-		currentChar := input[i]
-
-		if isEscaped {
-			currentSegment.WriteByte(currentChar)
-			isEscaped = false
-			continue
-		}
-
-		switch {
-		case currentChar == '\\' && !inSingleQuotes:
-			isEscaped = true
-		case currentChar == '"' && !inSingleQuotes:
-			inDoubleQuotes = !inDoubleQuotes
-		case currentChar == '\'' && !inDoubleQuotes:
-			inSingleQuotes = !inSingleQuotes
-		case currentChar == ' ' && !inDoubleQuotes && !inSingleQuotes:
-			// Space outside quotes; delimiter for a new segment
-			segments = append(segments, currentSegment.String())
-			currentSegment.Reset()
-		default:
-			currentSegment.WriteByte(currentChar)
-		}
-	}
-
-	if inDoubleQuotes || inSingleQuotes {
-		return nil, fmt.Errorf("split `%q`: mismatched quotes", input)
-	}
-
-	if isEscaped {
-		return nil, fmt.Errorf("split `%q`: trailing backslash", input)
-	}
-
-	// Add the last segment if present
-	if currentSegment.Len() > 0 {
-		segments = append(segments, currentSegment.String())
-	}
-
-	return segments, nil
+	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, h.Metadata.K0sStatusArgs.Map(), installFlags.Map())
+	return true
 }

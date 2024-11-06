@@ -272,10 +272,14 @@ func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
 
 	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
 
+	var args cluster.Flags
 	if len(status.Args) > 2 {
 		// status.Args contains the binary path and the role as the first two elements, which we can ignore here.
-		h.Metadata.K0sStatusArgs = status.Args[2:]
+		for _, a := range status.Args[2:] {
+			args.Add(a)
+		}
 	}
+	h.Metadata.K0sStatusArgs = args
 
 	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
 	if h.IsController() {
