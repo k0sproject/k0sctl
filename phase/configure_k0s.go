@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	gopath "path"
+	"slices"
 	"time"
 
 	"github.com/k0sproject/dig"
@@ -73,6 +74,42 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 			return fmt.Errorf("failed to unmarshal default k0s config: %w", err)
 		}
 	}
+
+	// convert sans from unmarshaled config into []string
+	var sans []string
+	oldsans := p.newBaseConfig.Dig("spec", "api", "sans")
+	switch oldsans := oldsans.(type) {
+	case []interface{}:
+		for _, v := range oldsans {
+			if s, ok := v.(string); ok {
+				sans = append(sans, s)
+			}
+		}
+		log.Tracef("converted sans from %T to []string", oldsans)
+	case []string:
+		sans = append(sans, oldsans...)
+		log.Tracef("sans was readily %T", oldsans)
+	default:
+		// do nothing - base k0s config does not contain any existing SANs
+	}
+
+	// populate SANs with all controller addresses
+	for i, c := range p.Config.Spec.Hosts.Controllers() {
+		if c.Reset {
+			continue
+		}
+		if !slices.Contains(sans, c.Address()) {
+			sans = append(sans, c.Address())
+			log.Debugf("added controller %d address %s to spec.api.sans", i+1, c.Address())
+		}
+		if c.PrivateAddress != "" && !slices.Contains(sans, c.PrivateAddress) {
+			sans = append(sans, c.PrivateAddress)
+			log.Debugf("added controller %d private address %s to spec.api.sans", i+1, c.PrivateAddress)
+		}
+	}
+
+	// assign populated sans to the base config
+	p.newBaseConfig.DigMapping("spec", "api")["sans"] = sans
 
 	for _, h := range p.Config.Spec.Hosts.Controllers() {
 		if h.Reset {
@@ -286,6 +323,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	}
 
 	var addr string
+
 	if h.PrivateAddress != "" {
 		addr = h.PrivateAddress
 	} else {
