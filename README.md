@@ -194,6 +194,7 @@ apiVersion: k0sctl.k0sproject.io/v1beta1
 kind: Cluster
 metadata:
   name: my-k0s-cluster
+  user: admin
 spec:
   hosts:
   - role: controller
@@ -256,6 +257,7 @@ Example:
 ```yaml
 metadata:
   name: k0s-cluster-name
+  user: kubernetes-admin
 ```
 
 ### Spec Fields

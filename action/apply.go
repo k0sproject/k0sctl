@@ -32,6 +32,10 @@ type ApplyOptions struct {
 	KubeconfigOut io.Writer
 	// KubeconfigAPIAddress is the API address to use in the kubeconfig
 	KubeconfigAPIAddress string
+	// KubeconfigUser is the username to use in the kubeconfig
+	KubeconfigUser string
+	// KubeconfigCluster is the cluster name to use in the kubeconfig
+	KubeconfigCluster string
 	// ConfigPath is the path to the configuration file (used for kubeconfig command tip on success)
 	ConfigPath string
 }
@@ -92,7 +96,7 @@ func NewApply(opts ApplyOptions) *Apply {
 		},
 	}
 	if opts.KubeconfigOut != nil {
-		apply.Phases.InsertBefore(unlockPhase.Title(), &phase.GetKubeconfig{APIAddress: opts.KubeconfigAPIAddress})
+		apply.Phases.InsertBefore(unlockPhase.Title(), &phase.GetKubeconfig{APIAddress: opts.KubeconfigAPIAddress, User: opts.KubeconfigUser, Cluster: opts.KubeconfigCluster})
 	}
 
 	return apply

@@ -15,6 +15,7 @@ const APIVersion = "k0sctl.k0sproject.io/v1beta1"
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
 	Name        string   `yaml:"name" validate:"required" default:"k0s-cluster"`
+	User        string   `yaml:"user" default:"admin"`
 	Kubeconfig  string   `yaml:"-"`
 	EtcdMembers []string `yaml:"-"`
 }

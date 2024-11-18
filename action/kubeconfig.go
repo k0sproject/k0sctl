@@ -9,6 +9,8 @@ type Kubeconfig struct {
 	// Manager is the phase manager
 	Manager              *phase.Manager
 	KubeconfigAPIAddress string
+	KubeconfigUser       string
+	KubeconfigCluster    string
 
 	Kubeconfig string
 }
@@ -21,7 +23,7 @@ func (k *Kubeconfig) Run() error {
 	k.Manager.AddPhase(
 		&phase.Connect{},
 		&phase.DetectOS{},
-		&phase.GetKubeconfig{APIAddress: k.KubeconfigAPIAddress},
+		&phase.GetKubeconfig{APIAddress: k.KubeconfigAPIAddress, User: k.KubeconfigUser, Cluster: k.KubeconfigCluster},
 		&phase.Disconnect{},
 	)
 
