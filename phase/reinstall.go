@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -110,19 +109,6 @@ func (p *Reinstall) reinstall(h *cluster.Host) error {
 
 	if h != p.Config.Spec.K0sLeader() {
 		return nil
-	}
-
-	if NoWait || !p.IsWet() {
-		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", h)
-		return nil
-	}
-
-	log.Infof("%s: waiting for the scheduler to become ready", h)
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ScheduledEventsAfterFunc(h, time.Now())); err != nil {
-		if !Force {
-			return fmt.Errorf("failed to observe scheduling events after api start-up, you can ignore this check by using --force: %w", err)
-		}
-		log.Warnf("%s: failed to observe scheduling events after api start-up: %s", h, err)
 	}
 
 	log.Infof("%s: waiting for system pods to become ready", h)
