@@ -14,9 +14,21 @@ var kubeconfigCommand = &cli.Command{
 	Usage: "Output the admin kubeconfig of the cluster",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "address",
-			Usage: "Set kubernetes API address (default: auto-detect)",
-			Value: "",
+			Name:        "address",
+			Value:       "",
+			DefaultText: "auto-detect",
+		},
+		&cli.StringFlag{
+			Name:        "user",
+			Usage:       "Set kubernetes cluster username",
+			Aliases:     []string{"u"},
+			DefaultText: "admin",
+		},
+		&cli.StringFlag{
+			Name:        "cluster",
+			Usage:       "Set kubernetes cluster name",
+			Aliases:     []string{"n"},
+			DefaultText: "k0s-cluster",
 		},
 		configFlag,
 		dryRunFlag,
@@ -36,6 +48,8 @@ var kubeconfigCommand = &cli.Command{
 		kubeconfigAction := action.Kubeconfig{
 			Manager:              ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 			KubeconfigAPIAddress: ctx.String("address"),
+			KubeconfigUser:       ctx.String("user"),
+			KubeconfigCluster:    ctx.String("cluster"),
 		}
 
 		if err := kubeconfigAction.Run(); err != nil {

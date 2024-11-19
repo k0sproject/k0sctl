@@ -31,11 +31,11 @@ echo "* Using the kubectl from apply"
 ./kubectl --kubeconfig applykubeconfig get nodes
 
 echo "* Using k0sctl kubecofig locally"
-../k0sctl kubeconfig --config k0sctl.yaml > kubeconfig
+../k0sctl kubeconfig --config k0sctl.yaml --user smoke --cluster test > kubeconfig
 
 echo "* Output:"
 grep -v -- -data kubeconfig
 
 echo "* Running kubectl"
-./kubectl --kubeconfig kubeconfig get nodes
+./kubectl --kubeconfig kubeconfig --user smoke --cluster test get nodes
 echo "* Done"

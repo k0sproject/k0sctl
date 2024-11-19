@@ -13,6 +13,8 @@ import (
 type GetKubeconfig struct {
 	GenericPhase
 	APIAddress string
+	User       string
+	Cluster    string
 }
 
 // Title for the phase
@@ -46,7 +48,15 @@ func (p *GetKubeconfig) Run() error {
 		p.APIAddress = p.Config.Spec.KubeAPIURL()
 	}
 
-	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, p.APIAddress)
+	if p.User != "" {
+		p.Config.Metadata.User = p.User
+	}
+
+	if p.Cluster != "" {
+		p.Config.Metadata.Name = p.Cluster
+	}
+
+	cfgString, err := kubeConfig(output, p.Config.Metadata.Name, p.APIAddress, p.Config.Metadata.User)
 	if err != nil {
 		return err
 	}
@@ -58,7 +68,7 @@ func (p *GetKubeconfig) Run() error {
 
 // kubeConfig reads in the raw kubeconfig and changes the given address
 // and cluster name into it
-func kubeConfig(raw string, name string, address string) (string, error) {
+func kubeConfig(raw string, name string, address, user string) (string, error) {
 	cfg, err := clientcmd.Load([]byte(raw))
 	if err != nil {
 		return "", err
@@ -71,11 +81,11 @@ func kubeConfig(raw string, name string, address string) (string, error) {
 	cfg.Contexts[name] = cfg.Contexts["Default"]
 	delete(cfg.Contexts, "Default")
 	cfg.Contexts[name].Cluster = name
-	cfg.Contexts[name].AuthInfo = "admin"
+	cfg.Contexts[name].AuthInfo = user
 
 	cfg.CurrentContext = name
 
-	cfg.AuthInfos["admin"] = cfg.AuthInfos["user"]
+	cfg.AuthInfos[user] = cfg.AuthInfos["user"]
 	delete(cfg.AuthInfos, "user")
 
 	out, err := clientcmd.Write(*cfg)

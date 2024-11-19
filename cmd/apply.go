@@ -41,6 +41,16 @@ var applyCommand = &cli.Command{
 			Name:  "kubeconfig-api-address",
 			Usage: "Override the API address in the kubeconfig when kubeconfig-out is set",
 		},
+		&cli.StringFlag{
+			Name:        "kubeconfig-user",
+			Usage:       "Set kubernetes username",
+			DefaultText: "admin",
+		},
+		&cli.StringFlag{
+			Name:        "kubeconfig-cluster",
+			Usage:       "Set kubernetes cluster name",
+			DefaultText: "k0s-cluster",
+		},
 		&cli.BoolFlag{
 			Name:   "disable-downgrade-check",
 			Usage:  "Skip downgrade check",
@@ -77,6 +87,8 @@ var applyCommand = &cli.Command{
 			Manager:               ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 			KubeconfigOut:         kubeconfigOut,
 			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
+			KubeconfigUser:        ctx.String("kubeconfig-user"),
+			KubeconfigCluster:     ctx.String("kubeconfig-cluster"),
 			NoWait:                ctx.Bool("no-wait"),
 			NoDrain:               ctx.Bool("no-drain"),
 			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
