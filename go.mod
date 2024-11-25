@@ -1,6 +1,6 @@
 module github.com/k0sproject/k0sctl
 
-go 1.23
+go 1.23.2
 
 toolchain go1.23.3
 
