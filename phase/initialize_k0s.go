@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -115,10 +116,21 @@ func (p *InitializeK0s) Run() error {
 			return err
 		}
 
-		log.Infof("%s: waiting for kubernetes api to respond", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, p.Config)); err != nil {
+		log.Infof("%s: wait for kubernetes to reach ready state", h)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		err := retry.Context(ctx, func(_ context.Context) error {
+			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"), exec.Sudo(h))
+			if out != "ok" {
+				return fmt.Errorf("kubernetes api /readyz responded with %q", out)
+			}
 			return err
+		})
+		if err != nil {
+			return fmt.Errorf("kubernetes not ready: %w", err)
 		}
+
+		h.Metadata.Ready = true
 
 		return nil
 	})
