@@ -133,8 +133,17 @@ func (p *UpgradeControllers) Run() error {
 		}
 
 		if p.IsWet() {
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeAPIReadyFunc(h, p.Config)); err != nil {
-				return fmt.Errorf("kube api did not become ready: %w", err)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			err := retry.Context(ctx, func(_ context.Context) error {
+				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
+				if err != nil {
+					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("controller did not reach ready state: %w", err)
 			}
 		}
 
@@ -145,14 +154,6 @@ func (p *UpgradeControllers) Run() error {
 	if NoWait || !p.IsWet() {
 		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", leader)
 		return nil
-	}
-
-	log.Infof("%s: waiting for the scheduler to become ready", leader)
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ScheduledEventsAfterFunc(leader, time.Now())); err != nil {
-		if !Force {
-			return fmt.Errorf("failed to observe scheduling events after api start-up, you can ignore this check by using --force: %w", err)
-		}
-		log.Warnf("%s: failed to observe scheduling events after api start-up: %s", leader, err)
 	}
 
 	return nil

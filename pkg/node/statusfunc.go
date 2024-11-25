@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 
@@ -136,11 +135,4 @@ func ServiceStoppedFunc(h *cluster.Host, service string) retryFunc {
 		}
 		return nil
 	}
-}
-
-// KubeAPIReadyFunc returns a function that returns an error unless the host's local kube api responds to /version
-func KubeAPIReadyFunc(h *cluster.Host, config *v1beta1.Cluster) retryFunc {
-	// If the anon-auth is disabled on kube api the version endpoint will give 401
-	// thus we need to accept both 200 and 401 as valid statuses when checking kube api
-	return HTTPStatusFunc(h, fmt.Sprintf("%s/version", config.Spec.NodeInternalKubeAPIURL(h)), 200, 401)
 }
