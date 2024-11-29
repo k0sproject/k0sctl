@@ -42,20 +42,6 @@ type statusEvents struct {
 	} `json:"items"`
 }
 
-// kubectl get pods -o json
-type podStatusList struct {
-	Items []struct {
-		Status struct {
-			ContainerStatuses []struct {
-				ContainerID string `json:"containerID"`
-				Name        string `json:"name"`
-				Ready       bool   `json:"ready"`
-			} `json:"containerStatuses"`
-			Phase string `json:"phase"`
-		} `json:"status"`
-	} `json:"items"`
-}
-
 // KubeNodeReady returns a function that returns an error unless the node is ready according to "kubectl get node"
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
@@ -122,49 +108,6 @@ func ScheduledEventsAfterFunc(h *cluster.Host, since time.Time) retryFunc {
 			return nil
 		}
 		return fmt.Errorf("didn't find any 'Scheduled' kube-system events after %s", since)
-	}
-}
-
-// SystemPodsRunningFunc returns a function that returns an error unless all kube-system pods are running
-func SystemPodsRunningFunc(h *cluster.Host) retryFunc {
-	return func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get pods -o json"), exec.HideOutput(), exec.Sudo(h))
-		if err != nil {
-			return fmt.Errorf("failed to get kube-system pods: %w", err)
-		}
-		pods := &podStatusList{}
-		if err := json.Unmarshal([]byte(output), &pods); err != nil {
-			return fmt.Errorf("failed to decode kubectl output for get kube-system pods: %w", err)
-		}
-
-		var running int
-		var notReady int
-
-		for _, p := range pods.Items {
-			if p.Status.Phase != "Running" {
-				log.Tracef("%s: pod phase '%s' - container statuses: %+v", h, p.Status.Phase, p.Status.ContainerStatuses)
-				continue
-			}
-			running++
-			for _, c := range p.Status.ContainerStatuses {
-				if !c.Ready {
-					log.Debugf("%s: container %s not ready", h, c.Name)
-					notReady++
-				}
-			}
-		}
-
-		if running == 0 {
-			return fmt.Errorf("no kube-system pods running")
-		}
-
-		if notReady > 0 {
-			return fmt.Errorf("%d kube-system containers not ready", notReady)
-		}
-
-		log.Debugf("%s: all (%d) system pods running", h, running)
-
-		return nil
 	}
 }
 
