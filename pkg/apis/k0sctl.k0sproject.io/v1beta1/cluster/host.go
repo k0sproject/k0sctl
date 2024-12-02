@@ -291,7 +291,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	case "controller+worker":
 		flags.AddUnlessExist("--enable-worker=true")
 		if h.NoTaints {
-			flags.AddUnlessExist("--no-taints")
+			flags.AddUnlessExist("--no-taints=true")
 		}
 	case "single":
 		flags.AddUnlessExist("--single=true")
