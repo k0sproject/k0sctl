@@ -2,7 +2,7 @@ apiVersion: k0sctl.k0sproject.io/v1beta1
 kind: cluster
 spec:
   hosts:
-    - role: controller
+    - role: controller+worker
       uploadBinary: true
       installFlags:
         - "${K0S_CONTROLLER_FLAG}"
