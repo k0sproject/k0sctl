@@ -215,7 +215,11 @@ func (f Flags) Equals(b Flags) bool {
 // NewFlags shell-splits and parses a string and returns new Flags or an error if splitting fails
 func NewFlags(s string) (Flags, error) {
 	var flags Flags
-	parts, err := shell.Split(s)
+	unq, err := shell.Unquote(s)
+	if err != nil {
+		return flags, fmt.Errorf("failed to unquote flags %q: %w", s, err)
+	}
+	parts, err := shell.Split(unq)
 	if err != nil {
 		return flags, fmt.Errorf("failed to split flags %q: %w", s, err)
 	}
