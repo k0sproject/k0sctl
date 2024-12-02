@@ -181,7 +181,7 @@ func TestFlagsChanged(t *testing.T) {
 			PrivateAddress: "10.0.0.1",
 			InstallFlags:   []string{"--foo='bar'", "--bar=foo"},
 			Metadata: HostMetadata{
-				K0sStatusArgs: []string{"--foo=bar", `--bar="foo"`, "--enable-worker=true", "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
+				K0sStatusArgs: []string{"--foo=bar", `--bar="foo"`, "--enable-worker=true", "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml", "--kubelet-extra-args=--node-ip=10.0.0.1"},
 			},
 		}
 		newFlags, err := h.K0sInstallFlags()
