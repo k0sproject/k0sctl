@@ -603,7 +603,7 @@ func (h *Host) FlagsChanged() bool {
 	}
 
 	// remove flags that are dropped by k0s or are handled specially
-	for _, f := range []string{"--force", "--kubelet-extra-args", "--env"} {
+	for _, f := range []string{"--force", "--kubelet-extra-args", "--env", "--data-dir", "--token-file", "--config"} {
 		our.Delete(f)
 		their.Delete(f)
 	}
