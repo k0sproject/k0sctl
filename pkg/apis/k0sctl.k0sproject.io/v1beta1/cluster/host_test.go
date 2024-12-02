@@ -90,12 +90,12 @@ func TestK0sInstallCommand(t *testing.T) {
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker=true --config=from-configurer`, cmd)
 
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker --token-file=from-configurer --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker=true --token-file=from-configurer --config=from-configurer`, cmd)
 
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
