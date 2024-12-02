@@ -26,6 +26,9 @@ echo "Installing ${K0S_VERSION}"
 remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_FLAG}"
 remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER_FLAG}"
 
+echo "A re-apply should not re-install if there are no changes"
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug | grep -ivq "reinstalling"
+
 export K0S_CONTROLLER_FLAG="--labels=smoke-stage=2" 
 export K0S_WORKER_FLAG="--labels=smoke-stage=2" 
 envsubst < "k0sctl-installflags.yaml.tpl" > "${K0SCTL_CONFIG}"
