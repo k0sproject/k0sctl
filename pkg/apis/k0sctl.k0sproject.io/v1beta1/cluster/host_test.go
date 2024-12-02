@@ -177,14 +177,16 @@ func TestFlagsChanged(t *testing.T) {
 		h := Host{
 			Configurer:     cfg,
 			DataDir:        "/tmp/data",
-			Role:           "controller",
+			Role:           "controller+worker",
 			PrivateAddress: "10.0.0.1",
 			InstallFlags:   []string{"--foo='bar'", "--bar=foo"},
 			Metadata: HostMetadata{
-				K0sStatusArgs: []string{"--foo=bar", `--bar="foo"`, "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
+				K0sStatusArgs: []string{"--foo=bar", `--bar="foo"`, "--enable-worker=true", "--data-dir=/tmp/data", "--token-file=/tmp/token", "--config=/tmp/foo.yaml"},
 			},
 		}
-		require.False(t, h.FlagsChanged())
+		newFlags, err := h.K0sInstallFlags()
+		require.NoError(t, err)
+		require.False(t, h.FlagsChanged(), "flags %+v should not be considered different from %+v", newFlags, h.Metadata.K0sStatusArgs)
 		h.InstallFlags = []string{"--foo=bar", `--bar="foo"`}
 		require.False(t, h.FlagsChanged())
 		h.InstallFlags = []string{"--foo=baz", `--bar="foo"`}
