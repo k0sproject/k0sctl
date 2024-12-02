@@ -211,3 +211,16 @@ func (f Flags) Equals(b Flags) bool {
 	}
 	return true
 }
+
+// NewFlags shell-splits and parses a string and returns new Flags or an error if splitting fails
+func NewFlags(s string) (Flags, error) {
+	var flags Flags
+	parts, err := shell.Split(s)
+	if err != nil {
+		return flags, fmt.Errorf("failed to split flags %q: %w", s, err)
+	}
+	for _, part := range parts {
+		flags.Add(part)
+	}
+	return flags, nil
+}

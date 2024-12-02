@@ -13,7 +13,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
-	"github.com/k0sproject/k0sctl/internal/shell"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -308,13 +307,11 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	if strings.HasSuffix(h.Role, "worker") {
 		var extra Flags
 		if old := flags.GetValue("--kubelet-extra-args"); old != "" {
-			parts, err := shell.Split(old)
+			ex, err := NewFlags(old)
 			if err != nil {
 				return flags, fmt.Errorf("failed to split kubelet-extra-args: %w", err)
 			}
-			for _, part := range parts {
-				extra.Add(part)
-			}
+			extra = ex
 		}
 		// set worker's private address to --node-ip in --extra-kubelet-args if cloud ins't enabled
 		enableCloudProvider, err := h.InstallFlags.GetBoolean("--enable-cloud-provider")
@@ -581,17 +578,41 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 
 // FlagsChanged returns true when the flags have changed by comparing the host.Metadata.K0sStatusArgs to what host.InstallFlags would produce
 func (h *Host) FlagsChanged() bool {
-	installFlags, err := h.K0sInstallFlags()
+	our, err := h.K0sInstallFlags()
 	if err != nil {
 		log.Warnf("%s: could not get install flags: %s", h, err)
-		installFlags = Flags{}
+		our = Flags{}
+	}
+	ex := our.GetValue("--kubelet-extra-args")
+	ourExtra, err := NewFlags(ex)
+	if err != nil {
+		log.Warnf("%s: could not parse local --kubelet-extra-args value %q: %s", h, ex, err)
 	}
 
-	if installFlags.Equals(h.Metadata.K0sStatusArgs) {
+	var their Flags
+	their = append(their, h.Metadata.K0sStatusArgs...)
+	ex = their.GetValue("--kubelet-extra-args")
+	theirExtra, err := NewFlags(ex)
+	if err != nil {
+		log.Warnf("%s: could not parse remote --kubelet-extra-args value %q: %s", h, ex, err)
+	}
+
+	if !ourExtra.Equals(theirExtra) {
+		log.Debugf("%s: installFlags --kubelet-extra-args seem to have changed: %+v vs %+v", h, theirExtra.Map(), ourExtra.Map())
+		return true
+	}
+
+	// remove flags that are dropped by k0s or are handled specially
+	for _, f := range []string{"--force", "--kubelet-extra-args", "--env"} {
+		our.Delete(f)
+		their.Delete(f)
+	}
+
+	if our.Equals(their) {
 		log.Debugf("%s: installFlags have not changed", h)
 		return false
 	}
 
-	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, h.Metadata.K0sStatusArgs.Map(), installFlags.Map())
+	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, their.Map(), our.Map())
 	return true
 }
