@@ -135,3 +135,16 @@ func TestEquals(t *testing.T) {
 	flags2 = Flags{"-f", "--flag2=foo", "--flag3=baz"}
 	require.False(t, flags1.Equals(flags2))
 }
+
+func TestNewFlags(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		flags, err := NewFlags("--hello=world --bar=baz")
+		require.NoError(t, err)
+		require.Equal(t, "world", flags.GetValue("--hello"))
+		require.Equal(t, "baz", flags.GetValue("--bar"))
+	})
+	t.Run("empty", func(t *testing.T) {
+		_, err := NewFlags("")
+		require.NoError(t, err)
+	})
+}
