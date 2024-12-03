@@ -155,13 +155,5 @@ func (p *UpgradeControllers) Run() error {
 		log.Warnf("%s: failed to observe scheduling events after api start-up: %s", leader, err)
 	}
 
-	log.Infof("%s: waiting for system pods to become ready", leader)
-	if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.SystemPodsRunningFunc(leader)); err != nil {
-		if !Force {
-			return fmt.Errorf("all system pods not running after api start-up, you can ignore this check by using --force: %w", err)
-		}
-		log.Warnf("%s: failed to observe system pods running after api start-up: %s", leader, err)
-	}
-
 	return nil
 }
