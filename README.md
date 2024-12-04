@@ -80,6 +80,9 @@ k0sctl completion > /etc/bash_completion.d/k0sctl
 
 ```sh
 k0sctl completion > /usr/local/share/zsh/site-functions/_k0sctl
+
+# For oh my zsh
+k0sctl completion > $ZSH_CACHE_DIR/completions/_k0sctl
 ```
 
 ##### Fish
