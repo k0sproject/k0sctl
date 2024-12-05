@@ -174,50 +174,78 @@ func (k *K0s) GetClusterID(h *Host) (string, error) {
 	return h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
 }
 
-// TokenID returns a token id from a token string that can be used to invalidate the token
-func TokenID(s string) (string, error) {
+// TokenData is data collected from a decoded k0s token
+type TokenData struct {
+	ID         string
+	URL        string
+	Token      string
+	Kubeconfig []byte
+}
+
+// ParseToken returns TokenData for a token string
+func ParseToken(s string) (TokenData, error) {
+	data := TokenData{Token: s}
+
 	b64 := make([]byte, base64.StdEncoding.DecodedLen(len(s)))
 	_, err := base64.StdEncoding.Decode(b64, []byte(s))
 	if err != nil {
-		return "", fmt.Errorf("failed to decode token: %w", err)
+		return data, fmt.Errorf("failed to decode token: %w", err)
 	}
 
 	sr := strings.NewReader(s)
 	b64r := base64.NewDecoder(base64.StdEncoding, sr)
 	gzr, err := gzip.NewReader(b64r)
 	if err != nil {
-		return "", fmt.Errorf("failed to create a reader for token: %w", err)
+		return data, fmt.Errorf("failed to create a reader for token: %w", err)
 	}
 	defer gzr.Close()
 
 	c, err := io.ReadAll(gzr)
 	if err != nil {
-		return "", fmt.Errorf("failed to uncompress token: %w", err)
+		return data, fmt.Errorf("failed to uncompress token: %w", err)
 	}
+	data.Kubeconfig = c
 	cfg := dig.Mapping{}
 	err = yaml.Unmarshal(c, &cfg)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal token: %w", err)
+		return data, fmt.Errorf("failed to unmarshal token: %w", err)
 	}
 
 	users, ok := cfg.Dig("users").([]interface{})
 	if !ok || len(users) < 1 {
-		return "", fmt.Errorf("failed to find users in token")
+		return data, fmt.Errorf("failed to find users in token")
 	}
 
 	user, ok := users[0].(dig.Mapping)
 	if !ok {
-		return "", fmt.Errorf("failed to find user in token")
+		return data, fmt.Errorf("failed to find user in token")
 	}
 
 	token, ok := user.Dig("user", "token").(string)
 	if !ok {
-		return "", fmt.Errorf("failed to find user token in token")
+		return data, fmt.Errorf("failed to find user token in token")
 	}
 
 	idx := strings.IndexRune(token, '.')
 	if idx < 0 {
-		return "", fmt.Errorf("failed to find separator in token")
+		return data, fmt.Errorf("failed to find separator in token")
 	}
-	return token[0:idx], nil
+
+	data.ID = token[0:idx]
+
+	clusters, ok := cfg.Dig("clusters").([]interface{})
+	if !ok || len(clusters) < 1 {
+		return data, fmt.Errorf("failed to find clusters in token")
+	}
+	cluster, ok := clusters[0].(dig.Mapping)
+	if !ok {
+		return data, fmt.Errorf("failed to find cluster in token")
+	}
+	url := cluster.DigString("cluster", "server")
+	if url == "" {
+		return data, fmt.Errorf("failed to find cluster url in token")
+	}
+	data.URL = url
+
+	return data, nil
 }
