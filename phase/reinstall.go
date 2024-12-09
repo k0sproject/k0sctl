@@ -107,9 +107,5 @@ func (p *Reinstall) reinstall(h *cluster.Host) error {
 		return fmt.Errorf("restart after reinstall: %w", err)
 	}
 
-	if h != p.Config.Spec.K0sLeader() {
-		return nil
-	}
-
 	return nil
 }

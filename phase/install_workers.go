@@ -66,7 +66,7 @@ func (p *InstallWorkers) CleanUp() {
 func (p *InstallWorkers) After() error {
 	if NoWait {
 		for _, h := range p.hosts {
-			if h.Metadata.K0sJoinToken != "" {
+			if h.Metadata.K0sTokenData.Token != "" {
 				log.Warnf("%s: --no-wait given, created join tokens will remain valid for 10 minutes", p.leader)
 				break
 			}
@@ -74,19 +74,18 @@ func (p *InstallWorkers) After() error {
 		return nil
 	}
 	for i, h := range p.hosts {
-		if h.Metadata.K0sJoinTokenID == "" {
+		h.Metadata.K0sTokenData.Token = ""
+		if h.Metadata.K0sTokenData.ID == "" {
 			continue
 		}
-		h.Metadata.K0sJoinToken = ""
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for worker %s", h), func() error {
 			log.Debugf("%s: invalidating join token for worker %d", p.leader, i+1)
-			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sJoinTokenID), exec.Sudo(p.leader))
+			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
 		})
 		if err != nil {
 			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
-
 			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
@@ -98,30 +97,9 @@ func (p *InstallWorkers) After() error {
 
 // Run the phase
 func (p *InstallWorkers) Run() error {
-	url := p.Config.Spec.InternalKubeAPIURL()
-	healthz := fmt.Sprintf("%s/healthz", url)
-
-	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
-		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
-			log.Infof("%s: validating api connection to %s", h, url)
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			if err := retry.Context(ctx, node.HTTPStatusFunc(h, healthz, 200, 401)); err != nil {
-				return fmt.Errorf("failed to connect from worker to kubernetes api at %s - check networking", url)
-			}
-		} else {
-			log.Warnf("%s: dry-run: skipping api connection validation to %s because cluster is not running", h, url)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
 	for i, h := range p.hosts {
 		log.Infof("%s: generating a join token for worker %d", p.leader, i+1)
-		err = p.Wet(p.leader, fmt.Sprintf("generate a k0s join token for worker %s", h), func() error {
+		err := p.Wet(p.leader, fmt.Sprintf("generate a k0s join token for worker %s", h), func() error {
 			t, err := p.Config.Spec.K0s.GenerateToken(
 				p.leader,
 				"worker",
@@ -130,18 +108,18 @@ func (p *InstallWorkers) Run() error {
 			if err != nil {
 				return err
 			}
-			h.Metadata.K0sJoinToken = t
 
-			ti, err := cluster.TokenID(t)
+			td, err := cluster.ParseToken(t)
 			if err != nil {
-				return err
+				return fmt.Errorf("parse k0s token: %w", err)
 			}
-			h.Metadata.K0sJoinTokenID = ti
 
-			log.Debugf("%s: join token ID: %s", h, ti)
+			h.Metadata.K0sTokenData = td
+
 			return nil
 		}, func() error {
-			h.Metadata.K0sJoinTokenID = "dry-run"
+			h.Metadata.K0sTokenData.ID = "dry-run"
+			h.Metadata.K0sTokenData.URL = p.Config.Spec.KubeAPIURL()
 			return nil
 		})
 		if err != nil {
@@ -149,10 +127,35 @@ func (p *InstallWorkers) Run() error {
 		}
 	}
 
+	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
+			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			err := retry.Context(ctx, func(_ context.Context) error {
+				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/version' --kubeconfig=/dev/stdin"), exec.Sudo(h), exec.Stdin(string(h.Metadata.K0sTokenData.Kubeconfig)))
+				if err != nil {
+					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("connectivity check failed: %w", err)
+			}
+		} else {
+			log.Warnf("%s: dry-run: skipping api connection validation because cluster is not actually running", h)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
-		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", h.K0sJoinTokenPath()), func() error {
-			log.Infof("%s: writing join token", h)
-			return h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), h.Metadata.K0sJoinToken, "0640")
+		tokenPath := h.K0sJoinTokenPath()
+		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
+			log.Infof("%s: writing join token to %s", h, tokenPath)
+			return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
 		})
 		if err != nil {
 			return err
