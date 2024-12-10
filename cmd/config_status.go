@@ -15,15 +15,13 @@ var configStatusCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
-		analyticsFlag,
 		&cli.StringFlag{
 			Name:    "output",
 			Usage:   "kubectl output formatting",
 			Aliases: []string{"o"},
 		},
 	},
-	Before: actions(initLogging, initConfig, initAnalytics),
-	After:  actions(closeAnalytics),
+	Before: actions(initLogging, initConfig),
 	Action: func(ctx *cli.Context) error {
 		configStatusAction := action.ConfigStatus{
 			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),

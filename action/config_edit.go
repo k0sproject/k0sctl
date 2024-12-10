@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/k0sproject/k0sctl/analytics"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/rig/exec"
 
@@ -27,8 +26,6 @@ func (c ConfigEdit) Run() error {
 	if !ok || !isatty.IsTerminal(stdoutFile.Fd()) {
 		return fmt.Errorf("output is not a terminal")
 	}
-
-	analytics.Client.Publish("config-edit-start", map[string]interface{}{})
 
 	editor, err := shellEditor()
 	if err != nil {

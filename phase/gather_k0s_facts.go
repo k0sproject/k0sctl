@@ -78,7 +78,6 @@ func (p *GatherK0sFacts) Run() error {
 
 	if id, err := p.Config.Spec.K0s.GetClusterID(p.leader); err == nil {
 		p.Config.Spec.K0s.Metadata.ClusterID = id
-		p.SetProp("clusterID", id)
 	}
 
 	if err := p.investigateEtcd(); err != nil {
