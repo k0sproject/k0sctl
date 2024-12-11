@@ -39,7 +39,7 @@ require (
 	github.com/jellydator/validation v1.1.0
 	github.com/k0sproject/version v0.6.0
 	github.com/sergi/go-diff v1.3.1
-	k8s.io/client-go v0.31.3
+	k8s.io/client-go v0.31.4
 )
 
 require (
@@ -88,7 +88,7 @@ require (
 	golang.org/x/time v0.7.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apimachinery v0.31.3 // indirect
+	k8s.io/apimachinery v0.31.4 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
