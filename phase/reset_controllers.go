@@ -1,7 +1,9 @@
 package phase
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -97,10 +99,13 @@ func (p *ResetControllers) Run() error {
 		}
 
 		log.Debugf("%s: resetting k0s...", h)
-		out, err := h.ExecOutput(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h))
+		var stdoutbuf, stderrbuf bytes.Buffer
+		cmd, err := h.ExecStreams(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), nil, &stdoutbuf, &stderrbuf, exec.Sudo(h))
 		if err != nil {
-			log.Debugf("%s: k0s reset failed: %s", h, out)
-			log.Warnf("%s: k0s reported failure: %v", h, err)
+			return fmt.Errorf("failed to run k0s reset: %w", err)
+		}
+		if err := cmd.Wait(); err != nil {
+			log.Warnf("%s: k0s reset reported failure: %s %s", h, stderrbuf.String(), stdoutbuf.String())
 		}
 		log.Debugf("%s: resetting k0s completed", h)
 
