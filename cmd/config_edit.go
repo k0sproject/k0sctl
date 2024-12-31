@@ -19,7 +19,7 @@ var configEditCommand = &cli.Command{
 	Before: actions(initLogging, initConfig),
 	Action: func(ctx *cli.Context) error {
 		configEditAction := action.ConfigEdit{
-			Config: ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster),
+			Config: ctx.Context.Value(ctxConfigsKey{}).(*v1beta1.Cluster),
 			Stdout: ctx.App.Writer,
 			Stderr: ctx.App.ErrWriter,
 			Stdin:  ctx.App.Reader,
