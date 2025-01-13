@@ -336,8 +336,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		}
 	}
 
-	if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil && h.PrivateAddress != "" {
-		cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
+	if h.Role != "single" {
+		if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
+			cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
+		}
 	}
 
 	if _, ok := cfg["apiVersion"]; !ok {
