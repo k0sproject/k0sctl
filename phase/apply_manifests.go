@@ -61,10 +61,9 @@ func (p *ApplyManifests) apply(name string, content []byte) error {
 		return fmt.Errorf("failed to run apply for manifest %s: %w", name, err)
 	}
 	if err := cmd.Wait(); err != nil {
-		log.Errorf("kubectl apply failed for manifest %s", name)
-		log.Errorf("kubectl apply stderr: %s", stderr.String())
-		return fmt.Errorf("failed to apply manifest %s: %w", name, err)
+		log.Errorf("%s: kubectl apply failed for manifest %s", p.leader, name)
+		log.Errorf("%s: kubectl apply stderr: %s", p.leader, stderr.String())
 	}
-	log.Infof("kubectl apply: %s", stdout.String())
+	log.Infof("%s: kubectl apply: %s", p.leader, stdout.String())
 	return nil
 }
