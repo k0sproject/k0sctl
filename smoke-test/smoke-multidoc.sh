@@ -23,14 +23,36 @@ echo "* Apply OK"
 
 echo "* Downloading kubectl for local test"
 downloadKubectl
+    
+export KUBECONFIG=applykubeconfig 
 
 echo "*Waiting until the test pod is running"
-KUBECONFIG=applykubeconfig ./kubectl wait --for=condition=Ready pod/hello --timeout=120s
+./kubectl wait --for=condition=Ready pod/hello --timeout=120s
 
-sleep 2
+retries=10
+delay=2
+nginx_ready=false
+i=1
 
-echo "* Using kubectl to verify the test pod works"
-KUBECONFIG=applykubeconfig ./kubectl exec -it pod/hello -- curl http://localhost/ | grep -q "Welcome to nginx!"
+while [ "$i" -le "$retries" ]; do
+    echo "* Attempt $i: Checking if nginx is ready..."
+    ./kubectl exec pod/hello -- curl http://localhost/ | grep -q "Welcome to nginx!"
+    if kubectl exec pod/hello -- curl -s http://localhost/ | grep -q "Welcome to nginx!"; then
+        echo "nginx is ready!"
+        nginx_ready=true
+        break
+    fi
+    echo "  - nginx is not ready"
+    sleep $delay
+    i=$((i + 1))
+done
+
+if [ "$nginx_ready" = false ]; then
+    echo "nginx failed to become ready after $retries attempts."
+    exit 1
+fi
+
+echo " - nginx is ready"
 
 remoteCommand root@manager0 "cat /etc/k0s/k0s.yaml" > k0syaml
 echo Resulting k0s.yaml:
