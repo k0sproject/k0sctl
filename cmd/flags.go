@@ -12,8 +12,11 @@ import (
 
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
+	glob "github.com/bmatcuk/doublestar/v4"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/manifest"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig"
@@ -22,11 +25,10 @@ import (
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
 )
 
 type (
-	ctxConfigKey  struct{}
+	ctxConfigsKey struct{}
 	ctxManagerKey struct{}
 	ctxLogFileKey struct{}
 )
@@ -58,11 +60,11 @@ var (
 		Value: false,
 	}
 
-	configFlag = &cli.StringFlag{
+	configFlag = &cli.StringSliceFlag{
 		Name:      "config",
-		Usage:     "Path to cluster config yaml. Use '-' to read from stdin.",
+		Usage:     "Path or glob to config yaml. Can be given multiple times. Use '-' to read from stdin.",
 		Aliases:   []string{"c"},
-		Value:     "k0sctl.yaml",
+		Value:     cli.NewStringSlice("k0sctl.yaml"),
 		TakesFile: true,
 	}
 
@@ -115,44 +117,73 @@ func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
 
 // initConfig takes the config flag, does some magic and replaces the value with the file contents
 func initConfig(ctx *cli.Context) error {
-	f := ctx.String("config")
-	if f == "" {
+	f := ctx.StringSlice("config")
+	if len(f) == 0 || f[0] == "" {
 		return nil
 	}
 
-	file, err := configReader(f)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return err
-	}
-
-	subst, err := envsubst.Bytes(content)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Loaded configuration:\n%s", subst)
-
-	c := &v1beta1.Cluster{}
-	if err := yaml.UnmarshalStrict(subst, c); err != nil {
-		return err
-	}
-
-	m, err := yaml.Marshal(c)
-	if err == nil {
-		log.Tracef("unmarshaled configuration:\n%s", m)
+	var configs []string
+	// detect globs and expand
+	for _, p := range f {
+		if p == "-" || p == "k0sctl.yaml" {
+			configs = append(configs, p)
+			continue
+		}
+		stat, err := os.Stat(p)
+		if err == nil {
+			if stat.IsDir() {
+				p = path.Join(p, "**/*.{yml,yaml}")
+			}
+		}
+		base, pattern := glob.SplitPattern(p)
+		fsys := os.DirFS(base)
+		matches, err := glob.Glob(fsys, pattern)
+		if err != nil {
+			return err
+		}
+		log.Debugf("glob %s expanded to %v", p, matches)
+		for _, m := range matches {
+			configs = append(configs, path.Join(base, m))
+		}
 	}
 
-	if err := c.Validate(); err != nil {
-		return fmt.Errorf("configuration validation failed: %w", err)
+	if len(configs) == 0 {
+		return fmt.Errorf("no configuration files found")
 	}
 
-	ctx.Context = context.WithValue(ctx.Context, ctxConfigKey{}, c)
+	log.Debugf("%d potential configuration files found", len(configs))
+
+	manifestReader := &manifest.Reader{}
+
+	for _, f := range configs {
+		file, err := configReader(f)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		content, err := io.ReadAll(file)
+		if err != nil {
+			return err
+		}
+
+		subst, err := envsubst.Bytes(content)
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("Loaded configuration from %s:\n%s", f, subst)
+
+		if err := manifestReader.ParseBytes(subst); err != nil {
+			return fmt.Errorf("failed to parse config: %w", err)
+		}
+	}
+
+	if manifestReader.Len() == 0 {
+		return fmt.Errorf("no resource definition manifests found in configuration files")
+	}
+
+	ctx.Context = context.WithValue(ctx.Context, ctxConfigsKey{}, manifestReader)
 
 	return nil
 }
@@ -181,13 +212,47 @@ func warnOldCache(_ *cli.Context) error {
 	return nil
 }
 
-func initManager(ctx *cli.Context) error {
-	c, ok := ctx.Context.Value(ctxConfigKey{}).(*v1beta1.Cluster)
-	if c == nil || !ok {
-		return fmt.Errorf("cluster config not available in context")
+func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
+	mr, err := ManifestReader(ctx.Context)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get manifest reader: %w", err)
+	}
+	ctlConfigs, err := mr.GetResources(v1beta1.APIVersion, "Cluster")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cluster resources: %w", err)
+	}
+	if len(ctlConfigs) != 1 {
+		return nil, fmt.Errorf("expected exactly one cluster config, got %d", len(ctlConfigs))
+	}
+	cfg := &v1beta1.Cluster{}
+	if err := ctlConfigs[0].Unmarshal(cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cluster config: %w", err)
+	}
+	if k0sConfigs, err := mr.GetResources("k0s.k0sproject.io/v1beta1", "ClusterConfig"); err == nil && len(k0sConfigs) > 0 {
+		for _, k0sConfig := range k0sConfigs {
+			k0s := make(dig.Mapping)
+			log.Debugf("unmarshalling %d bytes of config from %v", len(k0sConfig.Raw), k0sConfig.Filename())
+			if err := k0sConfig.Unmarshal(&k0s); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal k0s config: %w", err)
+			}
+			log.Debugf("merging in k0s config from %v", k0sConfig.Filename())
+			cfg.Spec.K0s.Config.Merge(k0s)
+		}
 	}
 
-	manager, err := phase.NewManager(c)
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("cluster config validation failed: %w", err)
+	}
+	return cfg, nil
+}
+
+func initManager(ctx *cli.Context) error {
+	cfg, err := readConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	manager, err := phase.NewManager(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to initialize phase manager: %w", err)
 	}
@@ -381,4 +446,19 @@ func fileLoggerHook(logFile io.Writer) *loghook {
 func displayLogo(_ *cli.Context) error {
 	fmt.Print(logo)
 	return nil
+}
+
+// ManifestReader returns a manifest reader from context
+func ManifestReader(ctx context.Context) (*manifest.Reader, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("context is nil")
+	}
+	v := ctx.Value(ctxConfigsKey{})
+	if v == nil {
+		return nil, fmt.Errorf("config reader not found in context")
+	}
+	if r, ok := v.(*manifest.Reader); ok {
+		return r, nil
+	}
+	return nil, fmt.Errorf("config reader in context is not of the correct type")
 }

@@ -582,6 +582,26 @@ Embedded k0s cluster configuration. See [k0s configuration documentation](https:
 
 When left out, the output of `k0s config create` will be used.
 
+You can also host the configuration in a separate file or as a separate YAML document in the same file in the standard k0s configuration format.
+
+```yaml
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: Cluster
+spec:
+  hosts:
+    - role: single
+      ssh:
+        address: 10.0.0.1
+---
+apiVersion: k0s.k0sproject.io/v1beta1
+kind: ClusterConfig
+metadata:
+  name: my-k0s-cluster
+spec:
+  api:
+    externalAddress: 10.0.0.2
+```
+
 #### Tokens
 
 The following tokens can be used in the `k0sDownloadURL` and `files.[*].src` fields:

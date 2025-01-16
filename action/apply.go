@@ -35,8 +35,8 @@ type ApplyOptions struct {
 	KubeconfigUser string
 	// KubeconfigCluster is the cluster name to use in the kubeconfig
 	KubeconfigCluster string
-	// ConfigPath is the path to the configuration file (used for kubeconfig command tip on success)
-	ConfigPath string
+	// ConfigPaths is the list of paths to the configuration files (used for kubeconfig command tip on success)
+	ConfigPaths []string
 }
 
 type Apply struct {
@@ -158,9 +158,11 @@ func (a Apply) Run() error {
 		cmd.WriteString(executable)
 		cmd.WriteString(" kubeconfig")
 
-		if a.ConfigPath != "" && a.ConfigPath != "-" && a.ConfigPath != "k0sctl.yaml" {
-			cmd.WriteString(" --config ")
-			cmd.WriteString(a.ConfigPath)
+		if len(a.ConfigPaths) > 0 && (len(a.ConfigPaths) != 1 && a.ConfigPaths[0] != "-" && a.ConfigPaths[0] != "k0sctl.yaml") {
+			for _, path := range a.ConfigPaths {
+				cmd.WriteString(" --config ")
+				cmd.WriteString(path)
+			}
 		}
 
 		log.Info("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
