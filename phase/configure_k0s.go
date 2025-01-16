@@ -336,7 +336,7 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 		}
 	}
 
-	if h.Role != "single" {
+	if p.Config.StorageType() == "etcd" {
 		if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 			cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 		}

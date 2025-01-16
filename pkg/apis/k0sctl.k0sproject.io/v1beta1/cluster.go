@@ -58,3 +58,26 @@ func (c *Cluster) Validate() error {
 		validation.Field(&c.Spec),
 	)
 }
+
+// StorageType returns the k0s storage type.
+func (c *Cluster) StorageType() string {
+	if c.Spec == nil {
+		// default to etcd when there's no hosts or k0s spec, this should never happen.
+		return "etcd"
+	}
+
+	if c.Spec.K0s != nil {
+		if t := c.Spec.K0s.Config.DigString("spec", "storage", "type"); t != "" {
+			// if storage type is set in k0s spec, return it
+			return t
+		}
+	}
+
+	if h := c.Spec.K0sLeader(); h != nil && h.Role == "single" {
+		// default to "kine" on single node clusters
+		return "kine"
+	}
+
+	// default to etcd otherwise
+	return "etcd"
+}
