@@ -18,6 +18,7 @@ type ClusterMetadata struct {
 	User        string            `yaml:"user" default:"admin"`
 	Kubeconfig  string            `yaml:"-"`
 	EtcdMembers []string          `yaml:"-"`
+	Manifests   map[string][]byte `yaml:"-"`
 }
 
 // Cluster describes launchpad.yaml configuration
