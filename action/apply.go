@@ -90,6 +90,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.ResetWorkers{NoDrain: opts.NoDrain},
 			&phase.ResetControllers{NoDrain: opts.NoDrain},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
+			&phase.ApplyManifests{},
 			unlockPhase,
 			&phase.Disconnect{},
 		},

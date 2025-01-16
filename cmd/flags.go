@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/a8m/envsubst"
@@ -237,6 +238,23 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 			}
 			log.Debugf("merging in k0s config from %v", k0sConfig.Filename())
 			cfg.Spec.K0s.Config.Merge(k0s)
+		}
+	}
+	otherConfigs := mr.FilterResources(func(rd *manifest.ResourceDefinition) bool {
+		if strings.EqualFold(rd.APIVersion, v1beta1.APIVersion) && strings.EqualFold(rd.Kind, "cluster") {
+			return false
+		}
+		if strings.EqualFold(rd.APIVersion, "k0s.k0sproject.io/v1beta1") && strings.EqualFold(rd.Kind, "clusterconfig") {
+			return false
+		}
+		return true
+	})
+	if len(otherConfigs) > 0 {
+		cfg.Metadata.Manifests = make(map[string][]byte)
+		log.Debugf("found %d additional resources in the configuration", len(otherConfigs))
+		for _, otherConfig := range otherConfigs {
+			log.Debugf("found resource: %s (%d bytes)", otherConfig.Filename(), len(otherConfig.Raw))
+			cfg.Metadata.Manifests[otherConfig.Filename()] = otherConfig.Raw
 		}
 	}
 
