@@ -36,7 +36,6 @@ i=1
 
 while [ "$i" -le "$retries" ]; do
     echo "* Attempt $i: Checking if nginx is ready..."
-    ./kubectl exec pod/hello -- curl http://localhost/ | grep -q "Welcome to nginx!"
     if kubectl exec pod/hello -- curl -s http://localhost/ | grep -q "Welcome to nginx!"; then
         echo "nginx is ready!"
         nginx_ready=true
