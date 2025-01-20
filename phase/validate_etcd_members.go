@@ -42,13 +42,10 @@ func (p *ValidateEtcdMembers) ShouldRun() bool {
 		return false
 	}
 
-	if len(p.Config.Spec.K0s.Config) > 0 {
-		storageType := p.Config.Spec.K0s.Config.DigString("spec", "storage", "type")
-		if storageType != "" && storageType != "etcd" {
-			log.Debugf("%s: storage type is %q, not k0s managed etcd", p.Config.Spec.K0sLeader(), storageType)
-			return false
-		}
+	if s := p.Config.StorageType(); s != "etcd" {
+		log.Debugf("%s: storage type is %q, not k0s managed etcd", p.Config.Spec.K0sLeader(), s)
 	}
+
 	return len(p.hosts) > 0
 }
 
