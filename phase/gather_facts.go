@@ -17,7 +17,7 @@ type GatherFacts struct {
 }
 
 // K0s doesn't rely on unique machine IDs anymore since v1.30.
-var uniqueMachineIDVersion = version.MustConstraint("< v1.30")
+var uniqueMachineIDVersion = version.MustConstraint("< v1.30-0")
 
 // Title for the phase
 func (p *GatherFacts) Title() string {

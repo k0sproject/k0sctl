@@ -21,7 +21,7 @@ import (
 )
 
 // "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
-var configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
+var configCreateSinceVersion = version.MustConstraint(">= v1.23.1-0+k0s.0")
 
 const (
 	configSourceExisting int = iota

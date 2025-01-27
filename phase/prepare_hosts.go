@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var iptablesEmbeddedSince = version.MustConstraint(">= v1.22.1+k0s.0")
+var iptablesEmbeddedSince = version.MustConstraint(">= v1.22.1-0+k0s.0")
 
 // PrepareHosts installs required packages and so on on the hosts.
 type PrepareHosts struct {
