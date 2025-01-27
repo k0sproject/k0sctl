@@ -25,7 +25,7 @@ const K0sMinVersion = "0.11.0-rc1"
 
 var (
 	k0sSupportedVersion           = version.MustConstraint(">= " + K0sMinVersion)
-	k0sDynamicConfigSince         = version.MustConstraint(">= 1.22.2+k0s.2")
+	k0sDynamicConfigSince         = version.MustConstraint(">= 1.22.2-0+k0s.2")
 	k0sTokenCreateConfigFlagUntil = version.MustConstraint("< v1.23.4-rc.1+k0s.0")
 )
 

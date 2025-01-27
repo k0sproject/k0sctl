@@ -21,7 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var K0sForceFlagSince = version.MustConstraint(">= v1.27.4+k0s.0")
+var K0sForceFlagSince = version.MustConstraint(">= v1.27.4-0+k0s.0")
 
 // Host contains all the needed details to work with hosts
 type Host struct {
@@ -179,7 +179,7 @@ type HostMetadata struct {
 	K0sInstalled      bool
 	K0sExistingConfig string
 	K0sNewConfig      string
-	K0sTokenData  TokenData
+	K0sTokenData      TokenData
 	K0sStatusArgs     Flags
 	Arch              string
 	IsK0sLeader       bool

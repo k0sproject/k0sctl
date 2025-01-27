@@ -10,7 +10,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
-var etcdSupportedArchArm64Since = version.MustConstraint(">= v1.22.1+k0s.0")
+var etcdSupportedArchArm64Since = version.MustConstraint(">= v1.22.1-0+k0s.0")
 
 // PrepareArm implements a phase which fixes arm quirks
 type PrepareArm struct {
