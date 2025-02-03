@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,7 @@ func (p *conditionalPhase) ShouldRun() bool {
 	return false
 }
 
-func (p *conditionalPhase) Run() error {
+func (p *conditionalPhase) Run(_ context.Context) error {
 	p.runCalled = true
 	return nil
 }
@@ -32,7 +33,7 @@ func TestConditionalPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &conditionalPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.NoError(t, m.Run(context.Background()))
 	require.False(t, p.runCalled, "run was not called")
 	require.True(t, p.shouldrunCalled, "shouldrun was not called")
 }
@@ -50,7 +51,7 @@ func (p *configPhase) Prepare(c *v1beta1.Cluster) error {
 	return nil
 }
 
-func (p *configPhase) Run() error {
+func (p *configPhase) Run(_ context.Context) error {
 	return nil
 }
 
@@ -58,7 +59,7 @@ func TestConfigPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &configPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.NoError(t, m.Run(context.Background()))
 	require.True(t, p.receivedConfig, "config was not received")
 }
 
@@ -83,7 +84,7 @@ func (p *hookedPhase) After(err error) error {
 	return nil
 }
 
-func (p *hookedPhase) Run() error {
+func (p *hookedPhase) Run(_ context.Context) error {
 	return fmt.Errorf("run failed")
 }
 
@@ -91,7 +92,7 @@ func TestHookedPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &hookedPhase{}
 	m.AddPhase(p)
-	require.Error(t, m.Run())
+	require.Error(t, m.Run(context.Background()))
 	require.True(t, p.beforeCalled, "before hook was not called")
 	require.True(t, p.afterCalled, "after hook was not called")
 	require.EqualError(t, p.err, "run failed")

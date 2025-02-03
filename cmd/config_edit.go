@@ -15,8 +15,10 @@ var configEditCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		timeoutFlag,
 	},
 	Before: actions(initLogging, initConfig),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		configEditAction := action.ConfigEdit{
 			Config: ctx.Context.Value(ctxConfigsKey{}).(*v1beta1.Cluster),
@@ -25,6 +27,6 @@ var configEditCommand = &cli.Command{
 			Stdin:  ctx.App.Reader,
 		}
 
-		return configEditAction.Run()
+		return configEditAction.Run(ctx.Context)
 	},
 }

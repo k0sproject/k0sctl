@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -54,7 +55,7 @@ func (p *Backup) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *Backup) Run() error {
+func (p *Backup) Run(_ context.Context) error {
 	h := p.leader
 
 	log.Infof("%s: backing up", h)
@@ -116,7 +117,7 @@ func (p *Backup) Run() error {
 
 	if p.IsWet() {
 		// Download the file
-		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0600)
+		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0o600)
 		if err != nil {
 			return err
 		}

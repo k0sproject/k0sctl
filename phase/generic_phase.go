@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -50,16 +51,16 @@ func (p *GenericPhase) SetManager(m *Manager) {
 	p.manager = m
 }
 
-func (p *GenericPhase) parallelDo(hosts cluster.Hosts, funcs ...func(h *cluster.Host) error) error {
+func (p *GenericPhase) parallelDo(ctx context.Context, hosts cluster.Hosts, funcs ...func(context.Context, *cluster.Host) error) error {
 	if p.manager.Concurrency == 0 {
-		return hosts.ParallelEach(funcs...)
+		return hosts.ParallelEach(ctx, funcs...)
 	}
-	return hosts.BatchedParallelEach(p.manager.Concurrency, funcs...)
+	return hosts.BatchedParallelEach(ctx, p.manager.Concurrency, funcs...)
 }
 
-func (p *GenericPhase) parallelDoUpload(hosts cluster.Hosts, funcs ...func(h *cluster.Host) error) error {
+func (p *GenericPhase) parallelDoUpload(ctx context.Context, hosts cluster.Hosts, funcs ...func(context.Context, *cluster.Host) error) error {
 	if p.manager.Concurrency == 0 {
-		return hosts.ParallelEach(funcs...)
+		return hosts.ParallelEach(ctx, funcs...)
 	}
-	return hosts.BatchedParallelEach(p.manager.ConcurrentUploads, funcs...)
+	return hosts.BatchedParallelEach(ctx, p.manager.ConcurrentUploads, funcs...)
 }

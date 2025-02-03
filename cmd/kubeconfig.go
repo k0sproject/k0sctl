@@ -34,10 +34,12 @@ var kubeconfigCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		timeoutFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
 	},
 	Before: actions(initSilentLogging, initConfig, initManager),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		kubeconfigAction := action.Kubeconfig{
 			Manager:              ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
@@ -46,7 +48,7 @@ var kubeconfigCommand = &cli.Command{
 			KubeconfigCluster:    ctx.String("cluster"),
 		}
 
-		if err := kubeconfigAction.Run(); err != nil {
+		if err := kubeconfigAction.Run(ctx.Context); err != nil {
 			return fmt.Errorf("getting kubeconfig failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 

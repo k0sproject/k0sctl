@@ -30,14 +30,14 @@ func (p *ResetLeader) Prepare(config *v1beta1.Cluster) error {
 }
 
 // Run the phase
-func (p *ResetLeader) Run() error {
+func (p *ResetLeader) Run(ctx context.Context) error {
 	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
 		log.Debugf("%s: stopping k0s...", p.leader)
 		if err := p.leader.Configurer.StopService(p.leader, p.leader.K0sServiceName()); err != nil {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
 			log.Warnf("%s: k0s service stop: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: stopping k0s completed", p.leader)

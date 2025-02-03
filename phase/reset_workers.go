@@ -50,8 +50,8 @@ func (p *ResetWorkers) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ResetWorkers) Run() error {
-	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
+func (p *ResetWorkers) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain {
 			if err := p.leader.DrainNode(&cluster.Host{
@@ -82,7 +82,7 @@ func (p *ResetWorkers) Run() error {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				log.Warnf("%s: failed to wait for k0s to stop: %s", h, err.Error())
 			}
 			log.Debugf("%s: stopping k0s completed", h)
