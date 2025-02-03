@@ -85,7 +85,7 @@ var (
 
 	timeoutFlag = &cli.DurationFlag{
 		Name:  "timeout",
-		Usage: "Timeout for the whole operation",
+		Usage: "Timeout for the whole operation. Overrides any other timeouts, this can be used to make k0sctl retry for a longer time.",
 		Value: 0,
 		Action: func(ctx *cli.Context, d time.Duration) error {
 			timeoutCtx, cancel := context.WithTimeout(ctx.Context, d)
