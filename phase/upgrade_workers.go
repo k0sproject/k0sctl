@@ -155,7 +155,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			return err
 		}
 
-		if err := retry.Timeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
@@ -209,7 +209,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}

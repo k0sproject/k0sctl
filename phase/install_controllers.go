@@ -91,6 +91,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 		if p.IsWet() {
 			log.Infof("%s: generate join token for %s", p.leader, h)
 			token, err := p.Config.Spec.K0s.GenerateToken(
+				ctx,
 				p.leader,
 				"controller",
 				time.Duration(10)*time.Minute,
@@ -112,9 +113,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			if err := retry.Context(ctx, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, 30*time.Second, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
 				return fmt.Errorf("failed to connect from controller to kubernetes api - check networking: %w", err)
 			}
 		} else {
@@ -125,7 +124,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
+	return p.parallelDo(ctx, p.hosts, func(ctx context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		log.Infof("%s: writing join token to %s", h, tokenPath)
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
@@ -172,13 +171,11 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 			}
 
 			log.Infof("%s: waiting for the k0s service to start", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 				return err
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			err := retry.Context(ctx, func(_ context.Context) error {
+			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)

@@ -38,7 +38,7 @@ type prepare interface {
 
 // updateEnvironment updates the environment variables on the host and reconnects to
 // it if necessary.
-func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
+func (p *PrepareHosts) updateEnvironment(ctx context.Context, h *cluster.Host) error {
 	if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
 	// server configuration (sshd only accepts LC_* variables by default).
 	log.Infof("%s: reconnecting to apply new environment", h)
 	h.Disconnect()
-	return retry.Timeout(context.TODO(), 10*time.Minute, func(_ context.Context) error {
+	return retry.AdaptiveTimeout(ctx, 10*time.Minute, func(_ context.Context) error {
 		if err := h.Connect(); err != nil {
 			if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
 				return errors.Join(retry.ErrAbort, err)
@@ -64,7 +64,7 @@ func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
 	})
 }
 
-func (p *PrepareHosts) prepareHost(_ context.Context, h *cluster.Host) error {
+func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 	if c, ok := h.Configurer.(prepare); ok {
 		if err := c.Prepare(h); err != nil {
 			return err
@@ -73,7 +73,7 @@ func (p *PrepareHosts) prepareHost(_ context.Context, h *cluster.Host) error {
 
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating environment", h)
-		if err := p.updateEnvironment(h); err != nil {
+		if err := p.updateEnvironment(ctx, h); err != nil {
 			return fmt.Errorf("failed to updated environment: %w", err)
 		}
 	}

@@ -51,7 +51,7 @@ func (p *ResetControllers) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ResetControllers) Run(_ context.Context) error {
+func (p *ResetControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain && h.Role != "controller" {
@@ -83,7 +83,7 @@ func (p *ResetControllers) Run(_ context.Context) error {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				log.Warnf("%s: failed to wait for k0s to stop: %v", h, err)
 			}
 			log.Debugf("%s: stopping k0s completed", h)
