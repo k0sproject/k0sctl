@@ -181,7 +181,7 @@ func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 	return nil
 }
 
-func (p *GatherK0sFacts) investigateK0s(_ context.Context, h *cluster.Host) error {
+func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) error {
 	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		log.Debugf("%s: no 'k0s' binary in PATH", h)
@@ -314,7 +314,7 @@ func (p *GatherK0sFacts) investigateK0s(_ context.Context, h *cluster.Host) erro
 
 	if !h.IsController() {
 		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
-		if err := node.KubeNodeReadyFunc(h)(context.Background()); err != nil {
+		if err := node.KubeNodeReadyFunc(h)(ctx); err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
 		} else {
 			h.Metadata.Ready = true
