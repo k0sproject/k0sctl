@@ -58,7 +58,7 @@ func (p *InitializeK0s) CleanUp() {
 }
 
 // Run the phase
-func (p *InitializeK0s) Run() error {
+func (p *InitializeK0s) Run(_ context.Context) error {
 	h := p.leader
 	h.Metadata.IsK0sLeader = true
 

@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -55,7 +56,7 @@ func (p *DownloadK0s) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *DownloadK0s) Run() error {
+func (p *DownloadK0s) Run(_ context.Context) error {
 	return p.parallelDo(p.hosts, p.downloadK0s)
 }
 

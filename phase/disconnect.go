@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"context"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
@@ -23,11 +25,11 @@ func (p *Disconnect) DryRun() error {
 		return nil
 	})
 
-	return p.Run()
+	return p.Run(context.TODO())
 }
 
 // Run the phase
-func (p *Disconnect) Run() error {
+func (p *Disconnect) Run(_ context.Context) error {
 	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
 		h.Disconnect()
 		return nil

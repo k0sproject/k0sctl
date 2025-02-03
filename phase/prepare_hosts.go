@@ -28,7 +28,7 @@ func (p *PrepareHosts) Title() string {
 }
 
 // Run the phase
-func (p *PrepareHosts) Run() error {
+func (p *PrepareHosts) Run(_ context.Context) error {
 	return p.parallelDo(p.Config.Spec.Hosts, p.prepareHost)
 }
 

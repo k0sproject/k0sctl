@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -26,7 +27,7 @@ func (p *DetectOS) Title() string {
 }
 
 // Run the phase
-func (p *DetectOS) Run() error {
+func (p *DetectOS) Run(_ context.Context) error {
 	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
 		if h.OSIDOverride != "" {
 			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)

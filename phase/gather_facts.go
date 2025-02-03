@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -25,7 +26,7 @@ func (p *GatherFacts) Title() string {
 }
 
 // Run the phase
-func (p *GatherFacts) Run() error {
+func (p *GatherFacts) Run(_ context.Context) error {
 	return p.parallelDo(p.Config.Spec.Hosts, p.investigateHost)
 }
 

@@ -18,16 +18,18 @@ var backupCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		timeoutFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
 	},
 	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		backupAction := action.Backup{
 			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
 		}
 
-		if err := backupAction.Run(); err != nil {
+		if err := backupAction.Run(ctx.Context); err != nil {
 			return fmt.Errorf("backup failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 

@@ -96,7 +96,7 @@ func (p *InstallWorkers) After() error {
 }
 
 // Run the phase
-func (p *InstallWorkers) Run() error {
+func (p *InstallWorkers) Run(_ context.Context) error {
 	for i, h := range p.hosts {
 		log.Infof("%s: generating a join token for worker %d", p.leader, i+1)
 		err := p.Wet(p.leader, fmt.Sprintf("generate a k0s join token for worker %s", h), func() error {

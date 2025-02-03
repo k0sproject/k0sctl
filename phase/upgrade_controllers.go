@@ -58,7 +58,7 @@ func (p *UpgradeControllers) CleanUp() {
 }
 
 // Run the phase
-func (p *UpgradeControllers) Run() error {
+func (p *UpgradeControllers) Run(_ context.Context) error {
 	for _, h := range p.hosts {
 		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found on host")

@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"context"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,7 +23,7 @@ func (p *DaemonReload) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *DaemonReload) Run() error {
+func (p *DaemonReload) Run(_ context.Context) error {
 	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
 		log.Infof("%s: reloading service manager", h)
 		if err := h.Configurer.DaemonReload(h); err != nil {

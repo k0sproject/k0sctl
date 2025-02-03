@@ -23,7 +23,7 @@ func (p *Connect) Title() string {
 }
 
 // Run the phase
-func (p *Connect) Run() error {
+func (p *Connect) Run(_ context.Context) error {
 	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
 		return retry.Timeout(context.TODO(), 10*time.Minute, func(_ context.Context) error {
 			if err := h.Connect(); err != nil {

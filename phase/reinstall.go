@@ -40,7 +40,7 @@ func (p *Reinstall) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *Reinstall) Run() error {
+func (p *Reinstall) Run(ctx context.Context) error {
 	if p.Config.Spec.K0s.Version.LessThan(cluster.K0sForceFlagSince) {
 		log.Warnf("k0s version %s does not support install --force flag, installFlags won't be reconfigured", p.Config.Spec.K0s.Version)
 		return nil

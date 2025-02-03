@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ func (p *ValidateFacts) Title() string {
 }
 
 // Run the phase
-func (p *ValidateFacts) Run() error {
+func (p *ValidateFacts) Run(_ context.Context) error {
 	if err := p.validateDowngrade(); err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -21,7 +22,7 @@ func (p *ValidateHosts) Title() string {
 }
 
 // Run the phase
-func (p *ValidateHosts) Run() error {
+func (p *ValidateHosts) Run(_ context.Context) error {
 	p.hncount = make(map[string]int, len(p.Config.Spec.Hosts))
 	if p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
 		p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))

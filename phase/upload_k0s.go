@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -54,7 +55,7 @@ func (p *UploadK0s) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *UploadK0s) Run() error {
+func (p *UploadK0s) Run(_ context.Context) error {
 	return p.parallelDoUpload(p.hosts, p.uploadBinary)
 }
 

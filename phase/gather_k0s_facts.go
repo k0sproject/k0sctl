@@ -68,7 +68,7 @@ func (p *GatherK0sFacts) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *GatherK0sFacts) Run() error {
+func (p *GatherK0sFacts) Run(_ context.Context) error {
 	var controllers cluster.Hosts = p.hosts.Controllers()
 	if err := p.parallelDo(controllers, p.investigateK0s); err != nil {
 		return err
