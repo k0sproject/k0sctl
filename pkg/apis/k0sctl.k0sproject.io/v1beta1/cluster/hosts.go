@@ -101,6 +101,9 @@ func (hosts Hosts) Workers() Hosts {
 func (hosts Hosts) Each(ctx context.Context, filters ...func(context.Context, *Host) error) error {
 	for _, filter := range filters {
 		for _, h := range hosts {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("error from context: %w", err)
+			}
 			if err := filter(ctx, h); err != nil {
 				return err
 			}
@@ -122,6 +125,12 @@ func (hosts Hosts) ParallelEach(ctx context.Context, filters ...func(context.Con
 			wg.Add(1)
 			go func(h *Host) {
 				defer wg.Done()
+				if err := ctx.Err(); err != nil {
+					mu.Lock()
+					errors = append(errors, fmt.Sprintf("error from context: %v", err))
+					mu.Unlock()
+					return
+				}
 				if err := filter(ctx, h); err != nil {
 					mu.Lock()
 					errors = append(errors, fmt.Sprintf("%s: %s", h.String(), err.Error()))
@@ -145,6 +154,9 @@ func (hosts Hosts) BatchedParallelEach(ctx context.Context, batchSize int, filte
 		end := i + batchSize
 		if end > len(hosts) {
 			end = len(hosts)
+		}
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("error from context: %w", err)
 		}
 		if err := hosts[i:end].ParallelEach(ctx, filter...); err != nil {
 			return err
