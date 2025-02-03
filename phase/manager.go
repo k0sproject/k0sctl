@@ -207,6 +207,10 @@ func (m *Manager) Run(ctx context.Context) error {
 	for _, p := range m.phases {
 		title := p.Title()
 
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("context cancelled before entering phase %q: %w", title, err)
+		}
+
 		if p, ok := p.(withmanager); ok {
 			p.SetManager(m)
 		}
