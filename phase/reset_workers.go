@@ -82,7 +82,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				log.Warnf("%s: failed to wait for k0s to stop: %s", h, err.Error())
 			}
 			log.Debugf("%s: stopping k0s completed", h)

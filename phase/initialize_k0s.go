@@ -58,7 +58,7 @@ func (p *InitializeK0s) CleanUp() {
 }
 
 // Run the phase
-func (p *InitializeK0s) Run(_ context.Context) error {
+func (p *InitializeK0s) Run(ctx context.Context) error {
 	h := p.leader
 	h.Metadata.IsK0sLeader = true
 
@@ -111,14 +111,12 @@ func (p *InitializeK0s) Run(_ context.Context) error {
 		}
 
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
 		log.Infof("%s: wait for kubernetes to reach ready state", h)
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		err := retry.Context(ctx, func(_ context.Context) error {
+		err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
 			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"), exec.Sudo(h))
 			if out != "ok" {
 				return fmt.Errorf("kubernetes api /readyz responded with %q", out)
@@ -138,7 +136,7 @@ func (p *InitializeK0s) Run(_ context.Context) error {
 	}
 
 	if p.IsWet() && p.Config.Spec.K0s.DynamicConfig {
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.K0sDynamicConfigReadyFunc(h)); err != nil {
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.K0sDynamicConfigReadyFunc(h)); err != nil {
 			return fmt.Errorf("dynamic config reconciliation failed: %w", err)
 		}
 	}

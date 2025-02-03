@@ -58,7 +58,7 @@ func (p *UpgradeControllers) CleanUp() {
 }
 
 // Run the phase
-func (p *UpgradeControllers) Run(_ context.Context) error {
+func (p *UpgradeControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
 		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found on host")
@@ -69,7 +69,7 @@ func (p *UpgradeControllers) Run(_ context.Context) error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("wait for k0s service stop: %w", err)
 			}
 			return nil
@@ -123,7 +123,7 @@ func (p *UpgradeControllers) Run(_ context.Context) error {
 				return err
 			}
 			log.Infof("%s: waiting for the k0s service to start", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("k0s service start: %w", err)
 			}
 			return nil
@@ -133,9 +133,7 @@ func (p *UpgradeControllers) Run(_ context.Context) error {
 		}
 
 		if p.IsWet() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			err := retry.Context(ctx, func(_ context.Context) error {
+			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
