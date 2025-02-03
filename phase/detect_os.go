@@ -27,8 +27,8 @@ func (p *DetectOS) Title() string {
 }
 
 // Run the phase
-func (p *DetectOS) Run(_ context.Context) error {
-	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
+func (p *DetectOS) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
 		if h.OSIDOverride != "" {
 			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
 		}

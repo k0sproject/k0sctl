@@ -46,7 +46,7 @@ func (p *InstallControllers) CleanUp() {
 	_ = p.After()
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
-	}).ParallelEach(func(h *cluster.Host) error {
+	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
@@ -86,7 +86,7 @@ func (p *InstallControllers) After() error {
 }
 
 // Run the phase
-func (p *InstallControllers) Run(_ context.Context) error {
+func (p *InstallControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
 		if p.IsWet() {
 			log.Infof("%s: generate join token for %s", p.leader, h)
@@ -109,7 +109,7 @@ func (p *InstallControllers) Run(_ context.Context) error {
 			h.Metadata.K0sTokenData.URL = p.Config.Spec.KubeAPIURL()
 		}
 	}
-	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -125,7 +125,7 @@ func (p *InstallControllers) Run(_ context.Context) error {
 	if err != nil {
 		return err
 	}
-	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		log.Infof("%s: writing join token to %s", h, tokenPath)
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {

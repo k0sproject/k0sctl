@@ -217,11 +217,11 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 }
 
 // Run the phase
-func (p *ConfigureK0s) Run(_ context.Context) error {
+func (p *ConfigureK0s) Run(ctx context.Context) error {
 	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
 	})
-	return p.parallelDo(controllers, p.configureK0s)
+	return p.parallelDo(ctx, controllers, p.configureK0s)
 }
 
 func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
@@ -258,7 +258,7 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	return nil
 }
 
-func (p *ConfigureK0s) configureK0s(h *cluster.Host) error {
+func (p *ConfigureK0s) configureK0s(_ context.Context, h *cluster.Host) error {
 	path := h.K0sConfigPath()
 	if h.Configurer.FileExist(h, path) {
 		if !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {

@@ -40,7 +40,7 @@ func (p *Reinstall) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *Reinstall) Run(_ context.Context) error {
+func (p *Reinstall) Run(ctx context.Context) error {
 	if !cluster.K0sForceFlagSince.Check(p.Config.Spec.K0s.Version) {
 		log.Warnf("k0s version %s does not support install --force flag, installFlags won't be reconfigured", p.Config.Spec.K0s.Version)
 		return nil
@@ -48,8 +48,8 @@ func (p *Reinstall) Run(_ context.Context) error {
 	controllers := p.hosts.Controllers()
 	if len(controllers) > 0 {
 		log.Infof("Reinstalling %d controllers sequentially", len(controllers))
-		err := controllers.Each(func(h *cluster.Host) error {
-			return p.reinstall(h)
+		err := controllers.Each(ctx, func(ctx context.Context, h *cluster.Host) error {
+			return p.reinstall(ctx, h)
 		})
 		if err != nil {
 			return err
@@ -68,10 +68,10 @@ func (p *Reinstall) Run(_ context.Context) error {
 
 	log.Infof("Reinstalling max %d workers in parallel", concurrentReinstalls)
 
-	return p.hosts.BatchedParallelEach(concurrentReinstalls, p.reinstall)
+	return p.hosts.BatchedParallelEach(ctx, concurrentReinstalls, p.reinstall)
 }
 
-func (p *Reinstall) reinstall(h *cluster.Host) error {
+func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 	if p.Config.Spec.K0s.DynamicConfig && h.Role != "worker" {
 		h.InstallFlags.AddOrReplace("--enable-dynamic-config")
 	}
@@ -98,7 +98,7 @@ func (p *Reinstall) reinstall(h *cluster.Host) error {
 			return fmt.Errorf("failed to restart k0s: %w", err)
 		}
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.Timeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return fmt.Errorf("k0s did not restart: %w", err)
 		}
 		return nil
