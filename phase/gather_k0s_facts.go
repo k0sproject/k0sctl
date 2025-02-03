@@ -68,9 +68,9 @@ func (p *GatherK0sFacts) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *GatherK0sFacts) Run(_ context.Context) error {
+func (p *GatherK0sFacts) Run(ctx context.Context) error {
 	var controllers cluster.Hosts = p.hosts.Controllers()
-	if err := p.parallelDo(controllers, p.investigateK0s); err != nil {
+	if err := p.parallelDo(ctx, controllers, p.investigateK0s); err != nil {
 		return err
 	}
 	p.leader = p.Config.Spec.K0sLeader()
@@ -85,7 +85,7 @@ func (p *GatherK0sFacts) Run(_ context.Context) error {
 	}
 
 	var workers cluster.Hosts = p.hosts.Workers()
-	if err := p.parallelDo(workers, p.investigateK0s); err != nil {
+	if err := p.parallelDo(ctx, workers, p.investigateK0s); err != nil {
 		return err
 	}
 
@@ -181,7 +181,7 @@ func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 	return nil
 }
 
-func (p *GatherK0sFacts) investigateK0s(h *cluster.Host) error {
+func (p *GatherK0sFacts) investigateK0s(_ context.Context, h *cluster.Host) error {
 	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
 	if err != nil {
 		log.Debugf("%s: no 'k0s' binary in PATH", h)

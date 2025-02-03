@@ -56,11 +56,11 @@ func (p *DownloadK0s) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *DownloadK0s) Run(_ context.Context) error {
-	return p.parallelDo(p.hosts, p.downloadK0s)
+func (p *DownloadK0s) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.hosts, p.downloadK0s)
 }
 
-func (p *DownloadK0s) downloadK0s(h *cluster.Host) error {
+func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
 	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)

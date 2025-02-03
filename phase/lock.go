@@ -61,18 +61,18 @@ func (p *Lock) UnlockPhase() Phase {
 }
 
 // Run the phase
-func (p *Lock) Run(_ context.Context) error {
-	if err := p.parallelDo(p.Config.Spec.Hosts, p.startLock); err != nil {
+func (p *Lock) Run(ctx context.Context) error {
+	if err := p.parallelDo(ctx, p.Config.Spec.Hosts, p.startLock); err != nil {
 		return err
 	}
-	return p.Config.Spec.Hosts.ParallelEach(p.startTicker)
+	return p.Config.Spec.Hosts.ParallelEach(ctx, p.startTicker)
 }
 
-func (p *Lock) startTicker(h *cluster.Host) error {
+func (p *Lock) startTicker(ctx context.Context, h *cluster.Host) error {
 	p.wg.Add(1)
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 	ticker := time.NewTicker(10 * time.Second)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	p.m.Lock()
 	p.cfs = append(p.cfs, cancel)
 	p.m.Unlock()
@@ -99,8 +99,8 @@ func (p *Lock) startTicker(h *cluster.Host) error {
 	return nil
 }
 
-func (p *Lock) startLock(h *cluster.Host) error {
-	return retry.Times(context.TODO(), 10, func(_ context.Context) error {
+func (p *Lock) startLock(ctx context.Context, h *cluster.Host) error {
+	return retry.Times(ctx, 10, func(_ context.Context) error {
 		return p.tryLock(h)
 	})
 }

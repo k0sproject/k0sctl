@@ -23,8 +23,8 @@ func (p *DaemonReload) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *DaemonReload) Run(_ context.Context) error {
-	return p.parallelDo(p.Config.Spec.Hosts, func(h *cluster.Host) error {
+func (p *DaemonReload) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: reloading service manager", h)
 		if err := h.Configurer.DaemonReload(h); err != nil {
 			log.Warnf("%s: failed to reload service manager: %s", h, err.Error())

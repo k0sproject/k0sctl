@@ -28,8 +28,8 @@ func (p *PrepareHosts) Title() string {
 }
 
 // Run the phase
-func (p *PrepareHosts) Run(_ context.Context) error {
-	return p.parallelDo(p.Config.Spec.Hosts, p.prepareHost)
+func (p *PrepareHosts) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.Config.Spec.Hosts, p.prepareHost)
 }
 
 type prepare interface {
@@ -64,7 +64,7 @@ func (p *PrepareHosts) updateEnvironment(h *cluster.Host) error {
 	})
 }
 
-func (p *PrepareHosts) prepareHost(h *cluster.Host) error {
+func (p *PrepareHosts) prepareHost(_ context.Context, h *cluster.Host) error {
 	if c, ok := h.Configurer.(prepare); ok {
 		if err := c.Prepare(h); err != nil {
 			return err

@@ -55,11 +55,11 @@ func (p *UploadK0s) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *UploadK0s) Run(_ context.Context) error {
-	return p.parallelDoUpload(p.hosts, p.uploadBinary)
+func (p *UploadK0s) Run(ctx context.Context) error {
+	return p.parallelDoUpload(ctx, p.hosts, p.uploadBinary)
 }
 
-func (p *UploadK0s) uploadBinary(h *cluster.Host) error {
+func (p *UploadK0s) uploadBinary(_ context.Context, h *cluster.Host) error {
 	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	stat, err := os.Stat(h.UploadBinaryPath)

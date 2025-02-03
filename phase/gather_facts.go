@@ -26,11 +26,11 @@ func (p *GatherFacts) Title() string {
 }
 
 // Run the phase
-func (p *GatherFacts) Run(_ context.Context) error {
-	return p.parallelDo(p.Config.Spec.Hosts, p.investigateHost)
+func (p *GatherFacts) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.Config.Spec.Hosts, p.investigateHost)
 }
 
-func (p *GatherFacts) investigateHost(h *cluster.Host) error {
+func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error {
 	output, err := h.Configurer.Arch(h)
 	if err != nil {
 		return err
