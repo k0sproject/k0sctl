@@ -50,7 +50,7 @@ func (p *ResetWorkers) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ResetWorkers) Run() error {
+func (p *ResetWorkers) Run(_ context.Context) error {
 	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
 		log.Debugf("%s: draining node", h)
 		if !p.NoDrain {

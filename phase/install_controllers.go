@@ -86,7 +86,7 @@ func (p *InstallControllers) After() error {
 }
 
 // Run the phase
-func (p *InstallControllers) Run() error {
+func (p *InstallControllers) Run(_ context.Context) error {
 	for _, h := range p.hosts {
 		if p.IsWet() {
 			log.Infof("%s: generate join token for %s", p.leader, h)

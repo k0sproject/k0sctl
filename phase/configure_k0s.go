@@ -217,7 +217,7 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 }
 
 // Run the phase
-func (p *ConfigureK0s) Run() error {
+func (p *ConfigureK0s) Run(_ context.Context) error {
 	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
 	})

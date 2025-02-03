@@ -65,8 +65,10 @@ var applyCommand = &cli.Command{
 		redactFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
+		timeoutFlag,
 	},
 	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright, warnOldCache),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		var kubeconfigOut io.Writer
 
@@ -95,7 +97,7 @@ var applyCommand = &cli.Command{
 
 		applyAction := action.NewApply(applyOpts)
 
-		if err := applyAction.Run(); err != nil {
+		if err := applyAction.Run(ctx.Context); err != nil {
 			return fmt.Errorf("apply failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 

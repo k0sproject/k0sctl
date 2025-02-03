@@ -35,6 +35,8 @@ type (
 )
 
 var (
+	globalCancel context.CancelFunc
+
 	debugFlag = &cli.BoolFlag{
 		Name:    "debug",
 		Usage:   "Enable debug logging",
@@ -81,6 +83,18 @@ var (
 		Value: 5,
 	}
 
+	timeoutFlag = &cli.DurationFlag{
+		Name:  "timeout",
+		Usage: "Timeout for the whole operation",
+		Value: 0,
+		Action: func(ctx *cli.Context, d time.Duration) error {
+			timeoutCtx, cancel := context.WithTimeout(ctx.Context, d)
+			ctx.Context = timeoutCtx
+			globalCancel = cancel
+			return nil
+		},
+	}
+
 	retryTimeoutFlag = &cli.DurationFlag{
 		Name:  "default-timeout",
 		Usage: "Default timeout when waiting for node state changes",
@@ -103,6 +117,13 @@ var (
 
 	Colorize = aurora.NewAurora(false)
 )
+
+func cancelTimeout(_ *cli.Context) error {
+	if globalCancel != nil {
+		globalCancel()
+	}
+	return nil
+}
 
 // actions can be used to chain action functions (for urfave/cli's Before, After, etc)
 func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {

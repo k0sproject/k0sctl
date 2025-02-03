@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/alessio/shellescape"
@@ -36,7 +37,7 @@ func (p *GetKubeconfig) DryRun() error {
 }
 
 // Run the phase
-func (p *GetKubeconfig) Run() error {
+func (p *GetKubeconfig) Run(_ context.Context) error {
 	h := p.Config.Spec.Hosts.Controllers()[0]
 
 	output, err := readKubeconfig(h)

@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -24,7 +25,6 @@ func (p *InstallBinaries) Title() string {
 func (p *InstallBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-
 		if h.Reset && h.Metadata.K0sBinaryVersion != nil {
 			return false
 		}
@@ -61,7 +61,7 @@ func (p *InstallBinaries) DryRun() error {
 }
 
 // Run the phase
-func (p *InstallBinaries) Run() error {
+func (p *InstallBinaries) Run(_ context.Context) error {
 	return p.parallelDo(p.hosts, p.installBinary)
 }
 
@@ -84,7 +84,6 @@ func (p *InstallBinaries) CleanUp() {
 		}
 		return nil
 	})
-
 	if err != nil {
 		logrus.Debugf("failed to clean up tempfiles: %v", err)
 	}

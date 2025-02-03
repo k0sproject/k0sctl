@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"strings"
 
 	"github.com/k0sproject/version"
@@ -62,7 +63,7 @@ func (p *PrepareArm) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *PrepareArm) Run() error {
+func (p *PrepareArm) Run(_ context.Context) error {
 	return p.parallelDo(p.hosts, p.etcdUnsupportedArch)
 }
 

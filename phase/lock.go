@@ -61,7 +61,7 @@ func (p *Lock) UnlockPhase() Phase {
 }
 
 // Run the phase
-func (p *Lock) Run() error {
+func (p *Lock) Run(_ context.Context) error {
 	if err := p.parallelDo(p.Config.Spec.Hosts, p.startLock); err != nil {
 		return err
 	}
