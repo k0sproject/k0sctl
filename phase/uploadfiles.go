@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -41,11 +42,11 @@ func (p *UploadFiles) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *UploadFiles) Run() error {
-	return p.parallelDoUpload(p.Config.Spec.Hosts, p.uploadFiles)
+func (p *UploadFiles) Run(ctx context.Context) error {
+	return p.parallelDoUpload(ctx, p.Config.Spec.Hosts, p.uploadFiles)
 }
 
-func (p *UploadFiles) uploadFiles(h *cluster.Host) error {
+func (p *UploadFiles) uploadFiles(_ context.Context, h *cluster.Host) error {
 	for _, f := range h.Files {
 		var err error
 		if f.IsURL() {

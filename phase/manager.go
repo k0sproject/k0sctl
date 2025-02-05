@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -20,7 +21,7 @@ var Colorize = aurora.NewAurora(false)
 
 // Phase represents a runnable phase which can be added to Manager.
 type Phase interface {
-	Run() error
+	Run(context.Context) error
 	Title() string
 }
 
@@ -173,7 +174,7 @@ func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
 }
 
 // Run executes all the added Phases in order
-func (m *Manager) Run() error {
+func (m *Manager) Run(ctx context.Context) error {
 	var ran []Phase
 	var result error
 
@@ -205,6 +206,11 @@ func (m *Manager) Run() error {
 
 	for _, p := range m.phases {
 		title := p.Title()
+
+		if err := ctx.Err(); err != nil {
+			result = fmt.Errorf("context canceled before entering phase %q: %w", title, err)
+			return result
+		}
 
 		if p, ok := p.(withmanager); ok {
 			p.SetManager(m)
@@ -240,7 +246,7 @@ func (m *Manager) Run() error {
 			continue
 		}
 
-		result = p.Run()
+		result = p.Run(ctx)
 		ran = append(ran, p)
 
 		if p, ok := p.(afterhook); ok {

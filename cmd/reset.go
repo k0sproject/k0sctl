@@ -19,6 +19,7 @@ var resetCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		timeoutFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
 		&cli.BoolFlag{
@@ -28,6 +29,7 @@ var resetCommand = &cli.Command{
 		},
 	},
 	Before: actions(initLogging, initConfig, initManager, displayCopyright),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		resetAction := action.Reset{
 			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
@@ -35,7 +37,7 @@ var resetCommand = &cli.Command{
 			Stdout:  ctx.App.Writer,
 		}
 
-		if err := resetAction.Run(); err != nil {
+		if err := resetAction.Run(ctx.Context); err != nil {
 			return fmt.Errorf("reset failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 

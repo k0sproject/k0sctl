@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -20,7 +21,7 @@ type Reset struct {
 	Force   bool
 }
 
-func (r Reset) Run() error {
+func (r Reset) Run(ctx context.Context) error {
 	if !r.Force {
 		if stdoutFile, ok := r.Stdout.(*os.File); ok && !isatty.IsTerminal(stdoutFile.Fd()) {
 			return fmt.Errorf("reset requires --force")
@@ -66,7 +67,7 @@ func (r Reset) Run() error {
 		&phase.Disconnect{},
 	)
 
-	if err := r.Manager.Run(); err != nil {
+	if err := r.Manager.Run(ctx); err != nil {
 		return err
 	}
 

@@ -2,6 +2,7 @@ package phase
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 
@@ -36,7 +37,7 @@ func (p *ApplyManifests) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ApplyManifests) Run() error {
+func (p *ApplyManifests) Run(_ context.Context) error {
 	for name, content := range p.Config.Metadata.Manifests {
 		if err := p.apply(name, content); err != nil {
 			return err

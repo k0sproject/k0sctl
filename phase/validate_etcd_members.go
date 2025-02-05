@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -50,7 +51,7 @@ func (p *ValidateEtcdMembers) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ValidateEtcdMembers) Run() error {
+func (p *ValidateEtcdMembers) Run(_ context.Context) error {
 	if err := p.validateControllerSwap(); err != nil {
 		return err
 	}

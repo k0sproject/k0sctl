@@ -73,6 +73,18 @@ func Timeout(ctx context.Context, timeout time.Duration, f func(ctx context.Cont
 	return Context(ctx, f)
 }
 
+// AdaptiveTimeout is like Timeout but uses the given timeout only if the given context does not have a deadline or has a deadline that only occurs after the given timeout.
+func AdaptiveTimeout(ctx context.Context, timeout time.Duration, f func(ctx context.Context) error) error {
+	parentDeadline, hasDeadline := ctx.Deadline()
+	newDeadline := time.Now().Add(timeout)
+
+	if hasDeadline && parentDeadline.Before(newDeadline) {
+		return Context(ctx, f)
+	}
+
+	return Timeout(ctx, timeout, f)
+}
+
 // Times is a retry wrapper that will retry the given function until it succeeds or the given number of
 // attempts have been made
 func Times(ctx context.Context, times int, f func(context.Context) error) error {
