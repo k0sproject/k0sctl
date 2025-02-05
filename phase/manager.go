@@ -208,7 +208,8 @@ func (m *Manager) Run(ctx context.Context) error {
 		title := p.Title()
 
 		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("context cancelled before entering phase %q: %w", title, err)
+			result = fmt.Errorf("context canceled before entering phase %q: %w", title, err)
+			return result
 		}
 
 		if p, ok := p.(withmanager); ok {
