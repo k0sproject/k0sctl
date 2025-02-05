@@ -96,20 +96,24 @@ var (
 	}
 
 	retryTimeoutFlag = &cli.DurationFlag{
-		Name:  "default-timeout",
-		Usage: "Default timeout when waiting for node state changes",
-		Value: retry.DefaultTimeout,
+		Name:   "default-timeout",
+		Hidden: true,
+		Usage:  "Default timeout when waiting for node state changes",
+		Value:  retry.DefaultTimeout,
 		Action: func(_ *cli.Context, d time.Duration) error {
+			log.Warnf("default-timeout flag is deprecated and will be removed, use --timeout instead")
 			retry.DefaultTimeout = d
 			return nil
 		},
 	}
 
 	retryIntervalFlag = &cli.DurationFlag{
-		Name:  "retry-interval",
-		Usage: "Retry interval when waiting for node state changes",
-		Value: retry.Interval,
+		Name:   "retry-interval",
+		Usage:  "Retry interval when waiting for node state changes",
+		Hidden: true,
+		Value:  retry.Interval,
 		Action: func(_ *cli.Context, d time.Duration) error {
+			log.Warnf("retry-interval flag is deprecated and will be removed")
 			retry.Interval = d
 			return nil
 		},
