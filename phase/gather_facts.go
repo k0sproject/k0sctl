@@ -17,7 +17,7 @@ type GatherFacts struct {
 }
 
 // K0s doesn't rely on unique machine IDs anymore since v1.30.
-var uniqueMachineIDVersion = version.MustConstraint("< v1.30-0")
+var uniqueMachineIDSince = version.MustParse("v1.30.0")
 
 // Title for the phase
 func (p *GatherFacts) Title() string {
@@ -36,7 +36,7 @@ func (p *GatherFacts) investigateHost(h *cluster.Host) error {
 	}
 	h.Metadata.Arch = output
 
-	if !p.SkipMachineIDs && uniqueMachineIDVersion.Check(p.Config.Spec.K0s.Version) {
+	if !p.SkipMachineIDs && p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
 		id, err := h.Configurer.MachineID(h)
 		if err != nil {
 			return err
