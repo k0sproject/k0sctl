@@ -97,7 +97,7 @@ func validateVersion(value interface{}) error {
 		return nil
 	}
 
-	if v.LessThan(v) {
+	if v.LessThan(k0sSupportedVersion) {
 		return fmt.Errorf("minimum supported k0s version is %s", k0sSupportedVersion)
 	}
 
