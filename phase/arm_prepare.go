@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"strings"
 
 	"github.com/k0sproject/version"
@@ -62,11 +63,11 @@ func (p *PrepareArm) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *PrepareArm) Run() error {
-	return p.parallelDo(p.hosts, p.etcdUnsupportedArch)
+func (p *PrepareArm) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.hosts, p.etcdUnsupportedArch)
 }
 
-func (p *PrepareArm) etcdUnsupportedArch(h *cluster.Host) error {
+func (p *PrepareArm) etcdUnsupportedArch(_ context.Context, h *cluster.Host) error {
 	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, h.Metadata.Arch)
 	h.Environment["ETCD_UNSUPPORTED_ARCH"] = h.Metadata.Arch
 

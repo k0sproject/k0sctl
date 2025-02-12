@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,7 +14,7 @@ type Backup struct {
 	Manager *phase.Manager
 }
 
-func (b Backup) Run() error {
+func (b Backup) Run(ctx context.Context) error {
 	start := time.Now()
 
 	lockPhase := &phase.Lock{}
@@ -32,7 +33,7 @@ func (b Backup) Run() error {
 		&phase.Disconnect{},
 	)
 
-	if err := b.Manager.Run(); err != nil {
+	if err := b.Manager.Run(ctx); err != nil {
 		return err
 	}
 

@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"path"
 
@@ -48,7 +49,7 @@ func (p *Restore) Prepare(config *v1beta1.Cluster) error {
 }
 
 // Run the phase
-func (p *Restore) Run() error {
+func (p *Restore) Run(_ context.Context) error {
 	// Push the backup file to controller
 	h := p.leader
 	tmpDir, err := h.Configurer.TempDir(h)

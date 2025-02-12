@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -20,7 +21,7 @@ type ConfigEdit struct {
 	Stdin  io.Reader
 }
 
-func (c ConfigEdit) Run() error {
+func (c ConfigEdit) Run(_ context.Context) error {
 	stdoutFile, ok := c.Stdout.(*os.File)
 
 	if !ok || !isatty.IsTerminal(stdoutFile.Fd()) {

@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -103,7 +104,7 @@ func NewApply(opts ApplyOptions) *Apply {
 }
 
 // Run the Apply action
-func (a Apply) Run() error {
+func (a Apply) Run(ctx context.Context) error {
 	if len(a.Phases) == 0 {
 		// for backwards compatibility with the old Apply struct without NewApply(..)
 		tmpApply := NewApply(a.ApplyOptions)
@@ -118,7 +119,7 @@ func (a Apply) Run() error {
 
 	var result error
 
-	if result = a.Manager.Run(); result != nil {
+	if result = a.Manager.Run(ctx); result != nil {
 		log.Info(phase.Colorize.Red("==> Apply failed").String())
 		return result
 	}

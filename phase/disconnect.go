@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"context"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
 
@@ -16,19 +18,19 @@ func (p *Disconnect) Title() string {
 
 // DryRun cleans up the temporary k0s binary from the hosts
 func (p *Disconnect) DryRun() error {
-	_ = p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
+	_ = p.Config.Spec.Hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		if h.Metadata.K0sBinaryTempFile != "" && h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
 		}
 		return nil
 	})
 
-	return p.Run()
+	return p.Run(context.TODO())
 }
 
 // Run the phase
-func (p *Disconnect) Run() error {
-	return p.Config.Spec.Hosts.ParallelEach(func(h *cluster.Host) error {
+func (p *Disconnect) Run(ctx context.Context) error {
+	return p.Config.Spec.Hosts.ParallelEach(ctx, func(_ context.Context, h *cluster.Host) error {
 		h.Disconnect()
 		return nil
 	})

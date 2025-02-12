@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -54,7 +55,7 @@ func (p *Backup) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *Backup) Run() error {
+func (p *Backup) Run(_ context.Context) error {
 	h := p.leader
 
 	log.Infof("%s: backing up", h)

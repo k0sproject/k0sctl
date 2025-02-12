@@ -1,6 +1,8 @@
 package phase
 
 import (
+	"context"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,7 +30,7 @@ func (p *Unlock) Title() string {
 }
 
 // Run the phase
-func (p *Unlock) Run() error {
+func (p *Unlock) Run(_ context.Context) error {
 	p.Cancel()
 	return nil
 }
