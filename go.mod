@@ -10,7 +10,7 @@ require (
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
 	github.com/a8m/envsubst v1.4.2
 	github.com/adrg/xdg v0.5.3
-	github.com/bmatcuk/doublestar/v4 v4.8.0
+	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/creasty/defaults v1.8.0
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
@@ -28,7 +28,7 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
-	golang.org/x/text v0.21.0
+	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 

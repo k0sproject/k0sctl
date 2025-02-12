@@ -24,7 +24,7 @@ func (p *ValidateHosts) Title() string {
 // Run the phase
 func (p *ValidateHosts) Run(ctx context.Context) error {
 	p.hncount = make(map[string]int, len(p.Config.Spec.Hosts))
-	if uniqueMachineIDVersion.Check(p.Config.Spec.K0s.Version) {
+	if p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
 		p.machineidcount = make(map[string]int, len(p.Config.Spec.Hosts))
 	}
 	p.privateaddrcount = make(map[string]int, len(p.Config.Spec.Hosts))

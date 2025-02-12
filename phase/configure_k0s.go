@@ -21,7 +21,7 @@ import (
 )
 
 // "k0s default-config" was replaced with "k0s config create" in v1.23.1+k0s.0
-var configCreateSinceVersion = version.MustConstraint(">= v1.23.1+k0s.0")
+var configCreateSince = version.MustParse("v1.23.1+k0s.0")
 
 const (
 	configSourceExisting int = iota
@@ -202,7 +202,7 @@ func (p *ConfigureK0s) ShouldRun() bool {
 func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 	log.Debugf("%s: generating default configuration", p.leader)
 	var cmd string
-	if configCreateSinceVersion.Check(p.leader.Metadata.K0sBinaryVersion) {
+	if p.leader.Metadata.K0sBinaryVersion.GreaterThanOrEqual(configCreateSince) {
 		cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
 	} else {
 		cmd = p.leader.Configurer.K0sCmdf("default-config")
@@ -228,7 +228,6 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	log.Infof("%s: validating configuration", h)
 
 	var cmd string
-	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSinceVersion)
 
 	if h.Metadata.K0sBinaryTempFile != "" {
 		oldK0sBinaryPath := h.Configurer.K0sBinaryPath()
@@ -238,7 +237,8 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 		}()
 	}
 
-	if configCreateSinceVersion.Check(p.Config.Spec.K0s.Version) {
+	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSince)
+	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
 		log.Debugf("%s: comparison result true", h)
 		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
 	} else {
