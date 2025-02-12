@@ -36,7 +36,7 @@ func (p *Restore) Prepare(config *v1beta1.Cluster) error {
 	}
 
 	// defined in backup.go
-	if !backupSinceVersion.Check(p.Config.Spec.K0s.Version) {
+	if p.Config.Spec.K0s.Version.LessThan(backupSinceVersion) {
 		return fmt.Errorf("the version of k0s on the host does not support restoring backups")
 	}
 

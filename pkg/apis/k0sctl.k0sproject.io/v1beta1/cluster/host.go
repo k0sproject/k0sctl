@@ -21,7 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var K0sForceFlagSince = version.MustConstraint(">= v1.27.4+k0s.0")
+var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 
 // Host contains all the needed details to work with hosts
 type Host struct {
@@ -179,7 +179,7 @@ type HostMetadata struct {
 	K0sInstalled      bool
 	K0sExistingConfig string
 	K0sNewConfig      string
-	K0sTokenData  TokenData
+	K0sTokenData      TokenData
 	K0sStatusArgs     Flags
 	Arch              string
 	IsK0sLeader       bool
@@ -329,7 +329,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 		}
 	}
 
-	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && !K0sForceFlagSince.Check(h.Metadata.K0sBinaryVersion) {
+	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && h.Metadata.K0sBinaryVersion.LessThan(K0sForceFlagSince) {
 		log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
 		flags.Delete("--force")
 	}

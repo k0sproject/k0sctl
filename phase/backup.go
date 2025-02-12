@@ -16,7 +16,7 @@ import (
 
 var _ Phase = &Backup{}
 
-var backupSinceVersion = version.MustConstraint(">= v1.21.0-rc.1+k0s.0")
+var backupSinceVersion = version.MustParse("v1.21.0-rc.1+k0s.0")
 
 // Backup connect to one of the controllers and takes a backup
 type Backup struct {
@@ -34,7 +34,7 @@ func (p *Backup) Title() string {
 func (p *Backup) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 
-	if !backupSinceVersion.Check(p.Config.Spec.K0s.Version) {
+	if !p.Config.Spec.K0s.Version.GreaterThanOrEqual(backupSinceVersion) {
 		return fmt.Errorf("the version of k0s on the host does not support taking backups")
 	}
 
@@ -116,7 +116,7 @@ func (p *Backup) Run() error {
 
 	if p.IsWet() {
 		// Download the file
-		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0600)
+		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0o600)
 		if err != nil {
 			return err
 		}
