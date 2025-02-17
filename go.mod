@@ -34,7 +34,7 @@ require (
 require (
 	github.com/alessio/shellescape v1.4.2
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/go-playground/validator/v10 v10.24.0
+	github.com/go-playground/validator/v10 v10.25.0
 	github.com/jellydator/validation v1.1.0
 	github.com/k0sproject/version v0.7.0
 	github.com/sergi/go-diff v1.3.1
