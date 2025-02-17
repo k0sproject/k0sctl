@@ -13,7 +13,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/creasty/defaults v1.8.0
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
-	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/k0sproject/dig v0.4.0
 	github.com/k0sproject/rig v0.19.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -37,7 +36,7 @@ require (
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/go-playground/validator/v10 v10.24.0
 	github.com/jellydator/validation v1.1.0
-	github.com/k0sproject/version v0.6.0
+	github.com/k0sproject/version v0.7.0
 	github.com/sergi/go-diff v1.3.1
 	k8s.io/client-go v0.32.2
 )
