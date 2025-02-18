@@ -1,8 +1,8 @@
 module github.com/k0sproject/k0sctl
 
-go 1.23.2
+go 1.23.0
 
-toolchain go1.23.3
+toolchain go1.24.0
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
@@ -14,7 +14,7 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/k0sproject/dig v0.4.0
-	github.com/k0sproject/rig v0.19.0
+	github.com/k0sproject/rig v0.19.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20240702205601-3fad6e106085 // indirect
@@ -23,10 +23,10 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.5
-	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/term v0.28.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v2 v2.4.0
 )
