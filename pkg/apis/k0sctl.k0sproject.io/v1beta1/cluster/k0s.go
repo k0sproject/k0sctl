@@ -24,9 +24,9 @@ import (
 const K0sMinVersion = "0.11.0-rc1"
 
 var (
-	k0sSupportedVersion           = version.MustConstraint(">= " + K0sMinVersion)
-	k0sDynamicConfigSince         = version.MustConstraint(">= 1.22.2+k0s.2")
-	k0sTokenCreateConfigFlagUntil = version.MustConstraint("< v1.23.4-rc.1+k0s.0")
+	k0sSupportedVersion           = version.MustParse(K0sMinVersion)
+	k0sDynamicConfigSince         = version.MustParse("1.22.2+k0s.2")
+	k0sTokenCreateConfigFlagUntil = version.MustParse("v1.23.4-rc.1+k0s.0")
 )
 
 // K0s holds configuration for bootstraping a k0s cluster
@@ -97,7 +97,7 @@ func validateVersion(value interface{}) error {
 		return nil
 	}
 
-	if !k0sSupportedVersion.Check(v) {
+	if v.LessThan(k0sSupportedVersion) {
 		return fmt.Errorf("minimum supported k0s version is %s", k0sSupportedVersion)
 	}
 
@@ -122,7 +122,7 @@ func (k *K0s) validateMinDynamic() func(interface{}) error {
 			return nil
 		}
 
-		if k.Version != nil && !k.Version.IsZero() && !k0sDynamicConfigSince.Check(k.Version) {
+		if k.Version != nil && !k.Version.IsZero() && k.Version.LessThan(k0sDynamicConfigSince) {
 			return fmt.Errorf("dynamic config only available since k0s version %s", k0sDynamicConfigSince)
 		}
 
@@ -153,7 +153,7 @@ func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry ti
 
 	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", h.K0sDataDir()))
 
-	if k0sTokenCreateConfigFlagUntil.Check(k.Version) {
+	if k.Version.LessThanOrEqual(k0sTokenCreateConfigFlagUntil) {
 		k0sFlags.Add(fmt.Sprintf("--config %s", shellescape.Quote(h.K0sConfigPath())))
 	}
 

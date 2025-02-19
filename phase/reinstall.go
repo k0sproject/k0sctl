@@ -36,12 +36,12 @@ func (p *Reinstall) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there are hosts that needs to be reinstalled
 func (p *Reinstall) ShouldRun() bool {
-	return cluster.K0sForceFlagSince.Check(p.Config.Spec.K0s.Version) && len(p.hosts) > 0
+	return p.Config.Spec.K0s.Version.GreaterThanOrEqual(cluster.K0sForceFlagSince) && len(p.hosts) > 0
 }
 
 // Run the phase
 func (p *Reinstall) Run(ctx context.Context) error {
-	if !cluster.K0sForceFlagSince.Check(p.Config.Spec.K0s.Version) {
+	if p.Config.Spec.K0s.Version.LessThan(cluster.K0sForceFlagSince) {
 		log.Warnf("k0s version %s does not support install --force flag, installFlags won't be reconfigured", p.Config.Spec.K0s.Version)
 		return nil
 	}
