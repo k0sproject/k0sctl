@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"golang.org/x/text/cases"
@@ -41,11 +42,11 @@ func (p *RunHooks) ShouldRun() bool {
 }
 
 // Run does all the prep work on the hosts in parallel
-func (p *RunHooks) Run() error {
-	return p.hosts.ParallelEach(p.runHooksForHost)
+func (p *RunHooks) Run(ctx context.Context) error {
+	return p.hosts.ParallelEach(ctx, p.runHooksForHost)
 }
 
-func (p *RunHooks) runHooksForHost(h *cluster.Host) error {
+func (p *RunHooks) runHooksForHost(_ context.Context, h *cluster.Host) error {
 	steps := h.Hooks.ForActionAndStage(p.Action, p.Stage)
 	for _, s := range steps {
 		err := p.Wet(h, fmt.Sprintf("run hook: `%s`", s), func() error {

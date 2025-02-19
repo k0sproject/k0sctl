@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -24,7 +25,6 @@ func (p *InstallBinaries) Title() string {
 func (p *InstallBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-
 		if h.Reset && h.Metadata.K0sBinaryVersion != nil {
 			return false
 		}
@@ -47,8 +47,9 @@ func (p *InstallBinaries) ShouldRun() bool {
 // DryRun reports what would happen if Run is called.
 func (p *InstallBinaries) DryRun() error {
 	return p.parallelDo(
+		context.Background(),
 		p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool { return h.Metadata.K0sBinaryTempFile != "" }),
-		func(h *cluster.Host) error {
+		func(_ context.Context, h *cluster.Host) error {
 			p.DryMsgf(h, "install k0s %s binary from %s to %s", p.Config.Spec.K0s.Version, h.Metadata.K0sBinaryTempFile, h.Configurer.K0sBinaryPath())
 			if err := h.Execf(`chmod +x "%s"`, h.Metadata.K0sBinaryTempFile, exec.Sudo(h)); err != nil {
 				logrus.Warnf("%s: failed to chmod k0s temp binary for dry-run: %s", h, err.Error())
@@ -61,11 +62,11 @@ func (p *InstallBinaries) DryRun() error {
 }
 
 // Run the phase
-func (p *InstallBinaries) Run() error {
-	return p.parallelDo(p.hosts, p.installBinary)
+func (p *InstallBinaries) Run(ctx context.Context) error {
+	return p.parallelDo(ctx, p.hosts, p.installBinary)
 }
 
-func (p *InstallBinaries) installBinary(h *cluster.Host) error {
+func (p *InstallBinaries) installBinary(_ context.Context, h *cluster.Host) error {
 	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
 		return fmt.Errorf("failed to install k0s binary: %w", err)
 	}
@@ -74,7 +75,7 @@ func (p *InstallBinaries) installBinary(h *cluster.Host) error {
 }
 
 func (p *InstallBinaries) CleanUp() {
-	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	err := p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if h.Metadata.K0sBinaryTempFile == "" {
 			return nil
 		}
@@ -84,7 +85,6 @@ func (p *InstallBinaries) CleanUp() {
 		}
 		return nil
 	})
-
 	if err != nil {
 		logrus.Debugf("failed to clean up tempfiles: %v", err)
 	}

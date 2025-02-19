@@ -40,7 +40,7 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
-	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	err := p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found on host")
 		}
@@ -64,7 +64,7 @@ func (p *UpgradeWorkers) CleanUp() {
 	if !p.IsWet() {
 		return
 	}
-	_ = p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	_ = p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
@@ -76,7 +76,7 @@ func (p *UpgradeWorkers) CleanUp() {
 }
 
 // Run the phase
-func (p *UpgradeWorkers) Run() error {
+func (p *UpgradeWorkers) Run(ctx context.Context) error {
 	// Upgrade worker hosts parallelly in 10% chunks
 	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * 0.10))
 	if concurrentUpgrades == 0 {
@@ -84,7 +84,7 @@ func (p *UpgradeWorkers) Run() error {
 	}
 
 	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
-	return p.hosts.BatchedParallelEach(concurrentUpgrades,
+	return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
 		p.start,
 		p.cordonWorker,
 		p.drainWorker,
@@ -94,7 +94,7 @@ func (p *UpgradeWorkers) Run() error {
 	)
 }
 
-func (p *UpgradeWorkers) cordonWorker(h *cluster.Host) error {
+func (p *UpgradeWorkers) cordonWorker(_ context.Context, h *cluster.Host) error {
 	if p.NoDrain {
 		log.Debugf("%s: not cordoning because --no-drain given", h)
 		return nil
@@ -110,7 +110,7 @@ func (p *UpgradeWorkers) cordonWorker(h *cluster.Host) error {
 	return nil
 }
 
-func (p *UpgradeWorkers) uncordonWorker(h *cluster.Host) error {
+func (p *UpgradeWorkers) uncordonWorker(_ context.Context, h *cluster.Host) error {
 	if !p.IsWet() {
 		p.DryMsg(h, "uncordon node")
 		return nil
@@ -122,7 +122,7 @@ func (p *UpgradeWorkers) uncordonWorker(h *cluster.Host) error {
 	return nil
 }
 
-func (p *UpgradeWorkers) drainWorker(h *cluster.Host) error {
+func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 	if p.NoDrain {
 		log.Debugf("%s: not draining because --no-drain given", h)
 		return nil
@@ -138,24 +138,24 @@ func (p *UpgradeWorkers) drainWorker(h *cluster.Host) error {
 	return nil
 }
 
-func (p *UpgradeWorkers) start(h *cluster.Host) error {
+func (p *UpgradeWorkers) start(_ context.Context, h *cluster.Host) error {
 	log.Infof("%s: starting upgrade", h)
 	return nil
 }
 
-func (p *UpgradeWorkers) finish(h *cluster.Host) error {
+func (p *UpgradeWorkers) finish(_ context.Context, h *cluster.Host) error {
 	log.Infof("%s: upgrade finished", h)
 	return nil
 }
 
-func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
+func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) error {
 	log.Debugf("%s: stop service", h)
 	err := p.Wet(h, "stop k0s service", func() error {
 		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 			return err
 		}
 
-		if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
@@ -209,7 +209,7 @@ func (p *UpgradeWorkers) upgradeWorker(h *cluster.Host) error {
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}

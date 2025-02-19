@@ -14,6 +14,7 @@ var configStatusCommand = &cli.Command{
 		debugFlag,
 		traceFlag,
 		redactFlag,
+		timeoutFlag,
 		&cli.StringFlag{
 			Name:    "output",
 			Usage:   "kubectl output formatting",
@@ -21,6 +22,7 @@ var configStatusCommand = &cli.Command{
 		},
 	},
 	Before: actions(initLogging, initConfig),
+	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		cfg, err := readConfig(ctx)
 		if err != nil {
@@ -33,6 +35,6 @@ var configStatusCommand = &cli.Command{
 			Writer: ctx.App.Writer,
 		}
 
-		return configStatusAction.Run()
+		return configStatusAction.Run(ctx.Context)
 	},
 }

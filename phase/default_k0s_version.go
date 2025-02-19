@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/k0sproject/version"
@@ -20,7 +21,7 @@ func (p *DefaultK0sVersion) Title() string {
 	return "Set k0s version"
 }
 
-func (p *DefaultK0sVersion) Run() error {
+func (p *DefaultK0sVersion) Run(_ context.Context) error {
 	isStable := p.Config.Spec.K0s.VersionChannel == "" || p.Config.Spec.K0s.VersionChannel == "stable"
 
 	var msg string

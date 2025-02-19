@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,7 +42,7 @@ func (p *DownloadBinaries) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *DownloadBinaries) Run() error {
+func (p *DownloadBinaries) Run(_ context.Context) error {
 	var bins binaries
 
 	for _, h := range p.hosts {

@@ -47,7 +47,7 @@ func (p *InstallWorkers) CleanUp() {
 	_ = p.After()
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
-	}).ParallelEach(func(h *cluster.Host) error {
+	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
@@ -96,11 +96,12 @@ func (p *InstallWorkers) After() error {
 }
 
 // Run the phase
-func (p *InstallWorkers) Run() error {
+func (p *InstallWorkers) Run(ctx context.Context) error {
 	for i, h := range p.hosts {
 		log.Infof("%s: generating a join token for worker %d", p.leader, i+1)
 		err := p.Wet(p.leader, fmt.Sprintf("generate a k0s join token for worker %s", h), func() error {
 			t, err := p.Config.Spec.K0s.GenerateToken(
+				ctx,
 				p.leader,
 				"worker",
 				time.Duration(10*time.Minute),
@@ -127,12 +128,10 @@ func (p *InstallWorkers) Run() error {
 		}
 	}
 
-	err := p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			err := retry.Context(ctx, func(_ context.Context) error {
+			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
 				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/version' --kubeconfig=/dev/stdin"), exec.Sudo(h), exec.Stdin(string(h.Metadata.K0sTokenData.Kubeconfig)))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
@@ -151,7 +150,7 @@ func (p *InstallWorkers) Run() error {
 		return err
 	}
 
-	return p.parallelDo(p.hosts, func(h *cluster.Host) error {
+	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
 			log.Infof("%s: writing join token to %s", h, tokenPath)
@@ -224,7 +223,7 @@ func (p *InstallWorkers) Run() error {
 			log.Infof("%s: waiting for node to become ready", h)
 
 			if p.IsWet() {
-				if err := retry.Timeout(context.TODO(), retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+				if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
 					return err
 				}
 				h.Metadata.Ready = true

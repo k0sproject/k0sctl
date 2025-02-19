@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -97,10 +98,13 @@ func (hosts Hosts) Workers() Hosts {
 }
 
 // Each runs a function (or multiple functions chained) on every Host.
-func (hosts Hosts) Each(filters ...func(h *Host) error) error {
+func (hosts Hosts) Each(ctx context.Context, filters ...func(context.Context, *Host) error) error {
 	for _, filter := range filters {
 		for _, h := range hosts {
-			if err := filter(h); err != nil {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("error from context: %w", err)
+			}
+			if err := filter(ctx, h); err != nil {
 				return err
 			}
 		}
@@ -111,7 +115,7 @@ func (hosts Hosts) Each(filters ...func(h *Host) error) error {
 
 // ParallelEach runs a function (or multiple functions chained) on every Host parallelly.
 // Any errors will be concatenated and returned.
-func (hosts Hosts) ParallelEach(filters ...func(h *Host) error) error {
+func (hosts Hosts) ParallelEach(ctx context.Context, filters ...func(context.Context, *Host) error) error {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var errors []string
@@ -121,7 +125,13 @@ func (hosts Hosts) ParallelEach(filters ...func(h *Host) error) error {
 			wg.Add(1)
 			go func(h *Host) {
 				defer wg.Done()
-				if err := filter(h); err != nil {
+				if err := ctx.Err(); err != nil {
+					mu.Lock()
+					errors = append(errors, fmt.Sprintf("error from context: %v", err))
+					mu.Unlock()
+					return
+				}
+				if err := filter(ctx, h); err != nil {
 					mu.Lock()
 					errors = append(errors, fmt.Sprintf("%s: %s", h.String(), err.Error()))
 					mu.Unlock()
@@ -139,13 +149,16 @@ func (hosts Hosts) ParallelEach(filters ...func(h *Host) error) error {
 }
 
 // BatchedParallelEach runs a function (or multiple functions chained) on every Host parallelly in groups of batchSize hosts.
-func (hosts Hosts) BatchedParallelEach(batchSize int, filter ...func(h *Host) error) error {
+func (hosts Hosts) BatchedParallelEach(ctx context.Context, batchSize int, filter ...func(context.Context, *Host) error) error {
 	for i := 0; i < len(hosts); i += batchSize {
 		end := i + batchSize
 		if end > len(hosts) {
 			end = len(hosts)
 		}
-		if err := hosts[i:end].ParallelEach(filter...); err != nil {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("error from context: %w", err)
+		}
+		if err := hosts[i:end].ParallelEach(ctx, filter...); err != nil {
 			return err
 		}
 	}

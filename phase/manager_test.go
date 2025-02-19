@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,7 @@ func (p *conditionalPhase) ShouldRun() bool {
 	return false
 }
 
-func (p *conditionalPhase) Run() error {
+func (p *conditionalPhase) Run(_ context.Context) error {
 	p.runCalled = true
 	return nil
 }
@@ -32,7 +33,7 @@ func TestConditionalPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &conditionalPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.NoError(t, m.Run(context.Background()))
 	require.False(t, p.runCalled, "run was not called")
 	require.True(t, p.shouldrunCalled, "shouldrun was not called")
 }
@@ -50,7 +51,7 @@ func (p *configPhase) Prepare(c *v1beta1.Cluster) error {
 	return nil
 }
 
-func (p *configPhase) Run() error {
+func (p *configPhase) Run(_ context.Context) error {
 	return nil
 }
 
@@ -58,14 +59,17 @@ func TestConfigPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &configPhase{}
 	m.AddPhase(p)
-	require.NoError(t, m.Run())
+	require.NoError(t, m.Run(context.Background()))
 	require.True(t, p.receivedConfig, "config was not received")
 }
 
 type hookedPhase struct {
-	beforeCalled bool
-	afterCalled  bool
-	err          error
+	fn            func() error
+	beforeCalled  bool
+	afterCalled   bool
+	cleanupCalled bool
+	runCalled     bool
+	err           error
 }
 
 func (p *hookedPhase) Title() string {
@@ -83,7 +87,15 @@ func (p *hookedPhase) After(err error) error {
 	return nil
 }
 
-func (p *hookedPhase) Run() error {
+func (p *hookedPhase) CleanUp() {
+	p.cleanupCalled = true
+}
+
+func (p *hookedPhase) Run(_ context.Context) error {
+	p.runCalled = true
+	if p.fn != nil {
+		return p.fn()
+	}
 	return fmt.Errorf("run failed")
 }
 
@@ -91,8 +103,32 @@ func TestHookedPhase(t *testing.T) {
 	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
 	p := &hookedPhase{}
 	m.AddPhase(p)
-	require.Error(t, m.Run())
+	require.Error(t, m.Run(context.Background()))
 	require.True(t, p.beforeCalled, "before hook was not called")
 	require.True(t, p.afterCalled, "after hook was not called")
 	require.EqualError(t, p.err, "run failed")
+}
+
+func TestContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
+	p1 := &hookedPhase{fn: func() error {
+		cancel()
+		return nil
+	}}
+	p2 := &hookedPhase{}
+	m.AddPhase(p1, p2)
+	require.Error(t, m.Run(ctx))
+	require.Contains(t, ctx.Err().Error(), "cancel")
+
+	require.True(t, p1.beforeCalled, "1st before hook was not called")
+	require.True(t, p1.afterCalled, "1st after hook was not called")
+	require.True(t, p1.runCalled, "1st run was not called")
+	// this should happen because the phase was completed before the context was cancelled
+	require.True(t, p1.cleanupCalled, "1st cleanup was not called")
+
+	require.False(t, p2.beforeCalled, "2nd before hook was called")
+	require.False(t, p2.afterCalled, "2nd after hook was called")
+	require.False(t, p2.runCalled, "2nd run was called")
+	require.False(t, p2.cleanupCalled, "2nd cleanup was called")
 }

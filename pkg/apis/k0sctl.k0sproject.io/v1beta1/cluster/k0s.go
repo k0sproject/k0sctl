@@ -146,7 +146,7 @@ func (k *K0s) NodeConfig() dig.Mapping {
 }
 
 // GenerateToken runs the k0s token create command
-func (k *K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string, error) {
+func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry time.Duration) (string, error) {
 	var k0sFlags Flags
 	k0sFlags.Add(fmt.Sprintf("--role %s", role))
 	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
@@ -158,7 +158,7 @@ func (k *K0s) GenerateToken(h *Host, role string, expiry time.Duration) (string,
 	}
 
 	var token string
-	err := retry.Timeout(context.TODO(), retry.DefaultTimeout, func(_ context.Context) error {
+	err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
 		output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("create token: %w", err)

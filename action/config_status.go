@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -15,7 +16,7 @@ type ConfigStatus struct {
 	Writer      io.Writer
 }
 
-func (c ConfigStatus) Run() error {
+func (c ConfigStatus) Run(_ context.Context) error {
 	h := c.Config.Spec.K0sLeader()
 
 	if err := h.Connect(); err != nil {
