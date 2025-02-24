@@ -11,7 +11,7 @@ import (
 
 	"github.com/jellydator/validation"
 
-	"github.com/alessio/shellescape"
+	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/retry"

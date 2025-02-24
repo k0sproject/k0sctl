@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alessio/shellescape"
+	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"

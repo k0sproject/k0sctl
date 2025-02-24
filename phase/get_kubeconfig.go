@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/alessio/shellescape"
+	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	"k8s.io/client-go/tools/clientcmd"
