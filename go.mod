@@ -1,14 +1,13 @@
 module github.com/k0sproject/k0sctl
 
 go 1.23.0
-
 toolchain go1.24.0
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
-	github.com/a8m/envsubst v1.4.2
+	github.com/a8m/envsubst v1.4.3
 	github.com/adrg/xdg v0.5.3
 	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/creasty/defaults v1.8.0
