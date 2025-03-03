@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -51,7 +53,7 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 		return fmt.Errorf("all controllers are marked to be reset - this will break the cluster. use `k0sctl reset` instead if that is intentional")
 	}
 
-	return p.parallelDo(
+	err := p.parallelDo(
 		ctx,
 		p.Config.Spec.Hosts,
 		p.warnK0sBinaryPath,
@@ -61,6 +63,10 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 		p.validateSudo,
 		p.cleanUpOldK0sTmpFiles,
 	)
+	if err != nil {
+		return err
+	}
+	return p.validateClockSkew(ctx)
 }
 
 func (p *ValidateHosts) warnK0sBinaryPath(_ context.Context, h *cluster.Host) error {
@@ -131,5 +137,51 @@ func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host
 	if err != nil {
 		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
 	}
+	return nil
+}
+
+const maxSkew = 30 * time.Second
+
+func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
+	log.Infof("validating clock skew")
+	skews := make(map[*cluster.Host]time.Duration, len(p.Config.Spec.Hosts))
+	var skewValues []time.Duration
+	var mu sync.Mutex
+
+	// Collect skews relative to local time
+	err := p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
+		remote, err := h.Configurer.SystemTime(h)
+		if err != nil {
+			return fmt.Errorf("failed to get time from %s: %w", h, err)
+		}
+		skew := time.Now().UTC().Sub(remote).Round(time.Second)
+		mu.Lock()
+		skews[h] = skew
+		skewValues = append(skewValues, skew)
+		mu.Unlock()
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Sort skews to find the median
+	sort.Slice(skewValues, func(i, j int) bool { return skewValues[i] < skewValues[j] })
+	median := skewValues[len(skewValues)/2]
+
+	// Check if any skew exceeds the maxSkew relative to the median
+	var foundExceeding int
+	for h, skew := range skews {
+		deviation := (skew - median).Abs()
+		if deviation > maxSkew {
+			log.Errorf("%s: clock skew of %.0f seconds exceeds the maximum of %.0f seconds", h, deviation.Seconds(), maxSkew.Seconds())
+			foundExceeding++
+		}
+	}
+
+	if foundExceeding > 0 {
+		return fmt.Errorf("clock skew exceeds the maximum on %d hosts", foundExceeding)
+	}
+
 	return nil
 }
