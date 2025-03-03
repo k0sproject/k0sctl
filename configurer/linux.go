@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/rig/exec"
@@ -303,4 +304,18 @@ func (l *Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
 
 func (l *Linux) MachineID(h os.Host) (string, error) {
 	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
+}
+
+// SystemTime returns the system time as UTC reported by the OS or an error if this fails
+func (l *Linux) SystemTime(h os.Host) (time.Time, error) {
+	// get utc time as a unix timestamp
+	out, err := h.ExecOutput("date -u +\"%s\"")
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get system time: %w", err)
+	}
+	unixTime, err := strconv.ParseInt(out, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse system time: %w", err)
+	}
+	return time.Unix(unixTime, 0), nil
 }
