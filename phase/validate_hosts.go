@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -110,14 +111,19 @@ const maxSkew = 30 * time.Second
 func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 	log.Infof("validating clock skew")
 	skews := make(map[*cluster.Host]time.Duration, len(p.Config.Spec.Hosts))
+	var skewValues []time.Duration
 	var mu sync.Mutex
+
+	// Collect skews relative to local time
 	err := p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
 		remote, err := h.Configurer.SystemTime(h)
 		if err != nil {
 			return fmt.Errorf("failed to get time from %s: %w", h, err)
 		}
+		skew := time.Now().UTC().Sub(remote).Round(time.Second)
 		mu.Lock()
-		skews[h] = time.Now().UTC().Sub(remote).Round(time.Second).Abs()
+		skews[h] = skew
+		skewValues = append(skewValues, skew)
 		mu.Unlock()
 		return nil
 	})
@@ -125,27 +131,16 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 		return err
 	}
 
-	// find maximum deviation
-	var max time.Duration
-	var maxHost *cluster.Host
-	for h, skew := range skews {
-		abs := skew.Abs()
-		if abs > max {
-			max = abs
-			maxHost = h
-		}
-	}
+	// Sort skews to find the median
+	sort.Slice(skewValues, func(i, j int) bool { return skewValues[i] < skewValues[j] })
+	median := skewValues[len(skewValues)/2]
 
-	// find deviations from the maximum
+	// Check if any skew exceeds the maxSkew relative to the median
 	var foundExceeding int
 	for h, skew := range skews {
-		if h == maxHost {
-			continue
-		}
-		deviation := skew.Abs() - max
-		log.Debugf("%s: clock skew compared to highest is %.0f seconds", h, skew.Seconds())
+		deviation := (skew - median).Abs()
 		if deviation > maxSkew {
-			log.Errorf("%s: clock skew of %.0f seconds exceeds the maximum of %.0f", h, skew.Seconds(), maxSkew.Seconds())
+			log.Errorf("%s: clock skew of %.0f seconds exceeds the maximum of %.0f seconds", h, deviation.Seconds(), maxSkew.Seconds())
 			foundExceeding++
 		}
 	}
@@ -153,5 +148,6 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 	if foundExceeding > 0 {
 		return fmt.Errorf("clock skew exceeds the maximum on %d hosts", foundExceeding)
 	}
+
 	return nil
 }
