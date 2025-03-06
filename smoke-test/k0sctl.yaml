@@ -13,6 +13,7 @@ spec:
         apply:
           before:
             - "echo hello > apply.hook"
+            - "echo this should get deleted > /usr/local/bin/k0s.tmp.1234 && touch -d '-1 hour' /usr/local/bin/k0s.tmp.1234"
           after:
             - "grep -q hello apply.hook"
     - role: worker
