@@ -17,6 +17,10 @@ echo "* Apply OK"
 
 echo "* Verify hooks were executed on the host"
 bootloose ssh root@manager0 -- grep -q hello apply.hook
+if bootloose ssh root@manager0 -- test -e /usr/local/bin/k0s.tmp.1234; then
+  echo "k0s.tmp.1234 still exists" 
+  exit 1
+fi
 
 echo "* Verify 'k0sctl kubeconfig' output includes 'data' block"
 ../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
