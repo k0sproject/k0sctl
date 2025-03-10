@@ -391,6 +391,10 @@ func (h *Host) InstallK0sBinary(path string) error {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
 
+	if err := h.Configurer.DeleteFile(h, path); err != nil {
+		log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
+	}
+
 	return nil
 }
 
