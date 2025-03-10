@@ -3,6 +3,7 @@ package linux
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"testing"
 
 	"github.com/k0sproject/rig/exec"
@@ -13,7 +14,7 @@ type mockHost struct {
 	ExecFError bool
 }
 
-func (m mockHost) Upload(source, destination string, opts ...exec.Option) error {
+func (m mockHost) Upload(source, destination string, perm fs.FileMode, opts ...exec.Option) error {
 	return nil
 }
 
