@@ -169,6 +169,7 @@ type configurer interface {
 	UpsertFile(os.Host, string, string) error
 	MachineID(os.Host) (string, error)
 	SetPath(string, string)
+	SystemTime(os.Host) (time.Time, error)
 }
 
 // HostMetadata resolved metadata for host
