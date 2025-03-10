@@ -123,7 +123,11 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 
 		if h.FileChanged(src, dest) {
 			err := p.Wet(h, fmt.Sprintf("upload file %s => %s", src, dest), func() error {
-				return h.Upload(path.Join(f.Base, s.Path), dest, exec.Sudo(h), exec.LogError(true))
+				stat, err := os.Stat(src)
+				if err != nil {
+					return fmt.Errorf("failed to stat local file %s: %w", src, err)
+				}
+				return h.Upload(path.Join(f.Base, s.Path), dest, stat.Mode(), exec.Sudo(h), exec.LogError(true))
 			})
 			if err != nil {
 				return err

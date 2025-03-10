@@ -57,7 +57,7 @@ func (p *Restore) Run(_ context.Context) error {
 		return err
 	}
 	dstFile := path.Join(tmpDir, "k0s_backup.tar.gz")
-	if err := h.Upload(p.RestoreFrom, dstFile, exec.LogError(true)); err != nil {
+	if err := h.Upload(p.RestoreFrom, dstFile, 0o600, exec.LogError(true)); err != nil {
 		return err
 	}
 
