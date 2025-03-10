@@ -82,3 +82,13 @@ func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
 
 	return nil
 }
+
+// Cleanup removes the binary temp file if it wasn't used
+func (p *DownloadK0s) CleanUp() {
+	_ = p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
+		if h.Metadata.K0sBinaryTempFile != "" {
+			_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
+		}
+		return nil
+	})
+}

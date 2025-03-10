@@ -70,6 +70,7 @@ func (p *InstallBinaries) installBinary(_ context.Context, h *cluster.Host) erro
 	if err := h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version); err != nil {
 		return fmt.Errorf("failed to install k0s binary: %w", err)
 	}
+	h.Metadata.K0sBinaryTempFile = ""
 
 	return nil
 }
@@ -80,9 +81,7 @@ func (p *InstallBinaries) CleanUp() {
 			return nil
 		}
 		logrus.Infof("%s: cleaning up k0s binary tempfile", h)
-		if err := h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile); err != nil {
-			return fmt.Errorf("clean up tempfile: %w", err)
-		}
+		_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
 		return nil
 	})
 	if err != nil {
