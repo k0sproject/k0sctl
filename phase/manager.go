@@ -3,6 +3,8 @@ package phase
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -111,6 +113,7 @@ type Manager struct {
 	Concurrency       int
 	ConcurrentUploads int
 	DryRun            bool
+	Writer            io.Writer
 
 	dryMessages map[string][]string
 	dryMu       sync.Mutex
@@ -122,7 +125,7 @@ func NewManager(config *v1beta1.Cluster) (*Manager, error) {
 		return nil, fmt.Errorf("config is nil")
 	}
 
-	return &Manager{Config: config}, nil
+	return &Manager{Config: config, Writer: os.Stdout}, nil
 }
 
 // AddPhase adds a Phase to Manager
@@ -181,13 +184,13 @@ func (m *Manager) Run(ctx context.Context) error {
 	defer func() {
 		if m.DryRun {
 			if len(m.dryMessages) == 0 {
-				fmt.Println(Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
+				fmt.Fprintln(m.Writer, Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
 				return
 			}
 
-			fmt.Println(Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
+			fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
 			for host, msgs := range m.dryMessages {
-				fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
+				fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
 				for _, msg := range msgs {
 					fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
 				}

@@ -148,6 +148,7 @@ func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
 
 // initConfig takes the config flag, does some magic and replaces the value with the file contents
 func initConfig(ctx *cli.Context) error {
+	println("initconfig")
 	f := ctx.StringSlice("config")
 	if len(f) == 0 || f[0] == "" {
 		return nil
@@ -187,7 +188,7 @@ func initConfig(ctx *cli.Context) error {
 	manifestReader := &manifest.Reader{}
 
 	for _, f := range configs {
-		file, err := configReader(f)
+		file, err := configReader(ctx, f)
 		if err != nil {
 			return err
 		}
@@ -220,9 +221,9 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(ctx *cli.Context) error {
-	fmt.Printf("k0sctl %s Copyright 2023, k0sctl authors.\n", k0sctl.Version)
-	fmt.Println("By continuing to use k0sctl you agree to these terms:")
-	fmt.Println("https://k0sproject.io/licenses/eula")
+	fmt.Fprintf(ctx.App.Writer, "k0sctl %s Copyright 2023, k0sctl authors.\n", k0sctl.Version)
+	fmt.Fprintln(ctx.App.Writer, "By continuing to use k0sctl you agree to these terms:")
+	fmt.Fprintln(ctx.App.Writer, "https://k0sproject.io/licenses/eula")
 	return nil
 }
 
@@ -308,6 +309,7 @@ func initManager(ctx *cli.Context) error {
 	manager.Concurrency = ctx.Int("concurrency")
 	manager.ConcurrentUploads = ctx.Int("concurrent-uploads")
 	manager.DryRun = ctx.Bool("dry-run")
+	manager.Writer = ctx.App.Writer
 
 	ctx.Context = context.WithValue(ctx.Context, ctxManagerKey{}, manager)
 
@@ -316,9 +318,10 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
+	println("initlogging")
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
-	initScreenLogger(logLevelFromCtx(ctx, log.InfoLevel))
+	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
 	exec.DisableRedact = ctx.Bool("no-redact")
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger(ctx)
@@ -330,7 +333,7 @@ func initSilentLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	exec.DisableRedact = ctx.Bool("no-redact")
-	initScreenLogger(logLevelFromCtx(ctx, log.FatalLevel))
+	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
 	rig.SetLogger(log.StandardLogger())
 	return initFileLogger(ctx)
 }
@@ -345,8 +348,8 @@ func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
 	}
 }
 
-func initScreenLogger(lvl log.Level) {
-	log.AddHook(screenLoggerHook(lvl))
+func initScreenLogger(ctx *cli.Context, lvl log.Level) {
+	log.AddHook(screenLoggerHook(ctx, lvl))
 }
 
 func initFileLogger(ctx *cli.Context) error {
@@ -380,16 +383,22 @@ func LogFile() (*os.File, error) {
 	return logFile, nil
 }
 
-func configReader(f string) (io.ReadCloser, error) {
+func configReader(ctx *cli.Context, f string) (io.ReadCloser, error) {
 	if f == "-" {
-		stat, err := os.Stdin.Stat()
-		if err != nil {
-			return nil, fmt.Errorf("can't stat stdin: %s", err.Error())
+		if inF, ok := ctx.App.Reader.(*os.File); ok {
+			stat, err := inF.Stat()
+			if err != nil {
+				return nil, fmt.Errorf("can't stat stdin: %s", err.Error())
+			}
+			if (stat.Mode() & os.ModeCharDevice) == 0 {
+				return inF, nil
+			}
+			return nil, fmt.Errorf("can't read stdin")
 		}
-		if (stat.Mode() & os.ModeCharDevice) == 0 {
-			return os.Stdin, nil
+		if inCloser, ok := ctx.App.Reader.(io.ReadCloser); ok {
+			return inCloser, nil
 		}
-		return nil, fmt.Errorf("can't read stdin")
+		return io.NopCloser(ctx.App.Reader), nil
 	}
 
 	variants := []string{f}
@@ -448,16 +457,17 @@ func (h *loghook) Fire(entry *log.Entry) error {
 	return err
 }
 
-func screenLoggerHook(lvl log.Level) *loghook {
+func screenLoggerHook(ctx *cli.Context, lvl log.Level) *loghook {
 	var forceColors bool
-	var writer io.Writer
+	writer := ctx.App.Writer
 	if runtime.GOOS == "windows" {
-		writer = ansicolor.NewAnsiColorWriter(os.Stdout)
+		writer = ansicolor.NewAnsiColorWriter((ctx.App.Writer))
 		forceColors = true
 	} else {
-		writer = os.Stdout
-		if fi, _ := os.Stdout.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
-			forceColors = true
+		if outF, ok := writer.(*os.File); ok {
+			if fi, _ := outF.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
+				forceColors = true
+			}
 		}
 	}
 
@@ -491,8 +501,8 @@ func fileLoggerHook(logFile io.Writer) *loghook {
 	return l
 }
 
-func displayLogo(_ *cli.Context) error {
-	fmt.Print(logo)
+func displayLogo(ctx *cli.Context) error {
+	fmt.Fprint(ctx.App.Writer, logo)
 	return nil
 }
 
