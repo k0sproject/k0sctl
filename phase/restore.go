@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -73,8 +74,16 @@ func (p *Restore) Run(_ context.Context) error {
 
 	// Run restore
 	log.Infof("%s: restoring cluster state", h)
-	if err := h.Exec(h.K0sRestoreCommand(dstFile), exec.Sudo(h)); err != nil {
-		return err
+	var stdout, stderr bytes.Buffer
+	cmd, err := h.ExecStreams(h.K0sRestoreCommand(dstFile), nil, &stdout, &stderr, exec.Sudo(h))
+	if err != nil {
+		return fmt.Errorf("run restore: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		log.Debugf("%s: restore stdout: %s", h, stdout.String())
+		log.Errorf("%s: restore failed: %s", h, stderr.String())
+		return fmt.Errorf("restore failed: %w", err)
 	}
 
 	return nil

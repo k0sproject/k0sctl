@@ -3,10 +3,8 @@ package phase
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"path"
-	"path/filepath"
-	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -22,6 +20,8 @@ var backupSinceVersion = version.MustParse("v1.21.0-rc.1+k0s.0")
 // Backup connect to one of the controllers and takes a backup
 type Backup struct {
 	GenericPhase
+
+	Out io.Writer
 
 	leader *cluster.Host
 }
@@ -110,26 +110,12 @@ func (p *Backup) Run(_ context.Context) error {
 		}
 	}()
 
-	localFile, err := filepath.Abs(fmt.Sprintf("k0s_backup_%d.tar.gz", time.Now().Unix()))
-	if err != nil {
-		return err
-	}
-
 	if p.IsWet() {
-		// Download the file
-		f, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_SYNC, 0o600)
-		if err != nil {
-			return err
+		if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(p.Out)); err != nil {
+			return fmt.Errorf("download backup: %w", err)
 		}
-		defer f.Close()
-
-		if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(f)); err != nil {
-			return err
-		}
-
-		log.Infof("backup file written to %s", localFile)
 	} else {
-		p.DryMsgf(nil, "download the backup file to local host as %s", localFile)
+		p.DryMsgf(nil, "download the backup file to local host")
 	}
 	return nil
 }

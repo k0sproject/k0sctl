@@ -30,15 +30,15 @@ var completionCommand = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		switch path.Base(ctx.String("shell")) {
 		case "bash":
-			fmt.Print(bashTemplate())
+			fmt.Fprint(ctx.App.Writer, bashTemplate())
 		case "zsh":
-			fmt.Print(zshTemplate())
+			fmt.Fprint(ctx.App.Writer, zshTemplate())
 		case "fish":
 			t, err := ctx.App.ToFishCompletion()
 			if err != nil {
 				return err
 			}
-			fmt.Print(t)
+			fmt.Fprint(ctx.App.Writer, t)
 		default:
 			return fmt.Errorf("no completion script available for %s", ctx.String("shell"))
 		}

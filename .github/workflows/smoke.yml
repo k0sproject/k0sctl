@@ -262,6 +262,19 @@ jobs:
           LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-backup-restore
   
+  smoke-backup-restore-out:
+    name: Apply + backup + reset + restore (non-default output)
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/smoke-test-cache
+      - name: Run smoke tests
+        env:
+          OUT: localfile
+        run: make smoke-backup-restore
+  
   smoke-controller-swap:
     strategy:
       matrix:
