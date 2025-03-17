@@ -32,7 +32,7 @@ var versionCommand = &cli.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println(v)
+			fmt.Fprintln(ctx.App.Writer, v)
 			os.Exit(0)
 		}
 
@@ -41,15 +41,15 @@ var versionCommand = &cli.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println(v.TagName)
+			fmt.Fprintln(ctx.App.Writer, v.TagName)
 			os.Exit(0)
 		}
 
 		return nil
 	},
 	Action: func(ctx *cli.Context) error {
-		fmt.Printf("version: %s\n", version.Version)
-		fmt.Printf("commit: %s\n", version.GitCommit)
+		fmt.Fprintf(ctx.App.Writer, "version: %s\n", version.Version)
+		fmt.Fprintf(ctx.App.Writer, "commit: %s\n", version.GitCommit)
 		return nil
 	},
 }

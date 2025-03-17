@@ -13,8 +13,8 @@ import (
 )
 
 func main() {
-	err := cmd.App.Run(os.Args)
-	if err != nil {
+	k0sctl := cmd.NewK0sctl(os.Stdin, os.Stdout, os.Stderr)
+	if err := k0sctl.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
 }

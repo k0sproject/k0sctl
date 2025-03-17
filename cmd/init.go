@@ -184,21 +184,23 @@ var initCommand = &cli.Command{
 		var addresses []string
 
 		// Read addresses from stdin
-		stat, err := os.Stdin.Stat()
-		if err == nil {
-			if (stat.Mode() & os.ModeCharDevice) == 0 {
-				rd := bufio.NewReader(os.Stdin)
-				for {
-					row, _, err := rd.ReadLine()
-					if err != nil {
-						break
+		if inF, ok := ctx.App.Reader.(*os.File); ok {
+			stat, err := inF.Stat()
+			if err == nil {
+				if (stat.Mode() & os.ModeCharDevice) == 0 {
+					rd := bufio.NewReader(os.Stdin)
+					for {
+						row, _, err := rd.ReadLine()
+						if err != nil {
+							break
+						}
+						addresses = append(addresses, string(row))
 					}
-					addresses = append(addresses, string(row))
-				}
-				if err != nil {
-					return err
-				}
+					if err != nil {
+						return err
+					}
 
+				}
 			}
 		}
 
