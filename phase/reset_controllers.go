@@ -59,7 +59,10 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
 				},
-			}); err != nil {
+			},
+				"120",
+				"5m",
+			); err != nil {
 				log.Warnf("%s: failed to drain node: %s", h, err.Error())
 			}
 		}
