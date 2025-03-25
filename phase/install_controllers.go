@@ -48,9 +48,16 @@ func (p *InstallControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Before runs "before install" hooks for controller hosts
+func (p *InstallControllers) Before() error {
+    if len(p.hosts) == 0 {
+        return nil
+    }
+    return p.runHooks(context.Background(), "install", "before", p.hosts...)
+}
+
 // CleanUp cleans up the environment override files on hosts
 func (p *InstallControllers) CleanUp() {
-	_ = p.After()
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
@@ -69,7 +76,12 @@ func (p *InstallControllers) CleanUp() {
 	})
 }
 
+// After runs "after install" hooks for controller hosts and cleans up tokens
 func (p *InstallControllers) After() error {
+    // Run "after install" hooks for controllers first
+    if err := p.runHooks(context.Background(), "install", "after", p.hosts...); err != nil {
+        return err
+    }
 	for i, h := range p.hosts {
 		if h.Metadata.K0sTokenData.Token == "" {
 			continue
@@ -80,7 +92,7 @@ func (p *InstallControllers) After() error {
 			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
 		})
 		if err != nil {
-			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
+			log.Warnf("%s: failed to invalidate controller join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
 			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
@@ -222,7 +234,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 		return err
 	}
 	log.Infof("%s: installing k0s controller", h)
-	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
+	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s`", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
 		var stdout, stderr bytes.Buffer
 		runner, err := h.ExecStreams(cmd, nil, &stdout, &stderr, exec.Sudo(h))
 		if err != nil {

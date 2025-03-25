@@ -16,9 +16,9 @@ import (
 
 // UpgradeControllers upgrades the controllers one-by-one
 type UpgradeControllers struct {
-	GenericPhase
+    GenericPhase
 
-	hosts cluster.Hosts
+    hosts cluster.Hosts
 }
 
 // Title for the phase
@@ -44,7 +44,23 @@ func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there are controllers that needs to be upgraded
 func (p *UpgradeControllers) ShouldRun() bool {
-	return len(p.hosts) > 0
+    return len(p.hosts) > 0
+}
+
+// Before runs "before upgrade" hooks for controller hosts that need upgrade
+func (p *UpgradeControllers) Before() error {
+    if len(p.hosts) == 0 {
+        return nil
+    }
+    return p.runHooks(context.Background(), "upgrade", "before", p.hosts...)
+}
+
+// After runs "after upgrade" hooks for controller hosts that were upgraded
+func (p *UpgradeControllers) After() error {
+    if len(p.hosts) == 0 {
+        return nil
+    }
+    return p.runHooks(context.Background(), "upgrade", "after", p.hosts...)
 }
 
 // CleanUp cleans up the environment override files on hosts

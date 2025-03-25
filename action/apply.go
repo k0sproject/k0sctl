@@ -55,8 +55,8 @@ func NewApply(opts ApplyOptions) *Apply {
 		ApplyOptions: opts,
 		Phases: phase.Phases{
 			&phase.DefaultK0sVersion{},
-			&phase.Connect{},
-			&phase.DetectOS{},
+            &phase.Connect{},
+            &phase.DetectOS{},
 			lockPhase,
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},

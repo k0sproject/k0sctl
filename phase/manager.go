@@ -86,15 +86,6 @@ type conditional interface {
 	ShouldRun() bool
 }
 
-// beforehook receives the phase title as an argument because of reasons.
-type beforehook interface {
-	Before(string) error
-}
-
-type afterhook interface {
-	After(error) error
-}
-
 type withcleanup interface {
 	CleanUp()
 }
@@ -104,8 +95,20 @@ type withmanager interface {
 }
 
 type withDryRun interface {
-	DryRun() error
+    DryRun() error
 }
+
+// In-phase hooks for phases to run logic immediately before/after Run().
+// These are strictly internal hooks for phases themselves and are separate
+// from user-configured lifecycle hooks handled by the RunHooks phase.
+type withBefore interface {
+    Before() error
+}
+type withAfter interface {
+    After() error
+}
+
+
 
 // Manager executes phases to construct the cluster
 type Manager struct {
@@ -244,12 +247,14 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		}
 
-		if p, ok := p.(beforehook); ok {
-			if err := p.Before(title); err != nil {
-				log.Debugf("before hook failed '%s'", err.Error())
-				return err
-			}
-		}
+        // Run in-phase before hook if implemented.
+        if bp, ok := p.(withBefore); ok {
+            log.Debugf("running before for phase '%s'", p.Title())
+            if err := bp.Before(); err != nil {
+                log.Debugf("before failed '%s'", err.Error())
+                return err
+            }
+        }
 
 		text := Colorize.Green("==> Running phase: %s").String()
 		log.Infof(text, title)
@@ -261,20 +266,23 @@ func (m *Manager) Run(ctx context.Context) error {
 			continue
 		}
 
-		result = p.Run(ctx)
-		ran = append(ran, p)
+        result = p.Run(ctx)
+        ran = append(ran, p)
 
-		if p, ok := p.(afterhook); ok {
-			if err := p.After(result); err != nil {
-				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
-				return err
-			}
-		}
+        // Only run in-phase After hook when the phase succeeded.
+        if result == nil {
+            if ap, ok := p.(withAfter); ok {
+                log.Debugf("running after for phase '%s'", p.Title())
+                if herr := ap.After(); herr != nil {
+                    return herr
+                }
+            }
+        }
 
-		if result != nil {
-			return result
-		}
-	}
+        if result != nil {
+            return result
+        }
+    }
 
 	return nil
 }

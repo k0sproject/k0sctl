@@ -380,6 +380,14 @@ Example:
 
 ```yaml
 hooks:
+  connect:
+    after:
+      - echo "connected and detected" >> k0sctl-connect.log
+  upgrade:
+    before:
+      - echo "about to upgrade" >> k0sctl-upgrade.log
+    after:
+      - echo "upgraded" >> k0sctl-upgrade.log
   apply:
     before:
       - date >> k0sctl-apply.log
@@ -389,15 +397,29 @@ hooks:
 
 The currently available "hook points" are:
 
+* `connect`: 
+    - `after`: Runs immediately after OS detection completes
 * `apply`: Runs during `k0sctl apply`
     - `before`: Runs after configuration and host validation, right before configuring k0s on the host
     - `after`: Runs before disconnecting from the host after a successful apply operation
+* `upgrade`: Runs during `k0sctl apply`
+    - `before`: Runs for each host that is going to be upgraded, before the upgrade begins
+    - `after`: Runs for each host that was upgraded, after the upgrade completes
+* `install`: Runs during `k0sctl apply`
+    - `before`: Runs on each host just before installing its k0s components. This includes the first controller (Initialize the k0s cluster), additional controllers, and workers.
+    - `after`: Runs on each host immediately after installing its k0s components (service started and ready checks done).
 * `backup`: Runs during `k0s backup`
     - `before`: Runs before k0sctl runs the `k0s backup` command
     - `after`: Runs before disconnecting from the host after successfully taking a backup
-* `reset`: Runs during `k0sctl reset`
+* `reset`: Runs during `k0sctl reset` or when `k0sctl apply` resets a host.
     - `before`: Runs after gathering information about the cluster, right before starting to remove the k0s installation.
     - `after`: Runs before disconnecting from the host after a successful reset operation
+
+Notes:
+
+- Hooks run on each host that defines them, using the same remote user as the connection. If elevated privileges are required, prefix commands with `sudo`.
+- In dry-run mode, hooks are not executed; k0sctl prints what would run on each host.
+- Hooks execute only on hosts targeted by the related phase. For example, `upgrade` hooks run only for hosts that need upgrade.
 
 ##### `spec.hosts[*].os` &lt;string&gt; (optional) (default: ``)
 
@@ -737,7 +759,7 @@ The following tokens can be used in the `k0sDownloadURL` and `files.[*].src` fie
 - `%%` - literal `%`
 - `%p` - host architecture (arm, arm64, amd64)
 - `%v` - k0s version (v1.21.0+k0s.0)
-- `%x` - k0s binary extension (currently always empty)
+- `%x` - k0s binary extension (.exe on Windows, empty elsewhere)
 
 Any other tokens will be output as-is including the `%` character.
 
@@ -748,8 +770,5 @@ Example:
     k0sDownloadURL: https://files.example.com/k0s%20files/k0s-%v-%p%x
     # Expands to https://files.example.com/k0s%20files/k0s-v1.21.0+k0s.0-amd64
 ```
-
-
-
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl?ref=badge_large)

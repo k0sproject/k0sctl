@@ -27,7 +27,7 @@ type ResetWorkers struct {
 
 // Title for the phase
 func (p *ResetWorkers) Title() string {
-	return "Reset workers"
+    return "Reset workers"
 }
 
 // Prepare the phase
@@ -42,6 +42,16 @@ func (p *ResetWorkers) Prepare(config *v1beta1.Cluster) error {
 	})
 	log.Debugf("ResetWorkers phase prepared, %d workers will be reset", len(p.hosts))
 	return nil
+}
+
+// Before runs "before reset" hooks
+func (p *ResetWorkers) Before() error {
+    return p.runHooks(context.Background(), "reset", "before", p.hosts...)
+}
+
+// After runs "after reset" hooks
+func (p *ResetWorkers) After() error {
+    return p.runHooks(context.Background(), "reset", "after", p.hosts...)
 }
 
 // ShouldRun is true when there are workers that needs to be reset
