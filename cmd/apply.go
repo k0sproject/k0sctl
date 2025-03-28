@@ -60,6 +60,10 @@ var applyCommand = &cli.Command{
 			Name:  "force",
 			Usage: "Attempt a forced installation in case of certain failures",
 		},
+		&cli.StringFlag{
+			Name:  "drain-taint",
+			Usage: "Taint to be added to worker nodes before draining during the upgrade, and removed after uncordoning",
+		},
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -98,6 +102,7 @@ var applyCommand = &cli.Command{
 			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
 			RestoreFrom:           ctx.String("restore-from"),
 			ConfigPaths:           ctx.StringSlice("config"),
+			DrainTaint:            ctx.String("drain-taint"),
 		}
 
 		applyAction := action.NewApply(applyOpts)

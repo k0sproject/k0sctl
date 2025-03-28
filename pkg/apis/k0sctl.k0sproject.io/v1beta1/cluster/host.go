@@ -5,6 +5,7 @@ import (
 	"net/url"
 	gos "os"
 	gopath "path"
+	"slices"
 	"strings"
 	"time"
 
@@ -445,6 +446,33 @@ func (h *Host) UncordonNode(node *Host) error {
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+}
+
+// Taints returns all taints added to the node.
+func (h *Host) Taints(node *Host) ([]string, error) {
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, node.Metadata.Hostname), exec.Sudo(h))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node taints: %w", err)
+	}
+	return strings.Split(strings.TrimSpace(output), "\n"), nil
+}
+
+// AddTaint adds a taint to the node.
+func (h *Host) AddTaint(node *Host, taint string) error {
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
+}
+
+// RemoveTaint removes a taint from the node.
+func (h *Host) RemoveTaint(node *Host, taint string) error {
+	tainted, err := h.Taints(node)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(tainted, taint) {
+		// Removing a taint not on the node results in an error, so no action is taken
+		return nil
+	}
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

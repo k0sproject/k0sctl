@@ -38,6 +38,8 @@ type ApplyOptions struct {
 	KubeconfigCluster string
 	// ConfigPaths is the list of paths to the configuration files (used for kubeconfig command tip on success)
 	ConfigPaths []string
+	// DrainTaint is a taint to be added to worker nodes before draining during the upgrade, and removed after uncordoning
+	DrainTaint string
 }
 
 type Apply struct {
@@ -86,7 +88,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
 			&phase.UpgradeControllers{},
-			&phase.UpgradeWorkers{NoDrain: opts.NoDrain},
+			&phase.UpgradeWorkers{NoDrain: opts.NoDrain, DrainTaint: opts.DrainTaint},
 			&phase.Reinstall{},
 			&phase.ResetWorkers{NoDrain: opts.NoDrain},
 			&phase.ResetControllers{NoDrain: opts.NoDrain},
