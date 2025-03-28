@@ -38,7 +38,7 @@ type ApplyOptions struct {
 	KubeconfigCluster string
 	// ConfigPaths is the list of paths to the configuration files (used for kubeconfig command tip on success)
 	ConfigPaths []string
-	// DrainTaint is a taint to be added to worker nodes before draining during the upgrade, and removed before uncordoning
+	// DrainTaint is a taint to be added to worker nodes before draining during the upgrade, and removed after uncordoning
 	DrainTaint string
 }
 
