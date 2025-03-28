@@ -62,7 +62,7 @@ var applyCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "drain-taint",
-			Usage: "Taint to be added to worker nodes before draining during the upgrade, and removed before uncordoning",
+			Usage: "Taint to be added to worker nodes before draining during the upgrade, and removed after uncordoning",
 		},
 		debugFlag,
 		traceFlag,
