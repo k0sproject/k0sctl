@@ -459,7 +459,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, taint), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -472,7 +472,7 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, taint), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
