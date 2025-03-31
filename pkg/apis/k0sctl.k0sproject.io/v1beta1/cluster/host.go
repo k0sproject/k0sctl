@@ -448,8 +448,8 @@ func (h *Host) DeleteNode(node *Host) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
 }
 
-// GetTaints returns all taints added to the node.
-func (h *Host) GetTaints(node *Host) ([]string, error) {
+// Taints returns all taints added to the node.
+func (h *Host) Taints(node *Host) ([]string, error) {
 	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, node.Metadata.Hostname), exec.Sudo(h))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
@@ -464,7 +464,7 @@ func (h *Host) AddTaint(node *Host, taint string) error {
 
 // RemoveTaint removes a taint from the node.
 func (h *Host) RemoveTaint(node *Host, taint string) error {
-	tainted, err := h.GetTaints(node)
+	tainted, err := h.Taints(node)
 	if err != nil {
 		return err
 	}
