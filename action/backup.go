@@ -13,7 +13,7 @@ import (
 type Backup struct {
 	// Manager is the phase manager
 	Manager *phase.Manager
-	Out  io.Writer
+	Out     io.Writer
 }
 
 func (b Backup) Run(ctx context.Context) error {
@@ -28,9 +28,7 @@ func (b Backup) Run(ctx context.Context) error {
 		&phase.PrepareHosts{},
 		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
-		&phase.RunHooks{Stage: "before", Action: "backup"},
 		&phase.Backup{Out: b.Out},
-		&phase.RunHooks{Stage: "after", Action: "backup"},
 		&phase.Unlock{Cancel: lockPhase.Cancel},
 		&phase.Disconnect{},
 	)
