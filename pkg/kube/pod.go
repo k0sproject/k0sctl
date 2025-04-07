@@ -48,12 +48,13 @@ func (f *PodFilter) ToKubectlArgs() string {
 
 // PodInfo contains information about a pod.
 type PodInfo struct {
-	Namespace string
-	Name      string
-	NodeName  string
-	OwnerKind string
-	OwnerName string
-	Status    string
+	Namespace         string
+	Name              string
+	NodeName          string
+	OwnerKind         string
+	OwnerName         string
+	Status            string
+	PriorityClassName string
 }
 
 // PodInfoParser is a io.WriteCloser that parses kubectl output on Close().
@@ -85,10 +86,11 @@ func (p *PodInfoParser) Close() error {
 
 	for _, item := range podList.Items {
 		pod := &PodInfo{
-			Name:      item.Name,
-			Namespace: item.Namespace,
-			NodeName:  item.Spec.NodeName,
-			Status:    string(item.Status.Phase),
+			Name:              item.Name,
+			Namespace:         item.Namespace,
+			NodeName:          item.Spec.NodeName,
+			Status:            string(item.Status.Phase),
+			PriorityClassName: item.Spec.PriorityClassName,
 		}
 		if len(item.OwnerReferences) > 0 {
 			pod.OwnerKind = item.OwnerReferences[0].Kind

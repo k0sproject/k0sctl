@@ -667,6 +667,15 @@ func (h *Host) DeletePod(name, namespace string, force bool) error {
 	return nil
 }
 
+var skipDaemonSetPodsInKubeSystem = map[string]struct{}{
+	// Common cases that are not always marked critical, but might still not need deletion:
+	"node-exporter": {}, // observability — usually fine to leave
+	"cri-dockerd":   {}, // rarely critical, shutdown safe
+	"multus":        {}, // CNI multiplexer — not always marked critical
+	"sriov-cni":     {}, // hardware-specific, may not recover cleanly
+	"bandwidth":     {}, // CNI bandwidth plugin, small footprint
+}
+
 // KillDaemonSetPods deletes all running daemonset pods
 func (h *Host) KillDaemonSetPods(node *Host, force bool) error {
 	pods, err := h.Pods(kube.PodFilter{
@@ -678,6 +687,14 @@ func (h *Host) KillDaemonSetPods(node *Host, force bool) error {
 	}
 	log.Debugf("%s: found %d daemonset pods", h, len(pods))
 	for _, pod := range pods {
+		if _, skip := skipDaemonSetPodsInKubeSystem[pod.OwnerName]; skip {
+			log.Debugf("%s: skipping daemonset pod %s/%s (owner: %s) because it is in skip list", h, pod.Namespace, pod.Name, pod.OwnerName)
+			continue
+		}
+		if pod.PriorityClassName == "system-node-critical" || pod.PriorityClassName == "system-cluster-critical" {
+			log.Debugf("%s: skipping daemonset pod %s/%s (owner: %s) because it is %s", h, pod.Namespace, pod.Name, pod.OwnerName, pod.PriorityClassName)
+			continue
+		}
 		log.Debugf("%s: deleting daemonset pod %s/%s (status: %s)", h, pod.Namespace, pod.Name, pod.Status)
 		if err := h.DeletePod(pod.Name, pod.Namespace, force); err != nil {
 			return fmt.Errorf("failed to delete pod %q: %w", pod.Name, err)
