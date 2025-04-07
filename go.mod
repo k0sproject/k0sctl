@@ -2,7 +2,7 @@ module github.com/k0sproject/k0sctl
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.24.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
@@ -34,7 +34,7 @@ require (
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/go-playground/validator/v10 v10.25.0
+	github.com/go-playground/validator/v10 v10.26.0
 	github.com/jellydator/validation v1.1.0
 	github.com/k0sproject/version v0.7.0
 	github.com/sergi/go-diff v1.3.1
