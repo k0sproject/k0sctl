@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
 	gos "os"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
+	"github.com/k0sproject/k0sctl/pkg/kube"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -619,4 +621,67 @@ func (h *Host) FlagsChanged() bool {
 
 	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, their.Map(), our.Map())
 	return true
+}
+
+// Pods lists pods.
+func (h *Host) Pods(filter kube.PodFilter) ([]*kube.PodInfo, error) {
+	parser := kube.NewPodInfoParser()
+
+	var stderrBuf bytes.Buffer
+
+	// Build full kubectl command string using the filter
+	cmd, err := h.ExecStreams(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), filter.ToKubectlArgs()), nil, parser, &stderrBuf, exec.Sudo(h))
+	if err != nil {
+		return nil, fmt.Errorf("failed to start kubectl command: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, fmt.Errorf("kubectl command failed: %w (%s)", err, stderrBuf.String())
+	}
+
+	// Close the parser to trigger decoding
+	if err := parser.Close(); err != nil {
+		return nil, fmt.Errorf("failed to parse pod list: %w", err)
+	}
+
+	return parser.Pods(), nil
+}
+
+// DeletePod deletes a pod from the cluster. When force is true, the pods are instantly terminated without any grace period.
+func (h *Host) DeletePod(name, namespace string, force bool) error {
+	cmd := h.Configurer.KubectlCmdf(h, h.K0sDataDir(),
+		"delete pod %s -n %s",
+		shellescape.Quote(name),
+		shellescape.Quote(namespace),
+	)
+
+	if force {
+		cmd += " --grace-period=0 --force"
+	}
+
+	log.Debugf("%s: deleting pod %s/%s (force: %t)", h, namespace, name, force)
+	if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to delete pod %q: %w", name, err)
+	}
+
+	return nil
+}
+
+// KillDaemonSetPods deletes all running daemonset pods
+func (h *Host) KillDaemonSetPods(node *Host, force bool) error {
+	pods, err := h.Pods(kube.PodFilter{
+		NodeName:  node.Metadata.Hostname,
+		OwnerKind: "DaemonSet",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get daemonset pods: %w", err)
+	}
+	log.Debugf("%s: found %d daemonset pods", h, len(pods))
+	for _, pod := range pods {
+		log.Debugf("%s: deleting daemonset pod %s/%s (status: %s)", h, pod.Namespace, pod.Name, pod.Status)
+		if err := h.DeletePod(pod.Name, pod.Namespace, force); err != nil {
+			return fmt.Errorf("failed to delete pod %q: %w", pod.Name, err)
+		}
+	}
+	return nil
 }

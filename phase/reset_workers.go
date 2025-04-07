@@ -61,6 +61,16 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 			}); err != nil {
 				log.Warnf("%s: failed to drain node: %s", h, err.Error())
 			}
+			if err := p.leader.KillDaemonSetPods(h, false); err != nil {
+				if Force {
+					log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", h, err.Error())
+					if err := p.leader.KillDaemonSetPods(h, true); err != nil {
+						log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
+					}
+				} else {
+					return fmt.Errorf("failed to delete daemonset pods: %w", err)
+				}
+			}
 		}
 		log.Debugf("%s: draining node completed", h)
 

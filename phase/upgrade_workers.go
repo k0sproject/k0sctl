@@ -88,6 +88,7 @@ func (p *UpgradeWorkers) Run(ctx context.Context) error {
 		p.start,
 		p.cordonWorker,
 		p.drainWorker,
+		p.deleteDaemonSetPods,
 		p.upgradeWorker,
 		p.uncordonWorker,
 		p.finish,
@@ -135,6 +136,22 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 	if err := p.leader.DrainNode(h); err != nil {
 		return fmt.Errorf("drain node: %w", err)
 	}
+	return nil
+}
+
+func (p *UpgradeWorkers) deleteDaemonSetPods(_ context.Context, h *cluster.Host) error {
+	log.Debugf("%s: deleting any leftover daemonset pods", h)
+	if err := p.leader.KillDaemonSetPods(h, false); err != nil {
+		if Force {
+			log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", h, err.Error())
+			if err := p.leader.KillDaemonSetPods(h, true); err != nil {
+				log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
+			}
+		} else {
+			return fmt.Errorf("failed to delete daemonset pods: %w", err)
+		}
+	}
+
 	return nil
 }
 

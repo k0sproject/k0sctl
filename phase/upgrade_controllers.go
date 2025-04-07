@@ -59,13 +59,27 @@ func (p *UpgradeControllers) CleanUp() {
 
 // Run the phase
 func (p *UpgradeControllers) Run(ctx context.Context) error {
+	leader := p.Config.Spec.K0sLeader()
 	for _, h := range p.hosts {
 		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found on host")
 		}
 		log.Infof("%s: starting upgrade", h)
-		log.Debugf("%s: stop service", h)
-		err := p.Wet(h, "stop k0s service", func() error {
+		err := p.Wet(h, "shut down k0s", func() error {
+			if h.Role != "controller" {
+				if err := leader.DrainNode(h); err != nil {
+					log.Warnf("%s: failed to drain node %s: %s", leader, h, err.Error())
+				}
+				log.Debugf("%s: deleting daemonset pods", h)
+				if err := leader.KillDaemonSetPods(h, false); err != nil {
+					log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", h, err.Error())
+					if err := leader.KillDaemonSetPods(h, true); err != nil {
+						log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
+					}
+				}
+			}
+
+			log.Debugf("%s: stop service", h)
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
@@ -145,13 +159,14 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			}
 		}
 
-		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
-	}
+		_ = p.Wet(h, "uncordon node", func() error {
+			if err := leader.UncordonNode(h); err != nil {
+				log.Warnf("%s: failed to uncordon node %s: %s", leader, h, err.Error())
+			}
+			return nil
+		})
 
-	leader := p.Config.Spec.K0sLeader()
-	if NoWait || !p.IsWet() {
-		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", leader)
-		return nil
+		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	}
 
 	return nil
