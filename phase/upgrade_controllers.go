@@ -72,9 +72,13 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 				}
 				log.Debugf("%s: deleting daemonset pods", h)
 				if err := leader.KillDaemonSetPods(h, false); err != nil {
-					log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", h, err.Error())
-					if err := leader.KillDaemonSetPods(h, true); err != nil {
-						log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
+					if Force {
+						log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", h, err.Error())
+						if err := leader.KillDaemonSetPods(h, true); err != nil {
+							log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
+						}
+					} else {
+						log.Warnf("%s: failed to delete daemonset pods gracefully: %s", h, err.Error())
 					}
 				}
 			}

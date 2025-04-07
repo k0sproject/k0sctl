@@ -148,7 +148,7 @@ func (p *UpgradeWorkers) deleteDaemonSetPods(_ context.Context, h *cluster.Host)
 				log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
 			}
 		} else {
-			return fmt.Errorf("failed to delete daemonset pods: %w", err)
+			log.Warnf("%s: failed to delete daemonset pods gracefully: %s", h, err.Error())
 		}
 	}
 

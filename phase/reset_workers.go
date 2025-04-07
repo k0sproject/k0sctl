@@ -68,7 +68,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 						log.Warnf("%s: failed to delete daemonset pods forcefully: %s", h, err.Error())
 					}
 				} else {
-					return fmt.Errorf("failed to delete daemonset pods: %w", err)
+					log.Warnf("%s: failed to delete daemonset pods gracefully: %s", h, err.Error())
 				}
 			}
 		}
