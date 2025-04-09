@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - '**.go'
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
 
 jobs:
   golangci-lint:

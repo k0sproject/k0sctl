@@ -1,0 +1,73 @@
+name: Create Latest Release
+
+on:
+  workflow_run:
+    workflows:
+      - "Lint (go.mod/go.sum)"
+      - "Lint (golangci-lint)"
+      - "Go unit tests"
+      - "Smoke tests"
+    types:
+      - completed 
+    branches: [ main ] 
+
+permissions:
+  contents: write 
+
+jobs:
+  publish-latest:
+    name: Publish Latest Release
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build binaries and checksums
+        id: build_bins
+        env:
+          TAG_NAME: HEAD-${{ github.event.workflow_run.head_sha }}
+        run: |
+          make build-all
+
+      - name: Verify Checksum File Exists
+        run: |
+          test -f bin/checksums.md || (echo "ERROR: bin/checksums.md not found after build" && exit 1)
+
+      - name: Delete existing latest release and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --cleanup-tag -y || echo "No existing latest release found, proceeding."
+          git tag -d latest || echo "No local latest tag found."
+          git push origin --delete latest || echo "No remote latest tag found."
+          sleep 5
+
+      - name: Create and push new latest tag
+        env:
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git tag dev "${COMMIT_SHA}"
+          git push origin dev
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: Latest Development Build (${{ github.event.workflow_run.head_sha[0:7] }})
+          body_path: bin/checksums.md # Assumes make build-all creates this
+          files: |
+            bin/k0sctl-*
+            bin/checksums.txt
+          prerelease: true 
+          fail_on_unmatched_files: true
+          target_commitish: ${{ github.event.workflow_run.head_sha }}

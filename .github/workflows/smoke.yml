@@ -9,6 +9,15 @@ on:
       - Makefile
       - .github/workflows/smoke.yml
       - smoke-test/**
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - go.mod
+      - go.sum
+      - Makefile
+      - .github/workflows/smoke.yml
+      - smoke-test/**
 
 jobs:
 
