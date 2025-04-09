@@ -32,6 +32,20 @@ func (p *ResetLeader) Prepare(config *v1beta1.Cluster) error {
 // Run the phase
 func (p *ResetLeader) Run(ctx context.Context) error {
 	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
+		if p.leader.Role != "controller" {
+			log.Debugf("%s: draining node", p.leader)
+			if err := p.leader.DrainNode(p.leader); err != nil {
+				log.Warnf("%s: failed to drain node: %s", p.leader, err.Error())
+			}
+			log.Debugf("%s: deleting daemonset pods", p.leader)
+			if err := p.leader.KillDaemonSetPods(p.leader, false); err != nil {
+				log.Warnf("%s: failed to delete daemonset pods gracefully, will use force: %s", p.leader, err.Error())
+				if err := p.leader.KillDaemonSetPods(p.leader, true); err != nil {
+					log.Warnf("%s: failed to delete daemonset pods forcefully: %s", p.leader, err.Error())
+				}
+			}
+		}
+
 		log.Debugf("%s: stopping k0s...", p.leader)
 		if err := p.leader.Configurer.StopService(p.leader, p.leader.K0sServiceName()); err != nil {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
