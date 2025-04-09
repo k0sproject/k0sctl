@@ -63,8 +63,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev
-          name: Latest Development Build (${{ github.event.workflow_run.head_sha[0:7] }})
-          body_path: bin/checksums.md # Assumes make build-all creates this
+          name: Latest Development Build
+          body_path: bin/checksums.md 
           files: |
             bin/k0sctl-*
             bin/checksums.txt
