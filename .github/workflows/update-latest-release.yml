@@ -41,6 +41,7 @@ jobs:
           COMMIT_HASH=$(git rev-parse --short ${{ github.sha }})
           DATE=$(date -u +"%Y-%m-%d at %H:%M UTC")
           PREV_DEV_COMMIT=$(git rev-list --tags=dev --max-count=1)
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
           {
             echo "## Latest Development Build"
             echo
