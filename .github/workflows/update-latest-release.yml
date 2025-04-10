@@ -15,7 +15,6 @@ permissions:
 jobs:
   publish-latest:
     name: Publish Latest Release
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -37,10 +36,33 @@ jobs:
         run: |
           make build-all
 
-      - name: Verify Checksum File Exists
+      - name: Create development release notes
         run: |
-          test -f bin/checksums.md || (echo "ERROR: bin/checksums.md not found after build" && exit 1)
-
+          COMMIT_HASH=$(git rev-parse --short ${{ github.event.workflow_run.head_sha }})
+          DATE=$(date -u +"%Y-%m-%d at %H:%M UTC")
+          PREV_DEV_COMMIT=$(git rev-list --tags=dev --max-count=1)
+          {
+            echo "## Latest Development Build"
+            echo
+            echo "This release was generated automatically from commit \`$COMMIT_HASH\` on $DATE."
+            echo
+            echo "**This is a development build and may include unfinished features, bugs, or other issues. Use with caution.**"
+            echo
+            echo "### Commits since last development release:"
+            echo
+      
+            if [ -n "$PREV_DEV_COMMIT" ]; then
+              git log "${PREV_DEV_COMMIT}..HEAD" --pretty=format:'- %h %s (%an)'
+            else
+              git log -n 5 --pretty=format:'- %h %s (%an)'
+            fi
+      
+            echo
+            echo "---"
+            echo
+            cat bin/checksums.md
+          } > bin/dev.md
+      
       - name: Delete existing latest release and tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,7 +84,7 @@ jobs:
         with:
           tag_name: dev
           name: Latest Development Build
-          body_path: bin/checksums.md 
+          body_path: bin/dev.md 
           files: |
             bin/k0sctl-*
             bin/checksums.txt
