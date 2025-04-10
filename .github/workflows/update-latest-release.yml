@@ -1,15 +1,13 @@
-name: Create Latest Release
+name: Update Latest Release
 
 on:
-  workflow_run:
-    workflows:
-      - "Lint (go.mod/go.sum)"
-      - "Lint (golangci-lint)"
-      - "Go unit tests"
-      - "Smoke tests"
-    types:
-      - completed 
-    branches: [ main ] 
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - go.mod
+      - go.sum
+      - Makefile
 
 permissions:
   contents: write 

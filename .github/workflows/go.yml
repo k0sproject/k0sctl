@@ -7,13 +7,6 @@ on:
       - go.mod
       - go.sum
       - Makefile
-  push:
-    branches: [main]
-    paths:
-      - '**.go'
-      - go.mod
-      - go.sum
-      - Makefile
 
 jobs:
   unit-test:

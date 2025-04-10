@@ -4,11 +4,6 @@ on:
     paths:
       - 'go.mod'
       - 'go.sum'
-  push:
-    branches: [main]
-    paths:
-      - 'go.mod'
-      - 'go.sum'
 
 jobs:
   gomod-lint:
