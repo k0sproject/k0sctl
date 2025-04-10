@@ -8,6 +8,8 @@ on:
       - go.mod
       - go.sum
       - Makefile
+      - .github/workflows/update-latest-release.yml
+      - .github/workflows/release.yml
 
 permissions:
   contents: write 
