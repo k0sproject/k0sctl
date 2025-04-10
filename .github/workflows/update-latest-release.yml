@@ -34,15 +34,17 @@ jobs:
       - name: Build binaries and checksums
         id: build_bins
         env:
-          TAG_NAME: HEAD-${{ github.sha }}
+          TAG_NAME: v0.0.0-dev
         run: |
           make build-all
 
       - name: Create development release notes
         run: |
+          test -f bin/checksums.md
+          test -f bin/k0sctl-linux-amd64
           COMMIT_HASH=$(git rev-parse --short ${{ github.sha }})
           DATE=$(date -u +"%Y-%m-%d at %H:%M UTC")
-          PREV_DEV_COMMIT=$(git rev-list --tags=dev --max-count=1)
+          PREV_DEV_COMMIT=$(git rev-list --tags=dev --max-count=1 || echo "")
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
           {
             echo "## Latest Development Build"
