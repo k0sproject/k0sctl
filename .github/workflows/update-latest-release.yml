@@ -44,7 +44,7 @@ jobs:
           {
             echo "## Latest Development Build"
             echo
-            echo "This release was generated automatically from commit \`$COMMIT_HASH\` on $DATE."
+            echo "This release was generated automatically from commit [\`$COMMIT_HASH\`]($REPO_URL/commit/${{ github.sha }}) on $DATE."
             echo
             echo "**This is a development build and may include unfinished features, bugs, or other issues. Use with caution.**"
             echo
@@ -67,12 +67,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete latest --cleanup-tag -y || echo "No existing latest release found, proceeding."
-          git tag -d latest || echo "No local latest tag found."
-          git push origin --delete latest || echo "No remote latest tag found."
+          gh release delete dev --cleanup-tag -y || echo "No existing dev release found, proceeding."
+          git tag -d dev || echo "No local dev tag found."
+          git push origin --delete dev || echo "No remote dev tag found."
           sleep 5
 
-      - name: Create and push new latest tag
+      - name: Create and push new dev tag
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: |
