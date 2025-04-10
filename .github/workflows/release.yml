@@ -26,7 +26,6 @@ jobs:
       - name: Build binaries
         id: build_bins
         env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
           TAG_NAME: ${{ steps.tag-name.outputs.tag }}
         run: make build-all
 
