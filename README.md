@@ -208,6 +208,14 @@ spec:
             cni:
               image: calico/cni
               version: v3.16.2
+  options:
+    wait:
+      enabled: true
+    drain:
+      enabled: true
+    concurrency:
+      limit: 30
+      uploads: 5
 ```
 
 ### Environment variable substitution
@@ -602,7 +610,41 @@ spec:
     externalAddress: 10.0.0.2
 ```
 
-#### Tokens
+### Options Fields
+
+The `spec.options` field contains options that can be used to modify the behavior of k0sctl.
+
+Example:
+
+```yaml
+spec:
+  options:
+    wait:
+      enabled: true
+    drain:
+      enabled: true
+    concurrency:
+      limit: 30
+      uploads: 5
+```
+
+##### `spec.options.wait.enabled` &lt;boolean&gt; (optional) (default: true)
+
+If set to `false`, k0sctl will not wait for k0s to become ready after restarting the service. By default, k0sctl waits for nodes to become ready before continuing to the next operation. This is functionally the same as using `--no-wait` on the command line.
+
+##### `spec.options.drain.enabled` &lt;boolean&gt; (optional) (default: true)
+
+If set to `false`, k0sctl will skip draining nodes before performing disruptive operations like upgrade or reset. By default, nodes are drained to allow for graceful pod eviction. This is functionally the same as using `--no-drain` on the command line.
+
+##### `spec.options.concurrency.limit` &lt;integer&gt; (optional) (default: 30)
+
+The maximum number of hosts to operate on concurrently during cluster operations. Same as the `--concurrency` command line option.
+
+##### `spec.options.concurrency.uploads` &lt;integer&gt; (optional) (default: 5)
+
+The maximum number of concurrent file uploads to perform. Same as the `--concurrent-uploads` command line option.
+
+### Tokens
 
 The following tokens can be used in the `k0sDownloadURL` and `files.[*].src` fields:
 

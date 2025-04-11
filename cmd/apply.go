@@ -81,15 +81,20 @@ var applyCommand = &cli.Command{
 			kubeconfigOut = out
 		}
 
+		manager, ok := ctx.Context.Value(ctxManagerKey{}).(*phase.Manager)
+		if !ok {
+			return fmt.Errorf("failed to retrieve manager from context")
+		}
+
 		applyOpts := action.ApplyOptions{
 			Force:                 ctx.Bool("force"),
-			Manager:               ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
+			Manager:               manager,
 			KubeconfigOut:         kubeconfigOut,
 			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
 			KubeconfigUser:        ctx.String("kubeconfig-user"),
 			KubeconfigCluster:     ctx.String("kubeconfig-cluster"),
-			NoWait:                ctx.Bool("no-wait"),
-			NoDrain:               ctx.Bool("no-drain"),
+			NoWait:                ctx.Bool("no-wait") || !manager.Config.Spec.Options.Wait.Enabled,
+			NoDrain:               ctx.Bool("no-drain") || !manager.Config.Spec.Options.Drain.Enabled,
 			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
 			RestoreFrom:           ctx.String("restore-from"),
 			ConfigPaths:           ctx.StringSlice("config"),
