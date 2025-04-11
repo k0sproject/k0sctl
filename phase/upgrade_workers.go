@@ -17,8 +17,7 @@ import (
 type UpgradeWorkers struct {
 	GenericPhase
 
-	NoDrain    bool
-	DrainTaint string
+	NoDrain bool
 
 	hosts  cluster.Hosts
 	leader *cluster.Host
@@ -120,10 +119,10 @@ func (p *UpgradeWorkers) uncordonWorker(_ context.Context, h *cluster.Host) erro
 	if err := p.leader.UncordonNode(h); err != nil {
 		return fmt.Errorf("uncordon node: %w", err)
 	}
-	if t := p.DrainTaint; t != "" {
+	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
 		log.Debugf("%s: remove taint: %s", h, t)
-		if err := p.leader.RemoveTaint(h, t); err != nil {
-			return fmt.Errorf("remove taint node: %w", err)
+		if err := p.leader.RemoveTaint(h, t.String()); err != nil {
+			return fmt.Errorf("remove taint: %w", err)
 		}
 	}
 	return nil
@@ -138,10 +137,10 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 		p.DryMsg(h, "drain node")
 		return nil
 	}
-	if t := p.DrainTaint; t != "" {
+	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
 		log.Debugf("%s: add taint: %s", h, t)
-		if err := p.leader.AddTaint(h, t); err != nil {
-			return fmt.Errorf("add taint node: %w", err)
+		if err := p.leader.AddTaint(h, t.String()); err != nil {
+			return fmt.Errorf("add taint: %w", err)
 		}
 	}
 	log.Debugf("%s: drain", h)

@@ -22,9 +22,17 @@ type ToggleOption struct {
 // EvictTaintOption controls whether and how a taint is applied to nodes
 // before service-affecting operations like upgrade or reset.
 type EvictTaintOption struct {
-	ToggleOption `yaml:",inline"`
-	Taint        string `yaml:"taint" default:"k0sctl.k0sproject.io/evict=true"`
-	Effect       string `yaml:"effect" default:"NoExecute"`
+	ToggleOption      `yaml:",inline"`
+	Taint             string `yaml:"taint" default:"k0sctl.k0sproject.io/evict=true"`
+	Effect            string `yaml:"effect" default:"NoExecute"`
+	ControllerWorkers bool   `yaml:"controllerWorkers" default:"false"`
+}
+
+func (e *EvictTaintOption) String() string {
+	if e == nil || !e.Enabled {
+		return ""
+	}
+	return e.Taint + ":" + e.Effect
 }
 
 func (e *EvictTaintOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
