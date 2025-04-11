@@ -39,7 +39,7 @@ func (p *ResetLeader) DryRun() error {
 // Run the phase
 func (p *ResetLeader) Run(ctx context.Context) error {
 	if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && p.leader.Role != "controller" {
-		log.Debugf("%s: add taint %s", p.leader, t)
+		log.Debugf("%s: add taint %s", p.leader, t.String())
 		if err := p.leader.AddTaint(p.leader, t.String()); err != nil {
 			return fmt.Errorf("add taint: %w", err)
 		}

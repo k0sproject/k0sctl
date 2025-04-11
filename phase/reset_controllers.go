@@ -62,7 +62,7 @@ func (p *ResetControllers) DryRun() error {
 func (p *ResetControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
-			log.Debugf("%s: add taint: %s", h, t)
+			log.Debugf("%s: add taint: %s", h, t.String())
 			if err := p.leader.AddTaint(h, t.String()); err != nil {
 				return fmt.Errorf("add taint: %w", err)
 			}

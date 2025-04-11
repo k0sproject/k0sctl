@@ -70,7 +70,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
 			leader := p.Config.Spec.K0sLeader()
 			err := p.Wet(leader, "apply taint to node", func() error {
-				log.Warnf("%s: add taint %s on %s", leader, t, h)
+				log.Warnf("%s: add taint %s on %s", leader, t.String(), h)
 				if err := leader.AddTaint(h, t.String()); err != nil {
 					return fmt.Errorf("add taint: %w", err)
 				}
@@ -81,7 +81,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 						return fmt.Errorf("get taints: %w", err)
 					}
 					if !slices.Contains(taints, t.String()) {
-						return fmt.Errorf("taint %s not found", t)
+						return fmt.Errorf("taint %s not found", t.String())
 					}
 					return nil
 				})
@@ -176,14 +176,14 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
 			leader := p.Config.Spec.K0sLeader()
 			err := p.Wet(leader, "remove taint from node", func() error {
-				log.Infof("%s: remove taint %s on %s", leader, t, h)
+				log.Infof("%s: remove taint %s on %s", leader, t.String(), h)
 				if err := leader.RemoveTaint(h, t.String()); err != nil {
 					return fmt.Errorf("remove taint: %w", err)
 				}
 				return nil
 			})
 			if err != nil {
-				log.Warnf("%s: failed to remove taint %s on %s: %s", leader, t, h, err.Error())
+				log.Warnf("%s: failed to remove taint %s on %s: %s", leader, t.String(), h, err.Error())
 			}
 		}
 

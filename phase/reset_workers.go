@@ -53,7 +53,7 @@ func (p *ResetWorkers) ShouldRun() bool {
 func (p *ResetWorkers) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
-			log.Debugf("%s: add taint: %s", h, t)
+			log.Debugf("%s: add taint: %s", h, t.String())
 			if err := p.leader.AddTaint(h, t.String()); err != nil {
 				return fmt.Errorf("add taint: %w", err)
 			}
