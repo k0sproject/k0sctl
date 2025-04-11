@@ -113,11 +113,20 @@ func (p *UpgradeWorkers) cordonWorker(_ context.Context, h *cluster.Host) error 
 func (p *UpgradeWorkers) uncordonWorker(_ context.Context, h *cluster.Host) error {
 	if !p.IsWet() {
 		p.DryMsg(h, "uncordon node")
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
+			p.DryMsgf(h, "remove taint %s", t.String())
+		}
 		return nil
 	}
 	log.Debugf("%s: uncordon", h)
 	if err := p.leader.UncordonNode(h); err != nil {
 		return fmt.Errorf("uncordon node: %w", err)
+	}
+	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
+		log.Debugf("%s: remove taint: %s", h, t.String())
+		if err := p.leader.RemoveTaint(h, t.String()); err != nil {
+			return fmt.Errorf("remove taint: %w", err)
+		}
 	}
 	return nil
 }
@@ -126,6 +135,18 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 	if p.NoDrain {
 		log.Debugf("%s: not draining because --no-drain given", h)
 		return nil
+	}
+	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
+		log.Debugf("%s: add taint: %s", h, t.String())
+		err := p.Wet(h, "add taint "+t.String(), func() error {
+			if err := p.leader.AddTaint(h, t.String()); err != nil {
+				return fmt.Errorf("add taint: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 	if !p.IsWet() {
 		p.DryMsg(h, "drain node")

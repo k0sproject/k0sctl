@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -63,7 +64,34 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found on host")
 		}
+
 		log.Infof("%s: starting upgrade", h)
+
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
+			leader := p.Config.Spec.K0sLeader()
+			err := p.Wet(leader, "apply taint to node", func() error {
+				log.Warnf("%s: add taint %s on %s", leader, t.String(), h)
+				if err := leader.AddTaint(h, t.String()); err != nil {
+					return fmt.Errorf("add taint: %w", err)
+				}
+				log.Debugf("%s: wait for taint to be applied", h)
+				err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
+					taints, err := leader.Taints(h)
+					if err != nil {
+						return fmt.Errorf("get taints: %w", err)
+					}
+					if !slices.Contains(taints, t.String()) {
+						return fmt.Errorf("taint %s not found", t.String())
+					}
+					return nil
+				})
+				return err
+			})
+			if err != nil {
+				return fmt.Errorf("apply taint: %w", err)
+			}
+		}
+
 		log.Debugf("%s: stop service", h)
 		err := p.Wet(h, "stop k0s service", func() error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
@@ -145,13 +173,21 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			}
 		}
 
-		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
-	}
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
+			leader := p.Config.Spec.K0sLeader()
+			err := p.Wet(leader, "remove taint from node", func() error {
+				log.Infof("%s: remove taint %s on %s", leader, t.String(), h)
+				if err := leader.RemoveTaint(h, t.String()); err != nil {
+					return fmt.Errorf("remove taint: %w", err)
+				}
+				return nil
+			})
+			if err != nil {
+				log.Warnf("%s: failed to remove taint %s on %s: %s", leader, t.String(), h, err.Error())
+			}
+		}
 
-	leader := p.Config.Spec.K0sLeader()
-	if NoWait || !p.IsWet() {
-		log.Warnf("%s: skipping scheduler and system pod checks because --no-wait given", leader)
-		return nil
+		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 	}
 
 	return nil

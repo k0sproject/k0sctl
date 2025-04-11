@@ -11,8 +11,9 @@ import (
 
 // Spec defines cluster config spec section
 type Spec struct {
-	Hosts Hosts `yaml:"hosts,omitempty"`
-	K0s   *K0s  `yaml:"k0s,omitempty"`
+	Hosts   Hosts   `yaml:"hosts,omitempty"`
+	K0s     *K0s    `yaml:"k0s,omitempty"`
+	Options Options `yaml:"options,omitempty"`
 
 	k0sLeader *Host
 }
@@ -49,6 +50,7 @@ func (s *Spec) SetDefaults() {
 		s.K0s = &K0s{}
 		_ = defaults.Set(s.K0s)
 	}
+	_ = defaults.Set(s.Options)
 }
 
 // K0sLeader returns a controller host that is selected to be a "leader",
