@@ -213,6 +213,10 @@ spec:
       enabled: true
     drain:
       enabled: true
+    evictTaint:
+      enabled: false
+      taint: k0sctl.k0sproject.io/evict=true
+      effect: NoExecute
     concurrency:
       limit: 30
       uploads: 5
@@ -623,6 +627,10 @@ spec:
       enabled: true
     drain:
       enabled: true
+    evictTaint:
+      enabled: false
+      taint: k0sctl.k0sproject.io/evict=true
+      effect: NoExecute
     concurrency:
       limit: 30
       uploads: 5
@@ -635,6 +643,26 @@ If set to `false`, k0sctl will not wait for k0s to become ready after restarting
 ##### `spec.options.drain.enabled` &lt;boolean&gt; (optional) (default: true)
 
 If set to `false`, k0sctl will skip draining nodes before performing disruptive operations like upgrade or reset. By default, nodes are drained to allow for graceful pod eviction. This is functionally the same as using `--no-drain` on the command line.
+
+##### `spec.options.evictTaint.enabled` &lt;boolean&gt; (optional) (default: false)
+
+When enabled, k0sctl will apply a taint to nodes before service-affecting operations such as upgrade or reset. This is used to signal workloads to be evicted in advance of node disruption. You can also use the `--evict-taint=k0sctl.k0sproject.io/evic=true:NoExecute` command line option to enable this feature.
+
+##### `spec.options.evictTaint.taint` &lt;string&gt; (optional) (default: `k0sctl.k0sproject.io/evict=true`)
+
+The taint to apply when `evictTaint.enabled` is `true`. Must be in the format `key=value`.
+
+##### `spec.options.evictTaint.effect` &lt;string&gt; (optional) (default: `NoExecute`)
+
+The taint effect to apply. Must be one of:
+
+* `NoExecute`
+* `NoSchedule`
+* `PreferNoSchedule`
+
+##### `spec.options.evictTaint.controllerWorkers` &lt;boolean&gt; (optional) (default: false)
+
+Whether to also apply the taint to nodes with the controller+worker dual role. By default, taints are only applied to worker-only nodes.
 
 ##### `spec.options.concurrency.limit` &lt;integer&gt; (optional) (default: 30)
 
