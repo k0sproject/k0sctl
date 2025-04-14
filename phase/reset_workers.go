@@ -49,11 +49,19 @@ func (p *ResetWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// DryRun reports the nodes will be reset
+func (p *ResetWorkers) DryRun() error {
+	for _, h := range p.hosts {
+		p.DryMsg(h, "node would be reset")
+	}
+	return nil
+}
+
 // Run the phase
 func (p *ResetWorkers) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
-		log.Debugf("%s: draining node", h)
 		if !p.NoDrain {
+			log.Debugf("%s: draining node", h)
 			if err := p.leader.DrainNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,

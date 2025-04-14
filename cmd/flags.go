@@ -148,7 +148,6 @@ func actions(funcs ...func(*cli.Context) error) func(*cli.Context) error {
 
 // initConfig takes the config flag, does some magic and replaces the value with the file contents
 func initConfig(ctx *cli.Context) error {
-	println("initconfig")
 	f := ctx.StringSlice("config")
 	if len(f) == 0 || f[0] == "" {
 		return nil
@@ -306,8 +305,16 @@ func initManager(ctx *cli.Context) error {
 		return fmt.Errorf("failed to initialize phase manager: %w", err)
 	}
 
-	manager.Concurrency = ctx.Int("concurrency")
-	manager.ConcurrentUploads = ctx.Int("concurrent-uploads")
+	if ctx.IsSet("concurrency") {
+		manager.Concurrency = ctx.Int("concurrency")
+	} else {
+		manager.Concurrency = cfg.Spec.Options.Concurrency.Limit
+	}
+	if ctx.IsSet("concurrent-uploads") {
+		manager.ConcurrentUploads = ctx.Int("concurrent-uploads")
+	} else {
+		manager.ConcurrentUploads = cfg.Spec.Options.Concurrency.Uploads
+	}
 	manager.DryRun = ctx.Bool("dry-run")
 	manager.Writer = ctx.App.Writer
 
@@ -318,7 +325,6 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	println("initlogging")
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))

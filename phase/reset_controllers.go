@@ -53,8 +53,8 @@ func (p *ResetControllers) ShouldRun() bool {
 // Run the phase
 func (p *ResetControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
-		log.Debugf("%s: draining node", h)
 		if !p.NoDrain && h.Role != "controller" {
+			log.Debugf("%s: draining node", h)
 			if err := p.leader.DrainNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
