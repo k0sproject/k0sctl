@@ -325,7 +325,6 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	println("initlogging")
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
