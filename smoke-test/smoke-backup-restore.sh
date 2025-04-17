@@ -11,7 +11,7 @@ trap runCleanup EXIT
 # custom exit trap to cleanup the backup archives
 runCleanup() {
     cleanup
-    rm k0s_backup*.tar.gz
+    rm -f k0s_backup*.tar.gz || true
 }
 
 deleteCluster
