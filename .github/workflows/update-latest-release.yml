@@ -44,7 +44,8 @@ jobs:
           test -f bin/k0sctl-linux-amd64
           COMMIT_HASH=$(git rev-parse --short ${{ github.sha }})
           DATE=$(date -u +"%Y-%m-%d at %H:%M UTC")
-          PREV_DEV_COMMIT=$(git rev-list --tags=dev --max-count=1 || echo "")
+          LATEST_STABLE_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=version:refname | tail -n1)
+          PREV_STABLE_COMMIT=$(git rev-list -n 1 "$LATEST_STABLE_TAG")
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}"
           {
             echo "## Latest Development Build"
@@ -56,8 +57,8 @@ jobs:
             echo "### Commits since last development release:"
             echo
       
-            if [ -n "$PREV_DEV_COMMIT" ]; then
-              git log "${PREV_DEV_COMMIT}..HEAD" --pretty=format:'- %h %s (%an)'
+            if [ -n "$PREV_STABLE_COMMIT" ]; then
+              git log "${PREV_STABLE_COMMIT}..HEAD" --pretty=format:'- %h %s (%an)'
             else
               git log -n 5 --pretty=format:'- %h %s (%an)'
             fi
