@@ -50,9 +50,23 @@ func (p *ResetControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// DryRun reports nodes that would get reset
+func (p *ResetControllers) DryRun() error {
+	for _, h := range p.hosts {
+		p.DryMsg(h, "reset node")
+	}
+	return nil
+}
+
 // Run the phase
 func (p *ResetControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
+			log.Debugf("%s: add taint: %s", h, t.String())
+			if err := p.leader.AddTaint(h, t.String()); err != nil {
+				return fmt.Errorf("add taint: %w", err)
+			}
+		}
 		if !p.NoDrain && h.Role != "controller" {
 			log.Debugf("%s: draining node", h)
 			if err := p.leader.DrainNode(&cluster.Host{
@@ -65,8 +79,8 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		}
 		log.Debugf("%s: draining node completed", h)
 
-		log.Debugf("%s: deleting node...", h)
 		if !p.NoDelete && h.Role != "controller" {
+			log.Debugf("%s: deleting node...", h)
 			if err := p.leader.DeleteNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
@@ -75,7 +89,6 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 				log.Warnf("%s: failed to delete node: %s", h, err.Error())
 			}
 		}
-		log.Debugf("%s: deleting node", h)
 
 		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
 			log.Debugf("%s: stopping k0s...", h)

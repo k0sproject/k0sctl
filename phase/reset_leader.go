@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -29,8 +30,21 @@ func (p *ResetLeader) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
+// DryRun reports that the host will be reset
+func (p *ResetLeader) DryRun() error {
+	p.DryMsg(p.leader, "reset node")
+	return nil
+}
+
 // Run the phase
 func (p *ResetLeader) Run(ctx context.Context) error {
+	if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && p.leader.Role != "controller" {
+		log.Debugf("%s: add taint %s", p.leader, t.String())
+		if err := p.leader.AddTaint(p.leader, t.String()); err != nil {
+			return fmt.Errorf("add taint: %w", err)
+		}
+	}
+
 	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
 		log.Debugf("%s: stopping k0s...", p.leader)
 		if err := p.leader.Configurer.StopService(p.leader, p.leader.K0sServiceName()); err != nil {

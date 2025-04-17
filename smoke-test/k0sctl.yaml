@@ -22,6 +22,9 @@ spec:
         address: "127.0.0.1"
         port: 9023
         keyPath: ./id_rsa_k0s
+  options:
+    evictTaint:
+      enabled: true
   k0s:
     version: "${K0S_VERSION}"
     config:

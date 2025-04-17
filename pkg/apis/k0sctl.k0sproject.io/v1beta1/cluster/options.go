@@ -2,8 +2,10 @@ package cluster
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/jellydator/validation"
 )
 
 // Options for cluster operations.
@@ -11,6 +13,7 @@ type Options struct {
 	Wait        WaitOption        `yaml:"wait,omitempty"`
 	Drain       DrainOption       `yaml:"drain,omitempty"`
 	Concurrency ConcurrencyOption `yaml:"concurrency,omitempty"`
+	EvictTaint  EvictTaintOption  `yaml:"evictTaint,omitempty"`
 }
 
 // WaitOption controls the wait behavior for cluster operations.
@@ -44,4 +47,62 @@ func (c *ConcurrencyOption) UnmarshalYAML(unmarshal func(interface{}) error) err
 
 	*c = ConcurrencyOption(tmp)
 	return nil
+}
+
+// EvictTaintOption controls whether and how a taint is applied to nodes
+// before service-affecting operations like upgrade or reset.
+type EvictTaintOption struct {
+	Enabled           bool   `yaml:"enabled" default:"false"`
+	Taint             string `yaml:"taint" default:"k0sctl.k0sproject.io/evict=true"`
+	Effect            string `yaml:"effect" default:"NoExecute"`
+	ControllerWorkers bool   `yaml:"controllerWorkers" default:"false"`
+}
+
+// String returns a string representation of the EvictTaintOption (<taint>:<effect>)
+func (e *EvictTaintOption) String() string {
+	if e == nil || !e.Enabled {
+		return ""
+	}
+	return e.Taint + ":" + e.Effect
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for EvictTaintOption.
+func (e *EvictTaintOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type evictTaintOption EvictTaintOption
+	var tmp evictTaintOption
+
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	}
+
+	if err := defaults.Set(&tmp); err != nil {
+		return fmt.Errorf("set defaults for evictTaint: %w", err)
+	}
+
+	*e = EvictTaintOption(tmp)
+	return nil
+}
+
+// Validate checks if the EvictTaintOption is valid.
+func (e *EvictTaintOption) Validate() error {
+	if e == nil || !e.Enabled {
+		return nil
+	}
+
+	return validation.ValidateStruct(e,
+		validation.Field(&e.Taint,
+			validation.Required,
+			validation.By(func(value interface{}) error {
+				s, _ := value.(string)
+				if !strings.Contains(s, "=") {
+					return fmt.Errorf("must be in the form key=value")
+				}
+				return nil
+			}),
+		),
+		validation.Field(&e.Effect,
+			validation.Required,
+			validation.In("NoExecute", "NoSchedule", "PreferNoSchedule"),
+		),
+	)
 }

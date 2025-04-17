@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/k0sproject/k0sctl/action"
 	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 
 	"github.com/urfave/cli/v2"
 )
@@ -60,6 +62,10 @@ var applyCommand = &cli.Command{
 			Name:  "force",
 			Usage: "Attempt a forced installation in case of certain failures",
 		},
+		&cli.StringFlag{
+			Name:  "evict-taint",
+			Usage: "Taint to be applied to nodes before draining and removed after uncordoning in the format of <key=value>:<effect> (default: from spec.options.evictTaint)",
+		},
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -84,6 +90,18 @@ var applyCommand = &cli.Command{
 		manager, ok := ctx.Context.Value(ctxManagerKey{}).(*phase.Manager)
 		if !ok {
 			return fmt.Errorf("failed to retrieve manager from context")
+		}
+
+		if evictTaint := ctx.String("evict-taint"); evictTaint != "" {
+			parts := strings.Split(evictTaint, ":")
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				return fmt.Errorf("invalid evict-taint format, expected <key>:<effect>, got %s", evictTaint)
+			}
+			manager.Config.Spec.Options.EvictTaint = cluster.EvictTaintOption{
+				Enabled: true,
+				Taint:   parts[0],
+				Effect:  parts[1],
+			}
 		}
 
 		applyOpts := action.ApplyOptions{

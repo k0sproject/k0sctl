@@ -60,6 +60,12 @@ func (p *ResetWorkers) DryRun() error {
 // Run the phase
 func (p *ResetWorkers) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
+			log.Debugf("%s: add taint: %s", h, t.String())
+			if err := p.leader.AddTaint(h, t.String()); err != nil {
+				return fmt.Errorf("add taint: %w", err)
+			}
+		}
 		if !p.NoDrain {
 			log.Debugf("%s: draining node", h)
 			if err := p.leader.DrainNode(&cluster.Host{
