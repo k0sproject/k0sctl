@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -20,6 +21,33 @@ type ResetLeader struct {
 // Title for the phase
 func (p *ResetLeader) Title() string {
 	return "Reset leader"
+}
+
+// Before runs "before reset" hooks
+func (p *ResetLeader) Before() error {
+	if !p.IsWet() && p.leader.HasHooks("reset", "before") {
+		p.DryMsg(p.leader, "run before reset hooks")
+		return nil
+	}
+
+	if err := p.leader.RunHooks("reset", "before"); err != nil {
+		return fmt.Errorf("failed to run before reset hooks: %w", err)
+	}
+	return nil
+}
+
+// After runs "after backup" hooks
+func (p *ResetLeader) After() error {
+	if !p.IsWet() && p.leader.HasHooks("reset", "after") {
+		p.DryMsg(p.leader, "run after reset hooks")
+		return nil
+	}
+
+	if err := p.leader.RunHooks("reset", "after"); err != nil {
+		return fmt.Errorf("failed to run after reset hooks: %w", err)
+	}
+
+	return nil
 }
 
 // Prepare the phase
