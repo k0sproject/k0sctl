@@ -13,6 +13,7 @@ var configEditCommand = &cli.Command{
 	Flags: []cli.Flag{
 		configFlag,
 		debugFlag,
+		forceFlag,
 		traceFlag,
 		redactFlag,
 		timeoutFlag,

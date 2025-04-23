@@ -65,6 +65,15 @@ var (
 		Value: false,
 	}
 
+	forceFlag = &cli.BoolFlag{
+		Name:  "force",
+		Usage: "Attempt a forced operation in case of certain failures",
+		Action: func(c *cli.Context, force bool) error {
+			phase.Force = force
+			return nil
+		},
+	}
+
 	configFlag = &cli.StringSliceFlag{
 		Name:      "config",
 		Usage:     "Path or glob to config yaml. Can be given multiple times. Use '-' to read from stdin.",

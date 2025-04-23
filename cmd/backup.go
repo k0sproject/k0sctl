@@ -25,6 +25,7 @@ var backupCommand = &cli.Command{
 		configFlag,
 		dryRunFlag,
 		concurrencyFlag,
+		forceFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,

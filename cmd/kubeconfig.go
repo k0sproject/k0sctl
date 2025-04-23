@@ -31,6 +31,7 @@ var kubeconfigCommand = &cli.Command{
 		},
 		configFlag,
 		dryRunFlag,
+		forceFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,

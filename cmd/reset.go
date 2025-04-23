@@ -16,24 +16,19 @@ var resetCommand = &cli.Command{
 		configFlag,
 		concurrencyFlag,
 		dryRunFlag,
+		forceFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
 		timeoutFlag,
 		retryIntervalFlag,
 		retryTimeoutFlag,
-		&cli.BoolFlag{
-			Name:    "force",
-			Usage:   "Don't ask for confirmation",
-			Aliases: []string{"f"},
-		},
 	},
 	Before: actions(initLogging, initConfig, initManager, displayCopyright),
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		resetAction := action.Reset{
 			Manager: ctx.Context.Value(ctxManagerKey{}).(*phase.Manager),
-			Force:   ctx.Bool("force"),
 			Stdout:  ctx.App.Writer,
 		}
 
