@@ -652,6 +652,26 @@ The duration to wait for pods to be evicted from the node before proceeding with
 
 The duration to wait for the drain operation to complete before timing out. 
 
+##### `spec.options.drain.force` &lt;boolean&gt; (optional) (default: true)
+
+Use `--force` in kubectl when draining the node.
+
+##### `spec.options.drain.ignoreDaemonSets` &lt;boolean&gt; (optional) (default: true)
+
+Ignore DaemonSets when draining the node.
+
+##### `spec.options.drain.deleteEmptyDirData` &lt;boolean&gt; (optional) (default: true)
+
+Continue even if there are pods using emptyDir (local data that will be deleted when the node is drained).
+
+##### `spec.options.drain.skipWaitForDeleteTimeout` &lt;duration&gt; (optional) (default: 0s)
+
+If pod DeletionTimestamp older than N seconds, skip waiting for the pod. Seconds must be greater than 0 to skip.
+
+##### `spec.options.drain.podSelector` &lt;string&gt; (optional) (default: ``)
+
+Label selector to filter pods on the node
+
 ##### `spec.options.evictTaint.enabled` &lt;boolean&gt; (optional) (default: false)
 
 When enabled, k0sctl will apply a taint to nodes before service-affecting operations such as upgrade or reset. This is used to signal workloads to be evicted in advance of node disruption. You can also use the `--evict-taint=k0sctl.k0sproject.io/evic=true:NoExecute` command line option to enable this feature.

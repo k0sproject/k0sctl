@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
 )
@@ -24,9 +25,49 @@ type WaitOption struct {
 
 // DrainOption controls the drain behavior for cluster operations.
 type DrainOption struct {
-	Enabled     bool          `yaml:"enabled" default:"true"`
-	GracePeriod time.Duration `yaml:"gracePeriod" default:"120s"`
-	Timeout     time.Duration `yaml:"timeout" default:"300s"`
+	Enabled                  bool          `yaml:"enabled" default:"true"`
+	GracePeriod              time.Duration `yaml:"gracePeriod" default:"120s"`
+	Timeout                  time.Duration `yaml:"timeout" default:"300s"`
+	Force                    bool          `yaml:"force" default:"true"`
+	IgnoreDaemonSets         bool          `yaml:"ignoreDaemonSets" default:"true"`
+	DeleteEmptyDirData       bool          `yaml:"deleteEmptyDirData" default:"true"`
+	PodSelector              string        `yaml:"podSelector" default:""`
+	SkipWaitForDeleteTimeout time.Duration `yaml:"skipWaitForDeleteTimeout" default:"0s"`
+}
+
+// ToKubectlArgs converts the DrainOption to kubectl arguments.
+func (d *DrainOption) ToKubectlArgs() string {
+	args := []string{}
+
+	if d.Force {
+		args = append(args, "--force")
+	}
+
+	if d.GracePeriod > 0 {
+		args = append(args, fmt.Sprintf("--grace-period=%d", int(d.GracePeriod.Seconds())))
+	}
+
+	if d.Timeout > 0 {
+		args = append(args, fmt.Sprintf("--timeout=%s", d.Timeout))
+	}
+
+	if d.PodSelector != "" {
+		args = append(args, fmt.Sprintf("--pod-selector=%s", shellescape.Quote(d.PodSelector)))
+	}
+
+	if d.SkipWaitForDeleteTimeout > 0 {
+		args = append(args, fmt.Sprintf("--skip-wait-for-delete-timeout=%s", d.SkipWaitForDeleteTimeout))
+	}
+
+	if d.DeleteEmptyDirData {
+		args = append(args, "--delete-emptydir-data")
+	}
+
+	if d.IgnoreDaemonSets {
+		args = append(args, "--ignore-daemonsets")
+	}
+
+	return strings.Join(args, " ")
 }
 
 // ConcurrencyOption controls how many hosts are operated on at once.
