@@ -36,6 +36,8 @@ func (r Reset) Run() error {
 		}
 	}
 
+	phase.Force = r.Force
+
 	start := time.Now()
 
 	for _, h := range r.Manager.Config.Spec.Hosts {
