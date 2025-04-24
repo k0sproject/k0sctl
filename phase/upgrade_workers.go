@@ -153,7 +153,7 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 		return nil
 	}
 	log.Debugf("%s: drain", h)
-	if err := p.leader.DrainNode(h); err != nil {
+	if err := p.leader.DrainNode(h, p.Config.Spec.Options.Drain.GracePeriod, p.Config.Spec.Options.Drain.Timeout); err != nil {
 		return fmt.Errorf("drain node: %w", err)
 	}
 	return nil

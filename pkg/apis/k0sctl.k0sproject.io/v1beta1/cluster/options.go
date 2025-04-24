@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
@@ -10,10 +11,10 @@ import (
 
 // Options for cluster operations.
 type Options struct {
-	Wait        WaitOption        `yaml:"wait,omitempty"`
-	Drain       DrainOption       `yaml:"drain,omitempty"`
-	Concurrency ConcurrencyOption `yaml:"concurrency,omitempty"`
-	EvictTaint  EvictTaintOption  `yaml:"evictTaint,omitempty"`
+	Wait        WaitOption        `yaml:"wait"`
+	Drain       DrainOption       `yaml:"drain"`
+	Concurrency ConcurrencyOption `yaml:"concurrency"`
+	EvictTaint  EvictTaintOption  `yaml:"evictTaint"`
 }
 
 // WaitOption controls the wait behavior for cluster operations.
@@ -23,7 +24,9 @@ type WaitOption struct {
 
 // DrainOption controls the drain behavior for cluster operations.
 type DrainOption struct {
-	Enabled bool `yaml:"enabled" default:"true"`
+	Enabled     bool          `yaml:"enabled" default:"true"`
+	GracePeriod time.Duration `yaml:"gracePeriod" default:"120s"`
+	Timeout     time.Duration `yaml:"timeout" default:"300s"`
 }
 
 // ConcurrencyOption controls how many hosts are operated on at once.

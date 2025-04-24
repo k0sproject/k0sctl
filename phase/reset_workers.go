@@ -72,7 +72,10 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 				Metadata: cluster.HostMetadata{
 					Hostname: h.Metadata.Hostname,
 				},
-			}); err != nil {
+			},
+				p.Config.Spec.Options.Drain.GracePeriod,
+				p.Config.Spec.Options.Drain.Timeout,
+			); err != nil {
 				log.Warnf("%s: failed to drain node: %s", h, err.Error())
 			}
 		}

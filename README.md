@@ -644,6 +644,14 @@ If set to `false`, k0sctl will not wait for k0s to become ready after restarting
 
 If set to `false`, k0sctl will skip draining nodes before performing disruptive operations like upgrade or reset. By default, nodes are drained to allow for graceful pod eviction. This is functionally the same as using `--no-drain` on the command line.
 
+##### `spec.options.drain.gracePeriod` &lt;duration&gt; (optional) (default: 2m)
+
+The duration to wait for pods to be evicted from the node before proceeding with the operation. 
+
+##### `spec.options.drain.timeout` &lt;duration&gt; (optional) (default: 5m)
+
+The duration to wait for the drain operation to complete before timing out. 
+
 ##### `spec.options.evictTaint.enabled` &lt;boolean&gt; (optional) (default: false)
 
 When enabled, k0sctl will apply a taint to nodes before service-affecting operations such as upgrade or reset. This is used to signal workloads to be evicted in advance of node disruption. You can also use the `--evict-taint=k0sctl.k0sproject.io/evic=true:NoExecute` command line option to enable this feature.
