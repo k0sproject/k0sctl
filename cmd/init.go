@@ -204,21 +204,19 @@ var initCommand = &cli.Command{
 			}
 		}
 
-		// Read addresses from args
-		addresses = append(addresses, ctx.Args().Slice()...)
-
-		cfg := v1beta1.Cluster{
-			APIVersion: v1beta1.APIVersion,
-			Kind:       "Cluster",
-			Metadata:   &v1beta1.ClusterMetadata{Name: ctx.String("cluster-name")},
-			Spec: &cluster.Spec{
-				Hosts: buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path")),
-				K0s:   &cluster.K0s{},
-			},
-		}
+		cfg := v1beta1.Cluster{}
 
 		if err := defaults.Set(&cfg); err != nil {
 			return err
+		}
+
+		cfg.Metadata.Name = ctx.String("cluster-name")
+
+		// Read addresses from args
+		addresses = append(addresses, ctx.Args().Slice()...)
+		cfg.Spec.Hosts = buildHosts(addresses, ctx.Int("controller-count"), ctx.String("user"), ctx.String("key-path"))
+		for _, h := range cfg.Spec.Hosts {
+			_ = defaults.Set(h)
 		}
 
 		if ctx.Bool("k0s") {

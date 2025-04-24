@@ -31,9 +31,7 @@ type Cluster struct {
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	c.Metadata = &ClusterMetadata{
-		Name: "k0s-cluster",
-	}
+	c.Metadata = &ClusterMetadata{}
 	c.Spec = &cluster.Spec{}
 
 	type clusterConfig Cluster
@@ -48,6 +46,24 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return nil
+}
+
+// SetDefaults initializes default values
+func (c *Cluster) SetDefaults() {
+	if c.Metadata == nil {
+		c.Metadata = &ClusterMetadata{}
+	}
+	if c.Spec == nil {
+		c.Spec = &cluster.Spec{}
+	}
+	_ = defaults.Set(c.Metadata)
+	_ = defaults.Set(c.Spec)
+	if defaults.CanUpdate(c.APIVersion) {
+		c.APIVersion = APIVersion
+	}
+	if defaults.CanUpdate(c.Kind) {
+		c.Kind = "Cluster"
+	}
 }
 
 // Validate performs a configuration sanity check

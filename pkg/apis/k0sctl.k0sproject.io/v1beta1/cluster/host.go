@@ -429,7 +429,7 @@ func (h *Host) K0sDataDir() string {
 }
 
 // DrainNode drains the given node
-func (h *Host) DrainNode(node *Host, gracePeriod string, timeout string) error {
+func (h *Host) DrainNode(node *Host, gracePeriod, timeout time.Duration) error {
 	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain --grace-period=%s --force --timeout=%s --ignore-daemonsets --delete-emptydir-data %s", gracePeriod, timeout, node.Metadata.Hostname), exec.Sudo(h))
 }
 
