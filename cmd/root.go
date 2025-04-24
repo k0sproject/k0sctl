@@ -63,7 +63,7 @@ func NewK0sctl(in io.Reader, out, errOut io.Writer) *cli.App {
 		After: func(ctx *cli.Context) error {
 			return cancelTimeout(ctx)
 		},
-		Reader: in,
+		Reader:    in,
 		Writer:    out,
 		ErrWriter: errOut,
 	}

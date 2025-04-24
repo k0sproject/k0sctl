@@ -18,11 +18,10 @@ type Reset struct {
 	// Manager is the phase manager
 	Manager *phase.Manager
 	Stdout  io.Writer
-	Force   bool
 }
 
 func (r Reset) Run(ctx context.Context) error {
-	if !r.Force {
+	if !phase.Force {
 		if stdoutFile, ok := r.Stdout.(*os.File); ok && !isatty.IsTerminal(stdoutFile.Fd()) {
 			return fmt.Errorf("reset requires --force")
 		}

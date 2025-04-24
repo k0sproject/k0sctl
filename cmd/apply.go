@@ -58,14 +58,11 @@ var applyCommand = &cli.Command{
 			Usage:  "Skip downgrade check",
 			Hidden: true,
 		},
-		&cli.BoolFlag{
-			Name:  "force",
-			Usage: "Attempt a forced installation in case of certain failures",
-		},
 		&cli.StringFlag{
 			Name:  "evict-taint",
 			Usage: "Taint to be applied to nodes before draining and removed after uncordoning in the format of <key=value>:<effect> (default: from spec.options.evictTaint)",
 		},
+		forceFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -105,7 +102,6 @@ var applyCommand = &cli.Command{
 		}
 
 		applyOpts := action.ApplyOptions{
-			Force:                 ctx.Bool("force"),
 			Manager:               manager,
 			KubeconfigOut:         kubeconfigOut,
 			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),

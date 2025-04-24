@@ -20,8 +20,6 @@ type ApplyOptions struct {
 	Manager *phase.Manager
 	// DisableDowngradeCheck skips the downgrade check
 	DisableDowngradeCheck bool
-	// Force allows forced installation in case of certain failures
-	Force bool
 	// NoWait skips waiting for the cluster to be ready
 	NoWait bool
 	// NoDrain skips draining worker nodes
@@ -113,7 +111,6 @@ func (a Apply) Run(ctx context.Context) error {
 	start := time.Now()
 
 	phase.NoWait = a.NoWait
-	phase.Force = a.Force
 
 	a.Manager.SetPhases(a.Phases)
 
