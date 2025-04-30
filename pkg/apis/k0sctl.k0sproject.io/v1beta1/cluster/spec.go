@@ -13,7 +13,7 @@ import (
 type Spec struct {
 	Hosts   Hosts   `yaml:"hosts,omitempty"`
 	K0s     *K0s    `yaml:"k0s,omitempty"`
-	Options Options `yaml:"options,omitempty"`
+	Options Options `yaml:"options"`
 
 	k0sLeader *Host
 }
@@ -31,17 +31,30 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return defaults.Set(s)
 }
 
-// MarshalYAML implements yaml.Marshaler interface
+// MarshalYAML overrides default YAML marshaling to get rid of "k0s: null" when nothing is set in spec.k0s
 func (s *Spec) MarshalYAML() (interface{}, error) {
-	k0s, err := s.K0s.MarshalYAML()
-	if err != nil {
-		return nil, err
-	}
-	if k0s == nil {
-		return Spec{Hosts: s.Hosts}, nil
+	type spec Spec
+
+	copy := spec(*s)
+
+	if s.K0s == nil || isEmptyK0s(s.K0s) {
+		copy.K0s = nil
 	}
 
-	return s, nil
+	return copy, nil
+}
+
+func isEmptyK0s(k *K0s) bool {
+	if k == nil {
+		return true
+	}
+	if k.Config != nil {
+		return false
+	}
+	if k.Version != nil {
+		return false
+	}
+	return len(k.Config) == 0
 }
 
 // SetDefaults sets defaults
@@ -50,7 +63,6 @@ func (s *Spec) SetDefaults() {
 		s.K0s = &K0s{}
 		_ = defaults.Set(s.K0s)
 	}
-	_ = defaults.Set(s.Options)
 }
 
 // K0sLeader returns a controller host that is selected to be a "leader",

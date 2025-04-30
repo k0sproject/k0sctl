@@ -69,11 +69,14 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		}
 		if !p.NoDrain && h.Role != "controller" {
 			log.Debugf("%s: draining node", h)
-			if err := p.leader.DrainNode(&cluster.Host{
-				Metadata: cluster.HostMetadata{
-					Hostname: h.Metadata.Hostname,
+			if err := p.leader.DrainNode(
+				&cluster.Host{
+					Metadata: cluster.HostMetadata{
+						Hostname: h.Metadata.Hostname,
+					},
 				},
-			}); err != nil {
+				p.Config.Spec.Options.Drain,
+			); err != nil {
 				log.Warnf("%s: failed to drain node: %s", h, err.Error())
 			}
 		}
