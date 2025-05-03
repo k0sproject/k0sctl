@@ -41,9 +41,41 @@ func (p *InstallControllers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Before runs "before apply" hooks
+func (p *InstallControllers) Before() error {
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("apply", "before") {
+			p.DryMsg(h, "run before apply hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("apply", "before"); err != nil {
+			return fmt.Errorf("failed to run before apply hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
+// After runs "after apply" hooks
+func (p *InstallControllers) After() error {
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("apply", "after") {
+			p.DryMsg(h, "run after apply hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("apply", "after"); err != nil {
+			return fmt.Errorf("failed to run after apply hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
 // CleanUp cleans up the environment override files on hosts
 func (p *InstallControllers) CleanUp() {
-	_ = p.After()
+	_ = p.AfterHook()
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
@@ -62,7 +94,7 @@ func (p *InstallControllers) CleanUp() {
 	})
 }
 
-func (p *InstallControllers) After() error {
+func (p *InstallControllers) AfterHook() error {
 	for i, h := range p.hosts {
 		if h.Metadata.K0sTokenData.Token == "" {
 			continue

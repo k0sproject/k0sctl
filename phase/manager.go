@@ -85,15 +85,6 @@ type conditional interface {
 	ShouldRun() bool
 }
 
-// beforehook receives the phase title as an argument because of reasons.
-type beforehook interface {
-	Before(string) error
-}
-
-type afterhook interface {
-	After(error) error
-}
-
 type withcleanup interface {
 	CleanUp()
 }
@@ -104,6 +95,22 @@ type withmanager interface {
 
 type withDryRun interface {
 	DryRun() error
+}
+
+type withBeforeHook interface {
+	BeforeHook() error
+}
+
+type withAfterHook interface {
+	AfterHook() error
+}
+
+type withSuccessHook interface {
+	SuccessHook() error
+}
+
+type withFailureHook interface {
+	FailureHook() error
 }
 
 // Manager executes phases to construct the cluster
@@ -232,8 +239,9 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		}
 
-		if p, ok := p.(beforehook); ok {
-			if err := p.Before(title); err != nil {
+		if hp, ok := p.(withBeforeHook); ok {
+			log.Debugf("running before hook for phase '%s'", p.Title())
+			if err := hp.BeforeHook(); err != nil {
 				log.Debugf("before hook failed '%s'", err.Error())
 				return err
 			}
@@ -252,10 +260,21 @@ func (m *Manager) Run(ctx context.Context) error {
 		result = p.Run(ctx)
 		ran = append(ran, p)
 
-		if p, ok := p.(afterhook); ok {
-			if err := p.After(result); err != nil {
-				log.Debugf("after hook failed: '%s' (phase result: %s)", err.Error(), result)
-				return err
+		if result != nil {
+			if hp, ok := p.(withFailureHook); ok {
+				log.Debugf("running failure hook for phase '%s'", p.Title())
+				if herr := hp.FailureHook(); herr != nil {
+					result = fmt.Errorf("phase failed: '%s' (hook failed: %w)", result.Error(), herr)
+				}
+			}
+			return result
+		}
+
+		if hp, ok := p.(withAfterHook); ok {
+			log.Debugf("running after hook for phase '%s'", p.Title())
+			if herr := hp.AfterHook(); herr != nil {
+				result = fmt.Errorf("phase failed: '%s' (hook failed: %w)", result.Error(), herr)
+				break
 			}
 		}
 

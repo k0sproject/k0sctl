@@ -35,6 +35,33 @@ func (p *InitializeK0s) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
+// Before runs "before backup" hooks
+func (p *InitializeK0s) Before() error {
+	if !p.IsWet() && p.leader.HasHooks("apply", "before") {
+		p.DryMsg(p.leader, "run before apply hooks")
+		return nil
+	}
+
+	if err := p.leader.RunHooks("apply", "before"); err != nil {
+		return fmt.Errorf("failed to run before apply hooks: %w", err)
+	}
+	return nil
+}
+
+// After runs "after apply" hooks
+func (p *InitializeK0s) After() error {
+	if !p.IsWet() && p.leader.HasHooks("apply", "after") {
+		p.DryMsg(p.leader, "run after apply hooks")
+		return nil
+	}
+
+	if err := p.leader.RunHooks("apply", "after"); err != nil {
+		return fmt.Errorf("failed to run after apply hooks: %w", err)
+	}
+
+	return nil
+}
+
 // ShouldRun is true when there is a leader host
 func (p *InitializeK0s) ShouldRun() bool {
 	return p.leader != nil && !p.leader.Reset
