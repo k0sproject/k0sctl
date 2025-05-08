@@ -12,15 +12,27 @@ import (
 )
 
 func trapSignals(ctx context.Context, cancel context.CancelFunc) {
-	ch := make(chan os.Signal, 1)
+	ch := make(chan os.Signal, 2) // Buffer size 2 to catch double signals
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case <-ch:
-		log.Warnf("received an interrupt signal, aborting operation")
-		cancel()
-	case <-ctx.Done():
-		return
-	}
+
+	go func() {
+		sigCount := 0
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ch:
+				sigCount++
+				if sigCount == 1 {
+					log.Warn("Aborting... Press Ctrl-C again to exit now.")
+					cancel()
+				} else {
+					log.Error("Forced exit")
+					os.Exit(130)
+				}
+			}
+		}
+	}()
 }
 
 // NewK0sctl returns the urfave/cli.App for k0sctl
