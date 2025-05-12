@@ -175,7 +175,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 				return err
 			}
 
-			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
+			err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
