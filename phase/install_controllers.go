@@ -176,7 +176,7 @@ func (p *InstallControllers) Run() error {
 				return err
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), retry.DefaultTimeout)
 			defer cancel()
 			err := retry.Context(ctx, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
