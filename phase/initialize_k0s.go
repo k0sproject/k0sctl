@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -116,7 +115,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 		}
 
 		log.Infof("%s: wait for kubernetes to reach ready state", h)
-		err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
+		err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
 			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"), exec.Sudo(h))
 			if out != "ok" {
 				return fmt.Errorf("kubernetes api /readyz responded with %q", out)
