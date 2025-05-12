@@ -64,6 +64,8 @@ smoke-controller-swap: $(bootloose) id_rsa_k0s k0sctl
 smoke-multidoc: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-multidoc.sh
 
+smoke-four: $(bootloose) id_rsa_k0s k0sctl
+	./smoke-four.sh
 
 %.iid: Dockerfile.%
 	docker build --iidfile '$@' - < '$<'
