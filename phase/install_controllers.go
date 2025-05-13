@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -17,8 +18,9 @@ import (
 // InstallControllers installs k0s controllers and joins them to the cluster
 type InstallControllers struct {
 	GenericPhase
-	hosts  cluster.Hosts
-	leader *cluster.Host
+	hosts      cluster.Hosts
+	leader     *cluster.Host
+	numRunning int
 }
 
 // Title for the phase
@@ -30,9 +32,14 @@ func (p *InstallControllers) Title() string {
 func (p *InstallControllers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
+	var countRunning int
 	p.hosts = p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
+		if h.Metadata.K0sRunningVersion != nil {
+			countRunning++
+		}
 		return !h.Reset && !h.Metadata.NeedsUpgrade && (h != p.leader && h.Metadata.K0sRunningVersion == nil)
 	})
+	p.numRunning = countRunning
 	return nil
 }
 
@@ -94,7 +101,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 				ctx,
 				p.leader,
 				"controller",
-				time.Duration(10)*time.Minute,
+				30*time.Minute,
 			)
 			if err != nil {
 				return err
@@ -124,71 +131,147 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return p.parallelDo(ctx, p.hosts, func(ctx context.Context, h *cluster.Host) error {
-		tokenPath := h.K0sJoinTokenPath()
-		log.Infof("%s: writing join token to %s", h, tokenPath)
-		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-			return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
-		})
-		if err != nil {
+
+	// just one controller to install, install it and return
+	if len(p.hosts) == 1 {
+		log.Debug("only one controller to install")
+		return p.installK0s(ctx, p.hosts[0])
+	}
+
+	if p.manager.Concurrency < 2 {
+		log.Debugf("installing %d controllers sequantially because concurrency is set to 1", len(p.hosts))
+		return p.hosts.Each(ctx, p.installK0s)
+	}
+
+	var remaining cluster.Hosts
+	remaining = append(remaining, p.hosts...)
+
+	if p.numRunning == 1 && len(remaining) >= 2 {
+		perBatch := min(2, p.manager.Concurrency)
+		firstBatch := remaining[:perBatch]
+
+		log.Debugf("installing first %d controllers to reach HA state and quorum", perBatch)
+		if err := firstBatch.BatchedParallelEach(ctx, perBatch, p.installK0s); err != nil {
 			return err
 		}
+		remaining = remaining[perBatch:]
+		p.numRunning += perBatch
 
-		if p.Config.Spec.K0s.DynamicConfig {
-			h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+		if len(remaining) == 0 {
+			log.Debug("all controllers installed")
+			return nil
 		}
+		log.Debugf("remaining %d controllers to install", len(remaining))
+	}
 
-		if Force {
-			log.Warnf("%s: --force given, using k0s install with --force", h)
-			h.InstallFlags.AddOrReplace("--force=true")
-		}
-
-		cmd, err := h.K0sInstallCommand()
-		if err != nil {
+	if p.numRunning%2 == 0 {
+		log.Debug("even number of running controllers, installing one first to reach quorum")
+		if err := p.installK0s(ctx, remaining[0]); err != nil {
 			return err
 		}
-		log.Infof("%s: installing k0s controller", h)
-		err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
-			return h.Exec(cmd, exec.Sudo(h))
-		})
+		remaining = remaining[1:]
+		p.numRunning++
+	}
+
+	var perBatch int
+
+	if len(remaining) == 0 {
+		log.Debug("all controllers installed")
+		return nil
+	}
+
+	// install the rest in parallel in uneven batches
+	perBatch = min(5, p.manager.Concurrency) // max 5 in parallel (or less if concurrency is limited)
+	perBatch = min(perBatch, len(remaining)) // batch size can't be larger than remaining count
+
+	// ensure perBatch is uneven
+	if perBatch%2 == 0 {
+		perBatch--
+	}
+	// ensure perBatch is at least 1
+	if perBatch < 1 {
+		perBatch = 1
+	}
+
+	log.Debugf("installing remaining %d controllers in batches of %d", len(remaining), perBatch)
+
+	return remaining.BatchedParallelEach(ctx, perBatch, p.installK0s)
+}
+
+func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) error {
+	tokenPath := h.K0sJoinTokenPath()
+	log.Infof("%s: writing join token to %s", h, tokenPath)
+	err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
+		return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+	})
+	if err != nil {
+		return err
+	}
+
+	if p.Config.Spec.K0s.DynamicConfig {
+		h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+	}
+
+	if Force {
+		log.Warnf("%s: --force given, using k0s install with --force", h)
+		h.InstallFlags.AddOrReplace("--force=true")
+	}
+
+	cmd, err := h.K0sInstallCommand()
+	if err != nil {
+		return err
+	}
+	log.Infof("%s: installing k0s controller", h)
+	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
+		var stdout, stderr bytes.Buffer
+		runner, err := h.ExecStreams(cmd, nil, &stdout, &stderr, exec.Sudo(h))
 		if err != nil {
-			return err
+			return fmt.Errorf("run k0s install: %w", err)
 		}
-		h.Metadata.K0sInstalled = true
-		h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
-
-		if p.IsWet() {
-			if len(h.Environment) > 0 {
-				log.Infof("%s: updating service environment", h)
-				if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
-					return err
-				}
-			}
-
-			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
-				return err
-			}
-
-			log.Infof("%s: waiting for the k0s service to start", h)
-			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
-				return err
-			}
-
-			err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
-				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
-				if err != nil {
-					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
-				}
-				return nil
-			})
-			if err != nil {
-				return fmt.Errorf("controller did not reach ready state: %w", err)
-			}
-
-			h.Metadata.Ready = true
+		if err := runner.Wait(); err != nil {
+			log.Errorf("%s: k0s install failed: %s %s", h, stdout.String(), stderr.String())
+			return fmt.Errorf("k0s install failed: %w", err)
 		}
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	h.Metadata.K0sInstalled = true
+	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
+
+	if p.IsWet() {
+		if len(h.Environment) > 0 {
+			log.Infof("%s: updating service environment", h)
+			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+				return err
+			}
+		}
+
+		log.Infof("%s: starting service", h)
+		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+			return err
+		}
+
+		log.Infof("%s: waiting for the k0s service to start", h)
+		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			return err
+		}
+
+		err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
+			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
+			if err != nil {
+				return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("controller did not reach ready state: %w", err)
+		}
+
+		h.Metadata.Ready = true
+	}
+
+	return nil
 }
