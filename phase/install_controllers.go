@@ -173,29 +173,29 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 		p.numRunning++
 	}
 
-	var perBatch int
+	// install the rest in parallel in uneven quorum-optimized batches
+	for len(remaining) > 0 {
+		currentTotal := p.numRunning + len(remaining)
+		quorum := (currentTotal / 2) + 1
+		safeMax := (quorum / 2)
+		if safeMax < 1 {
+			safeMax = 1
+		}
 
-	if len(remaining) == 0 {
-		log.Debug("all controllers installed")
-		return nil
+		perBatch := min(safeMax, p.manager.Concurrency, len(remaining))
+
+		log.Debugf("installing next %d controllers (quorum=%d, total=%d)", perBatch, quorum, currentTotal)
+
+		batch := remaining[:perBatch]
+		if err := batch.BatchedParallelEach(ctx, perBatch, p.installK0s); err != nil {
+			return err
+		}
+
+		remaining = remaining[perBatch:]
+		p.numRunning += perBatch
 	}
-
-	// install the rest in parallel in uneven batches
-	perBatch = min(5, p.manager.Concurrency) // max 5 in parallel (or less if concurrency is limited)
-	perBatch = min(perBatch, len(remaining)) // batch size can't be larger than remaining count
-
-	// ensure perBatch is uneven
-	if perBatch%2 == 0 {
-		perBatch--
-	}
-	// ensure perBatch is at least 1
-	if perBatch < 1 {
-		perBatch = 1
-	}
-
-	log.Debugf("installing remaining %d controllers in batches of %d", len(remaining), perBatch)
-
-	return remaining.BatchedParallelEach(ctx, perBatch, p.installK0s)
+	log.Debug("all controllers installed")
+	return nil
 }
 
 func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) error {
