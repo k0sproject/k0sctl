@@ -13,7 +13,7 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
           - quay.io/k0sproject/bootloose-ubuntu20.04
     name: Basic 1+1 smoke
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
           - quay.io/k0sproject/bootloose-ubuntu20.04
     name: Basic 1+1 smoke (regular user login)
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
 
@@ -78,7 +78,7 @@ jobs:
   smoke-basic-idlike:
     name: Basic 1+1 smoke (ID_LIKE fallback)
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -99,7 +99,7 @@ jobs:
           - quay.io/k0sproject/bootloose-alpine3.18
     name: Basic 1+1 smoke using openssh client
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
           - quay.io/k0sproject/bootloose-alpine3.18
     name: Basic file upload smoke
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +132,7 @@ jobs:
           - quay.io/k0sproject/bootloose-alpine3.18
     name: Basic dynamic config smoke
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -143,7 +143,7 @@ jobs:
   smoke-os-override:
     name: OS override smoke test
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -154,7 +154,7 @@ jobs:
   smoke-downloadurl:
     name: k0sDownloadURL smoke test
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -174,7 +174,7 @@ jobs:
           - v1.21.6+k0s.0
     name: Upgrade
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -195,7 +195,7 @@ jobs:
           - v1.21.6+k0s.0
     name: Dry run
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -215,7 +215,7 @@ jobs:
 
     name: Apply + reset
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -235,7 +235,7 @@ jobs:
 
     name: Apply + backup + reset + restore
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -253,7 +253,7 @@ jobs:
 
     name: Controller swap
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -272,7 +272,7 @@ jobs:
 
     name: Reinstall (modify install flags)
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -285,7 +285,7 @@ jobs:
   smoke-init:
     name: Init sub-command smoke test
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
