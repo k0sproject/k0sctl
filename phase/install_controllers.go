@@ -264,6 +264,9 @@ func (p *InstallControllers) installK0s(h *cluster.Host) error {
 
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("install k0s controller: %w", err)
+	}
 	h.Metadata.Ready = true
 	h.Metadata.K0sInstalled = true
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
