@@ -38,6 +38,7 @@ func (l *Linux) initPaths() {
 		"K0sConfigPath":      "/etc/k0s/k0s.yaml",
 		"K0sJoinTokenPath":   "/etc/k0s/k0stoken",
 		"DataDirDefaultPath": "/var/lib/k0s",
+		"K0sKubeletRootDir":  "/var/lib/kubelet",
 	}
 }
 
@@ -75,6 +76,15 @@ func (l *Linux) DataDirDefaultPath() string {
 
 	l.initPaths()
 	return l.paths["DataDirDefaultPath"]
+}
+
+// K0sKubeletRootDir returns the path to the k0s kubelet root dir on the host
+func (l *Linux) K0sKubeletRootDir() string {
+	l.pathMu.Lock()
+	defer l.pathMu.Unlock()
+
+	l.initPaths()
+	return l.paths["K0sKubeletRootDir"]
 }
 
 // SetPath sets a path for a key

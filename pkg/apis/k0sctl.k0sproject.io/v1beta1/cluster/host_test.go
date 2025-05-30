@@ -50,6 +50,14 @@ func TestK0sJoinTokenPath(t *testing.T) {
 	require.Equal(t, "from-install-flags", h.K0sJoinTokenPath())
 }
 
+func TestK0sKubeletRootDir(t *testing.T) {
+	h := Host{}
+	h.Configurer = &mockconfigurer{}
+
+	h.InstallFlags.Add("--kubelet-root-dir from-install-flags")
+	require.Equal(t, "from-install-flags", h.K0sKubeletRootDir())
+}
+
 func TestK0sConfigPath(t *testing.T) {
 	h := Host{}
 	h.Configurer = &mockconfigurer{}

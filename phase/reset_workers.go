@@ -107,7 +107,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 
 		log.Debugf("%s: resetting k0s...", h)
 		var stdoutbuf, stderrbuf bytes.Buffer
-		cmd, err := h.ExecStreams(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), nil, &stdoutbuf, &stderrbuf, exec.Sudo(h))
+		cmd, err := h.ExecStreams(h.Configurer.K0sCmdf("reset --data-dir=%s --kubelet-root-dir=%s", h.K0sDataDir(), h.K0sKubeletRootDir()), nil, &stdoutbuf, &stderrbuf, exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("failed to run k0s reset: %w", err)
 		}

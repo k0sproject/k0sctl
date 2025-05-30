@@ -134,6 +134,7 @@ type configurer interface {
 	K0sBinaryVersion(os.Host) (*version.Version, error)
 	K0sConfigPath() string
 	DataDirDefaultPath() string
+	K0sKubeletRootDir() string
 	K0sJoinTokenPath() string
 	WriteFile(os.Host, string, string, string) error
 	UpdateEnvironment(os.Host, map[string]string) error
@@ -249,6 +250,15 @@ func (h *Host) ResolveConfigurer() error {
 	}
 
 	return fmt.Errorf("unsupported OS")
+}
+
+// K0sKubeletRootDir returns the kubelet root directory from install flags or configurer
+func (h *Host) K0sKubeletRootDir() string {
+	if dir := h.InstallFlags.GetValue("--kubelet-root-dir"); dir != "" {
+		return dir
+	}
+
+	return h.Configurer.K0sKubeletRootDir()
 }
 
 // K0sJoinTokenPath returns the token file path from install flags or configurer
