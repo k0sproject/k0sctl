@@ -31,6 +31,38 @@ func (p *ResetControllers) Title() string {
 	return "Reset controllers"
 }
 
+// Before runs "before reset" hooks
+func (p *ResetControllers) Before() error {
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("reset", "before") {
+			p.DryMsg(h, "run before reset hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("reset", "before"); err != nil {
+			return fmt.Errorf("failed to run before reset hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
+// After runs "after reset" hooks
+func (p *ResetControllers) After() error {
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("reset", "after") {
+			p.DryMsg(h, "run after reset hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("reset", "after"); err != nil {
+			return fmt.Errorf("failed to run after reset hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
 // Prepare the phase
 func (p *ResetControllers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
