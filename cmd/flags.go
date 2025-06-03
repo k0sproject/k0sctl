@@ -230,8 +230,6 @@ func initConfig(ctx *cli.Context) error {
 
 func displayCopyright(ctx *cli.Context) error {
 	fmt.Fprintf(ctx.App.Writer, "k0sctl %s Copyright 2023, k0sctl authors.\n", k0sctl.Version)
-	fmt.Fprintln(ctx.App.Writer, "By continuing to use k0sctl you agree to these terms:")
-	fmt.Fprintln(ctx.App.Writer, "https://k0sproject.io/licenses/eula")
 	return nil
 }
 
