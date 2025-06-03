@@ -17,8 +17,12 @@ type GatherFacts struct {
 	SkipMachineIDs bool
 }
 
-// K0s doesn't rely on unique machine IDs anymore since v1.30.
-var uniqueMachineIDSince = version.MustParse("v1.30.0")
+var (
+	// K0s doesn't rely on unique machine IDs anymore since v1.30.
+	uniqueMachineIDSince = version.MustParse("v1.30.0")
+	// --kubelet-root-dir was introduced in v1.32.1-rc.0
+	kubeletRootDirSince = version.MustParse("v1.32.1-rc.0")
+)
 
 // Title for the phase
 func (p *GatherFacts) Title() string {
@@ -81,6 +85,10 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 				log.Infof("%s: discovered %s as private address", h, addr)
 			}
 		}
+	}
+
+	if p.Config.Spec.K0s.Version.LessThan(kubeletRootDirSince) && h.KubeletRootDir != "" {
+		return fmt.Errorf("kubeletRootDir is not supported in k0s version %s, please remove it from the configuration", p.Config.Spec.K0s.Version)
 	}
 
 	return nil

@@ -310,6 +310,10 @@ Override host's hostname. When not set, the hostname reported by the operating s
 
 Set host's k0s data-dir.
 
+###### `spec.hosts[*].kubeletRootDir` &lt;string&gt; (optional) (default: `""`)
+
+Set host's k0s kubelet-root-dir.
+
 ###### `spec.hosts[*].installFlags` &lt;sequence&gt; (optional)
 
 Extra flags passed to the `k0s install` command on the target host. See `k0s install --help` for a list of options.

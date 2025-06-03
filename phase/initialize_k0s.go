@@ -50,7 +50,7 @@ func (p *InitializeK0s) CleanUp() {
 		}
 	}
 	if h.Metadata.K0sInstalled {
-		if err := h.Exec(h.Configurer.K0sCmdf("reset --data-dir=%s", h.K0sDataDir()), exec.Sudo(h)); err != nil {
+		if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
 			log.Warnf("%s: k0s reset failed", h)
 		}
 	}

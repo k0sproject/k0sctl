@@ -45,6 +45,8 @@ echo "Re-applying ${K0S_VERSION} with modified installFlags"
 echo "A re-apply should perform a re-install if there are changes"
 grep -iq "reinstalling" apply.log
 
+sleep 5
+
 echo "Install flags should change for controller"
 remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_FLAG}"
 

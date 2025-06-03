@@ -65,7 +65,7 @@ func TestK0sConfigPath(t *testing.T) {
 }
 
 func TestK0sInstallCommand(t *testing.T) {
-	h := Host{Role: "worker", DataDir: "/tmp/k0s", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
 	_ = h.Connect()
 	h.Configurer = &mockconfigurer{}
 	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
@@ -73,40 +73,40 @@ func TestK0sInstallCommand(t *testing.T) {
 
 	cmd, err := h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file=from-configurer`, cmd)
+	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
 
 	h.Role = "controller"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --config=from-configurer`, cmd)
 
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --token-file=from-configurer --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer --config=from-configurer`, cmd)
 
 	h.Role = "controller+worker"
 	h.Metadata.IsK0sLeader = true
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker=true --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --enable-worker=true --config=from-configurer`, cmd)
 
 	h.Metadata.IsK0sLeader = false
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --enable-worker=true --token-file=from-configurer --config=from-configurer`, cmd)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --enable-worker=true --token-file=from-configurer --config=from-configurer`, cmd)
 
 	h.Role = "worker"
 	h.PrivateAddress = "10.0.0.9"
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --token-file=from-configurer --kubelet-extra-args=--node-ip=10.0.0.9`, cmd)
+	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer --kubelet-extra-args=--node-ip=10.0.0.9`, cmd)
 
 	h.InstallFlags = []string{`--kubelet-extra-args="--foo bar"`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --kubelet-extra-args='--foo bar --node-ip=10.0.0.9' --data-dir=/tmp/k0s --token-file=from-configurer`, cmd)
+	require.Equal(t, `k0s install worker --kubelet-extra-args='--foo bar --node-ip=10.0.0.9' --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
 
 	// Verify that K0sInstallCommand does not modify InstallFlags"
 	require.Equal(t, `--kubelet-extra-args='--foo bar'`, h.InstallFlags.Join())
@@ -114,7 +114,15 @@ func TestK0sInstallCommand(t *testing.T) {
 	h.InstallFlags = []string{`--enable-cloud-provider=true`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
-	require.Equal(t, `k0s install worker --enable-cloud-provider=true --data-dir=/tmp/k0s --token-file=from-configurer`, cmd)
+	require.Equal(t, `k0s install worker --enable-cloud-provider=true --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
+}
+
+func TestK0sResetCommand(t *testing.T) {
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
+	_ = h.Connect()
+
+	h.Configurer = &mockconfigurer{}
+	require.Equal(t, `k0s reset --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet`, h.K0sResetCommand())
 }
 
 func TestValidation(t *testing.T) {

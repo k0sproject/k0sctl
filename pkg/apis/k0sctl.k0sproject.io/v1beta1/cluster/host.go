@@ -33,6 +33,7 @@ type Host struct {
 	PrivateInterface string            `yaml:"privateInterface,omitempty"`
 	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
 	DataDir          string            `yaml:"dataDir,omitempty"`
+	KubeletRootDir   string            `yaml:"kubeletRootDir,omitempty"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
@@ -75,6 +76,14 @@ func (h *Host) SetDefaults() {
 		}
 		h.InstallFlags.Delete("--data-dir")
 		h.DataDir = dd
+	}
+
+	if krd := h.InstallFlags.GetValue("--kubelet-root-dir"); krd != "" {
+		if h.KubeletRootDir != "" {
+			log.Debugf("%s: changed kubeletRootDir from '%s' to '%s' because of --kubelet-root-dir installFlag", h, h.DataDir, krd)
+		}
+		h.InstallFlags.Delete("--kubelet-root-dir")
+		h.KubeletRootDir = krd
 	}
 }
 
@@ -287,6 +296,10 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 
 	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", shellescape.Quote(h.K0sDataDir())))
 
+	if h.KubeletRootDir != "" {
+		flags.AddOrReplace(fmt.Sprintf("--kubelet-root-dir=%s", shellescape.Quote(h.KubeletRootDir)))
+	}
+
 	switch h.Role {
 	case "controller+worker":
 		flags.AddUnlessExist("--enable-worker=true")
@@ -347,6 +360,17 @@ func (h *Host) K0sInstallCommand() (string, error) {
 	}
 
 	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join()), nil
+}
+
+// K0sResetCommand returns a full command that will reset k0s
+func (h *Host) K0sResetCommand() string {
+	var flags Flags
+	flags.Add(fmt.Sprintf("--data-dir=%s", shellescape.Quote(h.K0sDataDir())))
+	if h.KubeletRootDir != "" {
+		flags.Add(fmt.Sprintf("--kubelet-root-dir=%s", shellescape.Quote(h.KubeletRootDir)))
+	}
+
+	return h.Configurer.K0sCmdf("reset %s", flags.Join())
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
