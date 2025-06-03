@@ -72,8 +72,9 @@ func (d *DrainOption) ToKubectlArgs() string {
 
 // ConcurrencyOption controls how many hosts are operated on at once.
 type ConcurrencyOption struct {
-	Limit   int `yaml:"limit" default:"30"`  // Max number of hosts to operate on at once
-	Uploads int `yaml:"uploads" default:"5"` // Max concurrent file uploads
+	Limit                   int `yaml:"limit" default:"30"`                   // Max number of hosts to operate on at once
+	WorkerDisruptionPercent int `yaml:"workerDisruptionPercent" default:"10"` // Max percentage of hosts to disrupt at once
+	Uploads                 int `yaml:"uploads" default:"5"`                  // Max concurrent file uploads
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for ConcurrencyOption.
