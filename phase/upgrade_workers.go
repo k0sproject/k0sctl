@@ -82,6 +82,7 @@ func (p *UpgradeWorkers) Run(ctx context.Context) error {
 	if concurrentUpgrades == 0 {
 		concurrentUpgrades = 1
 	}
+	concurrentUpgrades = min(concurrentUpgrades, p.Config.Spec.Options.Concurrency.Limit)
 
 	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
 	return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
