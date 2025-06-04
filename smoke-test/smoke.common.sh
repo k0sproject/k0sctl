@@ -1,6 +1,6 @@
 BOOTLOOSE_TEMPLATE=${BOOTLOOSE_TEMPLATE:-"bootloose.yaml.tpl"}
 
-export LINUX_IMAGE="${LINUX_IMAGE:-"quay.io/k0sproject/bootloose-ubuntu20.04"}"
+export LINUX_IMAGE="${LINUX_IMAGE:-"quay.io/k0sproject/bootloose-ubuntu22.04"}"
 export PRESERVE_CLUSTER="${PRESERVE_CLUSTER:-""}"
 export K0S_VERSION
 
