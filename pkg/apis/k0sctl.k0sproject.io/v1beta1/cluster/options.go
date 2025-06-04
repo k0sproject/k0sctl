@@ -18,6 +18,23 @@ type Options struct {
 	EvictTaint  EvictTaintOption  `yaml:"evictTaint"`
 }
 
+// UnmarshalYAML implements the yaml.Unmarshaler interface for Options.
+func (o *Options) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type options Options
+	var tmp options
+
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	}
+
+	if err := defaults.Set(&tmp); err != nil {
+		return fmt.Errorf("failed to set defaults for options: %w", err)
+	}
+
+	*o = Options(tmp)
+	return nil
+}
+
 // WaitOption controls the wait behavior for cluster operations.
 type WaitOption struct {
 	Enabled bool `yaml:"enabled" default:"true"`
@@ -68,6 +85,23 @@ func (d *DrainOption) ToKubectlArgs() string {
 	}
 
 	return strings.Join(args, " ")
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface for DrainOption.
+func (d *DrainOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type drainOption DrainOption
+	var tmp drainOption
+
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	}
+
+	if err := defaults.Set(&tmp); err != nil {
+		return fmt.Errorf("failed to set defaults for drain option: %w", err)
+	}
+
+	*d = DrainOption(tmp)
+	return nil
 }
 
 // ConcurrencyOption controls how many hosts are operated on at once.
