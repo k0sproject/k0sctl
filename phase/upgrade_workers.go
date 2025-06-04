@@ -78,7 +78,7 @@ func (p *UpgradeWorkers) CleanUp() {
 // Run the phase
 func (p *UpgradeWorkers) Run(ctx context.Context) error {
 	// Upgrade worker hosts parallelly in 10% chunks
-	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * 0.10))
+	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * float64(p.Config.Spec.Options.Concurrency.WorkerDisruptionPercent/100)))
 	if concurrentUpgrades == 0 {
 		concurrentUpgrades = 1
 	}

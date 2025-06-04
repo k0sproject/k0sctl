@@ -637,6 +637,7 @@ spec:
       effect: NoExecute
     concurrency:
       limit: 30
+      workerDisruptionPercent: 10
       uploads: 5
 ```
 
@@ -699,6 +700,10 @@ Whether to also apply the taint to nodes with the controller+worker dual role. B
 ##### `spec.options.concurrency.limit` &lt;integer&gt; (optional) (default: 30)
 
 The maximum number of hosts to operate on concurrently during cluster operations. Same as the `--concurrency` command line option.
+
+##### `spec.options.concurrency.workerDisruptionPercent` &lt;integer&gt; (optional) (default: 10)
+
+The maximum percentage of worker nodes that can be disrupted at the same time during operations such as upgrade. This is used to ensure that a minimum number of worker nodes remain available during the operation. The value must be between 0 and 100.
 
 ##### `spec.options.concurrency.uploads` &lt;integer&gt; (optional) (default: 5)
 
