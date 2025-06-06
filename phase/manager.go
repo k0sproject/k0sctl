@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/creasty/defaults"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
@@ -180,6 +181,17 @@ func (m *Manager) Wet(host fmt.Stringer, msg string, funcs ...errorfunc) error {
 func (m *Manager) Run(ctx context.Context) error {
 	var ran []Phase
 	var result error
+
+	if m.Config == nil {
+		return fmt.Errorf("cannot run phases: config is nil")
+	}
+
+	log.Debug("setting defaults")
+	if err := defaults.Set(m.Config); err != nil {
+		return fmt.Errorf("failed to set defaults: %w", err)
+	}
+	log.Debug("final configuration:")
+	log.Print(m.Config.String())
 
 	defer func() {
 		if m.DryRun {

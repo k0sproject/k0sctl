@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -211,12 +212,19 @@ func initConfig(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
+		if bytes.Equal(subst, content) {
+			log.Debugf("no variable substitutions made in %s", f)
+		} else {
+			log.Debugf("variable substitutions made in %s, before %d after %d bytes", f, len(content), len(subst))
+		}
 
-		log.Debugf("Loaded configuration from %s:\n%s", f, subst)
+		log.Debugf("parsing configuration from %s", f)
 
 		if err := manifestReader.ParseBytes(subst); err != nil {
 			return fmt.Errorf("failed to parse config: %w", err)
 		}
+
+		log.Debugf("parsed %d resource definition manifests from %s", manifestReader.Len(), f)
 	}
 
 	if manifestReader.Len() == 0 {

@@ -1,10 +1,12 @@
 package v1beta1
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"gopkg.in/yaml.v2"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 )
@@ -46,6 +48,16 @@ func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return nil
+}
+
+// String renders the config as a string
+func (c *Cluster) String() string {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(c); err != nil {
+		return "# error enconding cluster config: " + err.Error()
+	}
+	return buf.String()
 }
 
 // SetDefaults initializes default values
