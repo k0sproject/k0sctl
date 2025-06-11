@@ -17,20 +17,41 @@ k0sctl: $(GO_SRCS)
 bin/k0sctl-linux-amd64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-amd64 main.go
 
-docker/linux-amd64: bin/k0sctl-linux-amd64
-	docker buildx build --platform=linux/amd64 --tag=ghcr.io/k0sproject/k0sctl-amd64:latest .
+docker/build/linux-amd64:
+	docker buildx build \
+		--platform=linux/amd64 \
+		--build-arg ENVIRONMENT=$(ENVIRONMENT) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg TAG_NAME=$(TAG_NAME) \
+		-t ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-amd64 \
+		--load \
+		.
 
 bin/k0sctl-linux-arm64: $(GO_SRCS)
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm64 main.go
 
-docker/linux-arm64: bin/k0sctl-linux-arm64
-	docker buildx build --platform=linux/arm64 --tag=ghcr.io/k0sproject/k0sctl-arm64:latest .
+docker/build/linux-arm64:
+	docker buildx build \
+		--platform=linux/arm64 \
+		--build-arg ENVIRONMENT=$(ENVIRONMENT) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg TAG_NAME=$(TAG_NAME) \
+		-t ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm64 \
+		--load \
+		.
 
 bin/k0sctl-linux-arm: $(GO_SRCS)
 	GOOS=linux GOARCH=arm CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm main.go
 
-docker/linux-arm: bin/k0sctl-linux-arm
-	docker buildx build --platform=linux/arm/v7 --tag=ghcr.io/k0sproject/k0sctl-arm:latest .
+docker/build/linux-arm:
+	docker buildx build \
+		--platform=linux/arm/v7 \
+		--build-arg ENVIRONMENT=$(ENVIRONMENT) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg TAG_NAME=$(TAG_NAME) \
+		-t ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm \
+		--load \
+		.
 
 bin/k0sctl-win-amd64.exe: $(GO_SRCS)
 	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-amd64.exe main.go
@@ -58,12 +79,13 @@ bin/checksums.md: bin/checksums.txt
 .PHONY: build-all
 build-all: $(addprefix bin/,$(bins)) bin/checksums.md
 
-.PHONY: build-all-images
-build-all-images: $(addprefix docker/,$(dockers))
-
 .PHONY: clean
 clean:
 	rm -rf bin/ k0sctl
+
+.PHONY: clean-images
+clean-images:
+	docker rmi ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-amd64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm
 
 smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl smoke-controller-swap smoke-reinstall smoke-multidoc
 .PHONY: $(smoketests)

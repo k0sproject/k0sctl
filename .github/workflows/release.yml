@@ -52,12 +52,13 @@ jobs:
           draft: true # So we can manually edit before publishing
           prerelease: ${{ contains(steps.tag-name.outputs.tag, '-') }} # v0.1.2-beta1, 1.2.3-rc1
 
-      - name: Build image and push to Docker Hub and GitHub image registry
+      - name: Build image and push to GitHub image registry
         uses: docker/build-push-action@v6
         if: startsWith(github.ref, 'refs/tags/')
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           tags: |
+            ghcr.io/k0sproject/k0sctl:latest
             ghcr.io/k0sproject/k0sctl:${{ steps.tag-name.outputs.tag }}
           push: true
