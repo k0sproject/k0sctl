@@ -68,6 +68,21 @@ Note: The [chocolatey package](https://community.chocolatey.org/packages/k0sctl)
 choco install k0sctl
 ```
 
+### Container usage
+
+It is possible to use `k0sctl` via a docker/OCI container, like with the following:
+
+```sh
+# pull the image
+docker pull ghcr.io/k0sprojects/k0sctl:latest
+
+# create a backup
+docker run -it --workdir /backup \
+  -v ./backup:/backup \
+  -v ./k0sctl.yaml:/etc/k0s/k0sctl.yaml \
+  ghcr.io/k0sprojects/k0sctl:latest k0sctl backup --config /etc/k0s/k0sctl.yaml
+```
+
 #### Shell auto-completions
 
 ##### Bash
