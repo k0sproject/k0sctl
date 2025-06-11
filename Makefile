@@ -17,11 +17,20 @@ k0sctl: $(GO_SRCS)
 bin/k0sctl-linux-amd64: $(GO_SRCS)
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-amd64 main.go
 
+docker/linux-amd64: bin/k0sctl-linux-amd64
+	docker buildx build --platform=linux/amd64 --tag=ghcr.io/k0sproject/k0sctl-amd64:latest .
+
 bin/k0sctl-linux-arm64: $(GO_SRCS)
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm64 main.go
 
+docker/linux-arm64: bin/k0sctl-linux-arm64
+	docker buildx build --platform=linux/arm64 --tag=ghcr.io/k0sproject/k0sctl-arm64:latest .
+
 bin/k0sctl-linux-arm: $(GO_SRCS)
 	GOOS=linux GOARCH=arm CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-arm main.go
+
+docker/linux-arm: bin/k0sctl-linux-arm
+	docker buildx build --platform=linux/arm/v7 --tag=ghcr.io/k0sproject/k0sctl-arm:latest .
 
 bin/k0sctl-win-amd64.exe: $(GO_SRCS)
 	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-amd64.exe main.go
@@ -33,6 +42,8 @@ bin/k0sctl-darwin-arm64: $(GO_SRCS)
 	GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
 
 bins := k0sctl-linux-amd64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-amd64.exe k0sctl-darwin-amd64 k0sctl-darwin-arm64
+
+dockers := linux-amd64 linux-arm64 linux-arm
 
 bin/checksums.txt: $(addprefix bin/,$(bins))
 	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
@@ -46,6 +57,9 @@ bin/checksums.md: bin/checksums.txt
 
 .PHONY: build-all
 build-all: $(addprefix bin/,$(bins)) bin/checksums.md
+
+.PHONY: build-all-images
+build-all-images: $(addprefix docker/,$(dockers))
 
 .PHONY: clean
 clean:
