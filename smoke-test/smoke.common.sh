@@ -30,6 +30,6 @@ downloadKubectl() {
     case $(uname -m) in
         arm,arm64) ARCH="arm64" ;;
     esac
-    [ -f kubectl ] || (curl -L https://storage.googleapis.com/kubernetes-release/release/v1.28.2/bin/"${OS}"/${ARCH}/kubectl > ./kubectl && chmod +x ./kubectl)
+    [ -f kubectl ] || (curl -L https://dl.k8s.io/release/v1.28.2/bin/${OS}/${ARCH}/kubectl > ./kubectl && chmod +x ./kubectl)
     ./kubectl version --client
 }
