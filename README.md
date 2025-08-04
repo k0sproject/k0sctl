@@ -1,4 +1,6 @@
 # k0sctl
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl?ref=badge_shield)
+
 
 *A command-line bootstrapping and management tool for [k0s zero friction kubernetes](https://k0sproject.io/) clusters.*
 
@@ -743,3 +745,7 @@ Example:
     # Expands to https://files.example.com/k0s%20files/k0s-v1.21.0+k0s.0-amd64
 ```
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fk0sproject%2Fk0sctl?ref=badge_large)
