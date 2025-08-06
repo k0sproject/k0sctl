@@ -42,9 +42,73 @@ func (p *InstallWorkers) ShouldRun() bool {
 	return len(p.hosts) > 0
 }
 
+// Before runs "before apply" hooks
+func (p *InstallWorkers) Before() error {
+	err := p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("apply", "before") {
+			p.DryMsg(h, "run before apply hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("apply", "before"); err != nil {
+			return fmt.Errorf("failed to run before apply hooks: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("install", "before") {
+			p.DryMsg(h, "run before install hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("install", "before"); err != nil {
+			return fmt.Errorf("failed to run before install hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
+// After runs "after apply" hooks
+func (p *InstallWorkers) After() error {
+	err := p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("apply", "after") {
+			p.DryMsg(h, "run after apply hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("apply", "after"); err != nil {
+			return fmt.Errorf("failed to run after apply hooks: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return p.hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks("install", "after") {
+			p.DryMsg(h, "run after install hooks")
+			return nil
+		}
+
+		if err := h.RunHooks("install", "after"); err != nil {
+			return fmt.Errorf("failed to run after install hooks: %w", err)
+		}
+
+		return nil
+	})
+}
+
 // CleanUp attempts to clean up any changes after a failed install
 func (p *InstallWorkers) CleanUp() {
-	_ = p.After()
+	_ = p.AfterHook()
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
@@ -63,7 +127,7 @@ func (p *InstallWorkers) CleanUp() {
 	})
 }
 
-func (p *InstallWorkers) After() error {
+func (p *InstallWorkers) AfterHook() error {
 	if NoWait {
 		for _, h := range p.hosts {
 			if h.Metadata.K0sTokenData.Token != "" {
