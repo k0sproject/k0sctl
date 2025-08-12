@@ -87,6 +87,7 @@ func (p *UpgradeWorkers) Run(ctx context.Context) error {
 	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
 	return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
 		p.start,
+		p.waitForKubeProxy,
 		p.cordonWorker,
 		p.drainWorker,
 		p.upgradeWorker,
@@ -242,5 +243,17 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	}
 
 	h.Metadata.Ready = true
+	return nil
+}
+
+func (p *UpgradeWorkers) waitForKubeProxy(ctx context.Context, h *cluster.Host) error {
+	if !p.IsWet() {
+		p.DryMsg(h, "wait for kube-proxy to be at the desired version")
+		return nil
+	}
+	log.Infof("%s: waiting for kube-proxy roll-out", h)
+	if err := retry.AdaptiveTimeout(context.Background(), retry.DefaultTimeout, node.KubeProxyRolledOutFunc(h)); err != nil {
+		return fmt.Errorf("kube-proxy did not reach the desired version: %w", err)
+	}
 	return nil
 }
