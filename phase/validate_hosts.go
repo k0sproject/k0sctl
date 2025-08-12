@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -61,6 +62,7 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 		p.validateUniqueMachineID,
 		p.validateUniquePrivateAddress,
 		p.validateSudo,
+		p.validateVersionSkew,
 		p.cleanUpOldK0sTmpFiles,
 	)
 	if err != nil {
@@ -183,5 +185,28 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 		return fmt.Errorf("clock skew exceeds the maximum on %d hosts", foundExceeding)
 	}
 
+	return nil
+}
+
+func (p *ValidateHosts) validateVersionSkew(_ context.Context, h *cluster.Host) error {
+	log.Debugf("%s: validating k0s version skew", h)
+	if h.Metadata.K0sRunningVersion == nil {
+		log.Debugf("%s: k0s is not installed, skipping version check", h)
+		return nil
+	}
+
+	delta := version.NewDelta(p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
+	log.Debugf("%s: version delta: %s", h, delta)
+
+	if !delta.MajorUpgrade || !delta.MinorUpgrade {
+		log.Debugf("%s: no need to check further", h)
+		return nil
+	}
+
+	if !delta.Consecutive {
+		return fmt.Errorf("target k0s version %s is not consecutive with the running version %s", p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
+	}
+
+	log.Debugf("%s: version check pass", h)
 	return nil
 }
