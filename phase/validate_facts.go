@@ -85,20 +85,29 @@ func (p *ValidateFacts) validateVersionSkew() error {
 		delta := version.NewDelta(h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
 		log.Debugf("%s: version delta: %s", h, delta)
 
+		var unacceptable bool
 		switch {
-		case delta.PatchUpgrade:
-			log.Debugf("%s: patch upgrade, no skew check", h)
 		case delta.MinorUpgrade:
 			if p.Config.Spec.K0s.Version.Segments()[1]-h.Metadata.K0sRunningVersion.Segments()[1] > 2 {
-				return fmt.Errorf("upgrade from %s directly to %s is not within kubernetes version skew policy", h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
+				log.Debugf("%s: minor upgrade not withing acceptable skew", h)
+				unacceptable = true
 			}
 			log.Debugf("%s: minor upgrade withing acceptable skew", h)
 		case delta.MajorUpgrade:
 			if p.Config.Spec.K0s.Version.Segments()[0]-h.Metadata.K0sRunningVersion.Segments()[0] > 1 {
-				return fmt.Errorf("upgrade from %s directly to %s is not within kubernetes version skew policy", h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
+				log.Debugf("%s: major upgrade not withing acceptable skew", h)
+				unacceptable = true
 			}
 			log.Debugf("%s: major upgrade, good luck with that", h)
 		}
+		if unacceptable {
+			if Force {
+				log.Warnf("upgrade from %s directly to %s is not within kubernetes version skew policy, allowing because --force given", h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
+				return nil
+			}
+			return fmt.Errorf("upgrade from %s directly to %s is not within kubernetes version skew policy, you can use --force to skip this check", h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
+		}
+
 		log.Debugf("%s: version skew check passed", h)
 		return nil
 	})
