@@ -82,7 +82,7 @@ func (p *ValidateFacts) validateVersionSkew() error {
 		return h.Metadata.NeedsUpgrade
 	}).Each(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Debugf("%s: validating k0s version skew", h)
-		delta := version.NewDelta(p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
+		delta := version.NewDelta(h.Metadata.K0sRunningVersion, p.Config.Spec.K0s.Version)
 		log.Debugf("%s: version delta: %s", h, delta)
 
 		if !delta.MajorUpgrade || !delta.MinorUpgrade {
