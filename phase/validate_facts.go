@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +27,10 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 	}
 
 	if err := p.validateDefaultVersion(); err != nil {
+		return err
+	}
+
+	if err := p.validateVersionSkew(); err != nil {
 		return err
 	}
 
@@ -69,4 +75,25 @@ func (p *ValidateFacts) validateDefaultVersion() error {
 	}
 
 	return nil
+}
+
+func (p *ValidateFacts) validateVersionSkew() error {
+	return p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		return h.Metadata.NeedsUpgrade
+	}).Each(context.Background(), func(_ context.Context, h *cluster.Host) error {
+		log.Debugf("%s: validating k0s version skew", h)
+		delta := version.NewDelta(p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
+		log.Debugf("%s: version delta: %s", h, delta)
+
+		if !delta.MajorUpgrade || !delta.MinorUpgrade {
+			return nil
+		}
+
+		if !delta.Consecutive {
+			return fmt.Errorf("target k0s version %s is not consecutive with the running version %s", p.Config.Spec.K0s.Version, h.Metadata.K0sRunningVersion)
+		}
+
+		log.Debugf("%s: version check pass", h)
+		return nil
+	})
 }
