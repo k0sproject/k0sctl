@@ -119,7 +119,7 @@ colorEcho 4 "Succesfully installed ${K0S_FROM}, moving on to upgrade to ${K0S_TO
 K0S_VERSION="${K0S_TO}"
 
 colorEcho 3 "Upgrading to ${K0S_VERSION} with --dry-run"
-applyConfig "--dry-run"
+applyConfig "--dry-run --force"
 expectK0sVersion "${K0S_FROM}"
 checkDryRunLines min 3
 dumpDryRunLines
@@ -130,6 +130,6 @@ expectK0sVersion "${K0S_TO}"
 checkDryRunLines none
 
 colorEcho 3 "Upgrading to ${K0S_VERSION} with --dry-run again"
-applyConfig "--dry-run"
+applyConfig "--dry-run --force"
 expectK0sVersion "${K0S_TO}"
 dryRunNoChanges
