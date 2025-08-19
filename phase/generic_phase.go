@@ -64,3 +64,18 @@ func (p *GenericPhase) parallelDoUpload(ctx context.Context, hosts cluster.Hosts
 	}
 	return hosts.BatchedParallelEach(ctx, p.manager.ConcurrentUploads, funcs...)
 }
+
+func (p *GenericPhase) runHooks(action, stage string, hosts ...*cluster.Host) error {
+	return p.parallelDo(context.Background(), hosts, func(_ context.Context, h *cluster.Host) error {
+		if !p.IsWet() && h.HasHooks(action, stage) {
+			p.DryMsg(h, fmt.Sprintf("run %s %s hooks", stage, action))
+			return nil
+		}
+
+		if err := h.RunHooks(action, stage); err != nil {
+			return fmt.Errorf("failed to run %s %s hooks: %w", stage, action, err)
+		}
+
+		return nil
+	})
+}

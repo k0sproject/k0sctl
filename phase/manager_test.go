@@ -76,14 +76,13 @@ func (p *hookedPhase) Title() string {
 	return "hooked phase"
 }
 
-func (p *hookedPhase) Before(_ string) error {
+func (p *hookedPhase) BeforeHook() error {
 	p.beforeCalled = true
 	return nil
 }
 
-func (p *hookedPhase) After(err error) error {
+func (p *hookedPhase) AfterHook() error {
 	p.afterCalled = true
-	p.err = err
 	return nil
 }
 
@@ -106,7 +105,6 @@ func TestHookedPhase(t *testing.T) {
 	require.Error(t, m.Run(context.Background()))
 	require.True(t, p.beforeCalled, "before hook was not called")
 	require.True(t, p.afterCalled, "after hook was not called")
-	require.EqualError(t, p.err, "run failed")
 }
 
 func TestContextCancel(t *testing.T) {
