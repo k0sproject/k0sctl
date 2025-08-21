@@ -275,6 +275,9 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 		return nil, fmt.Errorf("failed to unmarshal cluster config: %w", err)
 	}
 	if k0sConfigs, err := mr.GetResources("k0s.k0sproject.io/v1beta1", "ClusterConfig"); err == nil && len(k0sConfigs) > 0 {
+		if cfg.Spec.K0s.Config == nil {
+			cfg.Spec.K0s.Config = make(dig.Mapping)
+		}
 		for _, k0sConfig := range k0sConfigs {
 			k0s := make(dig.Mapping)
 			log.Debugf("unmarshalling %d bytes of config from %v", len(k0sConfig.Raw), k0sConfig.Filename())
