@@ -251,7 +251,7 @@ func (p *UpgradeWorkers) waitForKubeProxy(ctx context.Context, h *cluster.Host) 
 		p.DryMsg(h, "wait for kube-proxy to be at the desired version")
 		return nil
 	}
-	log.Debugf("%s: waiting for kube-proxy roll-out", h)
+	log.Infof("%s: waiting for kube-proxy roll-out", h)
 	if err := retry.AdaptiveTimeout(context.Background(), retry.DefaultTimeout, node.KubeProxyRolledOutFunc(h)); err != nil {
 		return fmt.Errorf("kube-proxy did not reach the desired version: %w", err)
 	}
