@@ -83,7 +83,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 		return err
 	}
 	log.Infof("%s: reinstalling k0s", h)
-	err = p.Wet(h, fmt.Sprintf("reinstall k0s using `%s", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
+	err = p.Wet(h, fmt.Sprintf("reinstall k0s using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
 			return fmt.Errorf("failed to reinstall k0s: %w", err)
 		}
