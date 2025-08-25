@@ -135,7 +135,7 @@ func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host
 		return nil
 	})
 	if err != nil {
-		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallPath(), err)
+		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallLocation(), err)
 	}
 	return nil
 }
