@@ -17,6 +17,7 @@ echo "* Apply OK"
 
 if [ "${INSTALL_PATH}" != "" ]; then
     echo "* Checking k0s binary is at the custom install path ${INSTALL_PATH}"
+    bootloose ssh root@manager0 -- ls -al "$(dirname "${INSTALL_PATH}")"
     bootloose ssh root@manager0 -- test -x "${INSTALL_PATH}"
 fi
 
