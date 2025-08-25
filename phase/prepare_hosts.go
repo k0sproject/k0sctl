@@ -110,5 +110,8 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 		}
 	}
 
+	// Needed to make configurer.K0sBinaryPath() to work inside the configurer itself as it can't call host.K0sInstallLocation().
+	h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallLocation())
+
 	return nil
 }

@@ -15,6 +15,11 @@ echo "* Starting apply"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --kubeconfig-out applykubeconfig --debug
 echo "* Apply OK"
 
+if [ "${INSTALL_PATH}" != "" ]; then
+    echo "* Checking k0s binary is at the custom install path"
+    bootloose ssh root@manager0 -- test -x "${INSTALL_PATH}"
+fi
+
 echo "* Verify hooks were executed on the host"
 bootloose ssh root@manager0 -- grep -q hello apply.hook
 
