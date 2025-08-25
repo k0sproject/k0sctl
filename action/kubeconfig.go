@@ -25,6 +25,7 @@ func (k *Kubeconfig) Run(ctx context.Context) error {
 	k.Manager.AddPhase(
 		&phase.Connect{},
 		&phase.DetectOS{},
+		&phase.PrepareHosts{},
 		&phase.GetKubeconfig{APIAddress: k.KubeconfigAPIAddress, User: k.KubeconfigUser, Cluster: k.KubeconfigCluster},
 		&phase.Disconnect{},
 	)
