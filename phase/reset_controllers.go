@@ -131,6 +131,12 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		}
 		log.Debugf("%s: removing config completed", h)
 
+		log.Debugf("%s: removing k0s binary...", h)
+		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); dErr != nil {
+			log.Warnf("%s: failed to remove existing binary %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
+		}
+		log.Debugf("%s: removing binary completed", h)
+
 		if len(h.Environment) > 0 {
 			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
