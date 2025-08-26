@@ -28,7 +28,7 @@ echo "* Verify hooks were executed on the host"
 bootloose ssh root@manager0 -- grep -q hello apply.hook
 
 echo "* Verify 'k0sctl kubeconfig' output includes 'data' block"
-../k0sctl kubeconfig --config k0sctl.yaml | grep -v -- "-data"
+../k0sctl kubeconfig --config k0sctl.yaml | tee apply.log | grep -v -- "-data" || (echo "No data block found in kubeconfig output"; cat apply.log; exit 1)
 
 echo "* Run kubectl on controller"
 bootloose ssh root@manager0 -- "${K0S}" kubectl get nodes
