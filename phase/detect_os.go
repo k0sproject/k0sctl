@@ -48,6 +48,9 @@ func (p *DetectOS) Run(ctx context.Context) error {
 		os := h.OSVersion.String()
 		log.Infof("%s: is running %s", h, os)
 
+		// Needed to make configurer.K0sBinaryPath() to work inside the configurer itself as it can't call host.K0sInstallLocation().
+		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallLocation())
+
 		return nil
 	})
 }
