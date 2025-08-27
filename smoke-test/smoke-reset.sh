@@ -10,10 +10,9 @@ trap cleanup EXIT
 deleteCluster
 createCluster
 
-EXCLUDES='proc|sys|dev|tmp|run|var/log|var/cache'
 
 snapshot() {
-  bootloose ssh root@manager0 -- tree -af -I "$EXCLUDES" / \
+  bootloose ssh root@manager0 -- tree -af -I "'proc|sys|dev|tmp|run|var/log|var/cache'" / \
     | sed 's/^[[:space:]│├└─]*//' \
     | sort
 }
