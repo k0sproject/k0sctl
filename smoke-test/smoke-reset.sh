@@ -12,9 +12,8 @@ createCluster
 
 
 snapshot() {
-  bootloose ssh root@manager0 -- tree -af -I "'proc|sys|dev|tmp|run|var/log|var/cache'" / \
-    | sed 's/^[[:space:]│├└─]*//' \
-    | sort
+  bootloose ssh root@manager0 -- \
+    'find / \( -path /proc -o -path /sys -o -path /dev -o -path /tmp -o -path /run -o -path /var/log -o -path /var/cache \) -prune -o -print 2>/dev/null | sort' 
 }
 
 echo "* File system snapshot"
