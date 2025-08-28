@@ -112,6 +112,10 @@ k0sctl completion > ~/.config/fish/completions/k0sctl.fish
 
 K0sctl is ready for use and in continuous development.
 
+### Contributing & Agent Guidelines
+
+For repository layout, development, and testing guidelines (including notes for AI assistants), see [AGENTS.md](AGENTS.md).
+
 ## Usage
 
 ### `k0sctl apply`
