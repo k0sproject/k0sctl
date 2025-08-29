@@ -5,6 +5,7 @@ spec:
     - role: single
       uploadBinary: true
       os: "$OS_OVERRIDE"
+      k0sInstallPath: "$INSTALL_PATH"
       ssh:
         address: "127.0.0.1"
         port: 9022

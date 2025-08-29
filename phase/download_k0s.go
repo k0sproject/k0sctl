@@ -61,7 +61,7 @@ func (p *DownloadK0s) Run(ctx context.Context) error {
 }
 
 func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
-	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
+	tmp := h.K0sInstallLocation() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)
 	if h.K0sDownloadURL != "" {
