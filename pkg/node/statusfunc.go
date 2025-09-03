@@ -196,56 +196,30 @@ type podList struct {
 //
 // If skipIfMissing is true and the DaemonSet is NotFound, it returns nil
 // (useful for proxyless setups where kube-proxy DS is intentionally absent).
-func DaemonSetRolledOutFunc(h *cluster.Host, namespace, dsName, containerName string, skipIfMissing bool) retryFunc {
-	return func(_ context.Context) error {
-		ds, err := fetchDaemonSet(h, namespace, dsName)
-		if err != nil {
-			if skipIfMissing && isNotFoundErr(err) {
-				log.Infof("%s: DaemonSet %s/%s not found; skipping as requested", h, namespace, dsName)
-				return nil
-			}
-			return err
-		}
-
-		if err := assertDaemonSetObservedAndComplete(ds); err != nil {
-			return err
-		}
-		if ds.Status.DesiredNumberScheduled == 0 {
-			log.Infof("%s: %s/%s desiredNumberScheduled=0; nothing to roll out", h, namespace, dsName)
-			return nil
-		}
-
-		desiredImg, err := desiredContainerImage(ds, containerName)
-		if err != nil {
-			return err
-		}
-
-		pods, err := listPodsForDaemonSet(h, namespace, ds)
-		if err != nil {
-			return err
-		}
-		if len(pods.Items) == 0 {
-			return fmt.Errorf("no pods found for DaemonSet %s/%s despite desired=%d",
-				namespace, dsName, ds.Status.DesiredNumberScheduled)
-		}
-
-		notReady, mismatches := verifyPodsReadyAndImage(pods, containerName, desiredImg)
-		if notReady > 0 {
-			return fmt.Errorf("%d containers NotReady for DaemonSet %s/%s", notReady, namespace, dsName)
-		}
-		if mismatches > 0 {
-			return fmt.Errorf("%d pods running unexpected image for DaemonSet %s/%s", mismatches, namespace, dsName)
-		}
-
-		log.Debugf("%s: %s/%s rolled out: desired=%d updated=%d available=%d image=%s",
-			h, namespace, dsName, ds.Status.DesiredNumberScheduled, ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, desiredImg)
-		return nil
-	}
-}
+// (cluster-wide DaemonSet rollout checker removed; use per-node variant below)
 
 // Optional convenience: kube-proxy waiter (skip if DS missing, e.g., proxyless CNI)
+// (cluster-wide kube-proxy waiter removed; use KubeProxyRolledOutOnNodeFunc)
+
+// KubeProxyRolledOutOnNodeFunc is like KubeProxyRolledOutFunc, but only checks the
+// kube-proxy pod on the given node. This avoids waiting for a cluster-wide
+// rollout when used as a per-host guardrail.
+// KubeProxyRolledOutFunc checks kube-proxy rollout on the given host.
+// Executes the status query on the same host.
 func KubeProxyRolledOutFunc(h *cluster.Host) retryFunc {
-	return DaemonSetRolledOutFunc(h, "kube-system", "kube-proxy", "kube-proxy", true)
+    return DaemonSetRolledOutOnHostFunc(h, "kube-system", "kube-proxy", "kube-proxy", strings.ToLower(h.Metadata.Hostname), true)
+}
+
+// KubeProxyRolledOutFuncFrom checks kube-proxy rollout for target host `t`
+// while executing kubectl on the query host `q` (typically a controller).
+func KubeProxyRolledOutFuncFrom(q, t *cluster.Host) retryFunc {
+    return DaemonSetRolledOutOnHostFunc(q, "kube-system", "kube-proxy", "kube-proxy", strings.ToLower(t.Metadata.Hostname), true)
+}
+
+// KubeProxyRolledOutClusterFunc waits for kube-proxy DS to match the desired
+// state across all scheduled nodes in the cluster. The query is executed on `q`.
+func KubeProxyRolledOutClusterFunc(q *cluster.Host) retryFunc {
+    return DaemonSetRolledOutClusterFunc(q, "kube-system", "kube-proxy", "kube-proxy", true)
 }
 
 func fetchDaemonSet(h *cluster.Host, ns, name string) (*daemonSetInfo, error) {
@@ -263,17 +237,7 @@ func fetchDaemonSet(h *cluster.Host, ns, name string) (*daemonSetInfo, error) {
 	return &ds, nil
 }
 
-func assertDaemonSetObservedAndComplete(ds *daemonSetInfo) error {
-	if ds.Status.ObservedGeneration != ds.Metadata.Generation {
-		return fmt.Errorf("DaemonSet not yet observed: gen=%d obs=%d", ds.Metadata.Generation, ds.Status.ObservedGeneration)
-	}
-	if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled ||
-		ds.Status.NumberAvailable != ds.Status.DesiredNumberScheduled {
-		return fmt.Errorf("DaemonSet not fully rolled out: updated=%d available=%d desired=%d",
-			ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, ds.Status.DesiredNumberScheduled)
-	}
-	return nil
-}
+// (cluster-wide DS completion assertion removed; per-node variant performs minimal checks)
 
 func desiredContainerImage(ds *daemonSetInfo, containerName string) (string, error) {
 	containers := ds.Spec.Template.Spec.Containers
@@ -291,20 +255,146 @@ func desiredContainerImage(ds *daemonSetInfo, containerName string) (string, err
 	return "", fmt.Errorf("container %q not found in DaemonSet template", containerName)
 }
 
+// (cluster-wide pod listing removed; use listPodsForDaemonSetOnNode)
+
+func listPodsForDaemonSetOnHost(h *cluster.Host, ns string, ds *daemonSetInfo, nodeName string) (*podList, error) {
+    selector := buildLabelSelector(ds.Spec.Selector.MatchLabels)
+    out, err := h.ExecOutput(
+        h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n %s get pods -l %s --field-selector spec.nodeName=%s -o json", ns, selector, nodeName),
+        exec.HideOutput(), exec.Sudo(h),
+    )
+    if err != nil {
+        return nil, fmt.Errorf("failed to list pods for selector %q on node %q in %s: %w", selector, nodeName, ns, err)
+    }
+    var pods podList
+    if uerr := json.Unmarshal([]byte(out), &pods); uerr != nil {
+        return nil, fmt.Errorf("failed to decode pods for selector %q on node %q: %w", selector, nodeName, uerr)
+    }
+    return &pods, nil
+}
+
 func listPodsForDaemonSet(h *cluster.Host, ns string, ds *daemonSetInfo) (*podList, error) {
-	selector := buildLabelSelector(ds.Spec.Selector.MatchLabels)
-	out, err := h.ExecOutput(
-		h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n %s get pods -l %s -o json", ns, selector),
-		exec.HideOutput(), exec.Sudo(h),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list pods for selector %q in %s: %w", selector, ns, err)
-	}
-	var pods podList
-	if uerr := json.Unmarshal([]byte(out), &pods); uerr != nil {
-		return nil, fmt.Errorf("failed to decode pods for selector %q: %w", selector, uerr)
-	}
-	return &pods, nil
+    selector := buildLabelSelector(ds.Spec.Selector.MatchLabels)
+    out, err := h.ExecOutput(
+        h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n %s get pods -l %s -o json", ns, selector),
+        exec.HideOutput(), exec.Sudo(h),
+    )
+    if err != nil {
+        return nil, fmt.Errorf("failed to list pods for selector %q in %s: %w", selector, ns, err)
+    }
+    var pods podList
+    if uerr := json.Unmarshal([]byte(out), &pods); uerr != nil {
+        return nil, fmt.Errorf("failed to decode pods for selector %q: %w", selector, uerr)
+    }
+    return &pods, nil
+}
+
+// DaemonSetRolledOutOnHostFunc returns a retryFunc that waits until the given
+// DaemonSet has been observed and the pod matching the DS on the specified
+// node is Running, Ready, and using the desired image from the DS template.
+// If skipIfMissing is true and the DaemonSet is NotFound, it returns nil.
+func DaemonSetRolledOutOnHostFunc(h *cluster.Host, namespace, dsName, containerName, nodeName string, skipIfMissing bool) retryFunc {
+    return func(_ context.Context) error {
+        ds, err := fetchDaemonSet(h, namespace, dsName)
+        if err != nil {
+            if skipIfMissing && isNotFoundErr(err) {
+                log.Infof("%s: DaemonSet %s/%s not found; skipping as requested", h, namespace, dsName)
+                return nil
+            }
+            return err
+        }
+
+        // Ensure controller has observed the latest DS and rollout is in progress/completed cluster-wide.
+        // We do not require updated/available == desired cluster-wide here; we only care about this node.
+        if ds.Status.ObservedGeneration != ds.Metadata.Generation {
+            return fmt.Errorf("DaemonSet not yet observed: gen=%d obs=%d", ds.Metadata.Generation, ds.Status.ObservedGeneration)
+        }
+
+        // If DS is configured but schedules zero pods overall, there's nothing to wait for.
+        if ds.Status.DesiredNumberScheduled == 0 {
+            log.Infof("%s: %s/%s desiredNumberScheduled=0; nothing to roll out", h, namespace, dsName)
+            return nil
+        }
+
+        desiredImg, err := desiredContainerImage(ds, containerName)
+        if err != nil {
+            return err
+        }
+
+        pods, err := listPodsForDaemonSetOnHost(h, namespace, ds, nodeName)
+        if err != nil {
+            return err
+        }
+        if len(pods.Items) == 0 {
+            return fmt.Errorf("no pods found for DaemonSet %s/%s on node %s", namespace, dsName, nodeName)
+        }
+
+        notReady, mismatches := verifyPodsReadyAndImage(pods, containerName, desiredImg)
+        if notReady > 0 {
+            return fmt.Errorf("%d containers NotReady for DaemonSet %s/%s on node %s", notReady, namespace, dsName, nodeName)
+        }
+        if mismatches > 0 {
+            return fmt.Errorf("%d pods running unexpected image for DaemonSet %s/%s on node %s", mismatches, namespace, dsName, nodeName)
+        }
+
+        log.Debugf("%s: %s/%s rolled out on node %s: image=%s", h, namespace, dsName, nodeName, desiredImg)
+        return nil
+    }
+}
+
+// DaemonSetRolledOutClusterFunc waits for the DS to be fully rolled out across
+// the cluster according to controller status and pod readiness/image checks.
+// If skipIfMissing is true and DS is NotFound, it returns nil.
+func DaemonSetRolledOutClusterFunc(h *cluster.Host, namespace, dsName, containerName string, skipIfMissing bool) retryFunc {
+    return func(_ context.Context) error {
+        ds, err := fetchDaemonSet(h, namespace, dsName)
+        if err != nil {
+            if skipIfMissing && isNotFoundErr(err) {
+                log.Infof("%s: DaemonSet %s/%s not found; skipping as requested", h, namespace, dsName)
+                return nil
+            }
+            return err
+        }
+
+        // Controller must have observed current generation and report full rollout.
+        if ds.Status.ObservedGeneration != ds.Metadata.Generation {
+            return fmt.Errorf("DaemonSet not yet observed: gen=%d obs=%d", ds.Metadata.Generation, ds.Status.ObservedGeneration)
+        }
+        if ds.Status.DesiredNumberScheduled == 0 {
+            log.Infof("%s: %s/%s desiredNumberScheduled=0; nothing to roll out", h, namespace, dsName)
+            return nil
+        }
+
+        desiredImg, err := desiredContainerImage(ds, containerName)
+        if err != nil {
+            return err
+        }
+
+        pods, err := listPodsForDaemonSet(h, namespace, ds)
+        if err != nil {
+            return err
+        }
+        if int32(len(pods.Items)) != ds.Status.DesiredNumberScheduled {
+            return fmt.Errorf("pod count mismatch for DS %s/%s: have=%d desired=%d", namespace, dsName, len(pods.Items), ds.Status.DesiredNumberScheduled)
+        }
+
+        notReady, mismatches := verifyPodsReadyAndImage(pods, containerName, desiredImg)
+        if notReady > 0 {
+            return fmt.Errorf("%d containers NotReady for DaemonSet %s/%s", notReady, namespace, dsName)
+        }
+        if mismatches > 0 {
+            return fmt.Errorf("%d pods running unexpected image for DaemonSet %s/%s", mismatches, namespace, dsName)
+        }
+
+        if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled || ds.Status.NumberAvailable != ds.Status.DesiredNumberScheduled {
+            return fmt.Errorf("DaemonSet not fully rolled out: updated=%d available=%d desired=%d",
+                ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, ds.Status.DesiredNumberScheduled)
+        }
+
+        log.Debugf("%s: %s/%s rolled out cluster-wide: desired=%d updated=%d available=%d image=%s", h, namespace, dsName,
+            ds.Status.DesiredNumberScheduled, ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, desiredImg)
+        return nil
+    }
 }
 
 func verifyPodsReadyAndImage(pods *podList, containerName, desiredImg string) (notReady, mismatches int) {

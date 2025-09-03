@@ -77,23 +77,32 @@ func (p *UpgradeWorkers) CleanUp() {
 
 // Run the phase
 func (p *UpgradeWorkers) Run(ctx context.Context) error {
-	// Upgrade worker hosts parallelly in 10% chunks
-	concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * float64(p.Config.Spec.Options.Concurrency.WorkerDisruptionPercent/100)))
-	if concurrentUpgrades == 0 {
-		concurrentUpgrades = 1
-	}
-	concurrentUpgrades = min(concurrentUpgrades, p.Config.Spec.Options.Concurrency.Limit)
+    // Upgrade worker hosts parallelly in 10% chunks
+    concurrentUpgrades := int(math.Floor(float64(len(p.hosts)) * float64(p.Config.Spec.Options.Concurrency.WorkerDisruptionPercent/100)))
+    if concurrentUpgrades == 0 {
+        concurrentUpgrades = 1
+    }
+    concurrentUpgrades = min(concurrentUpgrades, p.Config.Spec.Options.Concurrency.Limit)
 
-	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
-	return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
-		p.start,
-		p.waitForKubeProxy,
-		p.cordonWorker,
-		p.drainWorker,
-		p.upgradeWorker,
-		p.uncordonWorker,
-		p.finish,
-	)
+    // Wait once for kube-proxy to be at desired version across the cluster.
+    if !p.IsWet() {
+        p.DryMsg(p.leader, "wait for kube-proxy to be at the desired version (cluster-wide)")
+    } else if !NoWait { // honor --no-wait
+        log.Infof("waiting for kube-proxy cluster-wide roll-out")
+        if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeProxyRolledOutClusterFunc(p.leader)); err != nil {
+            return fmt.Errorf("kube-proxy did not reach the desired version: %w", err)
+        }
+    }
+
+    log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
+    return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
+        p.start,
+        p.cordonWorker,
+        p.drainWorker,
+        p.upgradeWorker,
+        p.uncordonWorker,
+        p.finish,
+    )
 }
 
 func (p *UpgradeWorkers) cordonWorker(_ context.Context, h *cluster.Host) error {
@@ -246,14 +255,4 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	return nil
 }
 
-func (p *UpgradeWorkers) waitForKubeProxy(ctx context.Context, h *cluster.Host) error {
-	if !p.IsWet() {
-		p.DryMsg(h, "wait for kube-proxy to be at the desired version")
-		return nil
-	}
-	log.Infof("%s: waiting for kube-proxy roll-out", h)
-	if err := retry.AdaptiveTimeout(context.Background(), retry.DefaultTimeout, node.KubeProxyRolledOutFunc(h)); err != nil {
-		return fmt.Errorf("kube-proxy did not reach the desired version: %w", err)
-	}
-	return nil
-}
+// waitForKubeProxy handled cluster-wide before the batch; removed from per-host pipeline.
