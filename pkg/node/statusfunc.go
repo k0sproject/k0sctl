@@ -188,64 +188,10 @@ type podList struct {
 	} `json:"items"`
 }
 
-// DaemonSetRolledOutFunc returns a retryFunc that waits until the given DaemonSet has:
-//  1. been observed by the controller (observedGeneration == generation)
-//  2. updatedNumberScheduled == desiredNumberScheduled
-//  3. numberAvailable == desiredNumberScheduled
-//  4. all matched pods have the specified container Ready and matching the template image
-//
-// If skipIfMissing is true and the DaemonSet is NotFound, it returns nil
-// (useful for proxyless setups where kube-proxy DS is intentionally absent).
-func DaemonSetRolledOutFunc(h *cluster.Host, namespace, dsName, containerName string, skipIfMissing bool) retryFunc {
-	return func(_ context.Context) error {
-		ds, err := fetchDaemonSet(h, namespace, dsName)
-		if err != nil {
-			if skipIfMissing && isNotFoundErr(err) {
-				log.Infof("%s: DaemonSet %s/%s not found; skipping as requested", h, namespace, dsName)
-				return nil
-			}
-			return err
-		}
-
-		if err := assertDaemonSetObservedAndComplete(ds); err != nil {
-			return err
-		}
-		if ds.Status.DesiredNumberScheduled == 0 {
-			log.Infof("%s: %s/%s desiredNumberScheduled=0; nothing to roll out", h, namespace, dsName)
-			return nil
-		}
-
-		desiredImg, err := desiredContainerImage(ds, containerName)
-		if err != nil {
-			return err
-		}
-
-		pods, err := listPodsForDaemonSet(h, namespace, ds)
-		if err != nil {
-			return err
-		}
-		if len(pods.Items) == 0 {
-			return fmt.Errorf("no pods found for DaemonSet %s/%s despite desired=%d",
-				namespace, dsName, ds.Status.DesiredNumberScheduled)
-		}
-
-		notReady, mismatches := verifyPodsReadyAndImage(pods, containerName, desiredImg)
-		if notReady > 0 {
-			return fmt.Errorf("%d containers NotReady for DaemonSet %s/%s", notReady, namespace, dsName)
-		}
-		if mismatches > 0 {
-			return fmt.Errorf("%d pods running unexpected image for DaemonSet %s/%s", mismatches, namespace, dsName)
-		}
-
-		log.Debugf("%s: %s/%s rolled out: desired=%d updated=%d available=%d image=%s",
-			h, namespace, dsName, ds.Status.DesiredNumberScheduled, ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, desiredImg)
-		return nil
-	}
-}
-
-// Optional convenience: kube-proxy waiter (skip if DS missing, e.g., proxyless CNI)
-func KubeProxyRolledOutFunc(h *cluster.Host) retryFunc {
-	return DaemonSetRolledOutFunc(h, "kube-system", "kube-proxy", "kube-proxy", true)
+// KubeProxyRolledOutFunc waits for kube-proxy DS to match the desired
+// state across all scheduled nodes in the cluster. The query is executed on `q`.
+func KubeProxyRolledOutFunc(q *cluster.Host) retryFunc {
+	return DaemonSetRolledOutFunc(q, "kube-system", "kube-proxy", "kube-proxy", true)
 }
 
 func fetchDaemonSet(h *cluster.Host, ns, name string) (*daemonSetInfo, error) {
@@ -261,18 +207,6 @@ func fetchDaemonSet(h *cluster.Host, ns, name string) (*daemonSetInfo, error) {
 		return nil, fmt.Errorf("failed to decode DaemonSet %s/%s: %w", ns, name, uerr)
 	}
 	return &ds, nil
-}
-
-func assertDaemonSetObservedAndComplete(ds *daemonSetInfo) error {
-	if ds.Status.ObservedGeneration != ds.Metadata.Generation {
-		return fmt.Errorf("DaemonSet not yet observed: gen=%d obs=%d", ds.Metadata.Generation, ds.Status.ObservedGeneration)
-	}
-	if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled ||
-		ds.Status.NumberAvailable != ds.Status.DesiredNumberScheduled {
-		return fmt.Errorf("DaemonSet not fully rolled out: updated=%d available=%d desired=%d",
-			ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, ds.Status.DesiredNumberScheduled)
-	}
-	return nil
 }
 
 func desiredContainerImage(ds *daemonSetInfo, containerName string) (string, error) {
@@ -305,6 +239,61 @@ func listPodsForDaemonSet(h *cluster.Host, ns string, ds *daemonSetInfo) (*podLi
 		return nil, fmt.Errorf("failed to decode pods for selector %q: %w", selector, uerr)
 	}
 	return &pods, nil
+}
+
+// DaemonSetRolledOutFunc waits for the DS to be fully rolled out across
+// the cluster according to controller status and pod readiness/image checks.
+// If skipIfMissing is true and DS is NotFound, it returns nil.
+func DaemonSetRolledOutFunc(h *cluster.Host, namespace, dsName, containerName string, skipIfMissing bool) retryFunc {
+	return func(_ context.Context) error {
+		ds, err := fetchDaemonSet(h, namespace, dsName)
+		if err != nil {
+			if skipIfMissing && isNotFoundErr(err) {
+				log.Infof("%s: DaemonSet %s/%s not found; skipping as requested", h, namespace, dsName)
+				return nil
+			}
+			return err
+		}
+
+		// Controller must have observed current generation and report full rollout.
+		if ds.Status.ObservedGeneration != ds.Metadata.Generation {
+			return fmt.Errorf("DaemonSet not yet observed: gen=%d obs=%d", ds.Metadata.Generation, ds.Status.ObservedGeneration)
+		}
+		if ds.Status.DesiredNumberScheduled == 0 {
+			log.Infof("%s: %s/%s desiredNumberScheduled=0; nothing to roll out", h, namespace, dsName)
+			return nil
+		}
+
+		desiredImg, err := desiredContainerImage(ds, containerName)
+		if err != nil {
+			return err
+		}
+
+		pods, err := listPodsForDaemonSet(h, namespace, ds)
+		if err != nil {
+			return err
+		}
+		if int32(len(pods.Items)) != ds.Status.DesiredNumberScheduled {
+			return fmt.Errorf("pod count mismatch for DS %s/%s: have=%d desired=%d", namespace, dsName, len(pods.Items), ds.Status.DesiredNumberScheduled)
+		}
+
+		notReady, mismatches := verifyPodsReadyAndImage(pods, containerName, desiredImg)
+		if notReady > 0 {
+			return fmt.Errorf("%d containers NotReady for DaemonSet %s/%s", notReady, namespace, dsName)
+		}
+		if mismatches > 0 {
+			return fmt.Errorf("%d pods running unexpected image for DaemonSet %s/%s", mismatches, namespace, dsName)
+		}
+
+		if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled || ds.Status.NumberAvailable != ds.Status.DesiredNumberScheduled {
+			return fmt.Errorf("DaemonSet not fully rolled out: updated=%d available=%d desired=%d",
+				ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, ds.Status.DesiredNumberScheduled)
+		}
+
+		log.Debugf("%s: %s/%s rolled out cluster-wide: desired=%d updated=%d available=%d image=%s", h, namespace, dsName,
+			ds.Status.DesiredNumberScheduled, ds.Status.UpdatedNumberScheduled, ds.Status.NumberAvailable, desiredImg)
+		return nil
+	}
 }
 
 func verifyPodsReadyAndImage(pods *podList, containerName, desiredImg string) (notReady, mismatches int) {
