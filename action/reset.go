@@ -49,7 +49,6 @@ func (r Reset) Run(ctx context.Context) error {
 		&phase.PrepareHosts{},
 		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
-		&phase.RunHooks{Stage: "before", Action: "reset"},
 		&phase.ResetWorkers{
 			NoDrain:  true,
 			NoDelete: true,
@@ -61,7 +60,6 @@ func (r Reset) Run(ctx context.Context) error {
 		},
 		&phase.ResetLeader{},
 		&phase.DaemonReload{},
-		&phase.RunHooks{Stage: "after", Action: "reset"},
 		&phase.Unlock{Cancel: lockPhase.Cancel},
 		&phase.Disconnect{},
 	)
