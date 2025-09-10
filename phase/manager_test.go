@@ -98,12 +98,12 @@ func (p *hookedPhase) Run(_ context.Context) error {
 }
 
 func TestHookedPhase(t *testing.T) {
-	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
-	p := &hookedPhase{}
-	m.AddPhase(p)
-	require.Error(t, m.Run(context.Background()))
-	require.True(t, p.beforeCalled, "before hook was not called")
-	require.True(t, p.afterCalled, "after hook was not called")
+    m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
+    p := &hookedPhase{}
+    m.AddPhase(p)
+    require.Error(t, m.Run(context.Background()))
+    require.True(t, p.beforeCalled, "before hook was not called")
+    require.False(t, p.afterCalled, "after hook should not run on failure")
 }
 
 func TestContextCancel(t *testing.T) {

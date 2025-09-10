@@ -269,7 +269,8 @@ func (m *Manager) Run(ctx context.Context) error {
         result = p.Run(ctx)
         ran = append(ran, p)
 
-        // Only run in-phase After hook when the phase succeeded.
+        // Only run in-phase After hook if Run() succeeded.
+        // If After() fails after a successful Run(), return the After() error.
         if result == nil {
             if ap, ok := p.(withAfter); ok {
                 log.Debugf("running after for phase '%s'", p.Title())
