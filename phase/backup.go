@@ -31,6 +31,22 @@ func (p *Backup) Title() string {
 	return "Take backup"
 }
 
+// Before runs "before backup" hooks
+func (p *Backup) Before() error {
+    if err := p.runHooks(context.Background(), "backup", "before", p.leader); err != nil {
+        return fmt.Errorf("running hooks failed: %w", err)
+    }
+    return nil
+}
+
+// After runs "after backup" hooks
+func (p *Backup) After() error {
+    if err := p.runHooks(context.Background(), "backup", "after", p.leader); err != nil {
+        return fmt.Errorf("running hooks failed: %w", err)
+    }
+    return nil
+}
+
 // Prepare the phase
 func (p *Backup) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config

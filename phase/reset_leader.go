@@ -20,7 +20,17 @@ type ResetLeader struct {
 
 // Title for the phase
 func (p *ResetLeader) Title() string {
-	return "Reset leader"
+    return "Reset leader"
+}
+
+// Before runs "before reset" hooks
+func (p *ResetLeader) Before() error {
+    return p.runHooks(context.Background(), "reset", "before", p.leader)
+}
+
+// After runs "after backup" hooks
+func (p *ResetLeader) After() error {
+    return p.runHooks(context.Background(), "reset", "after", p.leader)
 }
 
 // Prepare the phase
