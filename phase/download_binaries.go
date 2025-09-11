@@ -46,15 +46,24 @@ func (p *DownloadBinaries) Run(_ context.Context) error {
 	var bins binaries
 
 	for _, h := range p.hosts {
-		if bin := bins.find(h.Configurer.Kind(), h.Metadata.Arch); bin != nil {
+		arch, err := h.Arch()
+		if err != nil {
+			return err
+		}
+		osKind := h.Configurer.Kind()
+		if bin := bins.find(osKind, arch); bin != nil {
 			continue
 		}
 
-		bin := &binary{arch: h.Metadata.Arch, os: h.Configurer.Kind(), version: p.Config.Spec.K0s.Version}
+		bin := &binary{arch: arch, os: osKind, version: p.Config.Spec.K0s.Version}
 
 		// find configuration defined binpaths and use instead of downloading a new one
 		for _, v := range p.hosts {
-			if v.Metadata.Arch == bin.arch && v.Configurer.Kind() == bin.os && v.K0sBinaryPath != "" {
+			vArch, err := v.Arch()
+			if err != nil {
+				return err
+			}
+			if vArch == bin.arch && v.Configurer.Kind() == bin.os && v.K0sBinaryPath != "" {
 				bin.path = h.K0sBinaryPath
 			}
 		}
@@ -72,8 +81,12 @@ func (p *DownloadBinaries) Run(_ context.Context) error {
 	}
 
 	for _, h := range p.hosts {
+		arch, err := h.Arch()
+		if err != nil {
+			return err
+		}
 		if h.K0sBinaryPath == "" {
-			if bin := bins.find(h.Configurer.Kind(), h.Metadata.Arch); bin != nil {
+			if bin := bins.find(h.Configurer.Kind(), arch); bin != nil {
 				h.UploadBinaryPath = bin.path
 			}
 		} else {
