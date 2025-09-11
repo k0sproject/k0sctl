@@ -230,7 +230,7 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	var cmd string
 
 	if h.Metadata.K0sBinaryTempFile != "" {
-		oldK0sBinaryPath := h.Configurer.K0sBinaryPath()
+		oldK0sBinaryPath := h.K0sInstallLocation()
 		h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
 		defer func() {
 			h.Configurer.SetPath("K0sBinaryPath", oldK0sBinaryPath)
