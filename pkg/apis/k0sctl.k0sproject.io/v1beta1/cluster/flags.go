@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/k0sctl/internal/shell"
 )
 
@@ -154,13 +153,13 @@ func (f *Flags) MergeAdd(b Flags) {
 }
 
 // Join creates a string separated by spaces
-func (f *Flags) Join() string {
+func (f *Flags) Join(cfg quoter) string {
 	var parts []string
 	f.Each(func(k, v string) {
 		if v == "" && k != "" {
-			parts = append(parts, shellescape.Quote(k))
+			parts = append(parts, quote(cfg, k))
 		} else {
-			parts = append(parts, fmt.Sprintf("%s=%s", k, shellescape.Quote(v)))
+			parts = append(parts, fmt.Sprintf("%s=%s", k, quote(cfg, v)))
 		}
 	})
 	return strings.Join(parts, " ")

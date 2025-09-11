@@ -1,6 +1,7 @@
 package linux
 
 import (
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os/registry"
 )
@@ -9,6 +10,8 @@ import (
 type OpenSUSE struct {
 	SLES
 }
+
+var _ configurer.Configurer = (*OpenSUSE)(nil)
 
 func init() {
 	registry.RegisterOSModule(

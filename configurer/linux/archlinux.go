@@ -13,6 +13,8 @@ type Archlinux struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*Archlinux)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {

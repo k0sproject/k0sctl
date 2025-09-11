@@ -13,6 +13,8 @@ type CentOS struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*CentOS)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {

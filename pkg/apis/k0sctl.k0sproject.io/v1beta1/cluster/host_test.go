@@ -25,9 +25,17 @@ func TestHostK0sServiceName(t *testing.T) {
 type mockconfigurer struct {
 	cfg.Linux
 	linux.Ubuntu
+	quoteFn func(string) string
 }
 
-func (c *mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) Quote(value string) string {
+	if c.quoteFn != nil {
+		return c.quoteFn(value)
+	}
+	return c.Linux.Quote(value)
+}
+
+func (c *mockconfigurer) Chown(_ os.Host, _, _ string, _ ...exec.Option) error {
 	return nil
 }
 
@@ -109,12 +117,27 @@ func TestK0sInstallCommand(t *testing.T) {
 	require.Equal(t, `k0s install worker --kubelet-extra-args='--foo bar --node-ip=10.0.0.9' --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
 
 	// Verify that K0sInstallCommand does not modify InstallFlags"
-	require.Equal(t, `--kubelet-extra-args='--foo bar'`, h.InstallFlags.Join())
+	require.Equal(t, `--kubelet-extra-args='--foo bar'`, h.InstallFlags.Join(h.Configurer))
 
 	h.InstallFlags = []string{`--enable-cloud-provider=true`}
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
 	require.Equal(t, `k0s install worker --enable-cloud-provider=true --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
+}
+
+func TestK0sInstallCommandWindowsKubeletExtraArgs(t *testing.T) {
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
+	_ = h.Connect()
+	winQuoter := &cfg.BaseWindows{}
+	h.Configurer = &mockconfigurer{quoteFn: winQuoter.Quote}
+	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
+	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
+	h.PrivateAddress = "10.0.0.9"
+
+	cmd, err := h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Contains(t, cmd, `--kubelet-extra-args=--node-ip=10.0.0.9`)
+	require.NotContains(t, cmd, "`10.0.0.9`")
 }
 
 func TestK0sResetCommand(t *testing.T) {
@@ -149,9 +172,9 @@ func TestValidation(t *testing.T) {
 		h.K0sBinaryPath = "/tmp/k0s"
 		require.ErrorContains(t, h.Validate(), "k0sBinaryPath cannot be set")
 		h.K0sBinaryPath = ""
-		h.K0sDownloadURL = "https://example.test/k0s"
+		h.K0sDownloadURLOverride = "https://example.test/k0s"
 		require.ErrorContains(t, h.Validate(), "k0sDownloadURL cannot be set")
-		h.K0sDownloadURL = ""
+		h.K0sDownloadURLOverride = ""
 		require.NoError(t, h.Validate())
 	})
 }
@@ -225,12 +248,12 @@ func TestFlagsChanged(t *testing.T) {
 		}
 		flags, err := h.K0sInstallFlags()
 		require.NoError(t, err)
-		require.Equal(t, `--foo=bar --kubelet-extra-args='--bar=foo --foo='"'"'bar'"'"'' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.Equal(t, `--foo=bar --kubelet-extra-args='--bar=foo --foo='"'"'bar'"'"'' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join(h.Configurer))
 		require.False(t, h.FlagsChanged())
 		h.InstallFlags = []string{"--foo='baz'", `--kubelet-extra-args='--bar=baz --foo="bar"'`}
 		flags, err = h.K0sInstallFlags()
 		require.NoError(t, err)
-		require.Equal(t, `--foo=baz --kubelet-extra-args='--bar=baz --foo="bar"' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.Equal(t, `--foo=baz --kubelet-extra-args='--bar=baz --foo="bar"' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join(h.Configurer))
 		require.True(t, h.FlagsChanged())
 	})
 }

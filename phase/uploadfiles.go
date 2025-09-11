@@ -3,12 +3,12 @@ package phase
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"strconv"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
@@ -70,38 +70,38 @@ func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
 
 func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error {
 	log.Debugf("%s: ensuring directory %s", h, dir)
-	if h.Configurer.FileExist(h, dir) {
-		return nil
-	}
-
-	err := p.Wet(h, fmt.Sprintf("create a directory for uploading: `mkdir -p \"%s\"`", dir), func() error {
-		return h.Configurer.MkDir(h, dir, exec.Sudo(h))
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
-	}
-
-	if perm == "" {
-		perm = "0755"
-	}
-
-	err = p.Wet(h, fmt.Sprintf("set permissions for directory %s to %s", dir, perm), func() error {
-		return h.Configurer.Chmod(h, dir, perm, exec.Sudo(h))
-	})
-	if err != nil {
-		return fmt.Errorf("failed to set permissions for directory %s: %w", dir, err)
+	if !h.Configurer.FileExist(h, dir) {
+		targetPerm := perm
+		if targetPerm == "" {
+			targetPerm = "0755"
+		}
+		err := p.Wet(h, fmt.Sprintf("create a directory for uploading: `mkdir -p \"%s\"`", dir), func() error {
+			if v, perr := strconv.ParseUint(targetPerm, 8, 32); perr == nil {
+				return h.SudoFsys().MkDirAll(dir, fs.FileMode(v))
+			}
+			return h.Configurer.MkDir(h, dir, exec.Sudo(h))
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
 	}
 
 	if owner != "" {
-		err = p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
-			return h.Execf(`chown "%s" "%s"`, owner, dir, exec.Sudo(h))
+		err := p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
+			return h.Configurer.Chown(h, dir, owner, exec.Sudo(h))
 		})
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	if perm == "" {
+		perm = "0755"
+	}
+
+	return p.Wet(h, fmt.Sprintf("set permissions for directory %s to %s", dir, perm), func() error {
+		return chmodWithString(h, dir, perm)
+	})
 }
 
 func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
@@ -132,8 +132,18 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 			if err != nil {
 				return fmt.Errorf("failed to stat local file %s: %w", src, err)
 			}
-			err = p.Wet(h, fmt.Sprintf("upload file %s => %s", src, dest), func() error {
-				return h.Upload(path.Join(f.Base, s.Path), dest, stat.Mode(), exec.Sudo(h), exec.LogError(true))
+			err := p.Wet(h, fmt.Sprintf("upload file %s => %s", src, dest), func() error {
+				stat, err := os.Stat(src)
+				if err != nil {
+					return fmt.Errorf("failed to stat local file %s: %w", src, err)
+				}
+				perm := stat.Mode()
+				if s.PermMode != "" {
+					if v, perr := strconv.ParseUint(s.PermMode, 8, 32); perr == nil {
+						perm = fs.FileMode(v)
+					}
+				}
+				return h.Upload(path.Join(f.Base, s.Path), dest, perm, exec.Sudo(h), exec.LogError(true))
 			})
 			if err != nil {
 				return err
@@ -226,7 +236,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
 			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-			return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h))
+			return h.Configurer.Chown(h, dest, owner, exec.Sudo(h))
 		})
 		if err != nil {
 			return err
@@ -236,7 +246,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if perm != "" {
 		err := p.Wet(h, fmt.Sprintf("set permissions for %s to %s", dest, perm), func() error {
 			log.Debugf("%s: setting permissions %s for %s", h, perm, dest)
-			return h.Configurer.Chmod(h, dest, perm, exec.Sudo(h))
+			return chmodWithString(h, dest, perm)
 		})
 		if err != nil {
 			return err
@@ -252,6 +262,18 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 			return fmt.Errorf("failed to touch %s: %w", dest, err)
 		}
 	}
-
 	return nil
+}
+
+func chmodWithString(h *cluster.Host, path, perm string) error {
+	mode, err := strconv.ParseUint(perm, 8, 32)
+	if err != nil {
+		return fmt.Errorf("invalid file mode %q: %w", perm, err)
+	}
+	return chmodWithMode(h, path, fs.FileMode(mode))
+}
+
+func chmodWithMode(h *cluster.Host, path string, mode fs.FileMode) error {
+	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
+	return h.Configurer.Chmod(h, path, perm, exec.Sudo(h))
 }

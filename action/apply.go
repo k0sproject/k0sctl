@@ -49,15 +49,15 @@ type Apply struct {
 //	gatherK0sFacts := &phase.GatherK0sFacts{} // advisable to get the title from the phase itself instead of hardcoding the title.
 //	apply.Phases.InsertBefore(gatherK0sFacts.Title(), &myCustomPhase{}) // insert a custom phase before the GatherK0sFacts phase
 func NewApply(opts ApplyOptions) *Apply {
-	lockPhase := &phase.Lock{}
-	unlockPhase := lockPhase.UnlockPhase()
+	// lockPhase := &phase.Lock{}
+	// unlockPhase := lockPhase.UnlockPhase()
 	apply := &Apply{
 		ApplyOptions: opts,
 		Phases: phase.Phases{
 			&phase.DefaultK0sVersion{},
-            &phase.Connect{},
-            &phase.DetectOS{},
-			lockPhase,
+			&phase.Connect{},
+			&phase.DetectOS{},
+			// lockPhase,
 			&phase.PrepareHosts{},
 			&phase.GatherFacts{},
 			&phase.ValidateHosts{},
@@ -90,13 +90,13 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.ResetControllers{NoDrain: opts.NoDrain},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
 			&phase.ApplyManifests{},
-			unlockPhase,
-			&phase.Disconnect{},
+			// unlockPhase,
 		},
 	}
 	if opts.KubeconfigOut != nil {
-		apply.Phases.InsertBefore(unlockPhase.Title(), &phase.GetKubeconfig{APIAddress: opts.KubeconfigAPIAddress, User: opts.KubeconfigUser, Cluster: opts.KubeconfigCluster})
+		apply.Phases = append(apply.Phases, &phase.GetKubeconfig{APIAddress: opts.KubeconfigAPIAddress, User: opts.KubeconfigUser, Cluster: opts.KubeconfigCluster})
 	}
+	apply.Phases = append(apply.Phases, &phase.Disconnect{})
 
 	return apply
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 	gopath "path"
 	"slices"
 	"time"
@@ -288,13 +289,16 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.Execf(`install -m 0750 -o root -g root -d "%s"`, configDir, exec.Sudo(h)); err != nil {
+		if err := h.SudoFsys().MkDirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}
 
-	if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, configPath, exec.Sudo(h)); err != nil {
+	if err := h.Configurer.MoveFile(h, tempConfigPath, configPath); err != nil {
 		return fmt.Errorf("failed to install k0s configuration: %w", err)
+	}
+	if err := chmodWithMode(h, configPath, fs.FileMode(0o600)); err != nil {
+		log.Debugf("%s: failed to chmod configuration file %s: %v", h, configPath, err)
 	}
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
