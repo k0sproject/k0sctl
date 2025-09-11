@@ -13,7 +13,7 @@ import (
 type Backup struct {
 	// Manager is the phase manager
 	Manager *phase.Manager
-	Out  io.Writer
+	Out     io.Writer
 }
 
 func (b Backup) Run(ctx context.Context) error {

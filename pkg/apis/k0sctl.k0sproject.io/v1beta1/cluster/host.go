@@ -1,13 +1,14 @@
 package cluster
 
 import (
-	"fmt"
-	"net/url"
-	gos "os"
-	gopath "path"
-	"slices"
-	"strings"
-	"time"
+    "fmt"
+    "net/url"
+    "io"
+    gos "os"
+    gopath "path"
+    "slices"
+    "strings"
+    "time"
 
 	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
@@ -151,9 +152,10 @@ type configurer interface {
 	ServiceScriptPath(os.Host, string) (string, error)
 	ReadFile(os.Host, string) (string, error)
 	FileExist(os.Host, string) bool
-	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, string, *version.Version, string, ...exec.Option) error
-	DownloadURL(os.Host, string, string, ...exec.Option) error
+    Chmod(os.Host, string, string, ...exec.Option) error
+    Chown(os.Host, string, string, ...exec.Option) error
+    DownloadK0s(os.Host, string, *version.Version, string, ...exec.Option) error
+    DownloadURL(os.Host, string, string, ...exec.Option) error
 	InstallPackage(os.Host, ...string) error
 	FileContains(os.Host, string, string) bool
 	MoveFile(os.Host, string, string) error
@@ -168,10 +170,12 @@ type configurer interface {
 	HTTPStatus(os.Host, string) (int, error)
 	PrivateInterface(os.Host) (string, error)
 	PrivateAddress(os.Host, string, string) (string, error)
-	TempDir(os.Host) (string, error)
-	TempFile(os.Host) (string, error)
-	UpdateServiceEnvironment(os.Host, string, map[string]string) error
-	CleanupServiceEnvironment(os.Host, string) error
+    TempDir(os.Host) (string, error)
+    TempFile(os.Host) (string, error)
+    ListDir(os.Host, string) ([]string, error)
+    StreamFile(os.Host, string, io.Writer, ...exec.Option) error
+    UpdateServiceEnvironment(os.Host, string, map[string]string) error
+    CleanupServiceEnvironment(os.Host, string) error
 	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
 	Touch(os.Host, string, time.Time, ...exec.Option) error
 	DeleteDir(os.Host, string, ...exec.Option) error
@@ -408,14 +412,17 @@ func (h *Host) InstallK0sBinary(path string) error {
 		return fmt.Errorf("k0s binary tempfile not found")
 	}
 
-	dir := h.k0sBinaryPathDir()
-	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, dir, exec.Sudo(h)); err != nil {
-		return fmt.Errorf("create k0s binary dir: %w", err)
-	}
+    dir := h.k0sBinaryPathDir()
+    if err := h.Configurer.MkDir(h, dir, exec.Sudo(h)); err != nil {
+        return fmt.Errorf("create k0s binary dir: %w", err)
+    }
+    // Best-effort permissions on POSIX; no-op on Windows
+    _ = h.Configurer.Chmod(h, dir, "0755", exec.Sudo(h))
 
-	if err := h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, path, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
-		return fmt.Errorf("install k0s binary: %w", err)
-	}
+    if err := h.Configurer.MoveFile(h, path, h.Configurer.K0sBinaryPath()); err != nil {
+        return fmt.Errorf("install k0s binary: %w", err)
+    }
+    _ = h.Configurer.Chmod(h, h.Configurer.K0sBinaryPath(), "0750", exec.Sudo(h))
 
 	if err := h.Configurer.DeleteFile(h, path); err != nil {
 		log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)

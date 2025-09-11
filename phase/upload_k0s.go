@@ -1,11 +1,12 @@
 package phase
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"strconv"
-	"time"
+    "context"
+    "fmt"
+    "os"
+    "strconv"
+    "time"
+    "strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -56,11 +57,19 @@ func (p *UploadK0s) ShouldRun() bool {
 
 // Run the phase
 func (p *UploadK0s) Run(ctx context.Context) error {
-	return p.parallelDoUpload(ctx, p.hosts, p.uploadBinary)
+    return p.parallelDoUpload(ctx, p.hosts, p.uploadBinary)
 }
 
 func (p *UploadK0s) uploadBinary(_ context.Context, h *cluster.Host) error {
-	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
+    ts := strconv.Itoa(int(time.Now().UnixNano()))
+    bin := h.Configurer.K0sBinaryPath()
+    tmp := bin + ".tmp." + ts
+    if h.IsConnected() && h.IsWindows() {
+        // Place the temp marker before the .exe extension
+        if strings.HasSuffix(strings.ToLower(bin), ".exe") {
+            tmp = strings.TrimSuffix(bin, ".exe") + ".tmp." + ts + ".exe"
+        }
+    }
 
 	stat, err := os.Stat(h.UploadBinaryPath)
 	if err != nil {
@@ -72,12 +81,11 @@ func (p *UploadK0s) uploadBinary(_ context.Context, h *cluster.Host) error {
 		return fmt.Errorf("upload k0s binary: %w", err)
 	}
 
-	if err := h.Configurer.Touch(h, tmp, stat.ModTime(), exec.Sudo(h)); err != nil {
-		return fmt.Errorf("failed to touch %s: %w", tmp, err)
-	}
-	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
-		log.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
-	}
+    if err := h.Configurer.Touch(h, tmp, stat.ModTime(), exec.Sudo(h)); err != nil {
+        return fmt.Errorf("failed to touch %s: %w", tmp, err)
+    }
+    // Make executable on POSIX; no-op on Windows
+    _ = h.Configurer.Chmod(h, tmp, "0755", exec.Sudo(h))
 
 	h.Metadata.K0sBinaryTempFile = tmp
 

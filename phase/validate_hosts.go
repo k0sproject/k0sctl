@@ -1,13 +1,13 @@
 package phase
 
 import (
-	"context"
-	"fmt"
-	"io/fs"
-	"path/filepath"
-	"sort"
-	"sync"
-	"time"
+    "context"
+    "fmt"
+    "io/fs"
+    "path/filepath"
+    "sort"
+    "sync"
+    "time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
@@ -113,31 +113,30 @@ const cleanUpOlderThan = 30 * time.Minute
 
 // clean up any k0s.tmp.* files from K0sBinaryPath that are older than 30 minutes and warn if there are any that are newer than that
 func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host) error {
-	err := fs.WalkDir(h.SudoFsys(), filepath.Join(filepath.Dir(h.Configurer.K0sBinaryPath()), "k0s.tmp.*"), func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
-			return nil
-		}
-		log.Debugf("%s: found k0s binary upload temporary file %s", h, path)
-		info, err := d.Info()
-		if err != nil {
-			log.Warnf("%s: failed to get info for %s: %v", h, path, err)
-			return nil
-		}
-		if time.Since(info.ModTime()) > cleanUpOlderThan {
-			log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, path)
-			if err := h.Configurer.DeleteFile(h, path); err != nil {
-				log.Warnf("%s: failed to delete %s: %v", h, path, err)
-			}
-			return nil
-		}
-		log.Warnf("%s: found k0s binary upload temporary file %s that is newer than %s", h, path, cleanUpOlderThan)
-		return nil
-	})
-	if err != nil {
-		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
-	}
-	return nil
+    // Use fs.Glob over the remote FS to find matching temp files
+    pattern := filepath.Join(filepath.Dir(h.Configurer.K0sBinaryPath()), "k0s.tmp.*")
+    matches, err := fs.Glob(h.SudoFsys(), pattern)
+    if err != nil {
+        log.Warnf("failed to glob k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
+        return nil
+    }
+    for _, pth := range matches {
+        log.Debugf("%s: found k0s binary upload temporary file %s", h, pth)
+        info, err := fs.Stat(h.SudoFsys(), pth)
+        if err != nil {
+            log.Warnf("%s: failed to get info for %s: %v", h, pth, err)
+            continue
+        }
+        if time.Since(info.ModTime()) > cleanUpOlderThan {
+            log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, pth)
+            if err := h.Configurer.DeleteFile(h, pth); err != nil {
+                log.Warnf("%s: failed to delete %s: %v", h, pth, err)
+            }
+            continue
+        }
+        log.Warnf("%s: found k0s binary upload temporary file %s that is newer than %s", h, pth, cleanUpOlderThan)
+    }
+    return nil
 }
 
 const maxSkew = 30 * time.Second

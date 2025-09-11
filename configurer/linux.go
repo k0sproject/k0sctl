@@ -1,12 +1,14 @@
 package configurer
 
 import (
-	"fmt"
-	"path"
-	"regexp"
-	"strconv"
-	"strings"
-	"sync"
+    "fmt"
+    "io"
+    "io/fs"
+    "path"
+    "regexp"
+    "strconv"
+    "strings"
+    "sync"
 	"time"
 
 	"al.essio.dev/pkg/shellescape"
@@ -191,7 +193,20 @@ func (l *Linux) FileContains(h os.Host, path, s string) bool {
 
 // MoveFile moves a file on the host
 func (l *Linux) MoveFile(h os.Host, src, dst string) error {
-	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
+    return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
+}
+
+// Chown sets owner for a file or directory
+func (l *Linux) Chown(h os.Host, path, owner string, opts ...exec.Option) error {
+    var args []interface{}
+    args = append(args, shellescape.Quote(owner))
+    args = append(args, shellescape.Quote(path))
+    // include any options passed in, plus sudo by default
+    for _, o := range opts {
+        args = append(args, o)
+    }
+    args = append(args, exec.Sudo(h))
+    return h.Execf(`chown %s %s`, args...)
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
@@ -299,11 +314,50 @@ func (l *Linux) UpsertFile(h os.Host, path, content string) error {
 }
 
 func (l *Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
-	return h.Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)), opts...)
+    return h.Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)), opts...)
 }
 
 func (l *Linux) MachineID(h os.Host) (string, error) {
-	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
+    return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
+}
+
+// ListDir returns file and directory names in the given directory (not recursive)
+func (l *Linux) ListDir(h os.Host, dir string) ([]string, error) {
+    // Use remote FS (with sudo) to read directory entries
+    entries, err := fs.ReadDir(h.SudoFsys(), dir)
+    if err != nil {
+        return nil, err
+    }
+    out := make([]string, 0, len(entries))
+    for _, e := range entries {
+        out = append(out, e.Name())
+    }
+    return out, nil
+}
+
+// StreamFile writes the contents of a remote file to the provided writer
+func (l *Linux) StreamFile(h os.Host, path string, w io.Writer, opts ...exec.Option) error {
+    // Prefer using remote FS to stream file contents
+    f, err := h.SudoFsys().Open(path)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
+    _, err = io.Copy(w, f)
+    return err
+}
+
+// Chmod changes the permission bits of the given path using remote FS
+func (l *Linux) Chmod(h os.Host, path, mode string, opts ...exec.Option) error {
+    // Parse an octal mode string like "0755"
+    if mode == "" {
+        return nil
+    }
+    if v, err := strconv.ParseUint(mode, 8, 32); err == nil {
+        return h.SudoFsys().Chmod(path, fs.FileMode(v))
+    }
+    // Fallback to invoking chmod if parsing failed
+    return h.Execf(`chmod %s "%s"`, mode, path, exec.Sudo(h))
 }
 
 // SystemTime returns the system time as UTC reported by the OS or an error if this fails
