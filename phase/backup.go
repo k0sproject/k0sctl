@@ -83,17 +83,20 @@ func (p *Backup) Run(_ context.Context) error {
 		return err
 	}
 
-	// get the name of the backup file
-	var remoteFile string
-	if p.IsWet() {
-		r, err := h.ExecOutputf(`ls "%s"`, backupDir)
-		if err != nil {
-			return err
-		}
-		remoteFile = r
-	} else {
-		remoteFile = "k0s_backup.dryrun.tar.gz"
-	}
+    // get the name of the backup file
+    var remoteFile string
+    if p.IsWet() {
+        entries, err := h.Configurer.ListDir(h, backupDir)
+        if err != nil {
+            return err
+        }
+        if len(entries) == 0 {
+            return fmt.Errorf("no backup file found in %s", backupDir)
+        }
+        remoteFile = entries[0]
+    } else {
+        remoteFile = "k0s_backup.dryrun.tar.gz"
+    }
 	remotePath := path.Join(backupDir, remoteFile)
 
 	defer func() {
@@ -110,12 +113,12 @@ func (p *Backup) Run(_ context.Context) error {
 		}
 	}()
 
-	if p.IsWet() {
-		if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(p.Out)); err != nil {
-			return fmt.Errorf("download backup: %w", err)
-		}
-	} else {
-		p.DryMsgf(nil, "download the backup file to local host")
-	}
+    if p.IsWet() {
+        if err := h.Configurer.StreamFile(h, remotePath, p.Out); err != nil {
+            return fmt.Errorf("download backup: %w", err)
+        }
+    } else {
+        p.DryMsgf(nil, "download the backup file to local host")
+    }
 	return nil
 }

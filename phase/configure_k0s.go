@@ -284,15 +284,21 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configPath := h.K0sConfigPath()
 	configDir := gopath.Dir(configPath)
 
-	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.Execf(`install -m 0750 -o root -g root -d "%s"`, configDir, exec.Sudo(h)); err != nil {
-			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
-		}
-	}
+    if !h.Configurer.FileExist(h, configDir) {
+        if err := h.Configurer.MkDir(h, configDir, exec.Sudo(h)); err != nil {
+            return fmt.Errorf("failed to create k0s configuration directory: %w", err)
+        }
+        if err := h.Configurer.Chmod(h, configDir, "0750", exec.Sudo(h)); err != nil {
+            log.Debugf("%s: failed to chmod %s: %v", h, configDir, err)
+        }
+    }
 
-	if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, configPath, exec.Sudo(h)); err != nil {
-		return fmt.Errorf("failed to install k0s configuration: %w", err)
-	}
+    if err := h.Configurer.MoveFile(h, tempConfigPath, configPath); err != nil {
+        return fmt.Errorf("failed to install k0s configuration: %w", err)
+    }
+    if err := h.Configurer.Chmod(h, configPath, "0600", exec.Sudo(h)); err != nil {
+        log.Debugf("%s: failed to chmod %s: %v", h, configPath, err)
+    }
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
 		log.Infof("%s: restarting k0s service", h)

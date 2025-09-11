@@ -1,10 +1,11 @@
 package phase
 
 import (
-	"context"
-	"fmt"
-	"strconv"
-	"time"
+    "context"
+    "fmt"
+    "strconv"
+    "time"
+    "strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -61,7 +62,14 @@ func (p *DownloadK0s) Run(ctx context.Context) error {
 }
 
 func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
-	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
+    ts := strconv.Itoa(int(time.Now().UnixNano()))
+    bin := h.Configurer.K0sBinaryPath()
+    tmp := bin + ".tmp." + ts
+    if h.IsConnected() && h.IsWindows() {
+        if strings.HasSuffix(strings.ToLower(bin), ".exe") {
+            tmp = strings.TrimSuffix(bin, ".exe") + ".tmp." + ts + ".exe"
+        }
+    }
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)
 	if h.K0sDownloadURL != "" {
@@ -74,9 +82,8 @@ func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
 		return err
 	}
 
-	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
-		log.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
-	}
+    // Make executable on POSIX; no-op on Windows
+    _ = h.Configurer.Chmod(h, tmp, "0755", exec.Sudo(h))
 
 	h.Metadata.K0sBinaryTempFile = tmp
 

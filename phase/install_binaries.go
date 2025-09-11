@@ -51,9 +51,8 @@ func (p *InstallBinaries) DryRun() error {
 		p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool { return h.Metadata.K0sBinaryTempFile != "" }),
 		func(_ context.Context, h *cluster.Host) error {
 			p.DryMsgf(h, "install k0s %s binary from %s to %s", p.Config.Spec.K0s.Version, h.Metadata.K0sBinaryTempFile, h.Configurer.K0sBinaryPath())
-			if err := h.Execf(`chmod +x "%s"`, h.Metadata.K0sBinaryTempFile, exec.Sudo(h)); err != nil {
-				logrus.Warnf("%s: failed to chmod k0s temp binary for dry-run: %s", h, err.Error())
-			}
+            // Ensure temp binary is executable on POSIX; no-op on Windows
+            _ = h.Configurer.Chmod(h, h.Metadata.K0sBinaryTempFile, "0755", exec.Sudo(h))
 			h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
 			h.Metadata.K0sBinaryVersion = p.Config.Spec.K0s.Version
 			return nil

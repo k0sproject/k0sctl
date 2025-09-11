@@ -1,13 +1,15 @@
 package configurer
 
 import (
-	"bufio"
-	"fmt"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+    "bufio"
+    "fmt"
+    "io"
+    "io/fs"
+    "path/filepath"
+    "strconv"
+    "strings"
+    "sync"
+    "time"
 
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
@@ -164,7 +166,50 @@ func (w *BaseWindows) FileContains(h os.Host, path, s string) bool {
 
 // MoveFile moves a file on the host
 func (w *BaseWindows) MoveFile(h os.Host, src, dst string) error {
-	return h.Exec(ps.Cmd(fmt.Sprintf(`Move-Item -Force -Path %s -Destination %s`, ps.DoubleQuotePath(src), ps.DoubleQuotePath(dst))))
+    return h.Exec(ps.Cmd(fmt.Sprintf(`Move-Item -Force -Path %s -Destination %s`, ps.DoubleQuotePath(src), ps.DoubleQuotePath(dst))))
+}
+
+// Chown is a no-op on Windows; ownership semantics differ and are not managed here
+func (w *BaseWindows) Chown(h os.Host, path, owner string, opts ...exec.Option) error {
+    return nil
+}
+
+// ListDir returns file and directory names in the given directory (not recursive)
+func (w *BaseWindows) ListDir(h os.Host, dir string) ([]string, error) {
+    // Use remote FS to read directory entries (sudo has no effect on Windows)
+    entries, err := fs.ReadDir(h.SudoFsys(), dir)
+    if err != nil {
+        return nil, err
+    }
+    names := make([]string, 0, len(entries))
+    for _, e := range entries {
+        names = append(names, e.Name())
+    }
+    return names, nil
+}
+
+// StreamFile writes the contents of a remote file to the provided writer
+func (w *BaseWindows) StreamFile(h os.Host, path string, wr io.Writer, opts ...exec.Option) error {
+    // Stream file contents using remote FS
+    f, err := h.SudoFsys().Open(path)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
+    _, err = io.Copy(wr, f)
+    return err
+}
+
+// Chmod changes file attributes on Windows via rig FS (best-effort)
+func (w *BaseWindows) Chmod(h os.Host, path, mode string, opts ...exec.Option) error {
+    if mode == "" {
+        return nil
+    }
+    if v, err := strconv.ParseUint(mode, 8, 32); err == nil {
+        return h.SudoFsys().Chmod(path, fs.FileMode(v))
+    }
+    // Ignore invalid modes silently since Windows does not use POSIX perms
+    return nil
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host

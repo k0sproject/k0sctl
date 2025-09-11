@@ -1,15 +1,13 @@
 package phase
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"path"
-
-	"al.essio.dev/pkg/shellescape"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+    "context"
+    "fmt"
+    "os"
+    "path"
+    "github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+    "github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+    "github.com/k0sproject/rig/exec"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -88,14 +86,14 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 		return fmt.Errorf("failed to set permissions for directory %s: %w", dir, err)
 	}
 
-	if owner != "" {
-		err = p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
-			return h.Execf(`chown "%s" "%s"`, owner, dir, exec.Sudo(h))
-		})
-		if err != nil {
-			return err
-		}
-	}
+    if owner != "" {
+        err = p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
+            return h.Configurer.Chown(h, dir, owner, exec.Sudo(h))
+        })
+        if err != nil {
+            return err
+        }
+    }
 
 	return nil
 }
@@ -136,15 +134,15 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 			log.Infof("%s: file already exists and hasn't been changed, skipping upload", h)
 		}
 
-		if owner != "" {
-			err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
-				log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-				return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h))
-			})
-			if err != nil {
-				return err
-			}
-		}
+        if owner != "" {
+            err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
+                log.Debugf("%s: setting owner %s for %s", h, owner, dest)
+                return h.Configurer.Chown(h, dest, owner, exec.Sudo(h))
+            })
+            if err != nil {
+                return err
+            }
+        }
 		err := p.Wet(h, fmt.Sprintf("set permissions for %s to %s", dest, s.PermMode), func() error {
 			log.Debugf("%s: setting permissions %s for %s", h, s.PermMode, dest)
 			return h.Configurer.Chmod(h, dest, s.PermMode, exec.Sudo(h))
@@ -193,15 +191,15 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 		}
 	}
 
-	if owner != "" {
-		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", f.DestinationFile, owner), func() error {
-			log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
-			return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(f.DestinationFile), exec.Sudo(h))
-		})
-		if err != nil {
-			return err
-		}
-	}
+    if owner != "" {
+        err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", f.DestinationFile, owner), func() error {
+            log.Debugf("%s: setting owner %s for %s", h, owner, f.DestinationFile)
+            return h.Configurer.Chown(h, f.DestinationFile, owner, exec.Sudo(h))
+        })
+        if err != nil {
+            return err
+        }
+    }
 
 	return nil
 }
