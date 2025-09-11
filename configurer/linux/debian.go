@@ -13,6 +13,8 @@ type Debian struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*Debian)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {

@@ -3,6 +3,7 @@ package enterpriselinux
 import (
 	"strings"
 
+	"github.com/k0sproject/k0sctl/configurer"
 	k0slinux "github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os/registry"
@@ -12,6 +13,8 @@ import (
 type RHEL struct {
 	k0slinux.EnterpriseLinux
 }
+
+var _ configurer.Configurer = (*RHEL)(nil)
 
 func init() {
 	registry.RegisterOSModule(

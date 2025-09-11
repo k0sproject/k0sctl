@@ -15,6 +15,8 @@ type Fedora struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*Fedora)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
