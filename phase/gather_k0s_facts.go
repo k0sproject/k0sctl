@@ -18,6 +18,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// On versions before 1.23 etcd member-list outputs to stderr with extra fields (from logrus).
+// https://github.com/k0sproject/k0s/pull/1333
+var ectdMemberListToStdoutSince = version.MustParse("v1.23.1+k0s.0")
+
 type k0sstatus struct {
 	Version       *version.Version `json:"Version"`
 	Pid           int              `json:"Pid"`
@@ -145,10 +149,16 @@ func (p *GatherK0sFacts) investigateEtcd() error {
 
 func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 	log.Infof("%s: listing etcd members", h)
-	// etcd member-list outputs json like:
-	// {"members":{"controller0":"https://172.17.0.2:2380","controller1":"https://172.17.0.3:2380"}}
-	// on versions like ~1.21.x etcd member-list outputs to stderr with extra fields (from logrus).
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("etcd member-list --data-dir=%s 2>&1", h.K0sDataDir()), exec.Sudo(h))
+
+	// Sometimes, random log statements may appear on stderr, which can break the parsing.
+	// Mitigate this by capturing only stdout if the k0s version is new enough.
+	// W0917 07:11:23.255691    3096 logging.go:55] [core] [Channel #1 SubChannel #2]grpc: addrConn.createTransport failed to connect to {Addr: "127.0.0.1:2379", ServerName: "127.0.0.1:2379", }. Err: connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:2379: operation was canceled"
+	var cmdSuffix string
+	if h.Metadata.K0sRunningVersion == nil || h.Metadata.K0sRunningVersion.LessThan(ectdMemberListToStdoutSince) {
+		cmdSuffix = " 2>&1"
+	}
+
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("etcd member-list --data-dir=%s%s", h.K0sDataDir(), cmdSuffix), exec.Sudo(h), exec.LogError(true))
 	if err != nil {
 		return fmt.Errorf("failed to run list etcd members command: %w", err)
 	}
