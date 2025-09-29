@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -15,9 +16,11 @@ import (
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
 	glob "github.com/bmatcuk/doublestar/v4"
+	"github.com/hashicorp/mdns"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/manifest"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
@@ -309,7 +312,137 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("cluster config validation failed: %w", err)
 	}
+	resolveMDNSHosts(cfg)
 	return cfg, nil
+}
+
+func resolveMDNSHosts(cfg *v1beta1.Cluster) {
+	if cfg == nil || cfg.Spec == nil {
+		return
+	}
+
+	for _, host := range cfg.Spec.Hosts {
+		if host == nil {
+			continue
+		}
+		addr := strings.TrimSpace(host.Address())
+		if addr == "" {
+			continue
+		}
+		normalized := strings.TrimSuffix(strings.ToLower(addr), ".")
+		if !strings.HasSuffix(normalized, ".local") {
+			continue
+		}
+		if _, err := net.LookupHost(addr); err == nil {
+			// Regular DNS lookup succeeded, no need for mDNS fallback.
+			continue
+		}
+		resolved, err := resolveMDAddress(normalized)
+		if err != nil || resolved == "" {
+			if err != nil {
+				log.Debugf("mDNS lookup for %s failed: %v", addr, err)
+			}
+			continue
+		}
+		log.Debugf("mDNS resolved %s to %s", addr, resolved)
+		setHostAddress(host, resolved)
+	}
+}
+
+func resolveMDAddress(target string) (string, error) {
+	hostWithZone := strings.TrimSuffix(target, ".")
+	if hostWithZone == "" {
+		return "", fmt.Errorf("invalid host for mDNS lookup")
+	}
+	queries := []struct {
+		service string
+		domain  string
+	}{
+		{service: strings.TrimSuffix(hostWithZone, ".local"), domain: "local"},
+		{service: "_services._dns-sd._udp", domain: "local"},
+	}
+
+	var lastErr error
+	for _, q := range queries {
+		service := strings.Trim(q.service, ".")
+		if service == "" {
+			continue
+		}
+		addr, err := queryMDNSHost(hostWithZone, service, q.domain)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if addr != "" {
+			return addr, nil
+		}
+	}
+
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", fmt.Errorf("no mDNS records for %s", target)
+}
+
+func queryMDNSHost(target, service, domain string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	entries := make(chan *mdns.ServiceEntry, 16)
+	errCh := make(chan error, 1)
+
+	params := &mdns.QueryParam{
+		Service: service,
+		Domain:  domain,
+		Timeout: 2 * time.Second,
+		Entries: entries,
+	}
+
+	go func() {
+		errCh <- mdns.QueryContext(ctx, params)
+		close(entries)
+	}()
+
+	target = strings.TrimSuffix(strings.ToLower(target), ".")
+	for entry := range entries {
+		host := entry.Host
+		if host == "" {
+			host = entry.Name
+		}
+		host = strings.TrimSuffix(strings.ToLower(host), ".")
+		if host != target {
+			continue
+		}
+
+		if entry.AddrV4 != nil {
+			return entry.AddrV4.String(), nil
+		}
+		if entry.AddrV6IPAddr != nil && entry.AddrV6IPAddr.IP != nil {
+			return entry.AddrV6IPAddr.String(), nil
+		}
+		if entry.AddrV6 != nil {
+			return entry.AddrV6.String(), nil
+		}
+		if entry.Addr != nil {
+			return entry.Addr.String(), nil
+		}
+	}
+
+	if err := <-errCh; err != nil {
+		return "", err
+	}
+	return "", nil
+}
+
+func setHostAddress(h *cluster.Host, addr string) {
+	switch {
+	case h.Connection.SSH != nil:
+		h.Connection.SSH.Address = addr
+	case h.Connection.OpenSSH != nil:
+		h.Connection.OpenSSH.Address = addr
+	case h.Connection.WinRM != nil:
+		h.Connection.WinRM.Address = addr
+	}
 }
 
 func initManager(ctx *cli.Context) error {
