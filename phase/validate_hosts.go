@@ -113,9 +113,9 @@ const cleanUpOlderThan = 30 * time.Minute
 
 // clean up any k0s.tmp.* files from K0sBinaryPath that are older than 30 minutes and warn if there are any that are newer than that
 func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host) error {
-	err := fs.WalkDir(h.SudoFsys(), filepath.Join(filepath.Dir(h.Configurer.K0sBinaryPath()), "k0s.tmp.*"), func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(h.SudoFsys(), filepath.Join(filepath.Dir(h.K0sInstallLocation()), "k0s.tmp.*"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
+			log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallLocation(), err)
 			return nil
 		}
 		log.Debugf("%s: found k0s binary upload temporary file %s", h, path)
@@ -135,7 +135,7 @@ func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host
 		return nil
 	})
 	if err != nil {
-		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.Configurer.K0sBinaryPath(), err)
+		log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallLocation(), err)
 	}
 	return nil
 }

@@ -319,6 +319,10 @@ When `false`, the k0s binary downloading is performed on the target host itself
 
 A path to a file on the local host that contains a k0s binary to be uploaded to the host. Can be used to test drive a custom development build of k0s.
 
+###### `spec.hosts[*].k0sInstallPath` &lt;string&gt; (optional) (default: depends on OS)
+
+A path on the node where to install the k0s binary.
+
 ###### `spec.hosts[*].k0sDownloadURL` &lt;string&gt; (optional)
 
 A URL to download the k0s binary from. The default is to download from the [k0s repository](https://github.com/k0sproject/k0s). The URL can contain '%'-prefixed tokens that will be replaced with the host's information, see [tokens](#tokens).
