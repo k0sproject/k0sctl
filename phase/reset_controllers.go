@@ -28,7 +28,17 @@ type ResetControllers struct {
 
 // Title for the phase
 func (p *ResetControllers) Title() string {
-	return "Reset controllers"
+    return "Reset controllers"
+}
+
+// Before runs "before reset" hooks
+func (p *ResetControllers) Before() error {
+    return p.runHooks(context.Background(), "reset", "before", p.hosts...)
+}
+
+// After runs "after reset" hooks
+func (p *ResetControllers) After() error {
+    return p.runHooks(context.Background(), "reset", "after", p.hosts...)
 }
 
 // Prepare the phase

@@ -64,27 +64,25 @@ func TestConfigPhase(t *testing.T) {
 }
 
 type hookedPhase struct {
-	fn            func() error
-	beforeCalled  bool
-	afterCalled   bool
-	cleanupCalled bool
-	runCalled     bool
-	err           error
+    fn            func() error
+    beforeCalled  bool
+    afterCalled   bool
+    cleanupCalled bool
+    runCalled     bool
 }
 
 func (p *hookedPhase) Title() string {
 	return "hooked phase"
 }
 
-func (p *hookedPhase) Before(_ string) error {
-	p.beforeCalled = true
-	return nil
+func (p *hookedPhase) Before() error {
+    p.beforeCalled = true
+    return nil
 }
 
-func (p *hookedPhase) After(err error) error {
-	p.afterCalled = true
-	p.err = err
-	return nil
+func (p *hookedPhase) After() error {
+    p.afterCalled = true
+    return nil
 }
 
 func (p *hookedPhase) CleanUp() {
@@ -100,13 +98,12 @@ func (p *hookedPhase) Run(_ context.Context) error {
 }
 
 func TestHookedPhase(t *testing.T) {
-	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
-	p := &hookedPhase{}
-	m.AddPhase(p)
-	require.Error(t, m.Run(context.Background()))
-	require.True(t, p.beforeCalled, "before hook was not called")
-	require.True(t, p.afterCalled, "after hook was not called")
-	require.EqualError(t, p.err, "run failed")
+    m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
+    p := &hookedPhase{}
+    m.AddPhase(p)
+    require.Error(t, m.Run(context.Background()))
+    require.True(t, p.beforeCalled, "before hook was not called")
+    require.False(t, p.afterCalled, "after hook should not run on failure")
 }
 
 func TestContextCancel(t *testing.T) {

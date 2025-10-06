@@ -18,7 +18,7 @@ import (
 
 // DetectOS performs remote OS detection
 type DetectOS struct {
-	GenericPhase
+    GenericPhase
 }
 
 // Title for the phase
@@ -54,4 +54,9 @@ func (p *DetectOS) Run(ctx context.Context) error {
 
 		return nil
 	})
+}
+
+// After runs the per-host "connect: after" hooks once OS detection has succeeded.
+func (p *DetectOS) After() error {
+    return p.runHooks(context.Background(), "connect", "after", p.Config.Spec.Hosts...)
 }

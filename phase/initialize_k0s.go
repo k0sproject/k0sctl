@@ -15,8 +15,8 @@ import (
 
 // InitializeK0s sets up the "initial" k0s controller
 type InitializeK0s struct {
-	GenericPhase
-	leader *cluster.Host
+    GenericPhase
+    leader *cluster.Host
 }
 
 // Title for the phase
@@ -32,6 +32,22 @@ func (p *InitializeK0s) Prepare(config *v1beta1.Cluster) error {
 		p.leader = leader
 	}
 	return nil
+}
+
+// Before runs "before install" hooks for the leader controller
+func (p *InitializeK0s) Before() error {
+    if p.leader == nil || p.leader.Reset {
+        return nil
+    }
+    return p.runHooks(context.Background(), "install", "before", p.leader)
+}
+
+// After runs "after install" hooks for the leader controller
+func (p *InitializeK0s) After() error {
+    if p.leader == nil || p.leader.Reset {
+        return nil
+    }
+    return p.runHooks(context.Background(), "install", "after", p.leader)
 }
 
 // ShouldRun is true when there is a leader host
