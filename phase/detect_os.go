@@ -28,29 +28,32 @@ func (p *DetectOS) Title() string {
 
 // Run the phase
 func (p *DetectOS) Run(ctx context.Context) error {
-    err := p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
-        if h.OSIDOverride != "" {
-            log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
-        }
-        if err := h.ResolveConfigurer(); err != nil {
-            if h.OSVersion.IDLike != "" {
-                log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE '%s'", h, h.OSVersion.String(), h.OSVersion.IDLike)
-                for _, id := range strings.Split(h.OSVersion.IDLike, " ") {
-                    h.OSVersion.ID = id
-                    if err := h.ResolveConfigurer(); err == nil {
-                        log.Warnf("%s: using '%s' as OS support fallback for %s", h, id, h.OSVersion.String())
-                        return nil
-                    }
-                }
-            }
-            return err
-        }
-        os := h.OSVersion.String()
-        log.Infof("%s: is running %s", h, os)
+	return p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
+		if h.OSIDOverride != "" {
+			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
+		}
+		if err := h.ResolveConfigurer(); err != nil {
+			if h.OSVersion.IDLike != "" {
+				log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE '%s'", h, h.OSVersion.String(), h.OSVersion.IDLike)
+				for _, id := range strings.Split(h.OSVersion.IDLike, " ") {
+					h.OSVersion.ID = id
+					if err := h.ResolveConfigurer(); err == nil {
+						log.Warnf("%s: using '%s' as OS support fallback for %s", h, id, h.OSVersion.String())
+						return nil
+					}
+				}
+			}
+			return err
+		}
+		os := h.OSVersion.String()
+		log.Infof("%s: is running %s", h, os)
 
-        return nil
-    })
-    return err
+		// Needed to make configurer.K0sBinaryPath() to work inside the configurer itself as it can't call host.K0sInstallLocation().
+		log.Debugf("%s: k0s install path is %s", h, h.K0sInstallLocation())
+		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallLocation())
+
+		return nil
+	})
 }
 
 // After runs the per-host "connect: after" hooks once OS detection has succeeded.

@@ -44,7 +44,7 @@ func (p *UploadK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		// If the file has been changed compared to local, re-upload and replace
-		return h.FileChanged(h.UploadBinaryPath, h.Configurer.K0sBinaryPath())
+		return h.FileChanged(h.UploadBinaryPath, h.K0sInstallLocation())
 	})
 	return nil
 }
@@ -60,7 +60,7 @@ func (p *UploadK0s) Run(ctx context.Context) error {
 }
 
 func (p *UploadK0s) uploadBinary(_ context.Context, h *cluster.Host) error {
-	tmp := h.Configurer.K0sBinaryPath() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
+	tmp := h.K0sInstallLocation() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
 
 	stat, err := os.Stat(h.UploadBinaryPath)
 	if err != nil {

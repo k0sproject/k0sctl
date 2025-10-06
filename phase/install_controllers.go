@@ -234,7 +234,8 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 		return err
 	}
 	log.Infof("%s: installing k0s controller", h)
-	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s`", strings.ReplaceAll(cmd, h.Configurer.K0sBinaryPath(), "k0s")), func() error {
+
+	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		var stdout, stderr bytes.Buffer
 		runner, err := h.ExecStreams(cmd, nil, &stdout, &stderr, exec.Sudo(h))
 		if err != nil {

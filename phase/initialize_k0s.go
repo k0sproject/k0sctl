@@ -93,7 +93,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = p.Wet(p.leader, fmt.Sprintf("install first k0s controller using `%s`", strings.ReplaceAll(cmd, p.leader.Configurer.K0sBinaryPath(), "k0s")), func() error {
+	err = p.Wet(p.leader, fmt.Sprintf("install first k0s controller using `%s`", strings.ReplaceAll(cmd, p.leader.K0sInstallLocation(), "k0s")), func() error {
 		return h.Exec(cmd, exec.Sudo(h))
 	}, func() error {
 		p.leader.Metadata.DryRunFakeLeader = true

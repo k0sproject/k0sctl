@@ -38,6 +38,7 @@ type Host struct {
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
+	K0sInstallPath   string            `yaml:"k0sInstallPath,omitempty"`
 	K0sDownloadURL   string            `yaml:"k0sDownloadURL,omitempty"`
 	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
 	Files            []*UploadFile     `yaml:"files,omitempty"`
@@ -261,6 +262,15 @@ func (h *Host) ResolveConfigurer() error {
 	return fmt.Errorf("unsupported OS")
 }
 
+// K0sInstallLocation returns the k0s binary path from the K0sInstallPath field or configurer.K0sBinaryPath()
+func (h *Host) K0sInstallLocation() string {
+	if h.K0sInstallPath != "" {
+		return h.K0sInstallPath
+	}
+
+	return h.Configurer.K0sBinaryPath()
+}
+
 // K0sJoinTokenPath returns the token file path from install flags or configurer
 func (h *Host) K0sJoinTokenPath() string {
 	if path := h.InstallFlags.GetValue("--token-file"); path != "" {
@@ -400,7 +410,7 @@ func (h *Host) K0sServiceName() string {
 }
 
 func (h *Host) k0sBinaryPathDir() string {
-	return gopath.Dir(h.Configurer.K0sBinaryPath())
+	return gopath.Dir(h.K0sInstallLocation())
 }
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
@@ -414,7 +424,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
 
-	if err := h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, path, h.Configurer.K0sBinaryPath(), exec.Sudo(h)); err != nil {
+	if err := h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, path, h.K0sInstallLocation(), exec.Sudo(h)); err != nil {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
 
