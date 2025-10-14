@@ -42,14 +42,13 @@ func (r Reset) Run(ctx context.Context) error {
 	}
 
 	lockPhase := &phase.Lock{}
-	r.Manager.AddPhase(
-		&phase.Connect{},
-		&phase.DetectOS{},
-		lockPhase,
+    r.Manager.AddPhase(
+        &phase.Connect{},
+        &phase.DetectOS{},
+        lockPhase,
 		&phase.PrepareHosts{},
 		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
-		&phase.RunHooks{Stage: "before", Action: "reset"},
 		&phase.ResetWorkers{
 			NoDrain:  true,
 			NoDelete: true,
@@ -61,7 +60,6 @@ func (r Reset) Run(ctx context.Context) error {
 		},
 		&phase.ResetLeader{},
 		&phase.DaemonReload{},
-		&phase.RunHooks{Stage: "after", Action: "reset"},
 		&phase.Unlock{Cancel: lockPhase.Cancel},
 		&phase.Disconnect{},
 	)

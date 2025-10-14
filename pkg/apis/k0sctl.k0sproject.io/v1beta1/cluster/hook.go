@@ -5,8 +5,8 @@ type Hooks map[string]map[string][]string
 
 // ForActionAndStage return hooks for given action and stage
 func (h Hooks) ForActionAndStage(action, stage string) []string {
-	if len(h[action]) > 0 {
-		return h[action][stage]
-	}
-	return nil
+    if m, ok := h[action]; ok {
+        return m[stage]
+    }
+    return nil
 }

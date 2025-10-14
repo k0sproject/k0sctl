@@ -1,11 +1,12 @@
 package cluster
 
 import (
-	"fmt"
-	"net/url"
-	gos "os"
-	gopath "path"
-	"slices"
+    "context"
+    "fmt"
+    "net/url"
+    gos "os"
+    gopath "path"
+    "slices"
 	"strings"
 	"time"
 
@@ -681,4 +682,30 @@ func (h *Host) FlagsChanged() bool {
 
 	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, their.Map(), our.Map())
 	return true
+}
+
+// HasHooks returns true when the host has hooks defined for the action and stage.
+func (h *Host) HasHooks(action, stage string) bool {
+    return len(h.Hooks.ForActionAndStage(action, stage)) > 0
+}
+
+// RunHooks runs the hooks for the given action and stage (such as "apply", "before" would run the "before apply" hooks).
+// It respects context cancellation between hook executions.
+func (h *Host) RunHooks(ctx context.Context, action, stage string) error {
+    commands := h.Hooks.ForActionAndStage(action, stage)
+    if len(commands) == 0 {
+        return nil
+    }
+    for _, cmd := range commands {
+        // Abort early if the context has been canceled.
+        if err := ctx.Err(); err != nil {
+            return err
+        }
+
+        log.Infof("%s: running %s %s hook: %q", h, stage, action, cmd)
+        if err := h.Exec(cmd); err != nil {
+            return fmt.Errorf("failed to execute hook %q for action %q stage %q on host %s: %w", cmd, action, stage, h.Address(), err)
+        }
+    }
+    return nil
 }

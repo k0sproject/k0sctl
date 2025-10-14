@@ -22,12 +22,12 @@ func (k *Kubeconfig) Run(ctx context.Context) error {
 	// do not need to connect to all nodes
 	k.Manager.Config.Spec.Hosts = cluster.Hosts{k.Manager.Config.Spec.K0sLeader()}
 
-	k.Manager.AddPhase(
-		&phase.Connect{},
-		&phase.DetectOS{},
-		&phase.GetKubeconfig{APIAddress: k.KubeconfigAPIAddress, User: k.KubeconfigUser, Cluster: k.KubeconfigCluster},
-		&phase.Disconnect{},
-	)
+    k.Manager.AddPhase(
+        &phase.Connect{},
+        &phase.DetectOS{},
+        &phase.GetKubeconfig{APIAddress: k.KubeconfigAPIAddress, User: k.KubeconfigUser, Cluster: k.KubeconfigCluster},
+        &phase.Disconnect{},
+    )
 
 	return k.Manager.Run(ctx)
 }
