@@ -1,8 +1,10 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -148,13 +150,43 @@ func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 	// etcd member-list outputs json like:
 	// {"members":{"controller0":"https://172.17.0.2:2380","controller1":"https://172.17.0.3:2380"}}
 	// on versions like ~1.21.x etcd member-list outputs to stderr with extra fields (from logrus).
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("etcd member-list --data-dir=%s 2>&1", h.K0sDataDir()), exec.Sudo(h))
-	if err != nil {
-		return fmt.Errorf("failed to run list etcd members command: %w", err)
+
+	// Sometimes, random log statements may appear on stderr, which can break
+	// the parsing. Try to parse stdout first, then fallback to stderr. Error
+	// out if none of both was a JSON document.
+
+	var stdout, stderr bytes.Buffer
+	if cmd, err := h.ExecStreams(
+		h.Configurer.K0sCmdf("etcd member-list --data-dir=%s", h.K0sDataDir()),
+		nil /*stdin*/, &stdout, &stderr,
+		exec.Sudo(h),
+	); err != nil {
+		return fmt.Errorf("failed to create etcd member-list command: %w", err)
+	} else if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("failed to run etcd member-list command: %w", err)
 	}
 
-	result := make(map[string]any)
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
+	var (
+		result map[string]any
+		errs   []error
+	)
+	for _, output := range [][]byte{stdout.Bytes(), stderr.Bytes()} {
+		if len(output) < 1 {
+			continue
+		}
+		unmarshalled := make(map[string]any)
+		err := json.Unmarshal(output, &unmarshalled)
+		if err == nil {
+			result = unmarshalled
+			break
+		}
+		errs = append(errs, err)
+	}
+	if result == nil {
+		err := errors.Join(errs...)
+		if err == nil {
+			err = errors.New("no data")
+		}
 		return fmt.Errorf("failed to decode etcd member-list output: %w", err)
 	}
 
