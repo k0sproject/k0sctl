@@ -98,7 +98,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 			return fmt.Errorf("failed to restart k0s: %w", err)
 		}
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStart, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return fmt.Errorf("k0s did not restart: %w", err)
 		}
 		return nil

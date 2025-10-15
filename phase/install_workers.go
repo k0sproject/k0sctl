@@ -142,7 +142,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+			err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.APIConnection, func(_ context.Context) error {
 				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/version' --kubeconfig=/dev/stdin"), exec.Sudo(h), exec.Stdin(string(h.Metadata.K0sTokenData.Kubeconfig)))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
@@ -234,7 +234,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			log.Infof("%s: waiting for node to become ready", h)
 
 			if p.IsWet() {
-				if err := retry.WithDefaultTimeout(ctx, node.KubeNodeReadyFunc(h)); err != nil {
+				if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.NodeReady, node.KubeNodeReadyFunc(h)); err != nil {
 					return err
 				}
 				h.Metadata.Ready = true

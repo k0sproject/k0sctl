@@ -301,7 +301,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 		}
 
 		log.Infof("%s: waiting for k0s service to start", h)
-		return retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName()))
+		return retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStart, node.ServiceRunningFunc(h, h.K0sServiceName()))
 	}
 
 	return nil

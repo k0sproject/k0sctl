@@ -112,7 +112,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
-			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStop, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("wait for k0s service stop: %w", err)
 			}
 			return nil
@@ -166,7 +166,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 				return err
 			}
 			log.Infof("%s: waiting for the k0s service to start", h)
-			if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStart, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("k0s service start: %w", err)
 			}
 			return nil
@@ -176,7 +176,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		}
 
 		if p.IsWet() {
-			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+			err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.KubeAPIReady, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)

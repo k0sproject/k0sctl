@@ -109,7 +109,7 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
-			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStop, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				log.Warnf("%s: failed to wait for k0s to stop: %v", h, err)
 			}
 			log.Debugf("%s: stopping k0s completed", h)

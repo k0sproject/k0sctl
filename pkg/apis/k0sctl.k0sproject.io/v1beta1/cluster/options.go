@@ -8,6 +8,8 @@ import (
 	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+
+	"github.com/k0sproject/k0sctl/pkg/retry"
 )
 
 // Options for cluster operations.
@@ -16,6 +18,39 @@ type Options struct {
 	Drain       DrainOption       `yaml:"drain"`
 	Concurrency ConcurrencyOption `yaml:"concurrency"`
 	EvictTaint  EvictTaintOption  `yaml:"evictTaint"`
+	Timeout     TimeoutOption     `yaml:"timeout"`
+}
+
+// TimeoutOption controls retry behavior for phase operations that poll for cluster readiness.
+type TimeoutOption struct {
+	ServiceStop        time.Duration `yaml:"serviceStop"`
+	ServiceStart       time.Duration `yaml:"serviceStart"`
+	NodeReady          time.Duration `yaml:"nodeReady"`
+	APIConnection      time.Duration `yaml:"apiConnection"`
+	KubeAPIReady       time.Duration `yaml:"kubeApiReady"`
+	DynamicConfigReady time.Duration `yaml:"dynamicConfigReady"`
+}
+
+// SetDefaults satisfies defaults.Setter and applies retry.DefaultTimeout when no override is provided.
+func (t *TimeoutOption) SetDefaults() {
+	if defaults.CanUpdate(t.ServiceStop) {
+		t.ServiceStop = retry.DefaultTimeout
+	}
+	if defaults.CanUpdate(t.ServiceStart) {
+		t.ServiceStart = retry.DefaultTimeout
+	}
+	if defaults.CanUpdate(t.NodeReady) {
+		t.NodeReady = retry.DefaultTimeout
+	}
+	if defaults.CanUpdate(t.APIConnection) {
+		t.APIConnection = retry.DefaultTimeout
+	}
+	if defaults.CanUpdate(t.KubeAPIReady) {
+		t.KubeAPIReady = retry.DefaultTimeout
+	}
+	if defaults.CanUpdate(t.DynamicConfigReady) {
+		t.DynamicConfigReady = retry.DefaultTimeout
+	}
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Options.
@@ -31,8 +66,15 @@ func (o *Options) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("failed to set defaults for options: %w", err)
 	}
 
+	tmp.Timeout.SetDefaults()
+
 	*o = Options(tmp)
 	return nil
+}
+
+// SetDefaults satisfies defaults.Setter and ensures timeout defaults apply for zero-value structs.
+func (o *Options) SetDefaults() {
+	o.Timeout.SetDefaults()
 }
 
 // WaitOption controls the wait behavior for cluster operations.

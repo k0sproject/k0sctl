@@ -61,7 +61,7 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
-		if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
+		if err := retry.Timeout(ctx, p.Config.Spec.Options.Timeout.ServiceStop, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
 			log.Warnf("%s: k0s service stop: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: stopping k0s completed", p.leader)
