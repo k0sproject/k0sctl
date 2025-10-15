@@ -56,23 +56,23 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there are workers that needs to be upgraded
 func (p *UpgradeWorkers) ShouldRun() bool {
-    return len(p.hosts) > 0
+	return len(p.hosts) > 0
 }
 
 // Before runs "before upgrade" hooks for worker hosts that need upgrade
 func (p *UpgradeWorkers) Before() error {
-    if len(p.hosts) == 0 {
-        return nil
-    }
-    return p.runHooks(context.Background(), "upgrade", "before", p.hosts...)
+	if len(p.hosts) == 0 {
+		return nil
+	}
+	return p.runHooks(context.Background(), "upgrade", "before", p.hosts...)
 }
 
 // After runs "after upgrade" hooks for worker hosts that were upgraded
 func (p *UpgradeWorkers) After() error {
-    if len(p.hosts) == 0 {
-        return nil
-    }
-    return p.runHooks(context.Background(), "upgrade", "after", p.hosts...)
+	if len(p.hosts) == 0 {
+		return nil
+	}
+	return p.runHooks(context.Background(), "upgrade", "after", p.hosts...)
 }
 
 // CleanUp cleans up the environment override files on hosts
@@ -193,7 +193,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			return err
 		}
 
-		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
@@ -247,7 +247,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeReadyFunc(h)); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}

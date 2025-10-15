@@ -39,51 +39,51 @@ func (p *InstallWorkers) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there are workers
 func (p *InstallWorkers) ShouldRun() bool {
-    return len(p.hosts) > 0
+	return len(p.hosts) > 0
 }
 
 // Before runs "before install" hooks for workers
 func (p *InstallWorkers) Before() error {
-    return p.runHooks(context.Background(), "install", "before", p.hosts...)
+	return p.runHooks(context.Background(), "install", "before", p.hosts...)
 }
 
 // After runs "after install" hooks for workers
 func (p *InstallWorkers) After() error {
-    // Run per-host "after install" hooks via the common helper
-    if err := p.runHooks(context.Background(), "install", "after", p.hosts...); err != nil {
-        return err
-    }
+	// Run per-host "after install" hooks via the common helper
+	if err := p.runHooks(context.Background(), "install", "after", p.hosts...); err != nil {
+		return err
+	}
 
-    // Invalidate any created join tokens and overwrite token files
-    if NoWait {
-        for _, h := range p.hosts {
-            if h.Metadata.K0sTokenData.Token != "" {
-                log.Warnf("%s: --no-wait given, created join tokens will remain valid for 10 minutes", p.leader)
-                break
-            }
-        }
-        return nil
-    }
-    for i, h := range p.hosts {
-        h.Metadata.K0sTokenData.Token = ""
-        if h.Metadata.K0sTokenData.ID == "" {
-            continue
-        }
-        err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for worker %s", h), func() error {
-            log.Debugf("%s: invalidating join token for worker %d", p.leader, i+1)
-            return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
-        })
-        if err != nil {
-            log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
-        }
-        _ = p.Wet(h, "overwrite k0s join token file", func() error {
-            if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
-                log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
-            }
-            return nil
-        })
-    }
-    return nil
+	// Invalidate any created join tokens and overwrite token files
+	if NoWait {
+		for _, h := range p.hosts {
+			if h.Metadata.K0sTokenData.Token != "" {
+				log.Warnf("%s: --no-wait given, created join tokens will remain valid for 10 minutes", p.leader)
+				break
+			}
+		}
+		return nil
+	}
+	for i, h := range p.hosts {
+		h.Metadata.K0sTokenData.Token = ""
+		if h.Metadata.K0sTokenData.ID == "" {
+			continue
+		}
+		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for worker %s", h), func() error {
+			log.Debugf("%s: invalidating join token for worker %d", p.leader, i+1)
+			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
+		})
+		if err != nil {
+			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
+		}
+		_ = p.Wet(h, "overwrite k0s join token file", func() error {
+			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
+				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
+			}
+			return nil
+		})
+	}
+	return nil
 }
 
 // CleanUp attempts to clean up any changes after a failed install
@@ -142,7 +142,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
+			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/version' --kubeconfig=/dev/stdin"), exec.Sudo(h), exec.Stdin(string(h.Metadata.K0sTokenData.Kubeconfig)))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
@@ -234,7 +234,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			log.Infof("%s: waiting for node to become ready", h)
 
 			if p.IsWet() {
-				if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.KubeNodeReadyFunc(h)); err != nil {
+				if err := retry.WithDefaultTimeout(ctx, node.KubeNodeReadyFunc(h)); err != nil {
 					return err
 				}
 				h.Metadata.Ready = true

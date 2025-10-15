@@ -65,24 +65,28 @@ func Context(ctx context.Context, f func(ctx context.Context) error) error {
 	}
 }
 
-// Timeout is a retry wrapper that will retry the given function until it succeeds, the context
-// is cancelled, or the timeout is reached
+// Timeout is a retry wrapper that retries until f succeeds, the context is canceled,
+// or the timeout is reached. If timeout <= 0, no additional deadline is set and a
+// cancelable child of ctx is used so callers can disable the timeout entirely.
 func Timeout(ctx context.Context, timeout time.Duration, f func(ctx context.Context) error) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	var (
+		child  context.Context
+		cancel context.CancelFunc
+	)
+
+	if timeout <= 0 {
+		child, cancel = context.WithCancel(ctx)
+	} else {
+		child, cancel = context.WithTimeout(ctx, timeout)
+	}
 	defer cancel()
-	return Context(ctx, f)
+
+	return Context(child, f)
 }
 
-// AdaptiveTimeout is like Timeout but uses the given timeout only if the given context does not have a deadline or has a deadline that only occurs after the given timeout.
-func AdaptiveTimeout(ctx context.Context, timeout time.Duration, f func(ctx context.Context) error) error {
-	parentDeadline, hasDeadline := ctx.Deadline()
-	newDeadline := time.Now().Add(timeout)
-
-	if hasDeadline && parentDeadline.Before(newDeadline) {
-		return Context(ctx, f)
-	}
-
-	return Timeout(ctx, timeout, f)
+// WithDefaultTimeout wraps f with Timeout using DefaultTimeout.
+func WithDefaultTimeout(ctx context.Context, f func(ctx context.Context) error) error {
+	return Timeout(ctx, DefaultTimeout, f)
 }
 
 // Times is a retry wrapper that will retry the given function until it succeeds or the given number of

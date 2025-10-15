@@ -27,7 +27,7 @@ type ResetWorkers struct {
 
 // Title for the phase
 func (p *ResetWorkers) Title() string {
-    return "Reset workers"
+	return "Reset workers"
 }
 
 // Prepare the phase
@@ -46,12 +46,12 @@ func (p *ResetWorkers) Prepare(config *v1beta1.Cluster) error {
 
 // Before runs "before reset" hooks
 func (p *ResetWorkers) Before() error {
-    return p.runHooks(context.Background(), "reset", "before", p.hosts...)
+	return p.runHooks(context.Background(), "reset", "before", p.hosts...)
 }
 
 // After runs "after reset" hooks
 func (p *ResetWorkers) After() error {
-    return p.runHooks(context.Background(), "reset", "after", p.hosts...)
+	return p.runHooks(context.Background(), "reset", "after", p.hosts...)
 }
 
 // ShouldRun is true when there are workers that needs to be reset
@@ -109,7 +109,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
-			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				log.Warnf("%s: failed to wait for k0s to stop: %s", h, err.Error())
 			}
 			log.Debugf("%s: stopping k0s completed", h)
