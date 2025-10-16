@@ -21,6 +21,7 @@ type LocalFile struct {
 type UploadFile struct {
 	Name            string       `yaml:"name,omitempty"`
 	Source          string       `yaml:"src"`
+	Content         string       `yaml:"content"`
 	DestinationDir  string       `yaml:"dstDir"`
 	DestinationFile string       `yaml:"dst"`
 	PermMode        interface{}  `yaml:"perm"`
@@ -35,7 +36,9 @@ type UploadFile struct {
 
 func (u UploadFile) Validate() error {
 	return validation.ValidateStruct(&u,
-		validation.Field(&u.Source, validation.Required),
+		validation.Field(&u.Name, validation.Required.When(u.IsContent() && u.DestinationFile == "").Error("name or dst required for content")),
+		validation.Field(&u.Source, validation.Required.When(!u.IsContent()).Error("src or content required")),
+		validation.Field(&u.Content, validation.Required.When(u.Source == "").Error("src or content required")),
 		validation.Field(&u.DestinationFile, validation.Required.When(u.DestinationDir == "").Error("dst or dstdir required")),
 		validation.Field(&u.DestinationDir, validation.Required.When(u.DestinationFile == "").Error("dst or dstdir required")),
 	)
@@ -139,6 +142,10 @@ func (u *UploadFile) resolve() error {
 		return nil
 	}
 
+	if u.IsContent() {
+		return nil
+	}
+
 	if isGlob(u.Source) {
 		return u.glob(u.Source)
 	}
@@ -210,4 +217,8 @@ func (u *UploadFile) glob(src string) error {
 // IsURL returns true if the source is a URL
 func (u *UploadFile) IsURL() bool {
 	return strings.Contains(u.Source, "://")
+}
+
+func (u *UploadFile) IsContent() bool {
+	return strings.TrimSpace(u.Content) != ""
 }

@@ -14,6 +14,14 @@ spec:
           dst: /root/singlefile/renamed.txt
           user: test
           group: test
+        - name: content
+          dst: /root/content/hello.sh
+          user: test
+          group: test
+          perm: 0755
+          content: |-
+            #!/bin/sh
+            echo hello
         - name: dest_dir
           src: ./upload/toplevel.txt
           dstDir: /root/destdir
