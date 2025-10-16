@@ -53,7 +53,7 @@ func (p *PrepareHosts) updateEnvironment(ctx context.Context, h *cluster.Host) e
 	// server configuration (sshd only accepts LC_* variables by default).
 	log.Infof("%s: reconnecting to apply new environment", h)
 	h.Disconnect()
-	return retry.AdaptiveTimeout(ctx, 10*time.Minute, func(_ context.Context) error {
+	return retry.Timeout(ctx, 10*time.Minute, func(_ context.Context) error {
 		if err := h.Connect(); err != nil {
 			if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
 				return errors.Join(retry.ErrAbort, err)

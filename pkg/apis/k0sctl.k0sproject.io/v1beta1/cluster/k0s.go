@@ -158,7 +158,7 @@ func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry ti
 	}
 
 	var token string
-	err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
+	err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 		output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join()), exec.HideOutput(), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("create token: %w", err)

@@ -20,17 +20,17 @@ type ResetLeader struct {
 
 // Title for the phase
 func (p *ResetLeader) Title() string {
-    return "Reset leader"
+	return "Reset leader"
 }
 
 // Before runs "before reset" hooks
 func (p *ResetLeader) Before() error {
-    return p.runHooks(context.Background(), "reset", "before", p.leader)
+	return p.runHooks(context.Background(), "reset", "before", p.leader)
 }
 
 // After runs "after backup" hooks
 func (p *ResetLeader) After() error {
-    return p.runHooks(context.Background(), "reset", "after", p.leader)
+	return p.runHooks(context.Background(), "reset", "after", p.leader)
 }
 
 // Prepare the phase
@@ -61,7 +61,7 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
-		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
+		if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
 			log.Warnf("%s: k0s service stop: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: stopping k0s completed", p.leader)

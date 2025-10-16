@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -16,9 +15,9 @@ import (
 
 // UpgradeControllers upgrades the controllers one-by-one
 type UpgradeControllers struct {
-    GenericPhase
+	GenericPhase
 
-    hosts cluster.Hosts
+	hosts cluster.Hosts
 }
 
 // Title for the phase
@@ -44,23 +43,23 @@ func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 
 // ShouldRun is true when there are controllers that needs to be upgraded
 func (p *UpgradeControllers) ShouldRun() bool {
-    return len(p.hosts) > 0
+	return len(p.hosts) > 0
 }
 
 // Before runs "before upgrade" hooks for controller hosts that need upgrade
 func (p *UpgradeControllers) Before() error {
-    if len(p.hosts) == 0 {
-        return nil
-    }
-    return p.runHooks(context.Background(), "upgrade", "before", p.hosts...)
+	if len(p.hosts) == 0 {
+		return nil
+	}
+	return p.runHooks(context.Background(), "upgrade", "before", p.hosts...)
 }
 
 // After runs "after upgrade" hooks for controller hosts that were upgraded
 func (p *UpgradeControllers) After() error {
-    if len(p.hosts) == 0 {
-        return nil
-    }
-    return p.runHooks(context.Background(), "upgrade", "after", p.hosts...)
+	if len(p.hosts) == 0 {
+		return nil
+	}
+	return p.runHooks(context.Background(), "upgrade", "after", p.hosts...)
 }
 
 // CleanUp cleans up the environment override files on hosts
@@ -91,7 +90,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 					return fmt.Errorf("add taint: %w", err)
 				}
 				log.Debugf("%s: wait for taint to be applied", h)
-				err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
+				err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 					taints, err := leader.Taints(h)
 					if err != nil {
 						return fmt.Errorf("get taints: %w", err)
@@ -113,7 +112,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
 				return err
 			}
-			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("wait for k0s service stop: %w", err)
 			}
 			return nil
@@ -167,7 +166,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 				return err
 			}
 			log.Infof("%s: waiting for the k0s service to start", h)
-			if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("k0s service start: %w", err)
 			}
 			return nil
@@ -177,7 +176,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		}
 
 		if p.IsWet() {
-			err := retry.AdaptiveTimeout(ctx, 30*time.Second, func(_ context.Context) error {
+			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)

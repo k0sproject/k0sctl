@@ -50,10 +50,10 @@ func (p *InstallControllers) ShouldRun() bool {
 
 // Before runs "before install" hooks for controller hosts
 func (p *InstallControllers) Before() error {
-    if len(p.hosts) == 0 {
-        return nil
-    }
-    return p.runHooks(context.Background(), "install", "before", p.hosts...)
+	if len(p.hosts) == 0 {
+		return nil
+	}
+	return p.runHooks(context.Background(), "install", "before", p.hosts...)
 }
 
 // CleanUp cleans up the environment override files on hosts
@@ -78,10 +78,10 @@ func (p *InstallControllers) CleanUp() {
 
 // After runs "after install" hooks for controller hosts and cleans up tokens
 func (p *InstallControllers) After() error {
-    // Run "after install" hooks for controllers first
-    if err := p.runHooks(context.Background(), "install", "after", p.hosts...); err != nil {
-        return err
-    }
+	// Run "after install" hooks for controllers first
+	if err := p.runHooks(context.Background(), "install", "after", p.hosts...); err != nil {
+		return err
+	}
 	for i, h := range p.hosts {
 		if h.Metadata.K0sTokenData.Token == "" {
 			continue
@@ -132,7 +132,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
 			log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
-			if err := retry.AdaptiveTimeout(ctx, 30*time.Second, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
 				return fmt.Errorf("failed to connect from controller to kubernetes api - check networking: %w", err)
 			}
 		} else {
@@ -268,11 +268,11 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 		}
 
 		log.Infof("%s: waiting for the k0s service to start", h)
-		if err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
-		err := retry.AdaptiveTimeout(ctx, retry.DefaultTimeout, func(_ context.Context) error {
+		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
 			if err != nil {
 				return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
