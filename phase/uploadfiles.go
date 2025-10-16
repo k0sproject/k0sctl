@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -54,8 +55,10 @@ func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
 		var err error
 		if f.IsURL() {
 			err = p.uploadURL(h, f)
-		} else {
+		} else if len(f.Sources) > 0 {
 			err = p.uploadFile(h, f)
+		} else if f.IsContent() {
+			err = p.uploadContent(h, f)
 		}
 		if err != nil {
 			return err
@@ -162,6 +165,53 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 		})
 		if err != nil {
 			return fmt.Errorf("failed to touch %s: %w", dest, err)
+		}
+	}
+
+	return nil
+}
+
+func (p *UploadFiles) uploadContent(h *cluster.Host, f *cluster.UploadFile) error {
+	log.Infof("%s: uploading content", h)
+	dest := f.DestinationFile
+	if dest == "" {
+		if f.DestinationDir != "" {
+			dest = path.Join(f.DestinationDir, f.Name)
+		} else {
+			dest = f.Name
+		}
+	}
+
+	owner := f.Owner()
+
+	if err := p.ensureDir(h, path.Dir(dest), f.DirPermString, owner); err != nil {
+		return err
+	}
+
+	err := p.Wet(h, fmt.Sprintf("upload content => %s", dest), func() error {
+		fileMode, _ := strconv.ParseUint(f.PermString, 8, 32)
+		remoteFile, err := h.SudoFsys().OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
+		if err != nil {
+			return err
+		}
+
+		defer remoteFile.Close()
+
+		_, err = fmt.Fprint(remoteFile, f.Content)
+
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	if owner != "" {
+		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
+			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
+			return h.Execf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(dest), exec.Sudo(h))
+		})
+		if err != nil {
+			return err
 		}
 	}
 
