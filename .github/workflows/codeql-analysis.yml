@@ -43,7 +43,7 @@ jobs:
     # Added as suggested in https://github.com/github/codeql-action/issues/1842 to bring in a newer go than exists
     # preinstalled on the runners
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: go.mod
         check-latest: true
