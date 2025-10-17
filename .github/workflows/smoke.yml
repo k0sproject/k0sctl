@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v6
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -68,7 +68,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
 
       - name: Build image
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -119,7 +119,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         run: make smoke-files
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         run: make smoke-dynamic
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run OS override smoke test
         run: make smoke-os-override
@@ -174,7 +174,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run k0sDownloadURL smoke test
         run: make smoke-downloadurl
@@ -194,7 +194,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -215,7 +215,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -235,7 +235,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -255,7 +255,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -268,7 +268,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -286,7 +286,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -305,7 +305,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
         env:
@@ -318,7 +318,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/smoke-test-cache
       - name: Run init smoke test
         run: make smoke-init
