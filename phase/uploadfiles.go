@@ -195,7 +195,11 @@ func (p *UploadFiles) uploadContent(h *cluster.Host, f *cluster.UploadFile) erro
 			return err
 		}
 
-		defer remoteFile.Close()
+		defer func() {
+			if err := remoteFile.Close(); err != nil {
+				log.Warnf("failed to close remote file %s: %v", dest, err)
+			}
+		}()
 
 		_, err = fmt.Fprint(remoteFile, f.Content)
 
