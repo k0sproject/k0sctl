@@ -201,7 +201,13 @@ func initConfig(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		cfgFile := file
+		cfgName := f
+		defer func() {
+			if err := cfgFile.Close(); err != nil {
+				log.Warnf("failed to close config file %s: %v", cfgName, err)
+			}
+		}()
 
 		content, err := io.ReadAll(file)
 		if err != nil {
@@ -399,10 +405,10 @@ func LogFile() (*os.File, error) {
 
 	logFile, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open log %s: %s", fn, err.Error())
+		return nil, fmt.Errorf("failed to open log %s: %s", fn, err.Error())
 	}
 
-	_, _ = fmt.Fprintf(logFile, "time=\"%s\" level=info msg=\"###### New session ######\"\n", time.Now().Format(time.RFC822))
+	fmt.Fprintf(logFile, "time=\"%s\" level=info msg=\"###### New session ######\"\n", time.Now().Format(time.RFC822))
 
 	return logFile, nil
 }

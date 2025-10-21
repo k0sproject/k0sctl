@@ -46,7 +46,7 @@ func (p *ResetControllers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
 
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
+	controllers := p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
 		return h.Reset

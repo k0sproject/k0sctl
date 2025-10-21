@@ -63,7 +63,12 @@ var backupCommand = &cli.Command{
 				resultErr = fmt.Errorf("open local file for writing: %w", err)
 				return resultErr
 			}
-			defer f.Close()
+			backupFile := f
+			defer func() {
+				if err := backupFile.Close(); err != nil {
+					log.Warnf("failed to close backup file %s: %v", localFile, err)
+				}
+			}()
 			out = f
 		}
 
