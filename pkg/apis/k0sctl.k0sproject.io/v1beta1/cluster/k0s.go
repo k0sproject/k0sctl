@@ -17,6 +17,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -198,7 +199,11 @@ func ParseToken(s string) (TokenData, error) {
 	if err != nil {
 		return data, fmt.Errorf("failed to create a reader for token: %w", err)
 	}
-	defer gzr.Close()
+	defer func() {
+		if err := gzr.Close(); err != nil {
+			log.Warnf("failed to close token gzip reader: %v", err)
+		}
+	}()
 
 	c, err := io.ReadAll(gzr)
 	if err != nil {

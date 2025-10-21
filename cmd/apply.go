@@ -9,6 +9,7 @@ import (
 	"github.com/k0sproject/k0sctl/action"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
@@ -80,7 +81,12 @@ var applyCommand = &cli.Command{
 			if err != nil {
 				return fmt.Errorf("failed to open kubeconfig-out file: %w", err)
 			}
-			defer out.Close()
+			outputFile := kc
+			defer func() {
+				if err := out.Close(); err != nil {
+					log.Warnf("failed to close kubeconfig-out file %s: %v", outputFile, err)
+				}
+			}()
 			kubeconfigOut = out
 		}
 

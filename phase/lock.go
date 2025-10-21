@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	gos "os"
 	"sync"
 	"time"
 
@@ -31,7 +30,7 @@ func (p *Lock) Prepare(c *v1beta1.Cluster) error {
 	if err != nil {
 		hn = "unknown"
 	}
-	p.instanceID = fmt.Sprintf("%s-%d", hn, gos.Getpid())
+	p.instanceID = fmt.Sprintf("%s-%d", hn, os.Getpid())
 	return nil
 }
 

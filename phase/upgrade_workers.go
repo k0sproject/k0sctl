@@ -32,7 +32,7 @@ func (p *UpgradeWorkers) Title() string {
 func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.leader = p.Config.Spec.K0sLeader()
-	var workers cluster.Hosts = p.Config.Spec.Hosts.Workers()
+	workers := p.Config.Spec.Hosts.Workers()
 	log.Debugf("%d workers in total", len(workers))
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {
 		if h.Metadata.K0sBinaryTempFile == "" {

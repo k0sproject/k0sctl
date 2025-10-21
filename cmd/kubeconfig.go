@@ -53,7 +53,7 @@ var kubeconfigCommand = &cli.Command{
 			return fmt.Errorf("getting kubeconfig failed - log file saved to %s: %w", ctx.Context.Value(ctxLogFileKey{}).(string), err)
 		}
 
-		_, err := fmt.Fprintf(ctx.App.Writer, "%s\n", kubeconfigAction.Manager.Config.Metadata.Kubeconfig)
-		return err
+		fmt.Fprintf(ctx.App.Writer, "%s\n", kubeconfigAction.Manager.Config.Metadata.Kubeconfig)
+		return nil
 	},
 }

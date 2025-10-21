@@ -29,7 +29,7 @@ func (p *UpgradeControllers) Title() string {
 func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 	log.Debugf("UpgradeControllers phase prep starting")
 	p.Config = config
-	var controllers cluster.Hosts = p.Config.Spec.Hosts.Controllers()
+	controllers := p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
 		if h.Metadata.K0sBinaryTempFile == "" {

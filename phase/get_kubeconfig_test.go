@@ -56,7 +56,7 @@ func TestGetKubeconfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://10.0.0.1:6443", conf.Clusters["k0s"].Server)
 
-	cfg.Spec.Hosts[0].Connection.SSH.Address = "abcd:efgh:ijkl:mnop"
+	cfg.Spec.Hosts[0].SSH.Address = "abcd:efgh:ijkl:mnop"
 	p.APIAddress = ""
 	require.NoError(t, p.Run(context.Background()))
 	conf, err = clientcmd.Load([]byte(cfg.Metadata.Kubeconfig))

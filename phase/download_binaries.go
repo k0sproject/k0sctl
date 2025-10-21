@@ -147,7 +147,12 @@ func (b binary) downloadTo(path string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	respBody := resp.Body
+	defer func() {
+		if err := respBody.Close(); err != nil {
+			log.Warnf("failed to close download response body for %s: %v", b.url(), err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to get k0s binary (http %d)", resp.StatusCode)
@@ -158,7 +163,7 @@ func (b binary) downloadTo(path string) error {
 		return err
 	}
 
-	if err = f.Close(); err == nil {
+	if err = f.Close(); err != nil {
 		return err
 	}
 
