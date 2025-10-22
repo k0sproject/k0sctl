@@ -14,12 +14,12 @@ spec:
           dst: /root/singlefile/renamed.txt
           user: test
           group: test
-        - name: content
+        - name: inline-data
           dst: /root/content/hello.sh
           user: test
           group: test
           perm: 0755
-          content: |-
+          data: |-
             #!/bin/sh
             echo hello
         - name: dest_dir

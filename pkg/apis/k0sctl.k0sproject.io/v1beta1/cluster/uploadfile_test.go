@@ -64,32 +64,32 @@ perm: 0
 	require.Error(t, yaml.Unmarshal(yml, &u))
 }
 
-func TestUploadFileValidateRequiresDestinationFileForContent(t *testing.T) {
-	u := UploadFile{Content: "hello", DestinationDir: "/tmp"}
+func TestUploadFileValidateRequiresDestinationFileForData(t *testing.T) {
+	u := UploadFile{Data: "hello", DestinationDir: "/tmp"}
 
 	err := u.Validate()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "name or dst required for content")
+	require.Contains(t, err.Error(), "name or dst required for data")
 }
 
-func TestUploadFileValidateContentWithDestinationFile(t *testing.T) {
-	u := UploadFile{Content: "hello", DestinationFile: "/tmp/inline.txt"}
+func TestUploadFileValidateDataWithDestinationFile(t *testing.T) {
+	u := UploadFile{Data: "hello", DestinationFile: "/tmp/inline.txt"}
 
 	require.NoError(t, u.Validate())
 }
 
-func TestUploadFileValidateRequiresSourceOrContent(t *testing.T) {
-	u := UploadFile{Content: "   "}
+func TestUploadFileValidateRequiresSourceOrData(t *testing.T) {
+	u := UploadFile{Data: "   "}
 
 	err := u.Validate()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "src or content required")
+	require.Contains(t, err.Error(), "src or data required")
 }
 
 func TestUploadFileValidateRequiresDestinationFileOrName(t *testing.T) {
-	u := UploadFile{Content: "hello", DestinationDir: "/tmp/"}
+	u := UploadFile{Data: "hello", DestinationDir: "/tmp/"}
 
 	err := u.Validate()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "name or dst required for content")
+	require.Contains(t, err.Error(), "name or dst required for data")
 }

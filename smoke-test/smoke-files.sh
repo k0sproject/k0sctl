@@ -60,7 +60,7 @@ remoteCommand root@manager0 stat -c '%U:%G' /root/singlefile/renamed.txt | grep 
 printf %s "[stat]"
 echo "OK"
 
-printf %s "  - File from content .. "
+printf %s "  - File from inline data .. "
 remoteFileExist root@manager0 /root/content/hello.sh
 printf %s "[exist]"
 remoteCommand root@manager0 stat -c '%U:%G' /root/content/hello.sh | grep -q test:test
@@ -126,4 +126,3 @@ printf %s "[content] "
 echo "OK"
 
 echo "* Done"
-

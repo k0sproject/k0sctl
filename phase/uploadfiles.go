@@ -57,8 +57,8 @@ func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
 			err = p.uploadURL(h, f)
 		} else if len(f.Sources) > 0 {
 			err = p.uploadFile(h, f)
-		} else if f.IsContent() {
-			err = p.uploadContent(h, f)
+		} else if f.HasData() {
+			err = p.uploadData(h, f)
 		}
 		if err != nil {
 			return err
@@ -171,8 +171,8 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 	return nil
 }
 
-func (p *UploadFiles) uploadContent(h *cluster.Host, f *cluster.UploadFile) error {
-	log.Infof("%s: uploading content", h)
+func (p *UploadFiles) uploadData(h *cluster.Host, f *cluster.UploadFile) error {
+	log.Infof("%s: uploading inline data", h)
 	dest := f.DestinationFile
 	if dest == "" {
 		if f.DestinationDir != "" {
@@ -188,7 +188,7 @@ func (p *UploadFiles) uploadContent(h *cluster.Host, f *cluster.UploadFile) erro
 		return err
 	}
 
-	err := p.Wet(h, fmt.Sprintf("upload content => %s", dest), func() error {
+	err := p.Wet(h, fmt.Sprintf("upload inline data => %s", dest), func() error {
 		fileMode, _ := strconv.ParseUint(f.PermString, 8, 32)
 		remoteFile, err := h.SudoFsys().OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
 		if err != nil {
@@ -201,7 +201,7 @@ func (p *UploadFiles) uploadContent(h *cluster.Host, f *cluster.UploadFile) erro
 			}
 		}()
 
-		_, err = fmt.Fprint(remoteFile, f.Content)
+		_, err = fmt.Fprint(remoteFile, f.Data)
 
 		return err
 	})
