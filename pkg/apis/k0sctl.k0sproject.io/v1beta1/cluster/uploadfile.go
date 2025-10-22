@@ -20,14 +20,14 @@ type LocalFile struct {
 // UploadFile describes a file to be uploaded for the host
 type UploadFile struct {
 	Name            string       `yaml:"name,omitempty"`
-	Source          string       `yaml:"src"`
-	Data            string       `yaml:"data"`
-	DestinationDir  string       `yaml:"dstDir"`
-	DestinationFile string       `yaml:"dst"`
-	PermMode        interface{}  `yaml:"perm"`
-	DirPermMode     interface{}  `yaml:"dirPerm"`
-	User            string       `yaml:"user"`
-	Group           string       `yaml:"group"`
+	Source          string       `yaml:"src,omitempty"`
+	Data            string       `yaml:"data,omitempty"`
+	DestinationDir  string       `yaml:"dstDir,omitempty"`
+	DestinationFile string       `yaml:"dst,omitempty"`
+	PermMode        interface{}  `yaml:"perm,omitempty"`
+	DirPermMode     interface{}  `yaml:"dirPerm,omitempty"`
+	User            string       `yaml:"user,omitempty"`
+	Group           string       `yaml:"group,omitempty"`
 	PermString      string       `yaml:"-"`
 	DirPermString   string       `yaml:"-"`
 	Sources         []*LocalFile `yaml:"-"`
