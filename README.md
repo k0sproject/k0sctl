@@ -367,8 +367,19 @@ Example:
   perm: 0600
 ```
 
+Inline data example:
+
+```yaml
+- name: motd
+  data: |
+    Powered by k0s
+  dst: /etc/motd
+  perm: 0644
+```
+
 * `name`: name of the file "bundle", used only for logging purposes (optional)
-* `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host. If the value is a URL, '%'-prefixed tokens can be used, see [tokens](#tokens). (required)
+* `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host. If the value is a URL, '%'-prefixed tokens can be used, see [tokens](#tokens). (required when `data` is not set)
+* `data`: Inline file data to write to the destination. Use together with `dst` or `dst` + `dstDir`. (required when `src` is not set)
 * `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host (default: user home)
 * `dst`: Destination filename for the file. Only usable for single file uploads (default: basename of file)
 * `perm`: File permission mode for uploaded file(s) (default: same as local)

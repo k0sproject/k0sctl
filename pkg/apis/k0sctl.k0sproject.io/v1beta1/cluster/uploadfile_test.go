@@ -63,3 +63,33 @@ perm: 0
 
 	require.Error(t, yaml.Unmarshal(yml, &u))
 }
+
+func TestUploadFileValidateRequiresDestinationFileForData(t *testing.T) {
+	u := UploadFile{Data: "hello", DestinationDir: "/tmp"}
+
+	err := u.Validate()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "name or dst required for data")
+}
+
+func TestUploadFileValidateDataWithDestinationFile(t *testing.T) {
+	u := UploadFile{Data: "hello", DestinationFile: "/tmp/inline.txt"}
+
+	require.NoError(t, u.Validate())
+}
+
+func TestUploadFileValidateRequiresSourceOrData(t *testing.T) {
+	u := UploadFile{Data: "   "}
+
+	err := u.Validate()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "src or data required")
+}
+
+func TestUploadFileValidateRequiresDestinationFileOrName(t *testing.T) {
+	u := UploadFile{Data: "hello", DestinationDir: "/tmp/"}
+
+	err := u.Validate()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "name or dst required for data")
+}

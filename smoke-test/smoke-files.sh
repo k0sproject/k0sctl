@@ -60,6 +60,15 @@ remoteCommand root@manager0 stat -c '%U:%G' /root/singlefile/renamed.txt | grep 
 printf %s "[stat]"
 echo "OK"
 
+printf %s "  - File from inline data .. "
+remoteFileExist root@manager0 /root/content/hello.sh
+printf %s "[exist]"
+remoteCommand root@manager0 stat -c '%U:%G' /root/content/hello.sh | grep -q test:test
+printf %s "[stat]"
+remoteCommand root@manager0 /root/content/hello.sh | grep -q hello
+printf %s "[run] "
+echo "OK"
+
 printf %s "  - Single file using destination dir .. "
 remoteFileExist root@manager0 /root/destdir/toplevel.txt
 echo "OK"
@@ -117,4 +126,3 @@ printf %s "[content] "
 echo "OK"
 
 echo "* Done"
-

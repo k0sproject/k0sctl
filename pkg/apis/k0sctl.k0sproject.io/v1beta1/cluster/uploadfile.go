@@ -20,13 +20,14 @@ type LocalFile struct {
 // UploadFile describes a file to be uploaded for the host
 type UploadFile struct {
 	Name            string       `yaml:"name,omitempty"`
-	Source          string       `yaml:"src"`
-	DestinationDir  string       `yaml:"dstDir"`
-	DestinationFile string       `yaml:"dst"`
-	PermMode        interface{}  `yaml:"perm"`
-	DirPermMode     interface{}  `yaml:"dirPerm"`
-	User            string       `yaml:"user"`
-	Group           string       `yaml:"group"`
+	Source          string       `yaml:"src,omitempty"`
+	Data            string       `yaml:"data,omitempty"`
+	DestinationDir  string       `yaml:"dstDir,omitempty"`
+	DestinationFile string       `yaml:"dst,omitempty"`
+	PermMode        interface{}  `yaml:"perm,omitempty"`
+	DirPermMode     interface{}  `yaml:"dirPerm,omitempty"`
+	User            string       `yaml:"user,omitempty"`
+	Group           string       `yaml:"group,omitempty"`
 	PermString      string       `yaml:"-"`
 	DirPermString   string       `yaml:"-"`
 	Sources         []*LocalFile `yaml:"-"`
@@ -35,7 +36,9 @@ type UploadFile struct {
 
 func (u UploadFile) Validate() error {
 	return validation.ValidateStruct(&u,
-		validation.Field(&u.Source, validation.Required),
+		validation.Field(&u.Name, validation.Required.When(u.HasData() && u.DestinationFile == "").Error("name or dst required for data")),
+		validation.Field(&u.Source, validation.Required.When(!u.HasData()).Error("src or data required")),
+		validation.Field(&u.Data, validation.Required.When(u.Source == "").Error("src or data required")),
 		validation.Field(&u.DestinationFile, validation.Required.When(u.DestinationDir == "").Error("dst or dstdir required")),
 		validation.Field(&u.DestinationDir, validation.Required.When(u.DestinationFile == "").Error("dst or dstdir required")),
 	)
@@ -139,6 +142,10 @@ func (u *UploadFile) resolve() error {
 		return nil
 	}
 
+	if u.HasData() {
+		return nil
+	}
+
 	if isGlob(u.Source) {
 		return u.glob(u.Source)
 	}
@@ -210,4 +217,8 @@ func (u *UploadFile) glob(src string) error {
 // IsURL returns true if the source is a URL
 func (u *UploadFile) IsURL() bool {
 	return strings.Contains(u.Source, "://")
+}
+
+func (u *UploadFile) HasData() bool {
+	return strings.TrimSpace(u.Data) != ""
 }
