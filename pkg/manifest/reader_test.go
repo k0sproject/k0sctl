@@ -1,6 +1,7 @@
 package manifest_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -148,4 +149,34 @@ metadata:
 	services, err := r.GetResources("v1", "Service")
 	require.NoError(t, err, "GetResources should not return an error for Services")
 	assert.Len(t, services, 1, "Expected 1 Service to be returned")
+}
+
+func TestReader_ParseHandlesLargeManifest(t *testing.T) {
+	largeData := strings.Repeat("x", 70*1024)
+	manifestStr := fmt.Sprintf(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: big-config
+data:
+  payload: "%s"
+`, largeData)
+
+	r := &manifest.Reader{}
+	require.NoError(t, r.Parse(strings.NewReader(manifestStr)))
+	require.Equal(t, 1, r.Len(), "Expected a single manifest to be parsed")
+
+	resource := r.Resources()[0]
+	require.Equal(t, "ConfigMap", resource.Kind)
+	require.Equal(t, "v1", resource.APIVersion)
+	require.Equal(t, strings.TrimSpace(manifestStr), strings.TrimSpace(string(resource.Raw)))
+
+	var parsed struct {
+		APIVersion string            `yaml:"apiVersion"`
+		Kind       string            `yaml:"kind"`
+		Metadata   map[string]string `yaml:"metadata"`
+		Data       map[string]string `yaml:"data"`
+	}
+	require.NoError(t, resource.Unmarshal(&parsed))
+	require.Contains(t, parsed.Data, "payload")
+	require.Len(t, parsed.Data["payload"], len(largeData))
 }
