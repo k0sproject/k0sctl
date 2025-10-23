@@ -3,6 +3,7 @@ package manifest
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v2"
+	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // ResourceDefinition represents a single Kubernetes resource definition.
@@ -64,27 +66,6 @@ func (rd *ResourceDefinition) Unmarshal(obj any) error {
 	return nil
 }
 
-func yamlDocumentSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-
-	// Look for the document separator
-	sepIndex := bytes.Index(data, []byte("\n---"))
-	if sepIndex >= 0 {
-		// Return everything up to the separator
-		return sepIndex + len("\n---"), data[:sepIndex], nil
-	}
-
-	// If at EOF, return the remaining data
-	if atEOF {
-		return len(data), data, nil
-	}
-
-	// Request more data
-	return 0, nil, nil
-}
-
 // Reader reads Kubernetes resource definitions from input streams.
 type Reader struct {
 	IgnoreErrors bool
@@ -100,14 +81,18 @@ func name(r io.Reader) string {
 
 // Parse parses Kubernetes resource definitions from the provided input stream. They are then available via the Resources() or GetResources(apiVersion, kind) methods.
 func (r *Reader) Parse(input io.Reader) error {
-	scanner := bufio.NewScanner(input)
-	scanner.Split(yamlDocumentSplit)
+	yamlReader := yamlutil.NewYAMLReader(bufio.NewReader(input))
 
-	for scanner.Scan() {
-		rawChunk := scanner.Bytes()
+	for {
+		rawChunk, err := yamlReader.Read()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("error reading input: %w", err)
+		}
 
-		// Skip empty chunks
-		if len(rawChunk) == 0 {
+		if len(bytes.TrimSpace(rawChunk)) == 0 {
 			continue
 		}
 
@@ -129,10 +114,6 @@ func (r *Reader) Parse(input io.Reader) error {
 		// Store the raw chunk
 		rd.Raw = append([]byte{}, rawChunk...)
 		r.manifests = append(r.manifests, rd)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading input: %w", err)
 	}
 
 	return nil
