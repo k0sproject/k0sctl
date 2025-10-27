@@ -28,7 +28,7 @@ jobs:
       run: make k0sctl
 
     - name: Stash the compiled binary for further testing
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: k0sctl
         path: k0sctl
