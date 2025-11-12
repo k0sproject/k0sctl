@@ -226,7 +226,22 @@ func initConfig(ctx *cli.Context) error {
 
 		log.Debugf("parsing configuration from %s", f)
 
-		if err := manifestReader.ParseBytes(subst, manifest.WithOrigin(cfgName)); err != nil {
+		origin := cfgName
+		if cfgName == "-" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to determine working directory: %w", err)
+			}
+			origin = cwd
+		} else if named, ok := cfgFile.(interface{ Name() string }); ok {
+			if n := named.Name(); n != "" {
+				origin = n
+			}
+		} else if abs, err := filepath.Abs(origin); err == nil {
+			origin = abs
+		}
+
+		if err := manifestReader.ParseBytesWithOrigin(subst, origin); err != nil {
 			return fmt.Errorf("failed to parse config: %w", err)
 		}
 
@@ -280,12 +295,12 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 	if err := ctlConfigs[0].Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal cluster config: %w", err)
 	}
-
-	origin := ctlConfigs[0].Origin
-	if err := cfg.Resolve(origin); err != nil {
-		return nil, err
+	cfg.Origin = ctlConfigs[0].Origin
+	if cfg.Spec != nil {
+		if err := cfg.Spec.ResolveUploadFilePaths(configBaseDir(cfg.Origin)); err != nil {
+			return nil, fmt.Errorf("failed to resolve upload file paths: %w", err)
+		}
 	}
-
 	if k0sConfigs, err := mr.GetResources("k0s.k0sproject.io/v1beta1", "ClusterConfig"); err == nil && len(k0sConfigs) > 0 {
 		if cfg.Spec.K0s.Config == nil {
 			cfg.Spec.K0s.Config = make(dig.Mapping)
@@ -322,6 +337,20 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 		return nil, fmt.Errorf("cluster config validation failed: %w", err)
 	}
 	return cfg, nil
+}
+
+func configBaseDir(origin string) string {
+	if origin == "" {
+		return ""
+	}
+	cleaned := origin
+	if abs, err := filepath.Abs(origin); err == nil {
+		cleaned = abs
+	}
+	if info, err := os.Stat(cleaned); err == nil && info.IsDir() {
+		return filepath.ToSlash(cleaned)
+	}
+	return filepath.ToSlash(filepath.Dir(cleaned))
 }
 
 func initManager(ctx *cli.Context) error {

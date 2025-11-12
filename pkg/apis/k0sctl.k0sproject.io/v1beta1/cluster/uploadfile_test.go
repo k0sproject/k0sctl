@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -96,22 +96,42 @@ func TestUploadFileValidateRequiresDestinationFileOrName(t *testing.T) {
 	require.Contains(t, err.Error(), "name or dst required for data")
 }
 
-func TestUploadFileResolveURLSetsDst(t *testing.T) {
-	u := &UploadFile{Source: "https://example.com/assets/app.tar.gz", DestinationDir: "/opt"}
-	require.NoError(t, u.Resolve("/tmp/config.yaml"))
-	require.Equal(t, "/opt/app.tar.gz", u.DestinationFile)
-	require.Equal(t, "", u.Base)
-	require.Len(t, u.Sources, 0)
+func TestUploadFileResolveRelativeToBaseDir(t *testing.T) {
+	dir := t.TempDir()
+	srcDir := filepath.Join(dir, "files")
+	require.NoError(t, os.MkdirAll(srcDir, 0o755))
+	filePath := filepath.Join(srcDir, "example.txt")
+	require.NoError(t, os.WriteFile(filePath, []byte("data"), 0o644))
+
+	var u UploadFile
+	yml := []byte(`
+src: files/example.txt
+dstDir: /tmp
+`)
+	require.NoError(t, yaml.Unmarshal(yml, &u))
+	require.NoError(t, u.ResolveRelativeTo(filepath.ToSlash(dir)))
+
+	require.Equal(t, filepath.ToSlash(srcDir), u.Base)
+	require.Len(t, u.Sources, 1)
+	require.Equal(t, "example.txt", u.Sources[0].Path)
 }
 
-func TestUploadFileResolveLocalSingleFile(t *testing.T) {
-	tmp := t.TempDir()
-	fp := path.Join(tmp, "a.txt")
-	require.NoError(t, os.WriteFile(fp, []byte("a"), 0o640))
+func TestUploadFileResolveGlobRelativeToBaseDir(t *testing.T) {
+	dir := t.TempDir()
+	srcDir := filepath.Join(dir, "files", "manifests")
+	require.NoError(t, os.MkdirAll(srcDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "a.yaml"), []byte("a"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "b.yaml"), []byte("b"), 0o644))
 
-	u := &UploadFile{Source: "a.txt"}
-	require.NoError(t, u.Resolve(path.Join(tmp, "cfg.yaml")))
-	require.Equal(t, tmp, u.Base)
-	require.Len(t, u.Sources, 1)
-	require.Equal(t, "a.txt", u.Sources[0].Path)
+	var u UploadFile
+	yml := []byte(`
+src: files/**/*.yaml
+dstDir: /tmp
+`)
+	require.NoError(t, yaml.Unmarshal(yml, &u))
+	require.NoError(t, u.ResolveRelativeTo(filepath.ToSlash(dir)))
+
+	require.Equal(t, filepath.ToSlash(filepath.Join(dir, "files")), u.Base)
+	require.Len(t, u.Sources, 2)
+	require.ElementsMatch(t, []string{"manifests/a.yaml", "manifests/b.yaml"}, []string{u.Sources[0].Path, u.Sources[1].Path})
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -72,33 +71,33 @@ type Reader struct {
 	manifests    []*ResourceDefinition
 }
 
-// ParseOption configures optional behavior for Parse.
-type ParseOption func(*parseOptions)
-
-type parseOptions struct {
-	origin string
+type namedReader struct {
+	reader io.Reader
+	name   string
 }
 
-// WithOrigin overrides the origin name for resources parsed from the reader.
-func WithOrigin(origin string) ParseOption {
-	return func(po *parseOptions) {
-		po.origin = origin
+func (n *namedReader) Read(p []byte) (int, error) {
+	return n.reader.Read(p)
+}
+
+func (n *namedReader) Name() string {
+	return n.name
+}
+
+func name(r io.Reader) string {
+	type named interface {
+		Name() string
 	}
+	if n, ok := r.(named); ok {
+		if nn := n.Name(); nn != "" {
+			return nn
+		}
+	}
+	return "manifest"
 }
 
 // Parse parses Kubernetes resource definitions from the provided input stream. They are then available via the Resources() or GetResources(apiVersion, kind) methods.
-func (r *Reader) Parse(input io.Reader, opts ...ParseOption) error {
-	po := &parseOptions{}
-	for _, opt := range opts {
-		opt(po)
-	}
-
-	if po.origin == "" {
-		if f, ok := input.(*os.File); ok {
-			po.origin = f.Name()
-		}
-	}
-
+func (r *Reader) Parse(input io.Reader) error {
 	yamlReader := yamlutil.NewYAMLReader(bufio.NewReader(input))
 
 	for {
@@ -119,18 +118,18 @@ func (r *Reader) Parse(input io.Reader, opts ...ParseOption) error {
 			if r.IgnoreErrors {
 				continue
 			}
-			return fmt.Errorf("failed to decode resource %s: %w", po.origin, err)
+			return fmt.Errorf("failed to decode resource %s: %w", name(input), err)
 		}
 
 		if rd.APIVersion == "" || rd.Kind == "" {
 			if r.IgnoreErrors {
 				continue
 			}
-			return fmt.Errorf("missing apiVersion or kind in resource %s: %w", po.origin, err)
+			return fmt.Errorf("missing apiVersion or kind in resource %s", name(input))
 		}
 
+		rd.Origin = name(input)
 		// Store the raw chunk
-		rd.Origin = po.origin
 		rd.Raw = append([]byte{}, rawChunk...)
 		r.manifests = append(r.manifests, rd)
 	}
@@ -139,13 +138,18 @@ func (r *Reader) Parse(input io.Reader, opts ...ParseOption) error {
 }
 
 // ParseString parses Kubernetes resource definitions from the provided string.
-func (r *Reader) ParseString(input string, opts ...ParseOption) error {
-	return r.Parse(strings.NewReader(input), opts...)
+func (r *Reader) ParseString(input string) error {
+	return r.Parse(strings.NewReader(input))
 }
 
 // ParseBytes parses Kubernetes resource definitions from the provided byte slice.
-func (r *Reader) ParseBytes(input []byte, opts ...ParseOption) error {
-	return r.Parse(bytes.NewReader(input), opts...)
+func (r *Reader) ParseBytes(input []byte) error {
+	return r.ParseBytesWithOrigin(input, "")
+}
+
+// ParseBytesWithOrigin parses raw bytes and attributes them to the provided origin.
+func (r *Reader) ParseBytesWithOrigin(input []byte, origin string) error {
+	return r.Parse(&namedReader{reader: bytes.NewReader(input), name: origin})
 }
 
 // Resources returns all parsed Kubernetes resource definitions.

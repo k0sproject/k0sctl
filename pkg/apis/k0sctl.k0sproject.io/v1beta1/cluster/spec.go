@@ -96,6 +96,16 @@ func (s *Spec) Validate() error {
 	)
 }
 
+// ResolveUploadFilePaths resolves all host file sources relative to baseDir.
+func (s *Spec) ResolveUploadFilePaths(baseDir string) error {
+	for _, h := range s.Hosts {
+		if err := h.ResolveUploadFiles(baseDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type k0sCPLBConfig struct {
 	Spec struct {
 		Network struct {

@@ -181,17 +181,17 @@ data:
 	require.Len(t, parsed.Data["payload"], len(largeData))
 }
 
-func TestReader_OriginWithOption(t *testing.T) {
+func TestReader_ParseBytesWithOrigin(t *testing.T) {
+	origin := "/tmp/configs/config.yaml"
 	input := `apiVersion: v1
-kind: Pod
+kind: ConfigMap
 metadata:
-  name: pod1
+  name: origin-test
 `
-
 	r := &manifest.Reader{}
-	require.NoError(t, r.Parse(strings.NewReader(input), manifest.WithOrigin("custom-src.yaml")))
-	require.Equal(t, 1, r.Len(), "Expected a single manifest to be parsed")
+	require.NoError(t, r.ParseBytesWithOrigin([]byte(input), origin))
 
-	resource := r.Resources()[0]
-	assert.Equal(t, "custom-src.yaml", resource.Origin, "Origin should use WithOrigin override")
+	resources := r.Resources()
+	require.Len(t, resources, 1)
+	require.Equal(t, origin, resources[0].Origin)
 }

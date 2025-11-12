@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -88,6 +89,7 @@ func permToString(val interface{}) (string, error) {
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
+
 func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type uploadFile UploadFile
 	yu := (*uploadFile)(u)
@@ -129,8 +131,8 @@ func isGlob(s string) bool {
 	return strings.ContainsAny(s, "*%?[]{}")
 }
 
-// sets the destination and resolves any globs/local paths into u.Sources
-func (u *UploadFile) Resolve(origin string) error {
+// ResolveRelativeTo sets the destination and resolves globs/local paths relative to baseDir.
+func (u *UploadFile) ResolveRelativeTo(baseDir string) error {
 	if u.IsURL() {
 		if u.DestinationFile == "" {
 			if u.DestinationDir != "" {
@@ -146,16 +148,26 @@ func (u *UploadFile) Resolve(origin string) error {
 		return nil
 	}
 
-	src := u.Source
-	if origin != "" {
-		src = path.Join(path.Dir(origin), u.Source)
-	}
+	u.Base = ""
+	u.Sources = nil
 
-	if isGlob(src) {
+	src := filepath.ToSlash(u.Source)
+	if src == "" {
+		return fmt.Errorf("failed to resolve local path for %s: empty source", u)
+	}
+	if !path.IsAbs(src) {
+		if baseDir != "" {
+			src = path.Join(baseDir, src)
+		}
+	}
+	src = path.Clean(src)
+
+	if isGlob(u.Source) {
 		return u.glob(src)
 	}
 
-	stat, err := os.Stat(src)
+	fsPath := filepath.FromSlash(src)
+	stat, err := os.Stat(fsPath)
 	if err != nil {
 		return fmt.Errorf("failed to stat local path for %s: %w", u, err)
 	}
@@ -181,7 +193,7 @@ func (u *UploadFile) Resolve(origin string) error {
 func (u *UploadFile) glob(src string) error {
 	base, pattern := doublestar.SplitPattern(src)
 	u.Base = base
-	fsys := os.DirFS(base)
+	fsys := os.DirFS(filepath.FromSlash(base))
 	sources, err := doublestar.Glob(fsys, pattern)
 	if err != nil {
 		return err
@@ -190,7 +202,7 @@ func (u *UploadFile) glob(src string) error {
 	for _, s := range sources {
 		abs := path.Join(base, s)
 		log.Tracef("glob %s found: %s", abs, s)
-		stat, err := os.Stat(abs)
+		stat, err := os.Stat(filepath.FromSlash(abs))
 		if err != nil {
 			return fmt.Errorf("failed to stat file %s: %w", u, err)
 		}

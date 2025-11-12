@@ -29,6 +29,7 @@ type Cluster struct {
 	Kind       string           `yaml:"kind"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
+	Origin     string           `yaml:"-"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
