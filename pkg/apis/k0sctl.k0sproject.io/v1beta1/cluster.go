@@ -110,3 +110,12 @@ func (c *Cluster) StorageType() string {
 	// default to etcd otherwise
 	return "etcd"
 }
+
+// Resolve prepares cluster-scoped resources after unmarshalling.
+// Currently cascades resolution into spec using the given origin.
+func (c *Cluster) Resolve(origin string) error {
+	if c.Spec == nil {
+		return nil
+	}
+	return c.Spec.Resolve(origin)
+}

@@ -38,6 +38,16 @@ func (hosts Hosts) Validate() error {
 	return nil
 }
 
+// Resolve runs Host.Resolve(origin) for each host in the collection.
+func (hosts Hosts) Resolve(origin string) error {
+	for _, h := range hosts {
+		if err := h.Resolve(origin); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // First returns the first host
 func (hosts Hosts) First() *Host {
 	if len(hosts) == 0 {

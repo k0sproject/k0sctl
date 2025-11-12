@@ -180,3 +180,18 @@ data:
 	require.Contains(t, parsed.Data, "payload")
 	require.Len(t, parsed.Data["payload"], len(largeData))
 }
+
+func TestReader_OriginWithOption(t *testing.T) {
+	input := `apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+`
+
+	r := &manifest.Reader{}
+	require.NoError(t, r.Parse(strings.NewReader(input), manifest.WithOrigin("custom-src.yaml")))
+	require.Equal(t, 1, r.Len(), "Expected a single manifest to be parsed")
+
+	resource := r.Resources()[0]
+	assert.Equal(t, "custom-src.yaml", resource.Origin, "Origin should use WithOrigin override")
+}
