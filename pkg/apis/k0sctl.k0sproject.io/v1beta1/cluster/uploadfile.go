@@ -108,7 +108,7 @@ func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	u.DirPermString = dp
 
-	return u.resolve()
+	return nil
 }
 
 // String returns the file bundle name or if it is empty, the source.
@@ -130,7 +130,7 @@ func isGlob(s string) bool {
 }
 
 // sets the destination and resolves any globs/local paths into u.Sources
-func (u *UploadFile) resolve() error {
+func (u *UploadFile) Resolve(origin string) error {
 	if u.IsURL() {
 		if u.DestinationFile == "" {
 			if u.DestinationDir != "" {
@@ -146,27 +146,32 @@ func (u *UploadFile) resolve() error {
 		return nil
 	}
 
-	if isGlob(u.Source) {
-		return u.glob(u.Source)
+	src := u.Source
+	if origin != "" {
+		src = path.Join(path.Dir(origin), u.Source)
 	}
 
-	stat, err := os.Stat(u.Source)
+	if isGlob(src) {
+		return u.glob(src)
+	}
+
+	stat, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("failed to stat local path for %s: %w", u, err)
 	}
 
 	if stat.IsDir() {
-		log.Tracef("source %s is a directory, assuming %s/**/*", u.Source, u.Source)
-		return u.glob(path.Join(u.Source, "**/*"))
+		log.Tracef("source %s is a directory, assuming %s/**/*", src, src)
+		return u.glob(path.Join(src, "**/*"))
 	}
 
 	perm := u.PermString
 	if perm == "" {
 		perm = fmt.Sprintf("%o", stat.Mode())
 	}
-	u.Base = path.Dir(u.Source)
+	u.Base = path.Dir(src)
 	u.Sources = []*LocalFile{
-		{Path: path.Base(u.Source), PermMode: perm},
+		{Path: path.Base(src), PermMode: perm},
 	}
 
 	return nil

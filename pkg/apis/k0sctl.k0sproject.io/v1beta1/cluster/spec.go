@@ -187,6 +187,15 @@ func (s *Spec) NodeInternalKubeAPIURL(h *Host) string {
 	return fmt.Sprintf("https://%s:%d", formatIPV6(addr), s.APIPort())
 }
 
+// Resolve prepares spec-scoped resources after unmarshalling.
+// Currently cascades resolution into hosts using the given origin.
+func (s *Spec) Resolve(origin string) error {
+	if err := s.Hosts.Resolve(origin); err != nil {
+		return err
+	}
+	return nil
+}
+
 func formatIPV6(address string) string {
 	if strings.Contains(address, ":") {
 		return fmt.Sprintf("[%s]", address)
