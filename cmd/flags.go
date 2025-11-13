@@ -296,10 +296,8 @@ func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 		return nil, fmt.Errorf("failed to unmarshal cluster config: %w", err)
 	}
 	cfg.Origin = ctlConfigs[0].Origin
-	if cfg.Spec != nil {
-		if err := cfg.Spec.ResolveUploadFilePaths(configBaseDir(cfg.Origin)); err != nil {
-			return nil, fmt.Errorf("failed to resolve upload file paths: %w", err)
-		}
+	if err := cfg.Resolve(configBaseDir(cfg.Origin)); err != nil {
+		return nil, fmt.Errorf("failed to resolve upload file paths: %w", err)
 	}
 	if k0sConfigs, err := mr.GetResources("k0s.k0sproject.io/v1beta1", "ClusterConfig"); err == nil && len(k0sConfigs) > 0 {
 		if cfg.Spec.K0s.Config == nil {

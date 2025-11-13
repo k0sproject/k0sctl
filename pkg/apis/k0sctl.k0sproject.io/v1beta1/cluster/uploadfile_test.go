@@ -135,3 +135,23 @@ dstDir: /tmp
 	require.Len(t, u.Sources, 2)
 	require.ElementsMatch(t, []string{"manifests/a.yaml", "manifests/b.yaml"}, []string{u.Sources[0].Path, u.Sources[1].Path})
 }
+
+func TestUploadFileResolveRelativeURLSetsDestination(t *testing.T) {
+	u := &UploadFile{Source: "https://example.com/assets/app.tar.gz", DestinationDir: "/opt"}
+	require.NoError(t, u.ResolveRelativeTo(""))
+	require.Equal(t, "/opt/app.tar.gz", u.DestinationFile)
+	require.Equal(t, "", u.Base)
+	require.Len(t, u.Sources, 0)
+}
+
+func TestUploadFileResolveRelativeSingleFile(t *testing.T) {
+	tmp := filepath.ToSlash(t.TempDir())
+	filePath := filepath.Join(tmp, "a.txt")
+	require.NoError(t, os.WriteFile(filePath, []byte("a"), 0o640))
+
+	u := &UploadFile{Source: "a.txt"}
+	require.NoError(t, u.ResolveRelativeTo(tmp))
+	require.Equal(t, tmp, u.Base)
+	require.Len(t, u.Sources, 1)
+	require.Equal(t, "a.txt", u.Sources[0].Path)
+}

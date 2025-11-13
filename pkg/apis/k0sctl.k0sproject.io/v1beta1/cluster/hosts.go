@@ -38,10 +38,10 @@ func (hosts Hosts) Validate() error {
 	return nil
 }
 
-// Resolve runs Host.Resolve(origin) for each host in the collection.
-func (hosts Hosts) Resolve(origin string) error {
+// Resolve runs Host.Resolve for each host.
+func (hosts Hosts) Resolve(baseDir string) error {
 	for _, h := range hosts {
-		if err := h.Resolve(origin); err != nil {
+		if err := h.Resolve(baseDir); err != nil {
 			return err
 		}
 	}

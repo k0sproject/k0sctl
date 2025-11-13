@@ -213,15 +213,9 @@ type HostMetadata struct {
 	DryRunFakeLeader  bool
 }
 
-// Resolve prepares host-scoped resources after unmarshalling.
-// Currently cascades resolution into file uploads using the given origin.
-func (h *Host) Resolve(origin string) error {
-	for _, f := range h.Files {
-		if err := f.Resolve(origin); err != nil {
-			return fmt.Errorf("failed to resolve upload file %s: %w", f, err)
-		}
-	}
-	return nil
+// Resolve prepares host-scoped data after unmarshalling by resolving upload files.
+func (h *Host) Resolve(baseDir string) error {
+	return h.ResolveUploadFiles(baseDir)
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
