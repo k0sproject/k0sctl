@@ -38,8 +38,8 @@ require (
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/version v0.8.0
 	github.com/sergi/go-diff v1.4.0
-	k8s.io/apimachinery v0.34.1
-	k8s.io/client-go v0.34.1
+	k8s.io/apimachinery v0.34.2
+	k8s.io/client-go v0.34.2
 )
 
 require (
