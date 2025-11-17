@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -88,6 +89,7 @@ func permToString(val interface{}) (string, error) {
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
+
 func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type uploadFile UploadFile
 	yu := (*uploadFile)(u)
@@ -108,7 +110,7 @@ func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	u.DirPermString = dp
 
-	return u.resolve()
+	return nil
 }
 
 // String returns the file bundle name or if it is empty, the source.
@@ -129,8 +131,8 @@ func isGlob(s string) bool {
 	return strings.ContainsAny(s, "*%?[]{}")
 }
 
-// sets the destination and resolves any globs/local paths into u.Sources
-func (u *UploadFile) resolve() error {
+// ResolveRelativeTo sets the destination and resolves globs/local paths relative to baseDir.
+func (u *UploadFile) ResolveRelativeTo(baseDir string) error {
 	if u.IsURL() {
 		if u.DestinationFile == "" {
 			if u.DestinationDir != "" {
@@ -146,27 +148,42 @@ func (u *UploadFile) resolve() error {
 		return nil
 	}
 
+	u.Base = ""
+	u.Sources = nil
+
+	src := filepath.ToSlash(u.Source)
+	if src == "" {
+		return fmt.Errorf("failed to resolve local path for %s: empty source", u)
+	}
+	if !path.IsAbs(src) {
+		if baseDir != "" {
+			src = path.Join(baseDir, src)
+		}
+	}
+	src = path.Clean(src)
+
 	if isGlob(u.Source) {
-		return u.glob(u.Source)
+		return u.glob(src)
 	}
 
-	stat, err := os.Stat(u.Source)
+	fsPath := filepath.FromSlash(src)
+	stat, err := os.Stat(fsPath)
 	if err != nil {
 		return fmt.Errorf("failed to stat local path for %s: %w", u, err)
 	}
 
 	if stat.IsDir() {
-		log.Tracef("source %s is a directory, assuming %s/**/*", u.Source, u.Source)
-		return u.glob(path.Join(u.Source, "**/*"))
+		log.Tracef("source %s is a directory, assuming %s/**/*", src, src)
+		return u.glob(path.Join(src, "**/*"))
 	}
 
 	perm := u.PermString
 	if perm == "" {
 		perm = fmt.Sprintf("%o", stat.Mode())
 	}
-	u.Base = path.Dir(u.Source)
+	u.Base = path.Dir(src)
 	u.Sources = []*LocalFile{
-		{Path: path.Base(u.Source), PermMode: perm},
+		{Path: path.Base(src), PermMode: perm},
 	}
 
 	return nil
@@ -176,7 +193,7 @@ func (u *UploadFile) resolve() error {
 func (u *UploadFile) glob(src string) error {
 	base, pattern := doublestar.SplitPattern(src)
 	u.Base = base
-	fsys := os.DirFS(base)
+	fsys := os.DirFS(filepath.FromSlash(base))
 	sources, err := doublestar.Glob(fsys, pattern)
 	if err != nil {
 		return err
@@ -185,7 +202,7 @@ func (u *UploadFile) glob(src string) error {
 	for _, s := range sources {
 		abs := path.Join(base, s)
 		log.Tracef("glob %s found: %s", abs, s)
-		stat, err := os.Stat(abs)
+		stat, err := os.Stat(filepath.FromSlash(abs))
 		if err != nil {
 			return fmt.Errorf("failed to stat file %s: %w", u, err)
 		}

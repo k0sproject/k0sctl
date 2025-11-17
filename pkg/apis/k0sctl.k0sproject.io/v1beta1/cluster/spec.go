@@ -96,6 +96,21 @@ func (s *Spec) Validate() error {
 	)
 }
 
+// ResolveUploadFilePaths resolves all host file sources relative to baseDir.
+func (s *Spec) ResolveUploadFilePaths(baseDir string) error {
+	for _, h := range s.Hosts {
+		if err := h.ResolveUploadFiles(baseDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Resolve prepares spec-level data after unmarshalling by cascading to hosts.
+func (s *Spec) Resolve(baseDir string) error {
+	return s.ResolveUploadFilePaths(baseDir)
+}
+
 type k0sCPLBConfig struct {
 	Spec struct {
 		Network struct {
@@ -187,6 +202,8 @@ func (s *Spec) NodeInternalKubeAPIURL(h *Host) string {
 	return fmt.Sprintf("https://%s:%d", formatIPV6(addr), s.APIPort())
 }
 
+// Resolve prepares spec-scoped resources after unmarshalling.
+// Currently cascades resolution into hosts using the given origin.
 func formatIPV6(address string) string {
 	if strings.Contains(address, ":") {
 		return fmt.Sprintf("[%s]", address)

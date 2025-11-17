@@ -180,3 +180,18 @@ data:
 	require.Contains(t, parsed.Data, "payload")
 	require.Len(t, parsed.Data["payload"], len(largeData))
 }
+
+func TestReader_ParseBytesWithOrigin(t *testing.T) {
+	origin := "/tmp/configs/config.yaml"
+	input := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: origin-test
+`
+	r := &manifest.Reader{}
+	require.NoError(t, r.ParseBytesWithOrigin([]byte(input), origin))
+
+	resources := r.Resources()
+	require.Len(t, resources, 1)
+	require.Equal(t, origin, resources[0].Origin)
+}

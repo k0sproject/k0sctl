@@ -29,6 +29,7 @@ type Cluster struct {
 	Kind       string           `yaml:"kind"`
 	Metadata   *ClusterMetadata `yaml:"metadata"`
 	Spec       *cluster.Spec    `yaml:"spec"`
+	Origin     string           `yaml:"-"`
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
@@ -109,4 +110,12 @@ func (c *Cluster) StorageType() string {
 
 	// default to etcd otherwise
 	return "etcd"
+}
+
+// Resolve prepares cluster-level data after unmarshalling by cascading down to the spec.
+func (c *Cluster) Resolve(baseDir string) error {
+	if c.Spec == nil {
+		return nil
+	}
+	return c.Spec.Resolve(baseDir)
 }
