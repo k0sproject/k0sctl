@@ -113,7 +113,7 @@ var applyCommand = &cli.Command{
 			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
 			KubeconfigUser:        ctx.String("kubeconfig-user"),
 			KubeconfigCluster:     ctx.String("kubeconfig-cluster"),
-			NoWait:                ctx.Bool("no-wait") || !manager.Config.Spec.Options.Wait.Enabled,
+			NoWait:                ctx.Bool("no-wait") || !manager.Config.Spec.Options.Wait.EnabledValue(),
 			NoDrain:               getNoDrainFlagOrConfig(ctx, manager.Config.Spec.Options.Drain),
 			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
 			RestoreFrom:           ctx.String("restore-from"),
@@ -134,5 +134,5 @@ func getNoDrainFlagOrConfig(ctx *cli.Context, drain cluster.DrainOption) bool {
 	if ctx.IsSet("no-drain") {
 		return ctx.Bool("no-drain")
 	}
-	return !drain.Enabled
+	return !drain.EnabledValue()
 }

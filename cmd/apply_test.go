@@ -15,12 +15,12 @@ func TestGetNoDrainFlagOrConfig(t *testing.T) {
 	app := cli.NewApp()
 	ctx := cli.NewContext(app, set, nil)
 
-	cfg := cluster.DrainOption{Enabled: true}
+	cfg := cluster.DrainOption{Enabled: boolPtr(true)}
 	if got := getNoDrainFlagOrConfig(ctx, cfg); got {
 		t.Errorf("Expected false when config.Enabled is true and flag not set, got true")
 	}
 
-	cfg.Enabled = false
+	cfg.Enabled = boolPtr(false)
 	if got := getNoDrainFlagOrConfig(ctx, cfg); !got {
 		t.Errorf("Expected true when config.Enabled is false and flag not set, got false")
 	}
@@ -34,4 +34,8 @@ func TestGetNoDrainFlagOrConfig(t *testing.T) {
 	if got := getNoDrainFlagOrConfig(ctx, cfg); got {
 		t.Errorf("Expected false when flag is set to false, got true")
 	}
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
