@@ -37,26 +37,43 @@ func (o *Options) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // WaitOption controls the wait behavior for cluster operations.
 type WaitOption struct {
-	Enabled bool `yaml:"enabled" default:"true"`
+	Enabled *bool `yaml:"enabled" default:"true"`
 }
 
 // DrainOption controls the drain behavior for cluster operations.
 type DrainOption struct {
-	Enabled                  bool          `yaml:"enabled" default:"true"`
+	Enabled                  *bool         `yaml:"enabled" default:"true"`
 	GracePeriod              time.Duration `yaml:"gracePeriod" default:"120s"`
 	Timeout                  time.Duration `yaml:"timeout" default:"300s"`
-	Force                    bool          `yaml:"force" default:"true"`
-	IgnoreDaemonSets         bool          `yaml:"ignoreDaemonSets" default:"true"`
-	DeleteEmptyDirData       bool          `yaml:"deleteEmptyDirData" default:"true"`
+	Force                    *bool         `yaml:"force" default:"true"`
+	IgnoreDaemonSets         *bool         `yaml:"ignoreDaemonSets" default:"true"`
+	DeleteEmptyDirData       *bool         `yaml:"deleteEmptyDirData" default:"true"`
 	PodSelector              string        `yaml:"podSelector" default:""`
 	SkipWaitForDeleteTimeout time.Duration `yaml:"skipWaitForDeleteTimeout" default:"0s"`
+}
+
+// EnabledValue returns the effective enabled flag, defaulting to true when unset.
+func (w WaitOption) EnabledValue() bool {
+	return boolPtrValue(w.Enabled, true)
+}
+
+// EnabledValue returns the effective enabled flag, defaulting to true when unset.
+func (d DrainOption) EnabledValue() bool {
+	return boolPtrValue(d.Enabled, true)
+}
+
+func boolPtrValue(value *bool, def bool) bool {
+	if value == nil {
+		return def
+	}
+	return *value
 }
 
 // ToKubectlArgs converts the DrainOption to kubectl arguments.
 func (d *DrainOption) ToKubectlArgs() string {
 	args := []string{}
 
-	if d.Force {
+	if boolPtrValue(d.Force, true) {
 		args = append(args, "--force")
 	}
 
@@ -76,11 +93,11 @@ func (d *DrainOption) ToKubectlArgs() string {
 		args = append(args, fmt.Sprintf("--skip-wait-for-delete-timeout=%s", d.SkipWaitForDeleteTimeout))
 	}
 
-	if d.DeleteEmptyDirData {
+	if boolPtrValue(d.DeleteEmptyDirData, true) {
 		args = append(args, "--delete-emptydir-data")
 	}
 
-	if d.IgnoreDaemonSets {
+	if boolPtrValue(d.IgnoreDaemonSets, true) {
 		args = append(args, "--ignore-daemonsets")
 	}
 
