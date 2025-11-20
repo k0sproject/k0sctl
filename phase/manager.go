@@ -192,7 +192,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to set defaults: %w", err)
 	}
 	log.Debug("final configuration:")
-	log.Print(m.Config.String())
+	log.Debug(m.Config.String())
 
 	defer func() {
 		if m.DryRun {
