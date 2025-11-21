@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 	gopath "path"
 	"slices"
 	"time"
@@ -228,6 +229,7 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	log.Infof("%s: validating configuration", h)
 
 	var cmd string
+	configPathHost := h.Configurer.HostPath(configPath)
 
 	if h.Metadata.K0sBinaryTempFile != "" {
 		oldK0sBinaryPath := h.K0sInstallLocation()
@@ -240,10 +242,10 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSince)
 	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
 		log.Debugf("%s: comparison result true", h)
-		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
+		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPathHost)
 	} else {
 		log.Debugf("%s: comparison result false", h)
-		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
+		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPathHost)
 	}
 
 	var stderrBuf bytes.Buffer
@@ -285,13 +287,16 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.Execf(`install -m 0750 -o root -g root -d "%s"`, configDir, exec.Sudo(h)); err != nil {
+		if err := h.SudoFsys().MkDirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}
 
-	if err := h.Execf(`install -m 0600 -o root -g root "%s" "%s"`, tempConfigPath, configPath, exec.Sudo(h)); err != nil {
+	if err := h.Configurer.MoveFile(h, tempConfigPath, configPath); err != nil {
 		return fmt.Errorf("failed to install k0s configuration: %w", err)
+	}
+	if err := chmodWithMode(h, configPath, fs.FileMode(0o600)); err != nil {
+		log.Debugf("%s: failed to chmod configuration file %s: %v", h, configPath, err)
 	}
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {

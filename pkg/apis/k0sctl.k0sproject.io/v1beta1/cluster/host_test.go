@@ -27,7 +27,7 @@ type mockconfigurer struct {
 	linux.Ubuntu
 }
 
-func (c *mockconfigurer) Chmod(_ os.Host, _, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) Chown(_ os.Host, _, _ string, _ ...exec.Option) error {
 	return nil
 }
 
@@ -109,7 +109,7 @@ func TestK0sInstallCommand(t *testing.T) {
 	require.Equal(t, `k0s install worker --kubelet-extra-args='--foo bar --node-ip=10.0.0.9' --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
 
 	// Verify that K0sInstallCommand does not modify InstallFlags"
-	require.Equal(t, `--kubelet-extra-args='--foo bar'`, h.InstallFlags.Join())
+	require.Equal(t, `--kubelet-extra-args='--foo bar'`, h.InstallFlags.Join(h.Configurer))
 
 	h.InstallFlags = []string{`--enable-cloud-provider=true`}
 	cmd, err = h.K0sInstallCommand()
@@ -213,12 +213,12 @@ func TestFlagsChanged(t *testing.T) {
 		}
 		flags, err := h.K0sInstallFlags()
 		require.NoError(t, err)
-		require.Equal(t, `--foo=bar --kubelet-extra-args='--bar=foo --foo='"'"'bar'"'"'' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.Equal(t, `--foo=bar --kubelet-extra-args='--bar=foo --foo='"'"'bar'"'"'' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join(h.Configurer))
 		require.False(t, h.FlagsChanged())
 		h.InstallFlags = []string{"--foo='baz'", `--kubelet-extra-args='--bar=baz --foo="bar"'`}
 		flags, err = h.K0sInstallFlags()
 		require.NoError(t, err)
-		require.Equal(t, `--foo=baz --kubelet-extra-args='--bar=baz --foo="bar"' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join())
+		require.Equal(t, `--foo=baz --kubelet-extra-args='--bar=baz --foo="bar"' --data-dir=/tmp/data --single=true --token-file=/tmp/token --config=/tmp/foo.yaml`, flags.Join(h.Configurer))
 		require.True(t, h.FlagsChanged())
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,6 +57,7 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 	err := p.parallelDo(
 		ctx,
 		p.Config.Spec.Hosts,
+		p.validateOS,
 		p.warnK0sBinaryPath,
 		p.validateUniqueHostname,
 		p.validateUniqueMachineID,
@@ -106,6 +108,25 @@ func (p *ValidateHosts) validateSudo(_ context.Context, h *cluster.Host) error {
 		return err
 	}
 
+	return nil
+}
+
+var k0sWindowsWorkerSupportSince = version.MustConstraint(">= 1.34.0-0")
+
+func (p *ValidateHosts) validateOS(_ context.Context, h *cluster.Host) error {
+	if !h.IsWindows() || p.Config.Spec.K0s.Version == nil {
+		return nil
+	}
+
+	if h.IsController() {
+		return fmt.Errorf("windows is not supported on k0s controller nodes")
+	}
+
+	if !k0sWindowsWorkerSupportSince.Check(p.Config.Spec.K0s.Version) {
+		return fmt.Errorf("windows workers require k0s version %s", k0sWindowsWorkerSupportSince)
+	}
+
+	log.Warnf("%s: windows worker node support is experimental", h)
 	return nil
 }
 

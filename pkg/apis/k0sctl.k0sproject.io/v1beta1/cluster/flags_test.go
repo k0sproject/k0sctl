@@ -3,6 +3,7 @@ package cluster
 import (
 	"testing"
 
+	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +48,7 @@ func TestFlagsWithQuotes(t *testing.T) {
 
 func TestString(t *testing.T) {
 	flags := Flags{"--help", "--setting=false"}
-	require.Equal(t, "--help --setting=false", flags.Join())
+	require.Equal(t, "--help --setting=false", flags.Join(&cfg.Linux{}))
 }
 
 func TestGetBoolean(t *testing.T) {

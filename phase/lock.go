@@ -81,7 +81,7 @@ func (p *Lock) startTicker(ctx context.Context, h *cluster.Host) error {
 		for {
 			select {
 			case <-ticker.C:
-				if err := h.Configurer.Touch(h, lfp, time.Now(), exec.Sudo(h), exec.HideCommand()); err != nil {
+				if err := h.Configurer.Touch(h, lfp, time.Now()); err != nil {
 					log.Debugf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():

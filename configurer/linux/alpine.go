@@ -21,6 +21,8 @@ type Alpine struct {
 	BaseLinux
 }
 
+var _ configurer.Configurer = (*Alpine)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {

@@ -13,6 +13,8 @@ type AlmaLinux struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*AlmaLinux)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {
