@@ -2,6 +2,9 @@
 
 export SSH_USER=${SSH_USER:-"k0sctl-user"}
 K0SCTL_CONFIG="k0sctl-rootless.yaml"
+mkdir foo
+FOO_DIR=$(cd foo && pwd)
+export K0SCTL_SSH_KEY="${FOO_DIR}/key"
 
 envsubst < "k0sctl-rootless.yaml.tpl" > "${K0SCTL_CONFIG}"
 
@@ -24,6 +27,8 @@ for host in manager0 worker0; do
   bootloose ssh "root@${host}" -- cp '/root/.ssh/*' "/home/${SSH_USER}/.ssh/"
   bootloose ssh "root@${host}" -- chown -R "${SSH_USER}:${SSH_USER}" "/home/${SSH_USER}/.ssh"
 done
+
+cp id_rsa_k0s foo/key
 
 echo "* Starting apply"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --kubeconfig-out applykubeconfig --debug

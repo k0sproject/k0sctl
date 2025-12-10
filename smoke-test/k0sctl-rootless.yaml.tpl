@@ -8,7 +8,8 @@ spec:
       ssh:
         address: "127.0.0.1"
         port: 9022
-        keyPath: ./id_rsa_k0s
+        # try with an absolute path
+        keyPath: ${K0SCTL_SSH_KEY}
         user: ${SSH_USER}
       hooks:
         apply:
@@ -22,7 +23,8 @@ spec:
       ssh:
         address: "127.0.0.1"
         port: 9023
-        keyPath: ./id_rsa_k0s
+        # try with a relative path
+        keyPath: foo/key
         user: ${SSH_USER}
   k0s:
     version: "${K0S_VERSION}"
