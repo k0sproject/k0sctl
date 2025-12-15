@@ -34,7 +34,7 @@ require (
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/go-playground/validator/v10 v10.28.0
+	github.com/go-playground/validator/v10 v10.29.0
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/version v0.8.0
 	github.com/sergi/go-diff v1.4.0
@@ -52,7 +52,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
