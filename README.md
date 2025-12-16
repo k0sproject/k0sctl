@@ -315,6 +315,10 @@ When `true` and used in conjuction with the `controller+worker` role, the defaul
 When `true`, the k0s binaries for target host will be downloaded and cached on the local host and uploaded to the target.
 When `false`, the k0s binary downloading is performed on the target host itself
 
+###### `spec.hosts[*].useExistingK0s` &lt;boolean&gt; (optional) (default: `false`)
+
+When `true`, k0sctl reuses the k0s binary that already exists on the host. No binary downloads or uploads are performed, and upgrades for the host are skipped. This option cannot be combined with `uploadBinary`, `k0sBinaryPath`, or `k0sDownloadURL`.
+
 ###### `spec.hosts[*].k0sBinaryPath` &lt;string&gt; (optional)
 
 A path to a file on the local host that contains a k0s binary to be uploaded to the host. Can be used to test drive a custom development build of k0s.

@@ -37,6 +37,7 @@ type Host struct {
 	KubeletRootDir   string            `yaml:"kubeletRootDir,omitempty"`
 	Environment      map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
+	UseExistingK0s   bool              `yaml:"useExistingK0s,omitempty"`
 	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
 	K0sInstallPath   string            `yaml:"k0sInstallPath,omitempty"`
 	K0sDownloadURL   string            `yaml:"k0sDownloadURL,omitempty"`
@@ -123,13 +124,33 @@ func (h *Host) Validate() error {
 		return err
 	}
 
-	return validation.ValidateStruct(h,
+	if err := validation.ValidateStruct(h,
 		validation.Field(&h.Role, validation.In("controller", "worker", "controller+worker", "single").Error("unknown role "+h.Role)),
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
 		validation.Field(&h.InstallFlags, validation.Each(validation.By(validateBalancedQuotes))),
-	)
+	); err != nil {
+		return err
+	}
+
+	if h.UseExistingK0s {
+		errs := validation.Errors{}
+		if h.UploadBinary {
+			errs["uploadBinary"] = fmt.Errorf("uploadBinary cannot be true when useExistingK0s is true")
+		}
+		if h.K0sBinaryPath != "" {
+			errs["k0sBinaryPath"] = fmt.Errorf("k0sBinaryPath cannot be set when useExistingK0s is true")
+		}
+		if h.K0sDownloadURL != "" {
+			errs["k0sDownloadURL"] = fmt.Errorf("k0sDownloadURL cannot be set when useExistingK0s is true")
+		}
+		if len(errs) > 0 {
+			return errs
+		}
+	}
+
+	return nil
 }
 
 // ResolveUploadFiles resolves host file sources relative to baseDir.
@@ -217,6 +238,8 @@ type HostMetadata struct {
 func (h *Host) Resolve(baseDir string) error {
 	return h.ResolveUploadFiles(baseDir)
 }
+
+// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {

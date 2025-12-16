@@ -28,6 +28,9 @@ func (p *UploadK0s) Title() string {
 func (p *UploadK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		if h.UseExistingK0s {
+			return false
+		}
 		// Nothing to upload
 		if h.UploadBinaryPath == "" {
 			return false

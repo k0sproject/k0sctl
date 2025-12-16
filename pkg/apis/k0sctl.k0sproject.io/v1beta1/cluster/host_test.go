@@ -142,6 +142,18 @@ func TestValidation(t *testing.T) {
 		h.InstallFlags = []string{"--bar='"}
 		require.ErrorContains(t, h.Validate(), "unbalanced quotes")
 	})
+	t.Run("useExistingK0s", func(t *testing.T) {
+		h := Host{Role: "worker", UseExistingK0s: true, UploadBinary: true}
+		require.ErrorContains(t, h.Validate(), "uploadBinary cannot be true")
+		h.UploadBinary = false
+		h.K0sBinaryPath = "/tmp/k0s"
+		require.ErrorContains(t, h.Validate(), "k0sBinaryPath cannot be set")
+		h.K0sBinaryPath = ""
+		h.K0sDownloadURL = "https://example.test/k0s"
+		require.ErrorContains(t, h.Validate(), "k0sDownloadURL cannot be set")
+		h.K0sDownloadURL = ""
+		require.NoError(t, h.Validate())
+	})
 }
 
 func TestBinaryPath(t *testing.T) {
