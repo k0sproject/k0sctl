@@ -28,6 +28,9 @@ func (p *DownloadK0s) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
+		if h.UseExistingK0s {
+			return false
+		}
 		// Nothing to download
 		if h.UploadBinary {
 			return false

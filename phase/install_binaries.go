@@ -34,6 +34,9 @@ func (p *InstallBinaries) Prepare(config *v1beta1.Cluster) error {
 			return false
 		}
 
+		if h.UseExistingK0s {
+			return false
+		}
 		return h.Metadata.K0sBinaryTempFile != ""
 	})
 	return nil

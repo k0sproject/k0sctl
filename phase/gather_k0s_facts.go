@@ -91,6 +91,59 @@ func (p *GatherK0sFacts) Run(ctx context.Context) error {
 		return err
 	}
 
+	if err := p.reportUseExistingHosts(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *GatherK0sFacts) reportUseExistingHosts() error {
+	if p.manager == nil || p.Config == nil || p.Config.Spec == nil {
+		return nil
+	}
+
+	for _, h := range p.Config.Spec.Hosts {
+		if !h.UseExistingK0s {
+			continue
+		}
+
+		hostVersion := h.Metadata.K0sRunningVersion
+		if hostVersion == nil {
+			hostVersion = h.Metadata.K0sBinaryVersion
+		}
+
+		if hostVersion == nil {
+			return fmt.Errorf("%s: useExistingK0s=true but no k0s binary found on host", h)
+		}
+
+		if hostVersion != nil {
+			log.Infof("%s: useExistingK0s=true, reusing existing k0s %s", h, hostVersion)
+		}
+
+		if !p.IsWet() {
+			msg := "reuse existing k0s binary; skip downloads/uploads/upgrades"
+			if hostVersion != nil {
+				msg = fmt.Sprintf("reuse existing k0s %s; skip downloads/uploads/upgrades", hostVersion)
+			}
+			p.DryMsg(h, msg)
+		}
+
+		var desired *version.Version
+		if p.Config.Spec.K0s != nil {
+			desired = p.Config.Spec.K0s.Version
+		}
+
+		if desired == nil || desired.Equal(hostVersion) {
+			continue
+		}
+
+		log.Warnf("%s: spec.k0s.version is %s but host will remain on %s because useExistingK0s=true", h, desired, hostVersion)
+		if !p.IsWet() {
+			p.DryMsgf(h, "WARNING: host would remain on k0s %s while spec.k0s.version=%s (useExistingK0s=true)", hostVersion, desired)
+		}
+	}
+
 	return nil
 }
 
@@ -358,6 +411,9 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 
 func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
 	if h.Reset {
+		return false
+	}
+	if h.UseExistingK0s {
 		return false
 	}
 
