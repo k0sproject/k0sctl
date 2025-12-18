@@ -18,7 +18,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "flatcar"
 		},
-		func() interface{} {
+		func() any {
 			fc := &Flatcar{}
 			fc.SetPath("K0sBinaryPath", "/opt/bin/k0s")
 			return fc

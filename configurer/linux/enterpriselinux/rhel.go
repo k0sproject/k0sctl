@@ -18,7 +18,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "rhel" && !strings.Contains(os.Name, "CoreOS")
 		},
-		func() interface{} {
+		func() any {
 			return &RHEL{}
 		},
 	)

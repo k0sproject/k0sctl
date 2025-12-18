@@ -26,14 +26,14 @@ func (m mockHost) ExecOutput(string, ...exec.Option) (string, error) {
 	return "", nil
 }
 
-func (m mockHost) Execf(string, ...interface{}) error {
+func (m mockHost) Execf(string, ...any) error {
 	if m.ExecFError {
 		return fmt.Errorf("error")
 	}
 	return nil
 }
 
-func (m mockHost) ExecOutputf(string, ...interface{}) (string, error) {
+func (m mockHost) ExecOutputf(string, ...any) (string, error) {
 	return "", nil
 }
 

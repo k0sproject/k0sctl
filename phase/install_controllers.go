@@ -189,10 +189,7 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 	for len(remaining) > 0 {
 		currentTotal := p.numRunning + len(remaining)
 		quorum := (currentTotal / 2) + 1
-		safeMax := (quorum / 2)
-		if safeMax < 1 {
-			safeMax = 1
-		}
+		safeMax := max((quorum / 2), 1)
 
 		perBatch := min(safeMax, p.manager.Concurrency, len(remaining))
 

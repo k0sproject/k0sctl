@@ -79,7 +79,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 	var sans []string
 	oldsans := p.newBaseConfig.Dig("spec", "api", "sans")
 	switch oldsans := oldsans.(type) {
-	case []interface{}:
+	case []any:
 		for _, v := range oldsans {
 			if s, ok := v.(string); ok {
 				sans = append(sans, s)

@@ -18,7 +18,7 @@ import (
 
 // DetectOS performs remote OS detection
 type DetectOS struct {
-    GenericPhase
+	GenericPhase
 }
 
 // Title for the phase
@@ -35,7 +35,7 @@ func (p *DetectOS) Run(ctx context.Context) error {
 		if err := h.ResolveConfigurer(); err != nil {
 			if h.OSVersion.IDLike != "" {
 				log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE '%s'", h, h.OSVersion.String(), h.OSVersion.IDLike)
-				for _, id := range strings.Split(h.OSVersion.IDLike, " ") {
+				for id := range strings.SplitSeq(h.OSVersion.IDLike, " ") {
 					h.OSVersion.ID = id
 					if err := h.ResolveConfigurer(); err == nil {
 						log.Warnf("%s: using '%s' as OS support fallback for %s", h, id, h.OSVersion.String())
@@ -58,5 +58,5 @@ func (p *DetectOS) Run(ctx context.Context) error {
 
 // After runs the per-host "connect: after" hooks once OS detection has succeeded.
 func (p *DetectOS) After() error {
-    return p.runHooks(context.Background(), "connect", "after", p.Config.Spec.Hosts...)
+	return p.runHooks(context.Background(), "connect", "after", p.Config.Spec.Hosts...)
 }

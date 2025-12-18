@@ -19,7 +19,7 @@ type Options struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Options.
-func (o *Options) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (o *Options) UnmarshalYAML(unmarshal func(any) error) error {
 	type options Options
 	var tmp options
 
@@ -105,7 +105,7 @@ func (d *DrainOption) ToKubectlArgs() string {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for DrainOption.
-func (d *DrainOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (d *DrainOption) UnmarshalYAML(unmarshal func(any) error) error {
 	type drainOption DrainOption
 	var tmp drainOption
 
@@ -129,7 +129,7 @@ type ConcurrencyOption struct {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for ConcurrencyOption.
-func (c *ConcurrencyOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *ConcurrencyOption) UnmarshalYAML(unmarshal func(any) error) error {
 	type concurrencyOption ConcurrencyOption
 	var tmp concurrencyOption
 
@@ -163,7 +163,7 @@ func (e *EvictTaintOption) String() string {
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for EvictTaintOption.
-func (e *EvictTaintOption) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (e *EvictTaintOption) UnmarshalYAML(unmarshal func(any) error) error {
 	type evictTaintOption EvictTaintOption
 	var tmp evictTaintOption
 
@@ -188,7 +188,7 @@ func (e *EvictTaintOption) Validate() error {
 	return validation.ValidateStruct(e,
 		validation.Field(&e.Taint,
 			validation.Required,
-			validation.By(func(value interface{}) error {
+			validation.By(func(value any) error {
 				s, _ := value.(string)
 				if !strings.Contains(s, "=") {
 					return fmt.Errorf("must be in the form key=value")

@@ -20,7 +20,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "fedora" && !strings.Contains(os.Name, "CoreOS")
 		},
-		func() interface{} {
+		func() any {
 			return &Fedora{}
 		},
 	)

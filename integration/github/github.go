@@ -84,7 +84,7 @@ func fetchLatestRelease() (Release, error) {
 	return release, nil
 }
 
-func unmarshalURLBody(url string, o interface{}) error {
+func unmarshalURLBody(url string, o any) error {
 	client := &http.Client{
 		Timeout: timeOut,
 	}

@@ -115,8 +115,7 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestTimes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	t.Run("succeeds within limit", func(t *testing.T) {
 		counter := 0
@@ -153,8 +152,7 @@ func TestTimes(t *testing.T) {
 }
 
 func TestWithDefaultTimeout(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	old := DefaultTimeout
 	DefaultTimeout = 5 * time.Millisecond

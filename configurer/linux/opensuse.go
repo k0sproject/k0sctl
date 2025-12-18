@@ -15,7 +15,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "opensuse" || os.ID == "opensuse-microos"
 		},
-		func() interface{} {
+		func() any {
 			return &OpenSUSE{}
 		},
 	)
