@@ -33,7 +33,7 @@ type Cluster struct {
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-func (c *Cluster) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Cluster) UnmarshalYAML(unmarshal func(any) error) error {
 	c.Metadata = &ClusterMetadata{}
 	c.Spec = &cluster.Spec{}
 

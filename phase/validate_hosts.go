@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -166,7 +166,7 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 	}
 
 	// Sort skews to find the median
-	sort.Slice(skewValues, func(i, j int) bool { return skewValues[i] < skewValues[j] })
+	slices.Sort(skewValues)
 	median := skewValues[len(skewValues)/2]
 
 	// Check if any skew exceeds the maxSkew relative to the median

@@ -18,7 +18,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "arch" || os.IDLike == "arch"
 		},
-		func() interface{} {
+		func() any {
 			return &Archlinux{}
 		},
 	)

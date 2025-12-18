@@ -161,10 +161,7 @@ func (hosts Hosts) ParallelEach(ctx context.Context, filters ...func(context.Con
 // BatchedParallelEach runs a function (or multiple functions chained) on every Host parallelly in groups of batchSize hosts.
 func (hosts Hosts) BatchedParallelEach(ctx context.Context, batchSize int, filter ...func(context.Context, *Host) error) error {
 	for i := 0; i < len(hosts); i += batchSize {
-		end := i + batchSize
-		if end > len(hosts) {
-			end = len(hosts)
-		}
+		end := min(i+batchSize, len(hosts))
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("error from context: %w", err)
 		}

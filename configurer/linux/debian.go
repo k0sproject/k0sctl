@@ -18,7 +18,7 @@ func init() {
 		func(os rig.OSVersion) bool {
 			return os.ID == "debian"
 		},
-		func() interface{} {
+		func() any {
 			return &Debian{}
 		},
 	)

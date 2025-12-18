@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/k0sproject/dig"
@@ -34,12 +35,7 @@ type k0sstatus struct {
 }
 
 func (k *k0sstatus) isSingle() bool {
-	for _, a := range k.Args {
-		if a == "--single=true" {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(k.Args, "--single=true")
 }
 
 // GatherK0sFacts gathers information about hosts, such as if k0s is already up and running

@@ -105,7 +105,7 @@ func (l *Linux) Arch(h os.Host) (string, error) {
 }
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
-func (l *Linux) K0sCmdf(template string, args ...interface{}) string {
+func (l *Linux) K0sCmdf(template string, args ...any) string {
 	return fmt.Sprintf("%s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
 }
 
@@ -207,7 +207,7 @@ func (l *Linux) KubeconfigPath(h os.Host, dataDir string) string {
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (l *Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...interface{}) string {
+func (l *Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...any) string {
 	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.KubeconfigPath(h, dataDir), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
@@ -249,8 +249,8 @@ func (l *Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error
 		return "", fmt.Errorf("failed to find private interface with name %s: %s. Make sure you've set correct 'privateInterface' for the host in config", iface, output)
 	}
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		items := strings.Fields(line)
 		if len(items) < 4 {
 			continue

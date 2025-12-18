@@ -46,7 +46,7 @@ type K0sMetadata struct {
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (k *K0s) UnmarshalYAML(unmarshal func(any) error) error {
 	type k0s K0s
 	yk := (*k0s)(k)
 
@@ -58,7 +58,7 @@ func (k *K0s) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler interface
-func (k *K0s) MarshalYAML() (interface{}, error) {
+func (k *K0s) MarshalYAML() (any, error) {
 	if k == nil {
 		return nil, nil
 	}
@@ -88,7 +88,7 @@ func (k *K0s) SetDefaults() {
 	}
 }
 
-func validateVersion(value interface{}) error {
+func validateVersion(value any) error {
 	v, ok := value.(*version.Version)
 	if !ok {
 		return fmt.Errorf("not a version")
@@ -113,8 +113,8 @@ func (k *K0s) Validate() error {
 	)
 }
 
-func (k *K0s) validateMinDynamic() func(interface{}) error {
-	return func(value interface{}) error {
+func (k *K0s) validateMinDynamic() func(any) error {
+	return func(value any) error {
 		dc, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("not a boolean")
@@ -216,7 +216,7 @@ func ParseToken(s string) (TokenData, error) {
 		return data, fmt.Errorf("failed to unmarshal token: %w", err)
 	}
 
-	users, ok := cfg.Dig("users").([]interface{})
+	users, ok := cfg.Dig("users").([]any)
 	if !ok || len(users) < 1 {
 		return data, fmt.Errorf("failed to find users in token")
 	}
@@ -238,7 +238,7 @@ func ParseToken(s string) (TokenData, error) {
 
 	data.ID = token[0:idx]
 
-	clusters, ok := cfg.Dig("clusters").([]interface{})
+	clusters, ok := cfg.Dig("clusters").([]any)
 	if !ok || len(clusters) < 1 {
 		return data, fmt.Errorf("failed to find clusters in token")
 	}

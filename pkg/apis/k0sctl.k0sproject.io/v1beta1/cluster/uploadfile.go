@@ -25,8 +25,8 @@ type UploadFile struct {
 	Data            string       `yaml:"data,omitempty"`
 	DestinationDir  string       `yaml:"dstDir,omitempty"`
 	DestinationFile string       `yaml:"dst,omitempty"`
-	PermMode        interface{}  `yaml:"perm,omitempty"`
-	DirPermMode     interface{}  `yaml:"dirPerm,omitempty"`
+	PermMode        any          `yaml:"perm,omitempty"`
+	DirPermMode     any          `yaml:"dirPerm,omitempty"`
 	User            string       `yaml:"user,omitempty"`
 	Group           string       `yaml:"group,omitempty"`
 	PermString      string       `yaml:"-"`
@@ -46,7 +46,7 @@ func (u UploadFile) Validate() error {
 }
 
 // converts string or integer value to octal string for chmod
-func permToString(val interface{}) (string, error) {
+func permToString(val any) (string, error) {
 	var s string
 	switch t := val.(type) {
 	case int, float64:
@@ -90,7 +90,7 @@ func permToString(val interface{}) (string, error) {
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 
-func (u *UploadFile) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (u *UploadFile) UnmarshalYAML(unmarshal func(any) error) error {
 	type uploadFile UploadFile
 	yu := (*uploadFile)(u)
 

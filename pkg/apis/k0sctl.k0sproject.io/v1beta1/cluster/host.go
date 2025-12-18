@@ -171,7 +171,7 @@ type configurer interface {
 	RestartService(os.Host, string) error
 	ServiceIsRunning(os.Host, string) bool
 	Arch(os.Host) (string, error)
-	K0sCmdf(string, ...interface{}) string
+	K0sCmdf(string, ...any) string
 	K0sBinaryPath() string
 	K0sBinaryVersion(os.Host) (*version.Version, error)
 	K0sConfigPath() string
@@ -194,7 +194,7 @@ type configurer interface {
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
 	Hostname(os.Host) string
-	KubectlCmdf(os.Host, string, string, ...interface{}) string
+	KubectlCmdf(os.Host, string, string, ...any) string
 	KubeconfigPath(os.Host, string) string
 	IsContainer(os.Host) bool
 	FixContainer(os.Host) error
@@ -242,7 +242,7 @@ func (h *Host) Resolve(baseDir string) error {
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-func (h *Host) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 	type host Host
 	yh := (*host)(h)
 
@@ -555,10 +555,8 @@ func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
 		return err
 	}
 
-	for _, e := range expected {
-		if status == e {
-			return nil
-		}
+	if slices.Contains(expected, status) {
+		return nil
 	}
 
 	return fmt.Errorf("expected response code %d but received %d", expected, status)

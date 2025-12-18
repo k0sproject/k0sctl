@@ -19,7 +19,7 @@ type Spec struct {
 }
 
 // UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *Spec) UnmarshalYAML(unmarshal func(any) error) error {
 	type spec Spec
 	ys := (*spec)(s)
 	ys.K0s = &K0s{}
@@ -32,7 +32,7 @@ func (s *Spec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML overrides default YAML marshaling to get rid of "k0s: null" when nothing is set in spec.k0s
-func (s *Spec) MarshalYAML() (interface{}, error) {
+func (s *Spec) MarshalYAML() (any, error) {
 	type spec Spec
 
 	copy := spec(*s)

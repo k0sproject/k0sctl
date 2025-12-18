@@ -35,7 +35,7 @@ func (c *mockconfigurer) MkDir(_ os.Host, _ string, _ ...exec.Option) error {
 	return nil
 }
 
-func (c *mockconfigurer) K0sCmdf(s string, args ...interface{}) string {
+func (c *mockconfigurer) K0sCmdf(s string, args ...any) string {
 	return fmt.Sprintf("k0s %s", fmt.Sprintf(s, args...))
 }
 
