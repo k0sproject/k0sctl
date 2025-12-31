@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,10 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 	}
 
 	if err := p.validateDefaultVersion(); err != nil {
+		return err
+	}
+
+	if err := p.validateNodeLocalLoadBalancing(); err != nil {
 		return err
 	}
 
@@ -66,6 +71,25 @@ func (p *ValidateFacts) validateDefaultVersion() error {
 		for _, h := range p.Config.Spec.Hosts {
 			h.Metadata.NeedsUpgrade = false
 		}
+	}
+
+	return nil
+}
+
+func (p *ValidateFacts) validateNodeLocalLoadBalancing() error {
+	if p.Config == nil || p.Config.Spec == nil || p.Config.Spec.K0s == nil {
+		return nil
+	}
+
+	single := p.Config.Spec.Hosts.Find(func(h *cluster.Host) bool {
+		return h.Role == "single"
+	})
+	if single == nil {
+		return nil
+	}
+
+	if enabled, ok := p.Config.Spec.K0s.Config.Dig("network", "nodeLocalLoadBalancing", "enabled").(bool); ok && enabled {
+		return fmt.Errorf("spec.k0s.config.network.nodeLocalLoadBalancing.enabled cannot be true when %s has role 'single'", single)
 	}
 
 	return nil
