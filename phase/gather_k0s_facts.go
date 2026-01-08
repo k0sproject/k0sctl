@@ -342,7 +342,12 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	}
 
 	if status.Role != h.Role {
-		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
+		if !h.Reset || h.Role == "worker" || status.Role == "worker" {
+			return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
+		}
+
+		log.Warnf("%s: was configured as %s but is already running as %s - proceeding with reset using the discovered role", h, h.Role, status.Role)
+		h.Role = status.Role
 	}
 
 	h.Metadata.K0sRunningVersion = status.Version
