@@ -342,7 +342,9 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	}
 
 	if status.Role != h.Role {
-		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
+		if err := p.handleRoleMismatch(h, status.Role); err != nil {
+			return err
+		}
 	}
 
 	h.Metadata.K0sRunningVersion = status.Version
@@ -402,6 +404,20 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 	}
 
+	return nil
+}
+
+func (p *GatherK0sFacts) handleRoleMismatch(h *cluster.Host, detectedRole string) error {
+	if !h.Reset {
+		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, detectedRole)
+	}
+
+	if !Force {
+		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported, use --force to ignore the mismatch during reset", h, h.Role, detectedRole)
+	}
+
+	log.Warnf("%s: was configured as %s but is already running as %s - proceeding with reset using the discovered role because --force was given", h, h.Role, detectedRole)
+	h.Role = detectedRole
 	return nil
 }
 

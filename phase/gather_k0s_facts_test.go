@@ -70,3 +70,33 @@ func TestReportUseExistingHostsFailsWithoutBinary(t *testing.T) {
 	p.SetManager(mgr)
 	require.ErrorContains(t, p.reportUseExistingHosts(), "useExistingK0s=true but no k0s binary found on host")
 }
+
+func TestHandleRoleMismatch(t *testing.T) {
+	originalForce := Force
+	t.Cleanup(func() { Force = originalForce })
+
+	p := GatherK0sFacts{}
+
+	t.Run("host not marked for reset", func(t *testing.T) {
+		Force = true
+		h := &cluster.Host{Role: "controller"}
+		err := p.handleRoleMismatch(h, "worker")
+		require.ErrorContains(t, err, "role change is not supported")
+		require.Equal(t, "controller", h.Role)
+	})
+
+	t.Run("reset host requires force", func(t *testing.T) {
+		Force = false
+		h := &cluster.Host{Role: "controller", Reset: true}
+		err := p.handleRoleMismatch(h, "single")
+		require.ErrorContains(t, err, "use --force")
+		require.Equal(t, "controller", h.Role)
+	})
+
+	t.Run("force allows role update", func(t *testing.T) {
+		Force = true
+		h := &cluster.Host{Role: "controller", Reset: true}
+		require.NoError(t, p.handleRoleMismatch(h, "worker"))
+		require.Equal(t, "worker", h.Role)
+	})
+}
