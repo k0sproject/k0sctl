@@ -41,8 +41,9 @@ func (k *k0sstatus) isSingle() bool {
 // GatherK0sFacts gathers information about hosts, such as if k0s is already up and running
 type GatherK0sFacts struct {
 	GenericPhase
-	leader *cluster.Host
-	hosts  cluster.Hosts
+	leader                 *cluster.Host
+	hosts                  cluster.Hosts
+	IgnoreNodeRoleMismatch bool
 }
 
 // Title for the phase
@@ -341,7 +342,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 	}
 
-	if status.Role != h.Role {
+	if !p.IgnoreNodeRoleMismatch && status.Role != h.Role {
 		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported", h, h.Role, status.Role)
 	}
 
