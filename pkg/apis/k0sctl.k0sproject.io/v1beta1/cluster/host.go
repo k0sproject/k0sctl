@@ -193,6 +193,7 @@ type configurer interface {
 	MkDir(os.Host, string, ...exec.Option) error
 	DeleteFile(os.Host, string) error
 	CommandExist(os.Host, string) bool
+	LookPath(os.Host, string) (string, error)
 	Hostname(os.Host) string
 	KubectlCmdf(os.Host, string, string, ...any) string
 	KubeconfigPath(os.Host, string) string
