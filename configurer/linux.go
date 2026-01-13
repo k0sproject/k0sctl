@@ -319,3 +319,22 @@ func (l *Linux) SystemTime(h os.Host) (time.Time, error) {
 	}
 	return time.Unix(unixTime, 0), nil
 }
+
+// LookPath behaves similarly to exec.LookPath but resolves the binary on the remote host
+func (l *Linux) LookPath(h os.Host, file string) (string, error) {
+	if file == "" {
+		return "", fmt.Errorf("invalid binary name")
+	}
+
+	output, err := h.ExecOutputf("command -v -- %s", shellescape.Quote(file))
+	if err != nil {
+		return "", fmt.Errorf("lookpath %s: %w", file, err)
+	}
+
+	path := strings.TrimSpace(output)
+	if path == "" {
+		return "", fmt.Errorf("lookpath %s: not found", file)
+	}
+
+	return path, nil
+}

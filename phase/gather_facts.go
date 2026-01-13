@@ -91,5 +91,19 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 		return fmt.Errorf("kubeletRootDir is not supported in k0s version %s, please remove it from the configuration", p.Config.Spec.K0s.Version)
 	}
 
+	if h.UseExistingK0s {
+		if h.K0sBinaryPath == "" {
+			path, err := h.Configurer.LookPath(h, "k0s")
+			if err != nil {
+				return fmt.Errorf("%s: useExistingK0s=true but no 'k0s' binary found in PATH, set k0sInstallPath to use a custom path", h)
+			}
+			log.Infof("%s: found existing 'k0s' binary at %s", h, path)
+			h.K0sInstallPath = path
+			h.Configurer.SetPath("K0sBinaryPath", path)
+		} else if !h.Configurer.FileExist(h, h.K0sBinaryPath) {
+			return fmt.Errorf("%s: useExistingK0s=true but no 'k0s' binary found at %s", h, h.K0sBinaryPath)
+		}
+	}
+
 	return nil
 }
