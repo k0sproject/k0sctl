@@ -298,6 +298,10 @@ func (h *Host) ResolveConfigurer() error {
 		return nil
 	}
 
+	if h.K0sInstallPath != "" {
+		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallPath)
+	}
+
 	return fmt.Errorf("unsupported OS")
 }
 
