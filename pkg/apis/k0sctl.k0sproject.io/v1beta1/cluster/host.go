@@ -140,7 +140,7 @@ func (h *Host) Validate() error {
 		if h.K0sBinaryPath != "" {
 			errs["k0sBinaryPath"] = fmt.Errorf("k0sBinaryPath cannot be set when useExistingK0s is true")
 		}
-		if h.K0sDownloadURL != "" {
+		if h.K0sDownloadURLOverride != "" {
 			errs["k0sDownloadURL"] = fmt.Errorf("k0sDownloadURL cannot be set when useExistingK0s is true")
 		}
 		if len(errs) > 0 {
