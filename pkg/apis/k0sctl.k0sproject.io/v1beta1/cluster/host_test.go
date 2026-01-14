@@ -172,9 +172,9 @@ func TestValidation(t *testing.T) {
 		h.K0sBinaryPath = "/tmp/k0s"
 		require.ErrorContains(t, h.Validate(), "k0sBinaryPath cannot be set")
 		h.K0sBinaryPath = ""
-		h.K0sDownloadURL = "https://example.test/k0s"
+		h.K0sDownloadURLOverride = "https://example.test/k0s"
 		require.ErrorContains(t, h.Validate(), "k0sDownloadURL cannot be set")
-		h.K0sDownloadURL = ""
+		h.K0sDownloadURLOverride = ""
 		require.NoError(t, h.Validate())
 	})
 }
