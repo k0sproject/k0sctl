@@ -87,3 +87,15 @@ func (c *Windows) WriteFile(h os.Host, path, content, mode string) error {
 
 	return nil
 }
+
+// ServiceScriptPath synthesizes an identifier for the Windows service configuration.
+// Windows services do not have init scripts, so we verify that the service exists
+// and return a pseudo path that can be used for logging and detection.
+func (c *Windows) ServiceScriptPath(h os.Host, service string) (string, error) {
+	cmd := ps.Cmd(fmt.Sprintf(`sc.exe query %s | Out-Null`, ps.SingleQuote(service)))
+	if err := h.Exec(cmd); err != nil {
+		return "", fmt.Errorf("failed to find service %s: %w", service, err)
+	}
+
+	return fmt.Sprintf("winservice:%s", service), nil
+}
