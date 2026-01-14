@@ -284,8 +284,9 @@ metadata:
 
 A list of cluster hosts. Host requirements:
 
-* Currently only linux targets are supported
-* The user must either be root or have passwordless `sudo` access.
+* Linux nodes are supported for all roles.
+* Windows nodes can join as `worker` hosts when reachable over SSH or WinRM. This support is experimental and requires k0s version &gt;= 1.34.
+* On Linux, the SSH user must either be root or have passwordless `sudo` (or `doas`) access. Windows workers must allow WinRM access for the configured user (defaults to `Administrator`).
 * The host must fulfill the k0s system requirements
 
 See [host object documentation](#host-fields) below.
@@ -467,6 +468,10 @@ Useful in case fact gathering picks the wrong private network interface.
 Override private IP address selected by host fact gathering.
 Useful in case fact gathering picks the wrong IPAddress.
 
+##### `spec.hosts[*].reset` &lt;boolean&gt; (optional) (default: `false`)
+
+If set to `true` k0sctl will remove the node from kubernetes and reset k0s on the host.
+
 ```yaml
   - role: worker
     os: debian
@@ -489,7 +494,9 @@ spec:
         keyPath: ~/.ssh/id_rsa
 ```
 
-It's also possible to tunnel connections through a bastion host. The bastion configuration has all the same fields as any SSH connection:
+Windows worker nodes can also use the SSH transport when an SSH server is available on the host.
+
+It's also possible to tunnel connections over SSH through a bastion host. The bastion configuration has all the same fields as any SSH connection:
 
 ```yaml
 spec:
@@ -625,9 +632,71 @@ openSSH:
       StrictHostkeyChecking: false # -o StrictHostkeyChecking: no
 ```
 
-###### `spec.hosts[*].reset` &lt;boolean&gt; (optional) (default: `false`)
+##### `spec.hosts[*].winrm` &lt;mapping&gt; (optional)
 
-If set to `true` k0sctl will remove the node from kubernetes and reset k0s on the host.
+WinRM connection options for Windows worker nodes. Use this transport when targeting Windows hosts that prefer WinRM instead of SSH. Windows support is limited to the `worker` role and requires k0s version &gt;= 1.34.
+
+Example:
+
+```yaml
+spec:
+  hosts:
+    - role: worker
+      winrm:
+        address: win-worker-1.internal
+        user: Administrator
+        password: ${WINRM_PASSWORD}
+        useHTTPS: true
+        insecure: false
+```
+
+###### `spec.hosts[*].winrm.address` &lt;string&gt; (required)
+
+IP address or hostname of the host.
+
+###### `spec.hosts[*].winrm.user` &lt;string&gt; (optional) (default: `Administrator`)
+
+WinRM user name. The user must have administrative privileges. Windows does not provide a built-in way to elevate privileges over WinRM, so the user must already have them.
+
+###### `spec.hosts[*].winrm.port` &lt;number&gt; (optional) (default: `5985`)
+
+TCP port for the WinRM endpoint. When `useHTTPS` is `true`, the default port automatically switches to `5986`.
+
+###### `spec.hosts[*].winrm.password` &lt;string&gt; (optional)
+
+Password for the WinRM user. Required unless certificate-based authentication is configured. Consider using environment variable substitution to avoid storing plaintext passwords in the configuration file.
+
+###### `spec.hosts[*].winrm.useHTTPS` &lt;boolean&gt; (optional) (default: `false`)
+
+Enable HTTPS for WinRM. When enabled, set `caCertPath` (and optionally `certPath`/`keyPath`) to verify the remote endpoint.
+
+###### `spec.hosts[*].winrm.insecure` &lt;boolean&gt; (optional) (default: `false`)
+
+Skip TLS certificate verification when connecting over HTTPS. Use only in trusted environments.
+
+###### `spec.hosts[*].winrm.useNTLM` &lt;boolean&gt; (optional) (default: `false`)
+
+Use NTLM authentication instead of basic authentication.
+
+###### `spec.hosts[*].winrm.caCertPath` &lt;string&gt; (optional)
+
+Path to a CA bundle used to validate the WinRM server certificate.
+
+###### `spec.hosts[*].winrm.certPath` &lt;string&gt; (optional)
+
+Client certificate for mutual TLS authentication.
+
+###### `spec.hosts[*].winrm.keyPath` &lt;string&gt; (optional)
+
+Private key that matches `certPath`.
+
+###### `spec.hosts[*].winrm.tlsServerName` &lt;string&gt; (optional)
+
+Override the TLS server name used during certificate verification.
+
+###### `spec.hosts[*].winrm.bastion` &lt;mapping&gt; (optional)
+
+SSH connection details for a bastion host to reach the host. The fields match those documented under `spec.hosts[*].ssh`.
 
 ### K0s Fields
 

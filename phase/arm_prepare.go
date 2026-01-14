@@ -38,7 +38,11 @@ func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 			return false
 		}
 
-		arch := h.Metadata.Arch
+		arch, err := h.Arch()
+		if err != nil {
+			log.Warnf("%s: failed to detect architecture: %v", h, err)
+			return false
+		}
 
 		if !strings.HasPrefix(arch, "arm") && !strings.HasPrefix(arch, "aarch") {
 			return false
@@ -68,8 +72,12 @@ func (p *PrepareArm) Run(ctx context.Context) error {
 }
 
 func (p *PrepareArm) etcdUnsupportedArch(_ context.Context, h *cluster.Host) error {
-	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, h.Metadata.Arch)
-	h.Environment["ETCD_UNSUPPORTED_ARCH"] = h.Metadata.Arch
+	arch, err := h.Arch()
+	if err != nil {
+		return err
+	}
+	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, arch)
+	h.Environment["ETCD_UNSUPPORTED_ARCH"] = arch
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"path"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -33,18 +34,18 @@ func (p *Backup) Title() string {
 
 // Before runs "before backup" hooks
 func (p *Backup) Before() error {
-    if err := p.runHooks(context.Background(), "backup", "before", p.leader); err != nil {
-        return fmt.Errorf("running hooks failed: %w", err)
-    }
-    return nil
+	if err := p.runHooks(context.Background(), "backup", "before", p.leader); err != nil {
+		return fmt.Errorf("running hooks failed: %w", err)
+	}
+	return nil
 }
 
 // After runs "after backup" hooks
 func (p *Backup) After() error {
-    if err := p.runHooks(context.Background(), "backup", "after", p.leader); err != nil {
-        return fmt.Errorf("running hooks failed: %w", err)
-    }
-    return nil
+	if err := p.runHooks(context.Background(), "backup", "after", p.leader); err != nil {
+		return fmt.Errorf("running hooks failed: %w", err)
+	}
+	return nil
 }
 
 // Prepare the phase
@@ -102,11 +103,14 @@ func (p *Backup) Run(_ context.Context) error {
 	// get the name of the backup file
 	var remoteFile string
 	if p.IsWet() {
-		r, err := h.ExecOutputf(`ls "%s"`, backupDir)
+		entries, err := fs.ReadDir(h.SudoFsys(), backupDir)
 		if err != nil {
 			return err
 		}
-		remoteFile = r
+		if len(entries) == 0 {
+			return fmt.Errorf("no backup file found in %s", backupDir)
+		}
+		remoteFile = entries[0].Name()
 	} else {
 		remoteFile = "k0s_backup.dryrun.tar.gz"
 	}
@@ -127,7 +131,16 @@ func (p *Backup) Run(_ context.Context) error {
 	}()
 
 	if p.IsWet() {
-		if err := h.Execf(`cat "%s"`, remotePath, exec.Writer(p.Out)); err != nil {
+		f, err := h.SudoFsys().Open(remotePath)
+		if err != nil {
+			return fmt.Errorf("open backup for streaming: %w", err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Warnf("%s: failed to close backup file %s: %v", h, remotePath, err)
+			}
+		}()
+		if _, err := io.Copy(p.Out, f); err != nil {
 			return fmt.Errorf("download backup: %w", err)
 		}
 	} else {

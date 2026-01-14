@@ -46,11 +46,23 @@ func Unquote(input string) (string, error) { //nolint:cyclop
 
 		switch currentChar {
 		case '\\':
-			if !inSingleQuotes { // Escape works in double quotes or outside any quotes
-				isEscaped = true
-			} else {
-				sb.WriteByte(currentChar) // Treat as a regular character within single quotes
+			if inSingleQuotes {
+				sb.WriteByte(currentChar)
+				continue
 			}
+
+			if i == len(input)-1 {
+				return "", fmt.Errorf("unquote `%q`: %w", input, ErrTrailingBackslash)
+			}
+
+			nextChar := input[i+1]
+			if shouldEscape(nextChar, inDoubleQuotes) {
+				isEscaped = true
+				continue
+			}
+
+			sb.WriteByte(currentChar)
+			continue
 		case '"':
 			if !inSingleQuotes { // Toggle double quotes only if not in single quotes
 				inDoubleQuotes = !inDoubleQuotes
@@ -77,4 +89,17 @@ func Unquote(input string) (string, error) { //nolint:cyclop
 	}
 
 	return sb.String(), nil
+}
+
+func shouldEscape(next byte, inDoubleQuotes bool) bool {
+	switch next {
+	case '\\', '"':
+		return true
+	case '\'':
+		return !inDoubleQuotes
+	case ' ', '\t', '\n':
+		return true
+	default:
+		return false
+	}
 }

@@ -14,6 +14,8 @@ type AmazonLinux struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*AmazonLinux)(nil)
+
 // Hostname on amazon linux will return the full hostname
 func (l *AmazonLinux) Hostname(h os.Host) string {
 	hostname, _ := h.ExecOutput("hostname")

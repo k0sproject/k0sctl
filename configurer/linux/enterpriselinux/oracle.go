@@ -13,6 +13,8 @@ type OracleLinux struct {
 	configurer.Linux
 }
 
+var _ configurer.Configurer = (*OracleLinux)(nil)
+
 func init() {
 	registry.RegisterOSModule(
 		func(os rig.OSVersion) bool {

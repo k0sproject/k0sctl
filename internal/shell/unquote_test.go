@@ -37,4 +37,16 @@ func TestUnquote(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "'foo' bar", out)
 	})
+
+	t.Run("windows path stays intact", func(t *testing.T) {
+		out, err := shell.Unquote(`C:\var\lib\k0s`)
+		require.NoError(t, err)
+		require.Equal(t, `C:\var\lib\k0s`, out)
+	})
+
+	t.Run("escaped space", func(t *testing.T) {
+		out, err := shell.Unquote(`foo\ bar`)
+		require.NoError(t, err)
+		require.Equal(t, "foo bar", out)
+	})
 }
