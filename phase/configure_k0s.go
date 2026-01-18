@@ -111,6 +111,33 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 	// assign populated sans to the base config
 	p.newBaseConfig.DigMapping("spec", "api")["sans"] = sans
 
+	// Auto-populate konnectivity server addresses for HA multi-controller setups
+	// Only populate if not already set and there are multiple controllers
+	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
+		return !h.Reset
+	})
+	existingServerAddresses := p.newBaseConfig.Dig("spec", "konnectivity", "serverAddresses")
+	if existingServerAddresses == nil && len(controllers) > 1 {
+		var serverAddresses []string
+		// Get the agent port (default 8132)
+		agentPort := 8132
+		if p, ok := p.newBaseConfig.Dig("spec", "konnectivity", "agentPort").(int); ok && p > 0 {
+			agentPort = p
+		}
+		for _, c := range controllers {
+			var addr string
+			if c.PrivateAddress != "" {
+				addr = c.PrivateAddress
+			} else {
+				addr = c.Address()
+			}
+			serverAddresses = append(serverAddresses, fmt.Sprintf("%s:%d", addr, agentPort))
+			log.Debugf("added controller konnectivity server address %s:%d to spec.konnectivity.serverAddresses", addr, agentPort)
+		}
+		p.newBaseConfig.DigMapping("spec", "konnectivity")["serverAddresses"] = serverAddresses
+		log.Infof("auto-populated konnectivity server addresses for HA setup: %v", serverAddresses)
+	}
+
 	for _, h := range p.Config.Spec.Hosts.Controllers() {
 		if h.Reset {
 			continue
