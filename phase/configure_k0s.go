@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -240,7 +241,11 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSince)
 	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
 		log.Debugf("%s: comparison result true", h)
-		cmd = h.Configurer.K0sCmdf(`config validate --config "%s"`, configPath)
+		cmd = h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
+		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
+			cmd += fmt.Sprintf(" --feature-gates=%s", shellescape.Quote(fg))
+			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
+		}
 	} else {
 		log.Debugf("%s: comparison result false", h)
 		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
