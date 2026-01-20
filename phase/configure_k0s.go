@@ -228,8 +228,6 @@ func (p *ConfigureK0s) Run(ctx context.Context) error {
 func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
 
-	var cmd string
-
 	if h.Metadata.K0sBinaryTempFile != "" {
 		oldK0sBinaryPath := h.K0sInstallLocation()
 		h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
@@ -238,21 +236,8 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 		}()
 	}
 
-	log.Debugf("%s: comparing k0s version %s with %s", h, p.Config.Spec.K0s.Version, configCreateSince)
-	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
-		log.Debugf("%s: comparison result true", h)
-		cmd = h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
-		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
-			cmd += fmt.Sprintf(" --feature-gates=%s", shellescape.Quote(fg))
-			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
-		}
-	} else {
-		log.Debugf("%s: comparison result false", h)
-		cmd = h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
-	}
-
 	var stderrBuf bytes.Buffer
-	command, err := h.ExecStreams(cmd, nil, nil, &stderrBuf, exec.Sudo(h))
+	command, err := h.ExecStreams(p.buildConfigValidateCommand(h, configPath), nil, nil, &stderrBuf, exec.Sudo(h))
 	if err != nil {
 		return fmt.Errorf("can't run spec.k0s.config validation: %w", err)
 	}
@@ -261,6 +246,19 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	}
 
 	return nil
+}
+
+func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath string) string {
+	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
+		cmd := h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
+		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
+			cmd += fmt.Sprintf(" --feature-gates=%s", shellescape.Quote(fg))
+			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
+		}
+		return cmd
+	}
+	log.Debugf("%s: using legacy config validation command", h)
+	return h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 }
 
 func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error {
