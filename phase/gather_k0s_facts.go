@@ -54,7 +54,7 @@ func (p *GatherK0sFacts) Title() string {
 func (p *GatherK0sFacts) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.Exec(h.Configurer.K0sCmdf("version"), exec.Sudo(h)) == nil
+		return h.Configurer.FileExist(h, h.Configurer.K0sBinaryPath())
 	})
 
 	return nil
