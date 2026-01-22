@@ -258,7 +258,7 @@ func initConfig(ctx *cli.Context) error {
 }
 
 func displayCopyright(ctx *cli.Context) error {
-	fmt.Fprintf(ctx.App.Writer, "k0sctl %s Copyright 2025, k0sctl authors.\n", k0sctl.Version)
+	fmt.Fprintf(ctx.App.Writer, "k0sctl %s Copyright 2026, k0sctl authors.\n", k0sctl.Version)
 	return nil
 }
 
