@@ -321,6 +321,28 @@ func (w *BaseWindows) SystemTime(h os.Host) (time.Time, error) {
 	return time.Unix(unixTime, 0), nil
 }
 
+// LookPath resolves a binary path on the remote Windows host similarly to exec.LookPath
+func (w *BaseWindows) LookPath(h os.Host, file string) (string, error) {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return "", fmt.Errorf("invalid binary name")
+	}
+
+	script := fmt.Sprintf(`$cmd = Get-Command -Name %s -ErrorAction Stop; if (-not $cmd.Path) { throw 'command path not found' }; Write-Output $cmd.Path`, ps.SingleQuote(file))
+	output, err := h.ExecOutput(ps.Cmd(script))
+	if err != nil {
+		return "", fmt.Errorf("lookpath %s: %w", file, err)
+	}
+
+	path := strings.TrimSpace(output)
+	if path == "" {
+		return "", fmt.Errorf("lookpath %s: not found", file)
+	}
+
+	path = strings.ReplaceAll(path, "\\", "/")
+	return path, nil
+}
+
 // Dir returns the directory part of a path
 func (w *BaseWindows) Dir(path string) string {
 	index := strings.LastIndexAny(path, `\/`)
