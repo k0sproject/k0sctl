@@ -80,7 +80,7 @@ func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
 	if err != nil {
 		return fmt.Errorf("failed to determine k0s download url: %w", err)
 	}
-	// Esnure directory exists
+	// Ensure directory exists
 	log.Debugf("%s: ensuring k0s install directory exists %s", h, h.Configurer.Dir(tmp))
 	if err := h.SudoFsys().MkDirAll(h.Configurer.Dir(tmp), fs.FileMode(0o755)); err != nil {
 		return fmt.Errorf("failed to create k0s install directory: %w", err)
