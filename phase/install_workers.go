@@ -139,13 +139,6 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		}
 	}
 
-	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
