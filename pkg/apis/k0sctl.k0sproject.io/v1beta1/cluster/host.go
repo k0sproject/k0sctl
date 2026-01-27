@@ -35,7 +35,7 @@ type Host struct {
 	KubeletRootDir         string            `yaml:"kubeletRootDir,omitempty"`
 	Environment            map[string]string `yaml:"environment,flow,omitempty"`
 	UploadBinary           bool              `yaml:"uploadBinary,omitempty"`
-	UseExistingK0s   bool              `yaml:"useExistingK0s,omitempty"`
+	UseExistingK0s         bool              `yaml:"useExistingK0s,omitempty"`
 	K0sBinaryPath          string            `yaml:"k0sBinaryPath,omitempty"`
 	K0sInstallPath         string            `yaml:"k0sInstallPath,omitempty"`
 	K0sDownloadURLOverride string            `yaml:"k0sDownloadURL,omitempty"`
