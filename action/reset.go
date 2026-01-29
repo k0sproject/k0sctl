@@ -42,10 +42,11 @@ func (r Reset) Run(ctx context.Context) error {
 	}
 
 	lockPhase := &phase.Lock{}
-    r.Manager.AddPhase(
-        &phase.Connect{},
-        &phase.DetectOS{},
-        lockPhase,
+	r.Manager.AddPhase(
+		&phase.DefaultK0sVersion{},
+		&phase.Connect{},
+		&phase.DetectOS{},
+		lockPhase,
 		&phase.PrepareHosts{},
 		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
