@@ -21,11 +21,12 @@ func (b Backup) Run(ctx context.Context) error {
 
 	lockPhase := &phase.Lock{}
 
-    b.Manager.AddPhase(
-        &phase.Connect{},
-        &phase.DetectOS{},
-        lockPhase,
-        &phase.PrepareHosts{},
+	b.Manager.AddPhase(
+		&phase.DefaultK0sVersion{},
+		&phase.Connect{},
+		&phase.DetectOS{},
+		lockPhase,
+		&phase.PrepareHosts{},
 		&phase.GatherFacts{SkipMachineIDs: true},
 		&phase.GatherK0sFacts{},
 		&phase.Backup{Out: b.Out},
