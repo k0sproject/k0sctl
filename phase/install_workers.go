@@ -139,11 +139,40 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		}
 	}
 
-	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
-		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
+	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
+		tokenPath := h.K0sJoinTokenPath()
+		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
+			if err := h.SudoFsys().MkDirAll(h.Configurer.Dir(tokenPath), 0o700); err != nil {
+				log.Warnf("%s: failed to create k0s config dir %s: %v", h, h.K0sDataDir(), err)
+			}
+			log.Infof("%s: writing join token to %s", h, tokenPath)
+			return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+		})
+		if err != nil {
+			return err
+		}
+
+		err = p.Wet(h, "validate api connection to control plane", func() error {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/version' --kubeconfig=/dev/stdin"), exec.Sudo(h), exec.Stdin(string(h.Metadata.K0sTokenData.Kubeconfig)))
+			tempfile, err := h.Configurer.TempFile(h)
+			if err != nil {
+				return fmt.Errorf("failed to create temp file for kubeconfig: %w", err)
+			}
+			log.Debugf("%s: temp file path: %q", h, tempfile)
+			tempfileHostPath := h.Configurer.HostPath(tempfile)
+			log.Debugf("%s: writing temp kubeconfig file %q", h, tempfileHostPath)
+			if err := h.Configurer.WriteFile(h, tempfile, string(h.Metadata.K0sTokenData.Kubeconfig), "0600"); err != nil {
+				return fmt.Errorf("failed to write temp kubeconfig file: %w", err)
+			}
+
+			defer func() {
+				if err := h.Configurer.DeleteFile(h, tempfile); err != nil {
+					log.Warnf("%s: failed to delete temp kubeconfig file %s: %v", h, tempfileHostPath, err)
+				}
+			}()
+
+			err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw=/version --kubeconfig=%s", h.Configurer.Quote(tempfileHostPath)), exec.Sudo(h))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
 				}
@@ -152,20 +181,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("connectivity check failed: %w", err)
 			}
-		} else {
-			log.Warnf("%s: dry-run: skipping api connection validation because cluster is not actually running", h)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
-		tokenPath := h.K0sJoinTokenPath()
-		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-			log.Infof("%s: writing join token to %s", h, tokenPath)
-			return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+			return nil
 		})
 		if err != nil {
 			return err

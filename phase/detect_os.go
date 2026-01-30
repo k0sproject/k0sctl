@@ -12,6 +12,8 @@ import (
 	_ "github.com/k0sproject/k0sctl/configurer/linux"
 	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer/linux/enterpriselinux"
+	// anonymous import is needed to load the os configurers
+	_ "github.com/k0sproject/k0sctl/configurer/windows"
 
 	log "github.com/sirupsen/logrus"
 )

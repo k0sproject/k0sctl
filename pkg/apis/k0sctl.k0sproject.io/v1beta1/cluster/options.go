@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"github.com/k0sproject/k0sctl/configurer"
 )
 
 // Options for cluster operations.
@@ -70,7 +70,7 @@ func boolPtrValue(value *bool, def bool) bool {
 }
 
 // ToKubectlArgs converts the DrainOption to kubectl arguments.
-func (d *DrainOption) ToKubectlArgs() string {
+func (d *DrainOption) ToKubectlArgs(cfg configurer.Configurer) string {
 	args := []string{}
 
 	if boolPtrValue(d.Force, true) {
@@ -86,7 +86,7 @@ func (d *DrainOption) ToKubectlArgs() string {
 	}
 
 	if d.PodSelector != "" {
-		args = append(args, fmt.Sprintf("--pod-selector=%s", shellescape.Quote(d.PodSelector)))
+		args = append(args, fmt.Sprintf("--pod-selector=%s", quote(cfg, d.PodSelector)))
 	}
 
 	if d.SkipWaitForDeleteTimeout > 0 {

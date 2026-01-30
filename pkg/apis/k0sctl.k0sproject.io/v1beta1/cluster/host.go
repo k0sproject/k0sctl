@@ -3,21 +3,19 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/url"
 	gos "os"
-	gopath "path"
 	"slices"
 	"strings"
-	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -29,28 +27,28 @@ var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role             string            `yaml:"role"`
-	Reset            bool              `yaml:"reset,omitempty"`
-	PrivateInterface string            `yaml:"privateInterface,omitempty"`
-	PrivateAddress   string            `yaml:"privateAddress,omitempty"`
-	DataDir          string            `yaml:"dataDir,omitempty"`
-	KubeletRootDir   string            `yaml:"kubeletRootDir,omitempty"`
-	Environment      map[string]string `yaml:"environment,flow,omitempty"`
-	UploadBinary     bool              `yaml:"uploadBinary,omitempty"`
-	UseExistingK0s   bool              `yaml:"useExistingK0s,omitempty"`
-	K0sBinaryPath    string            `yaml:"k0sBinaryPath,omitempty"`
-	K0sInstallPath   string            `yaml:"k0sInstallPath,omitempty"`
-	K0sDownloadURL   string            `yaml:"k0sDownloadURL,omitempty"`
-	InstallFlags     Flags             `yaml:"installFlags,omitempty"`
-	Files            []*UploadFile     `yaml:"files,omitempty"`
-	OSIDOverride     string            `yaml:"os,omitempty"`
-	HostnameOverride string            `yaml:"hostname,omitempty"`
-	NoTaints         bool              `yaml:"noTaints,omitempty"`
-	Hooks            Hooks             `yaml:"hooks,omitempty"`
+	Role                   string            `yaml:"role"`
+	Reset                  bool              `yaml:"reset,omitempty"`
+	PrivateInterface       string            `yaml:"privateInterface,omitempty"`
+	PrivateAddress         string            `yaml:"privateAddress,omitempty"`
+	DataDir                string            `yaml:"dataDir,omitempty"`
+	KubeletRootDir         string            `yaml:"kubeletRootDir,omitempty"`
+	Environment            map[string]string `yaml:"environment,flow,omitempty"`
+	UploadBinary           bool              `yaml:"uploadBinary,omitempty"`
+	UseExistingK0s         bool              `yaml:"useExistingK0s,omitempty"`
+	K0sBinaryPath          string            `yaml:"k0sBinaryPath,omitempty"`
+	K0sInstallPath         string            `yaml:"k0sInstallPath,omitempty"`
+	K0sDownloadURLOverride string            `yaml:"k0sDownloadURL,omitempty"`
+	InstallFlags           Flags             `yaml:"installFlags,omitempty"`
+	Files                  []*UploadFile     `yaml:"files,omitempty"`
+	OSIDOverride           string            `yaml:"os,omitempty"`
+	HostnameOverride       string            `yaml:"hostname,omitempty"`
+	NoTaints               bool              `yaml:"noTaints,omitempty"`
+	Hooks                  Hooks             `yaml:"hooks,omitempty"`
 
-	UploadBinaryPath string       `yaml:"-"`
-	Metadata         HostMetadata `yaml:"-"`
-	Configurer       configurer   `yaml:"-"`
+	UploadBinaryPath string                `yaml:"-"`
+	Metadata         HostMetadata          `yaml:"-"`
+	Configurer       configurer.Configurer `yaml:"-"`
 }
 
 func (h *Host) SetDefaults() {
@@ -142,7 +140,7 @@ func (h *Host) Validate() error {
 		if h.K0sBinaryPath != "" {
 			errs["k0sBinaryPath"] = fmt.Errorf("k0sBinaryPath cannot be set when useExistingK0s is true")
 		}
-		if h.K0sDownloadURL != "" {
+		if h.K0sDownloadURLOverride != "" {
 			errs["k0sDownloadURL"] = fmt.Errorf("k0sDownloadURL cannot be set when useExistingK0s is true")
 		}
 		if len(errs) > 0 {
@@ -161,59 +159,6 @@ func (h *Host) ResolveUploadFiles(baseDir string) error {
 		}
 	}
 	return nil
-}
-
-type configurer interface {
-	Kind() string
-	CheckPrivilege(os.Host) error
-	StartService(os.Host, string) error
-	StopService(os.Host, string) error
-	RestartService(os.Host, string) error
-	ServiceIsRunning(os.Host, string) bool
-	Arch(os.Host) (string, error)
-	K0sCmdf(string, ...any) string
-	K0sBinaryPath() string
-	K0sBinaryVersion(os.Host) (*version.Version, error)
-	K0sConfigPath() string
-	DataDirDefaultPath() string
-	K0sJoinTokenPath() string
-	WriteFile(os.Host, string, string, string) error
-	UpdateEnvironment(os.Host, map[string]string) error
-	DaemonReload(os.Host) error
-	ReplaceK0sTokenPath(os.Host, string) error
-	ServiceScriptPath(os.Host, string) (string, error)
-	ReadFile(os.Host, string) (string, error)
-	FileExist(os.Host, string) bool
-	Chmod(os.Host, string, string, ...exec.Option) error
-	DownloadK0s(os.Host, string, *version.Version, string, ...exec.Option) error
-	DownloadURL(os.Host, string, string, ...exec.Option) error
-	InstallPackage(os.Host, ...string) error
-	FileContains(os.Host, string, string) bool
-	MoveFile(os.Host, string, string) error
-	MkDir(os.Host, string, ...exec.Option) error
-	DeleteFile(os.Host, string) error
-	CommandExist(os.Host, string) bool
-	LookPath(os.Host, string) (string, error)
-	Hostname(os.Host) string
-	KubectlCmdf(os.Host, string, string, ...any) string
-	KubeconfigPath(os.Host, string) string
-	IsContainer(os.Host) bool
-	FixContainer(os.Host) error
-	HTTPStatus(os.Host, string) (int, error)
-	PrivateInterface(os.Host) (string, error)
-	PrivateAddress(os.Host, string, string) (string, error)
-	TempDir(os.Host) (string, error)
-	TempFile(os.Host) (string, error)
-	UpdateServiceEnvironment(os.Host, string, map[string]string) error
-	CleanupServiceEnvironment(os.Host, string) error
-	Stat(os.Host, string, ...exec.Option) (*os.FileInfo, error)
-	Touch(os.Host, string, time.Time, ...exec.Option) error
-	DeleteDir(os.Host, string, ...exec.Option) error
-	K0sctlLockFilePath(os.Host) string
-	UpsertFile(os.Host, string, string) error
-	MachineID(os.Host) (string, error)
-	SetPath(string, string)
-	SystemTime(os.Host) (time.Time, error)
 }
 
 // HostMetadata resolved metadata for host
@@ -285,6 +230,14 @@ func (h *Host) Protocol() string {
 	return "nil"
 }
 
+// IsWindows returns true when the detected OS is Windows
+func (h *Host) IsWindows() bool {
+	if h.OSVersion == nil {
+		return false
+	}
+	return strings.EqualFold(h.OSVersion.ID, "windows")
+}
+
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
 	bf, err := registry.GetOSModuleBuilder(*h.OSVersion)
@@ -292,7 +245,7 @@ func (h *Host) ResolveConfigurer() error {
 		return err
 	}
 
-	if c, ok := bf().(configurer); ok {
+	if c, ok := bf().(configurer.Configurer); ok {
 		h.Configurer = c
 
 		return nil
@@ -336,6 +289,48 @@ func (h *Host) K0sConfigPath() string {
 	return h.Configurer.K0sConfigPath()
 }
 
+// Arch returns the host architecture, caching the result in metadata
+func (h *Host) Arch() (string, error) {
+	if h.Metadata.Arch != "" {
+		return h.Metadata.Arch, nil
+	}
+	if h.Configurer == nil {
+		return "", fmt.Errorf("host configurer is not resolved")
+	}
+	arch, err := h.Configurer.Arch(h)
+	if err != nil {
+		return "", fmt.Errorf("failed to detect host architecture: %w", err)
+	}
+	h.Metadata.Arch = arch
+	return arch, nil
+}
+
+// DefaultK0sDownloadURL returns the default download URL for the k0s binary based on host metadata
+func (h *Host) DefaultK0sDownloadURL(version *version.Version) (string, error) {
+	if h.Configurer == nil {
+		return "", fmt.Errorf("host configurer is not resolved")
+	}
+	if version == nil {
+		return "", fmt.Errorf("k0s version is nil")
+	}
+	arch, err := h.Arch()
+	if err != nil {
+		return "", err
+	}
+	return version.DownloadURL(h.Configurer.OSKind(), arch), nil
+}
+
+// K0sDownloadURL returns the effective download URL for the k0s binary, honoring host overrides.
+func (h *Host) K0sDownloadURL(version *version.Version) (string, error) {
+	if version == nil {
+		return "", fmt.Errorf("k0s version is nil")
+	}
+	if override := h.K0sDownloadURLOverride; override != "" {
+		return h.ExpandTokens(override, version), nil
+	}
+	return h.DefaultK0sDownloadURL(version)
+}
+
 func (h *Host) K0sRole() string {
 	switch h.Role {
 	case "controller+worker", "single":
@@ -348,10 +343,13 @@ func (h *Host) K0sRole() string {
 func (h *Host) K0sInstallFlags() (Flags, error) {
 	flags := Flags(h.InstallFlags)
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", shellescape.Quote(h.K0sDataDir())))
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
 
 	if h.KubeletRootDir != "" {
-		flags.AddOrReplace(fmt.Sprintf("--kubelet-root-dir=%s", shellescape.Quote(h.KubeletRootDir)))
+		flags.AddOrReplace(fmt.Sprintf(
+			"--kubelet-root-dir=%s",
+			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+		))
 	}
 
 	switch h.Role {
@@ -365,11 +363,11 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	}
 
 	if !h.Metadata.IsK0sLeader {
-		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, shellescape.Quote(h.K0sJoinTokenPath())))
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sJoinTokenPath()))))
 	}
 
 	if h.IsController() {
-		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, shellescape.Quote(h.K0sConfigPath())))
+		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sConfigPath()))))
 	}
 
 	if strings.HasSuffix(h.Role, "worker") {
@@ -394,7 +392,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 			extra.AddOrReplace("--hostname-override=" + h.HostnameOverride)
 		}
 		if extra != nil {
-			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", shellescape.Quote(extra.Join())))
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.Configurer, extra.Join(h.Configurer))))
 		}
 	}
 
@@ -413,28 +411,31 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		return "", err
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join()), nil
+	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join(h.Configurer)), nil
 }
 
 // K0sResetCommand returns a full command that will reset k0s
 func (h *Host) K0sResetCommand() string {
 	var flags Flags
-	flags.Add(fmt.Sprintf("--data-dir=%s", shellescape.Quote(h.K0sDataDir())))
+	flags.Add(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
 	if h.KubeletRootDir != "" {
-		flags.Add(fmt.Sprintf("--kubelet-root-dir=%s", shellescape.Quote(h.KubeletRootDir)))
+		flags.Add(fmt.Sprintf(
+			"--kubelet-root-dir=%s",
+			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+		))
 	}
 
-	return h.Configurer.K0sCmdf("reset %s", flags.Join())
+	return h.Configurer.K0sCmdf("reset %s", flags.Join(h.Configurer))
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", shellescape.Quote(targetDir), h.K0sDataDir())
+	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", quote(h.Configurer, h.Configurer.HostPath(targetDir)), h.Configurer.HostPath(h.K0sDataDir()))
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.K0sDataDir(), shellescape.Quote(backupfile))
+	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.Configurer.HostPath(h.K0sDataDir()), quote(h.Configurer, h.Configurer.HostPath(backupfile)))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -453,7 +454,7 @@ func (h *Host) K0sServiceName() string {
 }
 
 func (h *Host) k0sBinaryPathDir() string {
-	return gopath.Dir(h.K0sInstallLocation())
+	return h.Configurer.Dir(h.K0sInstallLocation())
 }
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
@@ -463,19 +464,45 @@ func (h *Host) InstallK0sBinary(path string) error {
 	}
 
 	dir := h.k0sBinaryPathDir()
-	if err := h.Execf(`install -m 0755 -o root -g root -d "%s"`, dir, exec.Sudo(h)); err != nil {
+	log.Debugf("%s: k0s binary dir: %q", h, dir)
+	if err := h.SudoFsys().MkDirAll(dir, fs.FileMode(0o755)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
+	// Best-effort permissions on POSIX; no-op on Windows
+	_ = h.setFileMode(dir, fs.FileMode(0o755))
 
-	if err := h.Execf(`install -m 0750 -o root -g root "%s" "%s"`, path, h.K0sInstallLocation(), exec.Sudo(h)); err != nil {
+	if err := h.Configurer.MoveFile(h, path, h.K0sInstallLocation()); err != nil {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
+	_ = h.setFileMode(h.K0sInstallLocation(), fs.FileMode(0o750))
 
-	if err := h.Configurer.DeleteFile(h, path); err != nil {
-		log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
+	if h.Configurer.FileExist(h, path) {
+		if err := h.Configurer.DeleteFile(h, path); err != nil {
+			log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
+		}
 	}
 
 	return nil
+}
+
+func (h *Host) K0sBinaryVersion() (*version.Version, error) {
+	cmd := h.Configurer.K0sCmdf("version")
+	output, err := h.ExecOutput(cmd, exec.Sudo(h))
+	if err != nil {
+		return nil, err
+	}
+
+	ver, err := version.NewVersion(strings.TrimSpace(output))
+	if err != nil {
+		return nil, err
+	}
+
+	return ver, nil
+}
+
+func (h *Host) setFileMode(path string, mode fs.FileMode) error {
+	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
+	return h.Configurer.Chmod(h, path, perm, exec.Sudo(h))
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path
@@ -484,7 +511,7 @@ func (h *Host) UpdateK0sBinary(path string, version *version.Version) error {
 		return fmt.Errorf("update k0s binary: %w", err)
 	}
 
-	updatedVersion, err := h.Configurer.K0sBinaryVersion(h)
+	updatedVersion, err := h.K0sBinaryVersion()
 	if err != nil {
 		return fmt.Errorf("failed to get updated k0s binary version: %w", err)
 	}
@@ -508,7 +535,7 @@ func (h *Host) K0sDataDir() string {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host, options DrainOption) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(), node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), node.Metadata.Hostname), exec.Sudo(h))
 }
 
 // CordonNode marks the node unschedulable
@@ -537,7 +564,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, quote(h.Configurer, taint)), exec.Sudo(h))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -550,7 +577,7 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, shellescape.Quote(taint)), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, quote(h.Configurer, taint)), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -645,6 +672,14 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 	if input == "" {
 		return ""
 	}
+	archToken := h.Metadata.Arch
+	if archToken == "" {
+		if arch, err := h.Arch(); err == nil {
+			archToken = arch
+		} else {
+			log.Warnf("%s: failed to resolve architecture for token expansion: %v", h, err)
+		}
+	}
 	builder := strings.Builder{}
 	var inPercent bool
 	for i := 0; i < len(input); i++ {
@@ -657,7 +692,7 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 				builder.WriteByte('%')
 			case 'p':
 				// Host architecture (arm, arm64, amd64).
-				builder.WriteString(h.Metadata.Arch)
+				builder.WriteString(archToken)
 			case 'v':
 				// K0s version (v1.21.0+k0s.0)
 				builder.WriteString(url.QueryEscape(k0sVersion.String()))

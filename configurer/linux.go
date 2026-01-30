@@ -12,13 +12,18 @@ import (
 	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/version"
 )
 
 // Linux is a base module for various linux OS support packages
 type Linux struct {
-	paths  map[string]string
-	pathMu sync.Mutex
+	paths    map[string]string
+	pathMu   sync.RWMutex
+	pathOnce sync.Once
+}
+
+// OSKind returns the identifier for Linux hosts
+func (l *Linux) OSKind() string {
+	return "linux"
 }
 
 // NOTE The Linux struct does not embed rig/os.Linux because it will confuse
@@ -30,59 +35,53 @@ type Linux struct {
 // path as a parameter.
 
 func (l *Linux) initPaths() {
-	if l.paths != nil {
-		return
-	}
-	l.paths = map[string]string{
-		"K0sBinaryPath":      "/usr/local/bin/k0s",
-		"K0sConfigPath":      "/etc/k0s/k0s.yaml",
-		"K0sJoinTokenPath":   "/etc/k0s/k0stoken",
-		"DataDirDefaultPath": "/var/lib/k0s",
-	}
+	l.pathOnce.Do(func() {
+		l.paths = map[string]string{
+			"K0sBinaryPath":      "/usr/local/bin/k0s",
+			"K0sConfigPath":      "/etc/k0s/k0s.yaml",
+			"K0sJoinTokenPath":   "/etc/k0s/k0stoken",
+			"DataDirDefaultPath": "/var/lib/k0s",
+		}
+	})
+}
+
+func (l *Linux) path(key string) string {
+	l.initPaths()
+	l.pathMu.RLock()
+	defer l.pathMu.RUnlock()
+	return l.paths[key]
 }
 
 // K0sBinaryPath returns the path to the k0s binary on the host
 func (l *Linux) K0sBinaryPath() string {
-	l.pathMu.Lock()
-	defer l.pathMu.Unlock()
-
-	l.initPaths()
-	return l.paths["K0sBinaryPath"]
+	return l.path("K0sBinaryPath")
 }
 
 // K0sConfigPath returns the path to the k0s config file on the host
 func (l *Linux) K0sConfigPath() string {
-	l.pathMu.Lock()
-	defer l.pathMu.Unlock()
-
-	l.initPaths()
-	return l.paths["K0sConfigPath"]
+	return l.path("K0sConfigPath")
 }
 
 // K0sJoinTokenPath returns the path to the k0s join token file on the host
 func (l *Linux) K0sJoinTokenPath() string {
-	l.pathMu.Lock()
-	defer l.pathMu.Unlock()
-
-	l.initPaths()
-	return l.paths["K0sJoinTokenPath"]
+	return l.path("K0sJoinTokenPath")
 }
 
 // DataDirDefaultPath returns the path to the k0s data dir on the host
 func (l *Linux) DataDirDefaultPath() string {
-	l.pathMu.Lock()
-	defer l.pathMu.Unlock()
+	return l.path("DataDirDefaultPath")
+}
 
-	l.initPaths()
-	return l.paths["DataDirDefaultPath"]
+// Quote wraps shellescape.Quote for consumers that need OS-aware escaping
+func (l *Linux) Quote(value string) string {
+	return shellescape.Quote(value)
 }
 
 // SetPath sets a path for a key
 func (l *Linux) SetPath(key, value string) {
+	l.initPaths()
 	l.pathMu.Lock()
 	defer l.pathMu.Unlock()
-
-	l.initPaths()
 	l.paths[key] = value
 }
 
@@ -107,21 +106,6 @@ func (l *Linux) Arch(h os.Host) (string, error) {
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l *Linux) K0sCmdf(template string, args ...any) string {
 	return fmt.Sprintf("%s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
-}
-
-func (l *Linux) K0sBinaryVersion(h os.Host) (*version.Version, error) {
-	k0sVersionCmd := l.K0sCmdf("version")
-	output, err := h.ExecOutput(k0sVersionCmd, exec.Sudo(h))
-	if err != nil {
-		return nil, err
-	}
-
-	version, err := version.NewVersion(output)
-	if err != nil {
-		return nil, err
-	}
-
-	return version, nil
 }
 
 // K0sctlLockFilePath returns a path to a lock file
@@ -168,17 +152,6 @@ func (l *Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Opt
 	return nil
 }
 
-// DownloadK0s performs k0s binary download from github on the host
-func (l *Linux) DownloadK0s(h os.Host, path string, version *version.Version, arch string, opts ...exec.Option) error {
-	v := strings.ReplaceAll(strings.TrimPrefix(version.String(), "v"), "+", "%2B")
-	url := fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/v%[1]s/k0s-v%[1]s-%[2]s", v, arch)
-	if err := l.DownloadURL(h, url, path, opts...); err != nil {
-		return fmt.Errorf("failed to download k0s - check connectivity and k0s version validity: %w", err)
-	}
-
-	return nil
-}
-
 // ReplaceK0sTokenPath replaces the config path in the service stub
 func (l *Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
 	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
@@ -192,6 +165,15 @@ func (l *Linux) FileContains(h os.Host, path, s string) bool {
 // MoveFile moves a file on the host
 func (l *Linux) MoveFile(h os.Host, src, dst string) error {
 	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
+}
+
+// Chown sets owner for a file or directory
+func (l *Linux) Chown(h os.Host, path, owner string, opts ...exec.Option) error {
+	if len(opts) == 0 {
+		opts = []exec.Option{exec.Sudo(h)}
+	}
+	cmd := fmt.Sprintf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(path))
+	return h.Exec(cmd, opts...)
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
@@ -337,4 +319,19 @@ func (l *Linux) LookPath(h os.Host, file string) (string, error) {
 	}
 
 	return path, nil
+}
+
+// Dir returns the directory part of a path
+func (l *Linux) Dir(p string) string {
+	return path.Dir(p)
+}
+
+// Base returns the base part of a path
+func (l *Linux) Base(p string) string {
+	return path.Base(p)
+}
+
+// HostPath returns the given path unchanged for linux hosts
+func (l *Linux) HostPath(p string) string {
+	return p
 }

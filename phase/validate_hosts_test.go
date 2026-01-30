@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -21,6 +22,15 @@ type mockconfigurer struct {
 
 func (c *mockconfigurer) SystemTime(_ os.Host) (time.Time, error) {
 	return time.Now().Add(c.skew), nil
+}
+
+type mockValidator struct {
+	mockconfigurer
+	err error
+}
+
+func (c *mockValidator) ValidateHost(os.Host) error {
+	return c.err
 }
 
 func TestValidateClockSkew(t *testing.T) {
@@ -55,5 +65,21 @@ func TestValidateClockSkew(t *testing.T) {
 	t.Run("clock skew failure", func(t *testing.T) {
 		p.Config.Spec.Hosts[2].Configurer = &mockconfigurer{skew: time.Minute}
 		require.Error(t, p.validateClockSkew(context.Background()))
+	})
+}
+
+func TestValidateConfigurer(t *testing.T) {
+	p := &ValidateHosts{}
+
+	t.Run("non validating configurer", func(t *testing.T) {
+		h := &cluster.Host{Configurer: &mockconfigurer{}}
+		require.NoError(t, p.validateConfigurer(context.Background(), h))
+	})
+
+	t.Run("validating configurer", func(t *testing.T) {
+		h := &cluster.Host{Configurer: &mockValidator{err: fmt.Errorf("missing feature")}}
+		err := p.validateConfigurer(context.Background(), h)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "missing feature")
 	})
 }

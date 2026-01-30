@@ -35,11 +35,11 @@ func (p *GatherFacts) Run(ctx context.Context) error {
 }
 
 func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error {
-	output, err := h.Configurer.Arch(h)
+	arch, err := h.Arch()
 	if err != nil {
 		return err
 	}
-	h.Metadata.Arch = output
+	log.Infof("%s: detected %s architecture", h, arch)
 
 	if !p.SkipMachineIDs && p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
 		id, err := h.Configurer.MachineID(h)

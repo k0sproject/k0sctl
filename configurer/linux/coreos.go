@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -14,6 +15,8 @@ type CoreOS struct {
 	os.Linux
 	BaseLinux
 }
+
+var _ configurer.Configurer = (*CoreOS)(nil)
 
 func init() {
 	registry.RegisterOSModule(

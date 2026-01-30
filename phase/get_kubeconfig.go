@@ -3,8 +3,6 @@ package phase
 import (
 	"context"
 	"fmt"
-
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,8 +24,9 @@ func (p *GetKubeconfig) Title() string {
 }
 
 var readKubeconfig = func(h *cluster.Host) (string, error) {
-	log.Debugf("%s: running %v", h, h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", shellescape.Quote(h.K0sDataDir())))
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", shellescape.Quote(h.K0sDataDir())), exec.Sudo(h), exec.HideOutput())
+	dataDir := h.Configurer.HostPath(h.K0sDataDir())
+	log.Debugf("%s: running %v", h, h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.Configurer.Quote(dataDir)))
+	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.Configurer.Quote(dataDir)), exec.Sudo(h), exec.HideOutput())
 	if err != nil {
 		return "", fmt.Errorf("get kubeconfig from host: %w", err)
 	}

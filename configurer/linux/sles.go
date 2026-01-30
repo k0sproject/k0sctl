@@ -1,6 +1,7 @@
 package linux
 
 import (
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/linux"
@@ -13,6 +14,8 @@ type SLES struct {
 	os.Linux
 	BaseLinux
 }
+
+var _ configurer.Configurer = (*SLES)(nil)
 
 func init() {
 	registry.RegisterOSModule(

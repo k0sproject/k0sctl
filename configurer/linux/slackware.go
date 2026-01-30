@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/os"
 	"github.com/k0sproject/rig/os/registry"
@@ -14,6 +15,8 @@ type Slackware struct {
 	BaseLinux
 	os.Linux
 }
+
+var _ configurer.Configurer = (*Slackware)(nil)
 
 func init() {
 	registry.RegisterOSModule(

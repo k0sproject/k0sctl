@@ -3,7 +3,9 @@ package phase
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -64,24 +66,37 @@ func (p *DownloadK0s) Run(ctx context.Context) error {
 }
 
 func (p *DownloadK0s) downloadK0s(_ context.Context, h *cluster.Host) error {
-	tmp := h.K0sInstallLocation() + ".tmp." + strconv.Itoa(int(time.Now().UnixNano()))
+	ts := strconv.Itoa(int(time.Now().UnixNano()))
+	bin := h.K0sInstallLocation()
+	tmp := bin + ".tmp." + ts
+	if h.IsConnected() && h.IsWindows() {
+		if strings.HasSuffix(strings.ToLower(bin), ".exe") {
+			tmp = strings.TrimSuffix(bin, ".exe") + ".tmp." + ts + ".exe"
+		}
+	}
 
 	log.Infof("%s: downloading k0s %s", h, p.Config.Spec.K0s.Version)
-	if h.K0sDownloadURL != "" {
-		expandedURL := h.ExpandTokens(h.K0sDownloadURL, p.Config.Spec.K0s.Version)
-		log.Infof("%s: downloading k0s binary from %s", h, expandedURL)
-		if err := h.Configurer.DownloadURL(h, expandedURL, tmp, exec.Sudo(h)); err != nil {
-			return fmt.Errorf("failed to download k0s binary: %w", err)
-		}
-	} else if err := h.Configurer.DownloadK0s(h, tmp, p.Config.Spec.K0s.Version, h.Metadata.Arch, exec.Sudo(h)); err != nil {
-		return err
+	url, err := h.K0sDownloadURL(p.Config.Spec.K0s.Version)
+	if err != nil {
+		return fmt.Errorf("failed to determine k0s download url: %w", err)
 	}
-
-	if err := h.Execf(`chmod +x "%s"`, tmp, exec.Sudo(h)); err != nil {
-		log.Warnf("%s: failed to chmod k0s temp binary: %v", h, err.Error())
+	// Ensure directory exists
+	log.Debugf("%s: ensuring k0s install directory exists %s", h, h.Configurer.Dir(tmp))
+	if err := h.SudoFsys().MkDirAll(h.Configurer.Dir(tmp), fs.FileMode(0o755)); err != nil {
+		return fmt.Errorf("failed to create k0s install directory: %w", err)
 	}
-
+	if err := h.Configurer.DownloadURL(h, url, tmp, exec.Sudo(h)); err != nil {
+		return fmt.Errorf("failed to download k0s binary: %w", err)
+	}
 	h.Metadata.K0sBinaryTempFile = tmp
+
+	if h.IsWindows() {
+		return nil
+	}
+
+	if err := chmodWithMode(h, tmp, fs.FileMode(0o755)); err != nil {
+		log.Debugf("%s: chmod %s failed: %v", h, tmp, err)
+	}
 
 	return nil
 }
