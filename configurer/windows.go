@@ -107,7 +107,10 @@ func (w *BaseWindows) Arch(h os.Host) (string, error) {
 
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (w *BaseWindows) K0sCmdf(template string, args ...interface{}) string {
-	return fmt.Sprintf(`%s %s`, ps.DoubleQuotePath(ps.ToWindowsPath(w.K0sBinaryPath())), fmt.Sprintf(template, args...))
+	return ps.Cmd(fmt.Sprintf("& %s %s",
+		ps.DoubleQuotePath(ps.ToWindowsPath(w.K0sBinaryPath())),
+		fmt.Sprintf(template, args...),
+	))
 }
 
 // K0sctlLockFilePath returns a path to a lock file
