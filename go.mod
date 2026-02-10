@@ -14,7 +14,7 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/k0sproject/dig v0.4.0
-	github.com/k0sproject/rig v0.21.0
+	github.com/k0sproject/rig v0.21.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20240702205601-3fad6e106085 // indirect
