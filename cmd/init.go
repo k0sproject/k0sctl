@@ -16,33 +16,27 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// DefaultK0sYaml is pretty much what "k0s default-config" outputs
+// DefaultK0sYaml is pretty much what "k0s config create" outputs
 var DefaultK0sYaml = []byte(`apiVersion: k0s.k0sproject.io/v1beta1
-kind: Cluster
+kind: ClusterConfig
 metadata:
   name: k0s
+  namespace: kube-system
 spec:
   api:
-    port: 6443
+    address: 192.168.5.15
+    ca:
+      certificatesExpireAfter: 8760h0m0s
+      expiresAfter: 87600h0m0s
     k0sApiPort: 9443
-  storage:
-    type: etcd
-  network:
-    podCIDR: 10.244.0.0/16
-    serviceCIDR: 10.96.0.0/12
-    provider: kuberouter
-    kuberouter:
-      mtu: 0
-      peerRouterIPs: ""
-      peerRouterASNs: ""
-      autoMTU: true
-    kubeProxy:
-      disabled: false
-      mode: iptables
-  podSecurityPolicy:
-    defaultPolicy: 00-k0s-privileged
-  telemetry:
-    enabled: true
+    port: 6443
+    sans:
+    - 192.168.5.15
+    - fe80::5055:55ff:febb:c314
+  controllerManager: {}
+  extensions:
+    helm:
+      concurrencyLevel: 5
   installConfig:
     users:
       etcdUser: etcd
@@ -51,8 +45,50 @@ spec:
       kubeAPIserverUser: kube-apiserver
       kubeSchedulerUser: kube-scheduler
   konnectivity:
-    agentPort: 8132
     adminPort: 8133
+    agentPort: 8132
+  network:
+    clusterDomain: cluster.local
+    dualStack:
+      enabled: false
+    kubeProxy:
+      iptables:
+        minSyncPeriod: 0s
+        syncPeriod: 0s
+      ipvs:
+        minSyncPeriod: 0s
+        syncPeriod: 0s
+        tcpFinTimeout: 0s
+        tcpTimeout: 0s
+        udpTimeout: 0s
+      metricsBindAddress: 0.0.0.0:10249
+      mode: iptables
+      nftables:
+        minSyncPeriod: 0s
+        syncPeriod: 0s
+    kuberouter:
+      autoMTU: true
+      hairpin: Enabled
+      metricsPort: 8080
+    nodeLocalLoadBalancing:
+      enabled: false
+      envoyProxy:
+        apiServerBindPort: 7443
+        konnectivityServerBindPort: 7132
+      type: EnvoyProxy
+    podCIDR: 10.244.0.0/16
+    provider: kuberouter
+    serviceCIDR: 10.96.0.0/12
+  scheduler: {}
+  storage:
+    etcd:
+      ca:
+        certificatesExpireAfter: 8760h0m0s
+        expiresAfter: 87600h0m0s
+      peerAddress: 192.168.5.15
+    type: etcd
+  telemetry:
+    enabled: false
 `)
 
 var defaultHosts = cluster.Hosts{
