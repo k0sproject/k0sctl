@@ -20,14 +20,30 @@ type LocalFile struct {
 
 // UploadFile describes a file to be uploaded for the host
 type UploadFile struct {
+	// Optional label for this upload entry, used only in log output.
 	Name            string       `yaml:"name,omitempty"`
+	// Source file path, URL, or glob pattern. Required when data is not set.
+	// Glob patterns follow the doublestar syntax. URL sources are downloaded directly
+	// on the target host. Supports %v, %p, %x token expansion.
 	Source          string       `yaml:"src,omitempty"`
+	// Inline file content to write to the destination. Required when src is not set.
 	Data            string       `yaml:"data,omitempty"`
+	// Destination directory on the host. k0sctl creates the full path if it does
+	// not exist. Defaults to the remote user's home directory.
 	DestinationDir  string       `yaml:"dstDir,omitempty"`
+	// Destination filename on the host. Only valid for single-file uploads.
+	// Defaults to the source file's basename.
 	DestinationFile string       `yaml:"dst,omitempty"`
+	// Permission mode for the uploaded file(s), e.g. 0644. Defaults to the local
+	// file's permission mode.
 	PermMode        any          `yaml:"perm,omitempty"`
-	DirPermMode     any          `yaml:"dirPerm,omitempty"`
+	// Permission mode for directories created by k0sctl during upload.
+	DirPermMode     any          `yaml:"dirPerm,omitempty" jsonschema:"default=0755"`
+	// Owner user name for the uploaded file(s) and created directories. Must already
+	// exist on the host.
 	User            string       `yaml:"user,omitempty"`
+	// Owner group name for the uploaded file(s) and created directories. Must already
+	// exist on the host.
 	Group           string       `yaml:"group,omitempty"`
 	PermString      string       `yaml:"-"`
 	DirPermString   string       `yaml:"-"`

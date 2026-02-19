@@ -12,10 +12,14 @@ import (
 
 // Options for cluster operations.
 type Options struct {
-	Wait        WaitOption        `yaml:"wait"`
-	Drain       DrainOption       `yaml:"drain"`
-	Concurrency ConcurrencyOption `yaml:"concurrency"`
-	EvictTaint  EvictTaintOption  `yaml:"evictTaint"`
+	// Controls wait behavior for cluster operations.
+	Wait WaitOption `yaml:"wait,omitempty"`
+	// Controls drain behavior for cluster operations.
+	Drain DrainOption `yaml:"drain,omitempty"`
+	// Controls how many hosts are operated on at once.
+	Concurrency ConcurrencyOption `yaml:"concurrency,omitempty"`
+	// Controls whether a taint is applied to nodes before disruptive operations.
+	EvictTaint EvictTaintOption `yaml:"evictTaint,omitempty"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for Options.
@@ -37,19 +41,34 @@ func (o *Options) UnmarshalYAML(unmarshal func(any) error) error {
 
 // WaitOption controls the wait behavior for cluster operations.
 type WaitOption struct {
-	Enabled *bool `yaml:"enabled" default:"true"`
+	// When false, k0sctl will not wait for k0s to become ready after restarting the
+	// service. Equivalent to passing --no-wait on the command line.
+	Enabled *bool `yaml:"enabled" default:"true" jsonschema:"default=true"`
 }
 
 // DrainOption controls the drain behavior for cluster operations.
 type DrainOption struct {
-	Enabled                  *bool         `yaml:"enabled" default:"true"`
-	GracePeriod              time.Duration `yaml:"gracePeriod" default:"120s"`
-	Timeout                  time.Duration `yaml:"timeout" default:"300s"`
-	Force                    *bool         `yaml:"force" default:"true"`
-	IgnoreDaemonSets         *bool         `yaml:"ignoreDaemonSets" default:"true"`
-	DeleteEmptyDirData       *bool         `yaml:"deleteEmptyDirData" default:"true"`
-	PodSelector              string        `yaml:"podSelector" default:""`
-	SkipWaitForDeleteTimeout time.Duration `yaml:"skipWaitForDeleteTimeout" default:"0s"`
+	// When false, k0sctl skips draining nodes before disruptive operations such as
+	// upgrade or reset. Equivalent to passing --no-drain on the command line.
+	Enabled *bool `yaml:"enabled" default:"true" jsonschema:"default=true"`
+	// How long to wait for pods to be evicted from the node before proceeding.
+	GracePeriod time.Duration `yaml:"gracePeriod" default:"120s" jsonschema:"default=120s"`
+	// How long to wait for the entire drain operation to complete before timing out.
+	Timeout time.Duration `yaml:"timeout" default:"300s" jsonschema:"default=300s"`
+	// Pass --force to kubectl drain, allowing pods without a replication controller
+	// to be evicted.
+	Force *bool `yaml:"force" default:"true" jsonschema:"default=true"`
+	// Pass --ignore-daemonsets to kubectl drain so that DaemonSet-managed pods are
+	// not considered when draining.
+	IgnoreDaemonSets *bool `yaml:"ignoreDaemonSets" default:"true" jsonschema:"default=true"`
+	// Pass --delete-emptydir-data to kubectl drain, allowing pods that use emptyDir
+	// volumes (whose data will be lost) to be evicted.
+	DeleteEmptyDirData *bool `yaml:"deleteEmptyDirData" default:"true" jsonschema:"default=true"`
+	// Label selector passed to kubectl drain to restrict which pods are considered.
+	PodSelector string `yaml:"podSelector" default:""`
+	// If a pod's DeletionTimestamp is older than this duration, skip waiting for it.
+	// Must be greater than 0s to take effect.
+	SkipWaitForDeleteTimeout time.Duration `yaml:"skipWaitForDeleteTimeout" default:"0s" jsonschema:"default=0s"`
 }
 
 // EnabledValue returns the effective enabled flag, defaulting to true when unset.
@@ -123,9 +142,16 @@ func (d *DrainOption) UnmarshalYAML(unmarshal func(any) error) error {
 
 // ConcurrencyOption controls how many hosts are operated on at once.
 type ConcurrencyOption struct {
-	Limit                   int `yaml:"limit" default:"30"`                   // Max number of hosts to operate on at once
-	WorkerDisruptionPercent int `yaml:"workerDisruptionPercent" default:"10"` // Max percentage of hosts to disrupt at once
-	Uploads                 int `yaml:"uploads" default:"5"`                  // Max concurrent file uploads
+	// Maximum number of hosts to configure concurrently. Equivalent to --concurrency
+	// on the command line. Set to 0 for unlimited.
+	Limit int `yaml:"limit" default:"30" jsonschema:"default=30"`
+	// Maximum percentage of worker nodes that may be disrupted simultaneously during
+	// operations such as upgrade. Value must be between 0 and 100. This ensures a
+	// minimum number of workers remain available during rolling operations.
+	WorkerDisruptionPercent int `yaml:"workerDisruptionPercent" default:"10" jsonschema:"default=10"`
+	// Maximum number of file uploads to perform concurrently. Equivalent to
+	// --concurrent-uploads on the command line.
+	Uploads int `yaml:"uploads" default:"5" jsonschema:"default=5"`
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface for ConcurrencyOption.
@@ -148,10 +174,17 @@ func (c *ConcurrencyOption) UnmarshalYAML(unmarshal func(any) error) error {
 // EvictTaintOption controls whether and how a taint is applied to nodes
 // before service-affecting operations like upgrade or reset.
 type EvictTaintOption struct {
-	Enabled           bool   `yaml:"enabled" default:"false"`
-	Taint             string `yaml:"taint" default:"k0sctl.k0sproject.io/evict=true"`
-	Effect            string `yaml:"effect" default:"NoExecute"`
-	ControllerWorkers bool   `yaml:"controllerWorkers" default:"false"`
+	// When true, k0sctl applies a taint to nodes before service-affecting operations
+	// (upgrade, reset) to signal workloads to evacuate before the node is disrupted.
+	// Can also be enabled at runtime with --evict-taint on the command line.
+	Enabled bool `yaml:"enabled" default:"false" jsonschema:"default=false"`
+	// Taint to apply when enabled is true. Must be in the format key=value.
+	Taint string `yaml:"taint" default:"k0sctl.k0sproject.io/evict=true" jsonschema:"default=k0sctl.k0sproject.io/evict=true"`
+	// Effect of the taint. Must be NoExecute, NoSchedule, or PreferNoSchedule.
+	Effect string `yaml:"effect" default:"NoExecute" jsonschema:"default=NoExecute,enum=NoExecute,enum=NoSchedule,enum=PreferNoSchedule"`
+	// When true, the taint is also applied to controller+worker nodes. By default
+	// only pure worker nodes are tainted.
+	ControllerWorkers bool `yaml:"controllerWorkers" default:"false" jsonschema:"default=false"`
 }
 
 // String returns a string representation of the EvictTaintOption (<taint>:<effect>)

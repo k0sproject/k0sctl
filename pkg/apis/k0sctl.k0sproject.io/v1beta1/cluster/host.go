@@ -27,23 +27,59 @@ var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 type Host struct {
 	rig.Connection `yaml:",inline"`
 
-	Role                   string            `yaml:"role"`
+	// Role of the host in the cluster. One of:
+	//   - controller — a controller-only node
+	//   - controller+worker — a controller that also runs workloads
+	//   - single — a single-node cluster; the configuration may only contain one host with this role
+	//   - worker — a worker node
+	Role                   string            `yaml:"role" jsonschema:"required,enum=controller,enum=controller+worker,enum=single,enum=worker"`
+	// When true, k0sctl will remove the node from Kubernetes and reset k0s on the host.
 	Reset                  bool              `yaml:"reset,omitempty"`
+	// Override the private network interface selected by host fact gathering. Useful when
+	// fact gathering picks the wrong interface for intra-cluster communication.
 	PrivateInterface       string            `yaml:"privateInterface,omitempty"`
+	// Override the private IP address selected by host fact gathering. Useful when
+	// fact gathering picks the wrong address for intra-cluster communication.
 	PrivateAddress         string            `yaml:"privateAddress,omitempty"`
-	DataDir                string            `yaml:"dataDir,omitempty"`
+	// Override the k0s data directory on the host.
+	DataDir                string            `yaml:"dataDir,omitempty" jsonschema:"default=/var/lib/k0s"`
+	// Override the kubelet root directory on the host.
 	KubeletRootDir         string            `yaml:"kubeletRootDir,omitempty"`
+	// Environment variables to set in the k0s service environment on the host.
 	Environment            map[string]string `yaml:"environment,flow,omitempty"`
+	// When true, the k0s binary is downloaded on the local machine and uploaded to the
+	// target host. When false (the default), the binary is downloaded directly on the host.
 	UploadBinary           bool              `yaml:"uploadBinary,omitempty"`
+	// When true, k0sctl reuses the k0s binary that already exists on the host without
+	// downloading or uploading anything. Upgrades for this host are skipped.
+	// Cannot be combined with uploadBinary, k0sBinaryPath, or k0sDownloadURL.
 	UseExistingK0s         bool              `yaml:"useExistingK0s,omitempty"`
+	// Path to a local k0s binary to upload to the host. Useful for testing a custom
+	// or development build of k0s without publishing a release.
 	K0sBinaryPath          string            `yaml:"k0sBinaryPath,omitempty"`
+	// Path on the host where the k0s binary will be installed.
 	K0sInstallPath         string            `yaml:"k0sInstallPath,omitempty"`
+	// URL to download the k0s binary from instead of the default k0s GitHub releases.
+	// Supports %-prefixed tokens: %v (version), %p (arch), %x (.exe on Windows).
 	K0sDownloadURLOverride string            `yaml:"k0sDownloadURL,omitempty"`
+	// Extra flags passed verbatim to the k0s install command on the host.
+	// See k0s install --help for available options.
 	InstallFlags           Flags             `yaml:"installFlags,omitempty"`
+	// Files to upload to the host before k0s is configured. Supports local paths,
+	// URLs, and glob patterns. See the file upload documentation for details.
 	Files                  []*UploadFile     `yaml:"files,omitempty"`
+	// Override OS distribution auto-detection. By default k0sctl reads /etc/os-release.
+	// Set this when the release file does not reflect the true distribution, e.g. set
+	// "debian" for a Debian-based image that reports a different OS ID.
 	OSIDOverride           string            `yaml:"os,omitempty"`
+	// Override the hostname reported by the OS. When not set, the OS hostname is used.
 	HostnameOverride       string            `yaml:"hostname,omitempty"`
+	// When true and used with the controller+worker role, disables the default
+	// node-role.kubernetes.io/master:NoSchedule taint so that regular workloads
+	// can be scheduled on the node without requiring a toleration.
 	NoTaints               bool              `yaml:"noTaints,omitempty"`
+	// Commands to run on the host at specific points during k0sctl operations.
+	// See the hooks documentation for available stages and timing details.
 	Hooks                  Hooks             `yaml:"hooks,omitempty"`
 
 	UploadBinaryPath string                `yaml:"-"`

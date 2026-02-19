@@ -1,0 +1,690 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster",
+  "$ref": "#/$defs/Cluster",
+  "$defs": {
+    "Cluster": {
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "description": "Configuration file syntax version. Must be k0sctl.k0sproject.io/v1beta1."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Object kind. Must be Cluster."
+        },
+        "metadata": {
+          "$ref": "#/$defs/ClusterMetadata",
+          "description": "Information that can be used to uniquely identify the object."
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec",
+          "description": "Cluster specification."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "spec"
+      ],
+      "description": "Cluster describes launchpad.yaml configuration"
+    },
+    "ClusterMetadata": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the cluster.",
+          "default": "k0s-cluster"
+        },
+        "user": {
+          "type": "string",
+          "description": "Kubernetes admin user name.",
+          "default": "admin"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "ClusterMetadata defines cluster metadata"
+    },
+    "ConcurrencyOption": {
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of hosts to configure concurrently. Equivalent to --concurrency\non the command line. Set to 0 for unlimited.",
+          "default": 30
+        },
+        "workerDisruptionPercent": {
+          "type": "integer",
+          "description": "Maximum percentage of worker nodes that may be disrupted simultaneously during\noperations such as upgrade. Value must be between 0 and 100. This ensures a\nminimum number of workers remain available during rolling operations.",
+          "default": 10
+        },
+        "uploads": {
+          "type": "integer",
+          "description": "Maximum number of file uploads to perform concurrently. Equivalent to\n--concurrent-uploads on the command line.",
+          "default": 5
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "ConcurrencyOption controls how many hosts are operated on at once."
+    },
+    "DrainOption": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When false, k0sctl skips draining nodes before disruptive operations such as\nupgrade or reset. Equivalent to passing --no-drain on the command line.",
+          "default": true
+        },
+        "gracePeriod": {
+          "type": "string",
+          "description": "How long to wait for pods to be evicted from the node before proceeding.",
+          "default": "120s"
+        },
+        "timeout": {
+          "type": "string",
+          "description": "How long to wait for the entire drain operation to complete before timing out.",
+          "default": "300s"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "Pass --force to kubectl drain, allowing pods without a replication controller\nto be evicted.",
+          "default": true
+        },
+        "ignoreDaemonSets": {
+          "type": "boolean",
+          "description": "Pass --ignore-daemonsets to kubectl drain so that DaemonSet-managed pods are\nnot considered when draining.",
+          "default": true
+        },
+        "deleteEmptyDirData": {
+          "type": "boolean",
+          "description": "Pass --delete-emptydir-data to kubectl drain, allowing pods that use emptyDir\nvolumes (whose data will be lost) to be evicted.",
+          "default": true
+        },
+        "podSelector": {
+          "type": "string",
+          "description": "Label selector passed to kubectl drain to restrict which pods are considered."
+        },
+        "skipWaitForDeleteTimeout": {
+          "type": "string",
+          "description": "If a pod's DeletionTimestamp is older than this duration, skip waiting for it.\nMust be greater than 0s to take effect.",
+          "default": "0s"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "DrainOption controls the drain behavior for cluster operations."
+    },
+    "EvictTaintOption": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When true, k0sctl applies a taint to nodes before service-affecting operations\n(upgrade, reset) to signal workloads to evacuate before the node is disrupted.\nCan also be enabled at runtime with --evict-taint on the command line.",
+          "default": false
+        },
+        "taint": {
+          "type": "string",
+          "description": "Taint to apply when enabled is true. Must be in the format key=value.",
+          "default": "k0sctl.k0sproject.io/evict=true"
+        },
+        "effect": {
+          "type": "string",
+          "enum": [
+            "NoExecute",
+            "NoSchedule",
+            "PreferNoSchedule"
+          ],
+          "description": "Effect of the taint. Must be NoExecute, NoSchedule, or PreferNoSchedule.",
+          "default": "NoExecute"
+        },
+        "controllerWorkers": {
+          "type": "boolean",
+          "description": "When true, the taint is also applied to controller+worker nodes. By default\nonly pure worker nodes are tainted.",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "EvictTaintOption controls whether and how a taint is applied to nodes before service-affecting operations like upgrade or reset."
+    },
+    "Host": {
+      "properties": {
+        "winRM": {
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "IP address or hostname of the host."
+            },
+            "user": {
+              "type": "string",
+              "description": "WinRM user name. The user must have administrative privileges.",
+              "default": "Administrator"
+            },
+            "port": {
+              "type": "integer",
+              "description": "TCP port for the WinRM endpoint. When useHTTPS is true, the default port automatically switches to 5986.",
+              "default": 5985
+            },
+            "password": {
+              "type": "string",
+              "description": "Password for the WinRM user. Required unless certificate-based authentication is configured."
+            },
+            "useHTTPS": {
+              "type": "boolean",
+              "description": "Enable HTTPS for WinRM. When enabled, set caCertPath (and optionally certPath/keyPath) to verify the remote endpoint.",
+              "default": false
+            },
+            "insecure": {
+              "type": "boolean",
+              "description": "Skip TLS certificate verification when connecting over HTTPS.",
+              "default": false
+            },
+            "useNTLM": {
+              "type": "boolean",
+              "description": "Use NTLM authentication instead of basic authentication.",
+              "default": false
+            },
+            "caCertPath": {
+              "type": "string",
+              "description": "Path to a CA bundle used to validate the WinRM server certificate."
+            },
+            "certPath": {
+              "type": "string",
+              "description": "Client certificate for mutual TLS authentication."
+            },
+            "keyPath": {
+              "type": "string",
+              "description": "Private key that matches certPath."
+            },
+            "tlsServerName": {
+              "type": "string",
+              "description": "Override the TLS server name used during certificate verification."
+            },
+            "bastion": {
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "description": "IP address or hostname of the bastion host."
+                },
+                "user": {
+                  "type": "string",
+                  "description": "SSH user for the bastion host.",
+                  "default": "root"
+                },
+                "port": {
+                  "type": "integer",
+                  "description": "SSH port on the bastion host.",
+                  "default": 22
+                },
+                "keyPath": {
+                  "type": "string",
+                  "description": "Path to an SSH private key for the bastion host."
+                }
+              },
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "description": "SSH bastion (jump host) configuration."
+            }
+          },
+          "type": "object",
+          "required": [
+            "address"
+          ]
+        },
+        "ssh": {
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "IP address or hostname of the host."
+            },
+            "user": {
+              "type": "string",
+              "description": "Username to log in as.",
+              "default": "root"
+            },
+            "port": {
+              "type": "integer",
+              "description": "TCP port of the SSH service on the host.",
+              "default": 22
+            },
+            "keyPath": {
+              "type": "string",
+              "description": "Path to an SSH private key file. If a public key is used, ssh-agent is required. When left empty, the default value will first be looked for from the SSH configuration IdentityFile parameter."
+            },
+            "bastion": {
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "description": "IP address or hostname of the bastion host."
+                },
+                "user": {
+                  "type": "string",
+                  "description": "SSH user for the bastion host.",
+                  "default": "root"
+                },
+                "port": {
+                  "type": "integer",
+                  "description": "SSH port on the bastion host.",
+                  "default": 22
+                },
+                "keyPath": {
+                  "type": "string",
+                  "description": "Path to an SSH private key for the bastion host."
+                }
+              },
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "description": "SSH bastion (jump host) configuration."
+            }
+          },
+          "type": "object",
+          "required": [
+            "address"
+          ]
+        },
+        "localhost": {
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Must be set to true to enable the localhost connection.",
+              "default": true
+            }
+          },
+          "type": "object",
+          "required": [
+            "enabled"
+          ]
+        },
+        "openSSH": {
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "IP address, hostname, or ssh config host alias of the host."
+            },
+            "user": {
+              "type": "string",
+              "description": "Username to connect as."
+            },
+            "port": {
+              "type": "integer",
+              "description": "Remote SSH port."
+            },
+            "keyPath": {
+              "type": "string",
+              "description": "Path to an SSH private key."
+            },
+            "configPath": {
+              "type": "string",
+              "description": "Path to ssh config. Defaults to ~/.ssh/config with fallback to /etc/ssh/ssh_config."
+            },
+            "options": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object",
+              "description": "Additional options as key/value pairs passed to the ssh client as -o flags."
+            },
+            "disableMultiplexing": {
+              "type": "boolean",
+              "description": "Disable SSH connection multiplexing. When true, every remote command requires reconnecting to the host."
+            }
+          },
+          "type": "object",
+          "required": [
+            "address"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "controller",
+            "controller+worker",
+            "single",
+            "worker"
+          ],
+          "description": "Role of the host in the cluster. One of:\n  - controller — a controller-only node\n  - controller+worker — a controller that also runs workloads\n  - single — a single-node cluster; the configuration may only contain one host with this role\n  - worker — a worker node"
+        },
+        "reset": {
+          "type": "boolean",
+          "description": "When true, k0sctl will remove the node from Kubernetes and reset k0s on the host."
+        },
+        "privateInterface": {
+          "type": "string",
+          "description": "Override the private network interface selected by host fact gathering. Useful when\nfact gathering picks the wrong interface for intra-cluster communication."
+        },
+        "privateAddress": {
+          "type": "string",
+          "description": "Override the private IP address selected by host fact gathering. Useful when\nfact gathering picks the wrong address for intra-cluster communication."
+        },
+        "dataDir": {
+          "type": "string",
+          "description": "Override the k0s data directory on the host.",
+          "default": "/var/lib/k0s"
+        },
+        "kubeletRootDir": {
+          "type": "string",
+          "description": "Override the kubelet root directory on the host."
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Environment variables to set in the k0s service environment on the host."
+        },
+        "uploadBinary": {
+          "type": "boolean",
+          "description": "When true, the k0s binary is downloaded on the local machine and uploaded to the\ntarget host. When false (the default), the binary is downloaded directly on the host."
+        },
+        "useExistingK0s": {
+          "type": "boolean",
+          "description": "When true, k0sctl reuses the k0s binary that already exists on the host without\ndownloading or uploading anything. Upgrades for this host are skipped.\nCannot be combined with uploadBinary, k0sBinaryPath, or k0sDownloadURL."
+        },
+        "k0sBinaryPath": {
+          "type": "string",
+          "description": "Path to a local k0s binary to upload to the host. Useful for testing a custom\nor development build of k0s without publishing a release."
+        },
+        "k0sInstallPath": {
+          "type": "string",
+          "description": "Path on the host where the k0s binary will be installed."
+        },
+        "k0sDownloadURL": {
+          "type": "string",
+          "description": "URL to download the k0s binary from instead of the default k0s GitHub releases.\nSupports %-prefixed tokens: %v (version), %p (arch), %x (.exe on Windows)."
+        },
+        "installFlags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Extra flags passed verbatim to the k0s install command on the host.\nSee k0s install --help for available options."
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/UploadFile"
+          },
+          "type": "array",
+          "description": "Files to upload to the host before k0s is configured. Supports local paths,\nURLs, and glob patterns. See the file upload documentation for details."
+        },
+        "os": {
+          "type": "string",
+          "description": "Override OS distribution auto-detection. By default k0sctl reads /etc/os-release.\nSet this when the release file does not reflect the true distribution, e.g. set\n\"debian\" for a Debian-based image that reports a different OS ID."
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Override the hostname reported by the OS. When not set, the OS hostname is used."
+        },
+        "noTaints": {
+          "type": "boolean",
+          "description": "When true and used with the controller+worker role, disables the default\nnode-role.kubernetes.io/master:NoSchedule taint so that regular workloads\ncan be scheduled on the node without requiring a toleration."
+        },
+        "hooks": {
+          "properties": {
+            "connect": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            },
+            "apply": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            },
+            "upgrade": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            },
+            "install": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            },
+            "backup": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            },
+            "reset": {
+              "properties": {
+                "before": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run before the action."
+                },
+                "after": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "description": "Commands to run after the action."
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object",
+          "description": "Commands to run on the host at specific points during k0sctl operations.\nSee the hooks documentation for available stages and timing details."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "description": "Host contains all the needed details to work with hosts"
+    },
+    "Hosts": {
+      "items": {
+        "$ref": "#/$defs/Host"
+      },
+      "type": "array",
+      "description": "Hosts are destnation hosts"
+    },
+    "K0s": {
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Version of k0s to deploy. When omitted, k0sctl selects the latest stable release\n(or the version already running on the cluster if one exists)."
+        },
+        "versionChannel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "latest"
+          ],
+          "description": "Version channel used when auto-discovering the k0s version. Set to \"latest\" to\nallow k0sctl to select pre-release versions. Has no effect when version is set.",
+          "default": "stable"
+        },
+        "dynamicConfig": {
+          "type": "boolean",
+          "description": "Enable k0s dynamic configuration. When true, k0sctl only pushes the cluster-wide\nconfiguration on first-time initialisation; subsequent applies leave it unchanged.\nUse k0sctl config edit or k0s config edit to manage it afterwards.\nThis flag is also auto-enabled when any controller has --enable-dynamic-config in\ninstallFlags or in its running k0s arguments."
+        },
+        "config": {
+          "type": "object",
+          "description": "Embedded k0s cluster configuration. See https://docs.k0sproject.io/stable/configuration/\nfor field reference. When omitted, the output of k0s config create is used.\nThe k0s config can also be placed as a separate YAML document in the same file,\nusing apiVersion: k0s.k0sproject.io/v1beta1 and kind: ClusterConfig."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "K0s holds configuration for bootstraping a k0s cluster"
+    },
+    "Options": {
+      "properties": {
+        "wait": {
+          "$ref": "#/$defs/WaitOption",
+          "description": "Controls wait behavior for cluster operations."
+        },
+        "drain": {
+          "$ref": "#/$defs/DrainOption",
+          "description": "Controls drain behavior for cluster operations."
+        },
+        "concurrency": {
+          "$ref": "#/$defs/ConcurrencyOption",
+          "description": "Controls how many hosts are operated on at once."
+        },
+        "evictTaint": {
+          "$ref": "#/$defs/EvictTaintOption",
+          "description": "Controls whether a taint is applied to nodes before disruptive operations."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Options for cluster operations."
+    },
+    "Spec": {
+      "properties": {
+        "hosts": {
+          "$ref": "#/$defs/Hosts",
+          "description": "A list of cluster hosts."
+        },
+        "k0s": {
+          "$ref": "#/$defs/K0s",
+          "description": "Settings related to the k0s cluster."
+        },
+        "options": {
+          "$ref": "#/$defs/Options",
+          "description": "Options for cluster operations."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "hosts"
+      ],
+      "description": "Spec defines cluster config spec section"
+    },
+    "UploadFile": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional label for this upload entry, used only in log output."
+        },
+        "src": {
+          "type": "string",
+          "description": "Source file path, URL, or glob pattern. Required when data is not set.\nGlob patterns follow the doublestar syntax. URL sources are downloaded directly\non the target host. Supports %v, %p, %x token expansion."
+        },
+        "data": {
+          "type": "string",
+          "description": "Inline file content to write to the destination. Required when src is not set."
+        },
+        "dstDir": {
+          "type": "string",
+          "description": "Destination directory on the host. k0sctl creates the full path if it does\nnot exist. Defaults to the remote user's home directory."
+        },
+        "dst": {
+          "type": "string",
+          "description": "Destination filename on the host. Only valid for single-file uploads.\nDefaults to the source file's basename."
+        },
+        "perm": {
+          "description": "Permission mode for the uploaded file(s), e.g. 0644. Defaults to the local\nfile's permission mode."
+        },
+        "dirPerm": {
+          "description": "Permission mode for directories created by k0sctl during upload."
+        },
+        "user": {
+          "type": "string",
+          "description": "Owner user name for the uploaded file(s) and created directories. Must already\nexist on the host."
+        },
+        "group": {
+          "type": "string",
+          "description": "Owner group name for the uploaded file(s) and created directories. Must already\nexist on the host."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "UploadFile describes a file to be uploaded for the host"
+    },
+    "WaitOption": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "When false, k0sctl will not wait for k0s to become ready after restarting the\nservice. Equivalent to passing --no-wait on the command line.",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "WaitOption controls the wait behavior for cluster operations."
+    }
+  },
+  "title": "k0sctl configuration",
+  "description": "Configuration file for k0sctl - a bootstrapping and management tool for k0s clusters."
+}

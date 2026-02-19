@@ -30,9 +30,22 @@ var (
 
 // K0s holds configuration for bootstraping a k0s cluster
 type K0s struct {
+	// Version of k0s to deploy. When omitted, k0sctl selects the latest stable release
+	// (or the version already running on the cluster if one exists).
 	Version        *version.Version `yaml:"version,omitempty"`
-	VersionChannel string           `yaml:"versionChannel,omitempty"`
+	// Version channel used when auto-discovering the k0s version. Set to "latest" to
+	// allow k0sctl to select pre-release versions. Has no effect when version is set.
+	VersionChannel string           `yaml:"versionChannel,omitempty" jsonschema:"default=stable,enum=stable,enum=latest"`
+	// Enable k0s dynamic configuration. When true, k0sctl only pushes the cluster-wide
+	// configuration on first-time initialisation; subsequent applies leave it unchanged.
+	// Use k0sctl config edit or k0s config edit to manage it afterwards.
+	// This flag is also auto-enabled when any controller has --enable-dynamic-config in
+	// installFlags or in its running k0s arguments.
 	DynamicConfig  bool             `yaml:"dynamicConfig,omitempty" default:"false"`
+	// Embedded k0s cluster configuration. See https://docs.k0sproject.io/stable/configuration/
+	// for field reference. When omitted, the output of k0s config create is used.
+	// The k0s config can also be placed as a separate YAML document in the same file,
+	// using apiVersion: k0s.k0sproject.io/v1beta1 and kind: ClusterConfig.
 	Config         dig.Mapping      `yaml:"config,omitempty"`
 	Metadata       K0sMetadata      `yaml:"-"`
 }

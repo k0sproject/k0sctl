@@ -75,7 +75,6 @@ var applyCommand = &cli.Command{
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		var kubeconfigOut io.Writer
-
 		if kc := ctx.String("kubeconfig-out"); kc != "" {
 			out, err := os.OpenFile(kc, os.O_CREATE|os.O_WRONLY, 0o600)
 			if err != nil {
