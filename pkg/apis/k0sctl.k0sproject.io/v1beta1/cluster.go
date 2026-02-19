@@ -16,8 +16,10 @@ const APIVersion = "k0sctl.k0sproject.io/v1beta1"
 
 // ClusterMetadata defines cluster metadata
 type ClusterMetadata struct {
-	Name        string            `yaml:"name" validate:"required" default:"k0s-cluster"`
-	User        string            `yaml:"user" default:"admin"`
+	// Name of the cluster.
+	Name        string            `yaml:"name" validate:"required" default:"k0s-cluster" jsonschema:"default=k0s-cluster"`
+	// Kubernetes admin user name.
+	User        string            `yaml:"user" default:"admin" jsonschema:"default=admin"`
 	Kubeconfig  string            `yaml:"-"`
 	EtcdMembers []string          `yaml:"-"`
 	Manifests   map[string][]byte `yaml:"-"`
@@ -25,10 +27,14 @@ type ClusterMetadata struct {
 
 // Cluster describes launchpad.yaml configuration
 type Cluster struct {
-	APIVersion string           `yaml:"apiVersion"`
-	Kind       string           `yaml:"kind"`
-	Metadata   *ClusterMetadata `yaml:"metadata"`
-	Spec       *cluster.Spec    `yaml:"spec"`
+	// Configuration file syntax version. Must be k0sctl.k0sproject.io/v1beta1.
+	APIVersion string           `yaml:"apiVersion" jsonschema:"required"`
+	// Object kind. Must be Cluster.
+	Kind       string           `yaml:"kind" jsonschema:"required"`
+	// Information that can be used to uniquely identify the object.
+	Metadata   *ClusterMetadata `yaml:"metadata,omitempty"`
+	// Cluster specification.
+	Spec       *cluster.Spec    `yaml:"spec" jsonschema:"required"`
 	Origin     string           `yaml:"-"`
 }
 

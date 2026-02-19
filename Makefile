@@ -108,6 +108,14 @@ lint: $(golint)
 test: $(GO_SRCS) $(GO_TESTS)
 	go test -v ./...
 
+.PHONY: docs
+docs:
+	go run ./internal/schemagen
+
+.PHONY: check-docs
+check-docs: docs
+	git diff --exit-code docs/
+
 .PHONY: install
 install: k0sctl
 	install -d $(DESTDIR)$(PREFIX)/bin/
