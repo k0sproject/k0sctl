@@ -151,9 +151,11 @@ func openSSHSchema() *jsonschema.Schema {
 		Description: "Path to ssh config. Defaults to ~/.ssh/config with fallback to /etc/ssh/ssh_config.",
 	})
 	prop(props, "options", &jsonschema.Schema{
-		Type:                 "object",
-		Description:          "Additional options as key/value pairs passed to the ssh client as -o flags.",
-		AdditionalProperties: jsonschema.FalseSchema,
+		Type:        "object",
+		Description: "Additional options as key/value pairs passed to the ssh client as -o flags.",
+		AdditionalProperties: &jsonschema.Schema{
+			Type: "string",
+		},
 	})
 	prop(props, "disableMultiplexing", &jsonschema.Schema{
 		Type:        "boolean",

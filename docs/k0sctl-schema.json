@@ -46,10 +46,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "name",
-        "user"
-      ],
       "description": "ClusterMetadata defines cluster metadata"
     },
     "ConcurrencyOption": {
@@ -72,11 +68,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "limit",
-        "workerDisruptionPercent",
-        "uploads"
-      ],
       "description": "ConcurrencyOption controls how many hosts are operated on at once."
     },
     "DrainOption": {
@@ -123,16 +114,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "enabled",
-        "gracePeriod",
-        "timeout",
-        "force",
-        "ignoreDaemonSets",
-        "deleteEmptyDirData",
-        "podSelector",
-        "skipWaitForDeleteTimeout"
-      ],
       "description": "DrainOption controls the drain behavior for cluster operations."
     },
     "EvictTaintOption": {
@@ -165,12 +146,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "enabled",
-        "taint",
-        "effect",
-        "controllerWorkers"
-      ],
       "description": "EvictTaintOption controls whether and how a taint is applied to nodes before service-affecting operations like upgrade or reset."
     },
     "Host": {
@@ -348,7 +323,9 @@
               "description": "Path to ssh config. Defaults to ~/.ssh/config with fallback to /etc/ssh/ssh_config."
             },
             "options": {
-              "additionalProperties": false,
+              "additionalProperties": {
+                "type": "string"
+              },
               "type": "object",
               "description": "Additional options as key/value pairs passed to the ssh client as -o flags."
             },
@@ -630,12 +607,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "wait",
-        "drain",
-        "concurrency",
-        "evictTaint"
-      ],
       "description": "Options for cluster operations."
     },
     "Spec": {
@@ -656,8 +627,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "hosts",
-        "options"
+        "hosts"
       ],
       "description": "Spec defines cluster config spec section"
     },
@@ -712,9 +682,6 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "enabled"
-      ],
       "description": "WaitOption controls the wait behavior for cluster operations."
     }
   },

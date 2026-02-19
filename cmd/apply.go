@@ -55,10 +55,6 @@ var applyCommand = &cli.Command{
 			DefaultText: "k0s-cluster",
 		},
 		&cli.BoolFlag{
-			Name:  "validate",
-			Usage: "Validate the configuration and exit without applying",
-		},
-		&cli.BoolFlag{
 			Name:   "disable-downgrade-check",
 			Usage:  "Skip downgrade check",
 			Hidden: true,
@@ -79,7 +75,6 @@ var applyCommand = &cli.Command{
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		var kubeconfigOut io.Writer
-
 		if kc := ctx.String("kubeconfig-out"); kc != "" {
 			out, err := os.OpenFile(kc, os.O_CREATE|os.O_WRONLY, 0o600)
 			if err != nil {
@@ -92,11 +87,6 @@ var applyCommand = &cli.Command{
 				}
 			}()
 			kubeconfigOut = out
-		}
-
-		if ctx.Bool("validate") {
-			fmt.Fprintln(ctx.App.Writer, "Configuration is valid")
-			return nil
 		}
 
 		manager, ok := ctx.Context.Value(ctxManagerKey{}).(*phase.Manager)

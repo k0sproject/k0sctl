@@ -21,8 +21,9 @@ import (
 
 func main() {
 	r := &jsonschema.Reflector{
-		FieldNameTag: "yaml",
-		Mapper:       mapCustomTypes,
+		FieldNameTag:               "yaml",
+		Mapper:                     mapCustomTypes,
+		RequiredFromJSONSchemaTags: true,
 	}
 
 	// base must be the module root path; AddGoComments does path.Join(base, walkPath)

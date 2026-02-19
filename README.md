@@ -122,6 +122,8 @@ For repository layout, development, and testing guidelines (including notes for 
 
 The main function of k0sctl is the `k0sctl apply` subcommand. Provided a configuration file describing the desired cluster state, k0sctl will connect to the listed hosts, determines the current state of the hosts and configures them as needed to form a k0s cluster.
 
+Use [`k0sctl validate`](#k0sctl-validate) to verify the configuration file before running apply.
+
 The default location for the configuration file is `k0sctl.yaml` in the current working directory. To load a configuration from a different location, use:
 
 ```sh
@@ -129,6 +131,14 @@ k0sctl apply --config path/to/k0sctl.yaml
 ```
 
 If the configuration cluster version `spec.k0s.version` is greater than the version detected on the cluster, a cluster upgrade will be performed. If the configuration lists hosts that are not part of the cluster, they will be configured to run k0s and will be joined to the cluster.
+
+### `k0sctl validate`
+
+The `k0sctl validate` subcommand loads and validates a configuration file without contacting any hosts. This is useful in CI pipelines or when iterating on the configuration locally.
+
+```sh
+k0sctl validate --config path/to/k0sctl.yaml
+```
 
 ### `k0sctl init`
 

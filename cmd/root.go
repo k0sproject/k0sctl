@@ -48,6 +48,7 @@ func NewK0sctl(in io.Reader, out, errOut io.Writer) *cli.App {
 		Commands: []*cli.Command{
 			versionCommand,
 			applyCommand,
+			validateCommand,
 			docsCommand,
 			kubeconfigCommand,
 			initCommand,

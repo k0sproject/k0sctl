@@ -63,7 +63,7 @@ spec:
 
 **`spec.k0s`** <object> (optional) — Settings related to the k0s cluster.
 
-**`spec.options`** <object> (required) — Options for cluster operations.
+**`spec.options`** <object> (optional) — Options for cluster operations.
 
 ### `spec.hosts[*]`
 
@@ -305,13 +305,13 @@ using apiVersion: k0s.k0sproject.io/v1beta1 and kind: ClusterConfig.
 
 ### `spec.options`
 
-**`spec.options.wait`** <object> (required) — Controls wait behavior for cluster operations.
+**`spec.options.wait`** <object> (optional) — Controls wait behavior for cluster operations.
 
-**`spec.options.drain`** <object> (required) — Controls drain behavior for cluster operations.
+**`spec.options.drain`** <object> (optional) — Controls drain behavior for cluster operations.
 
-**`spec.options.concurrency`** <object> (required) — Controls how many hosts are operated on at once.
+**`spec.options.concurrency`** <object> (optional) — Controls how many hosts are operated on at once.
 
-**`spec.options.evictTaint`** <object> (required) — Controls whether a taint is applied to nodes before disruptive operations.
+**`spec.options.evictTaint`** <object> (optional) — Controls whether a taint is applied to nodes before disruptive operations.
 
 #### `spec.options.wait`
 
@@ -336,7 +336,7 @@ not considered when draining.
 **`spec.options.drain.deleteEmptyDirData`** <boolean> (optional) (default: `true`) — Pass --delete-emptydir-data to kubectl drain, allowing pods that use emptyDir
 volumes (whose data will be lost) to be evicted.
 
-**`spec.options.drain.podSelector`** <string> (required) — Label selector passed to kubectl drain to restrict which pods are considered.
+**`spec.options.drain.podSelector`** <string> (optional) — Label selector passed to kubectl drain to restrict which pods are considered.
 
 **`spec.options.drain.skipWaitForDeleteTimeout`** <string> (optional) (default: `0s`) — If a pod's DeletionTimestamp is older than this duration, skip waiting for it.
 Must be greater than 0s to take effect.

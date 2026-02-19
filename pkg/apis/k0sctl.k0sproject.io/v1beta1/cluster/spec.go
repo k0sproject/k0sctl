@@ -12,11 +12,11 @@ import (
 // Spec defines cluster config spec section
 type Spec struct {
 	// A list of cluster hosts.
-	Hosts   Hosts   `yaml:"hosts,omitempty" jsonschema:"required"`
+	Hosts Hosts `yaml:"hosts,omitempty" jsonschema:"required"`
 	// Settings related to the k0s cluster.
-	K0s     *K0s    `yaml:"k0s,omitempty"`
+	K0s *K0s `yaml:"k0s,omitempty"`
 	// Options for cluster operations.
-	Options Options `yaml:"options"`
+	Options Options `yaml:"options,omitempty"`
 
 	k0sLeader *Host
 }
