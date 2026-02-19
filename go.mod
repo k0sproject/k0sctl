@@ -34,6 +34,7 @@ require (
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	github.com/carlmjohnson/versioninfo v0.22.5
+	github.com/charmbracelet/glamour v0.10.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/invopop/jsonschema v0.13.0
 	github.com/jellydator/validation v1.2.0
@@ -56,7 +57,6 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
-	github.com/charmbracelet/glamour v0.10.0 // indirect
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
