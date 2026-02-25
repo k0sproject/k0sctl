@@ -21,6 +21,12 @@ type Windows struct {
 var _ configurer.Configurer = (*Windows)(nil)
 var _ configurer.HostValidator = (*Windows)(nil)
 
+// Hostname resolves ambiguity between os.Windows and configurer.BaseWindows;
+// delegate to BaseWindows for configurer.Configurer.
+func (c *Windows) Hostname(h os.Host) string {
+	return c.BaseWindows.Hostname(h)
+}
+
 func init() {
 	registry.RegisterOSModule(
 		func(osv rig.OSVersion) bool {
