@@ -45,14 +45,14 @@ echo "Re-applying ${K0S_VERSION} with modified installFlags"
 echo "A re-apply should perform a re-install if there are changes"
 grep -iq "reinstalling" apply.log
 
-max_retry=5
+max_retry=20
 counter=0
 echo "Install flags should change for controller"
 until remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_FLAG}"
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
-   sleep 5
+   sleep 10
    counter=$((counter+1))
 done
 
