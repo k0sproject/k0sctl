@@ -28,11 +28,11 @@ grep -ivq "reinstalling" apply.log
 
 echo "Install flags should contain the expected flag on a controller"
 remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_FLAG}"
-remoteCommand "root@manager0" -- tail -n 20 /var/log/messages
+remoteCommand "root@manager0" -- tail -n 20 "/var/log/k0scontroller.log"
 
 echo "Install flags should contain the expected flag on a worker"
 remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER_FLAG}"
-remoteCommand "root@worker0" -- tail -n 20 /var/log/messages
+remoteCommand "root@worker0" -- tail -n 20 "/var/log/k0sworker.log"
 
 echo "A re-apply should not re-install if there are no changes"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug | tee apply.log
@@ -54,7 +54,7 @@ until remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTR
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
-   remoteCommand "root@manager0" -- tail -n 20 /var/log/messages
+   remoteCommand "root@manager0" -- tail -n 20 "/var/log/k0scontroller.log"
    sleep 10
    counter=$((counter+1))
 done
@@ -65,7 +65,7 @@ until remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
-   remoteCommand "root@worker0" -- tail -n 20 /var/log/messages
+   remoteCommand "root@worker0" -- tail -n 20 "/var/log/k0sworker.log"
    sleep 10 
    counter=$((counter+1))
 done
