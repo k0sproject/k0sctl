@@ -28,7 +28,7 @@ grep -ivq "reinstalling" apply.log
 
 echo "Install flags should contain the expected flag on a controller"
 remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_FLAG}"
-if [ echo $LINUX_IMAGE | grep -q "ubuntu" ]; then
+if echo $LINUX_IMAGE | grep -q "ubuntu"; then
   remoteCommand "root@manager0" journalctl -xeu k0scontroller --no-pager
 else
   remoteCommand "root@manager0" tail -n 20 "/var/log/k0s.log"
@@ -62,7 +62,7 @@ until remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTR
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
-   if [ echo $LINUX_IMAGE | grep -q "ubuntu" ]; then
+   if echo $LINUX_IMAGE | grep -q "ubuntu"; then
      remoteCommand "root@manager0" journalctl -xeu k0scontroller --no-pager
    else
      remoteCommand "root@manager0" tail -n 20 "/var/log/k0s.log"
@@ -77,7 +77,7 @@ until remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
-   if [ echo $LINUX_IMAGE | grep -q "ubuntu" ]; then
+   if echo $LINUX_IMAGE | grep -q "ubuntu"; then
      remoteCommand "root@worker0" journalctl -xeu k0scontroller --no-pager
    else
      remoteCommand "root@worker0" tail -n 20 "/var/log/k0s.log"
