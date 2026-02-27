@@ -52,6 +52,7 @@ until remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTR
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
+   tail -n 20 /var/log/messages
    sleep 10
    counter=$((counter+1))
 done
@@ -62,6 +63,7 @@ until remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER
 do
    [ $counter -eq $max_retry ] && echo "Failed!" && exit 1
    echo "* Waiting for a couple of seconds to retry"
+   tail -n 20 /var/log/messages
    sleep 5
    counter=$((counter+1))
 done
