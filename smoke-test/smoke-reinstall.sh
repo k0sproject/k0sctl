@@ -36,7 +36,7 @@ fi
 
 echo "Install flags should contain the expected flag on a worker"
 remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER_FLAG}"
-if [ echo $LINUX_IMAGE | grep -q "ubuntu" ]; then
+if echo $LINUX_IMAGE | grep -q "ubuntu" then
   remoteCommand "root@manager0" journalctl -xeu k0sworker --no-pager
 else
   remoteCommand "root@manager0" tail -n 20 "/var/log/k0s.log"
