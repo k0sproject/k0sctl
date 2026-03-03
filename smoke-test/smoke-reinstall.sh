@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 K0SCTL_CONFIG="k0sctl-installflags.yaml"
-export K0S_VERSION=v1.34.4+k0s.0
+export K0S_VERSION=v1.35.1+k0s.0
 export K0S_CONTROLLER_FLAG="--labels=smoke-stage=1"
 export K0S_WORKER_FLAG="--labels=smoke-stage=1"
 envsubst < "k0sctl-installflags.yaml.tpl" > "${K0SCTL_CONFIG}"
@@ -31,7 +31,7 @@ remoteCommand "root@manager0" "k0s status -o json | grep -q -- ${K0S_CONTROLLER_
 if echo $LINUX_IMAGE | grep -q "ubuntu"; then
   remoteCommand "root@manager0" journalctl -xeu k0scontroller --no-pager
 else
-  remoteCommand "root@manager0" tail -n 20 "/var/log/k0s.log"
+  remoteCommand "root@manager0" tail -n 200 "/var/log/k0s.log"
 fi
 
 echo "Install flags should contain the expected flag on a worker"
@@ -39,7 +39,7 @@ remoteCommand "root@worker0" "k0s status -o json | grep -q -- ${K0S_WORKER_FLAG}
 if echo $LINUX_IMAGE | grep -q "ubuntu"; then
   remoteCommand "root@worker0" journalctl -xeu k0sworker --no-pager
 else
-  remoteCommand "root@worker0" tail -n 20 "/var/log/k0s.log"
+  remoteCommand "root@worker0" tail -n 200 "/var/log/k0s.log"
 fi
 
 echo "A re-apply should not re-install if there are no changes"
@@ -65,7 +65,7 @@ do
    if echo $LINUX_IMAGE | grep -q "ubuntu"; then
      remoteCommand "root@manager0" journalctl -xeu k0scontroller --no-pager
    else
-     remoteCommand "root@manager0" tail -n 20 "/var/log/k0s.log"
+     remoteCommand "root@manager0" tail -n 200 "/var/log/k0s.log"
    fi
    sleep 10
    counter=$((counter+1))
@@ -80,7 +80,7 @@ do
    if echo $LINUX_IMAGE | grep -q "ubuntu"; then
      remoteCommand "root@worker0" journalctl -xeu k0sworker --no-pager
    else
-     remoteCommand "root@worker0" tail -n 20 "/var/log/k0s.log"
+     remoteCommand "root@worker0" tail -n 200 "/var/log/k0s.log"
    fi
    sleep 10 
    counter=$((counter+1))
