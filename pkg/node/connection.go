@@ -9,7 +9,6 @@ var connectionErrorSubstrs = []string{
 	"connection refused",
 	"broken pipe",
 	"ssh session wait",
-	"exited without exit status",
 	"ssh new session",
 	"i/o timeout",
 	"use of closed network connection",
@@ -22,6 +21,7 @@ func IsConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	msg := strings.ToLower(err.Error())
 	for _, sub := range connectionErrorSubstrs {
 		if strings.Contains(msg, sub) {
