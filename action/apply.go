@@ -64,6 +64,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.GatherK0sFacts{},
 			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck},
 			&phase.ValidateEtcdMembers{},
+			&phase.EnsureJoinTokenWorkaround{},
 
 			// if UploadBinaries: true
 			&phase.DownloadBinaries{}, // downloads k0s binaries to local cache

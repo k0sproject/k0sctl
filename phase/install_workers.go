@@ -77,7 +77,16 @@ func (p *InstallWorkers) After() error {
 			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
-			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
+			content := "# overwritten by k0sctl after join\n"
+			if p.Config.Spec.K0s.Version.Equal(workerTokenWorkaroundVersion) {
+				log.Debugf("%s: configured k0s version is %s, using workaround content for join token file", h, p.Config.Spec.K0s.Version)
+				dummyToken, err := buildDummyJoinToken()
+				if err != nil {
+					return fmt.Errorf("build dummy join token: %w", err)
+				}
+				content = dummyToken
+			}
+			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), content, "0600"); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
 			return nil
