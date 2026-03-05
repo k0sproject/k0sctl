@@ -368,3 +368,10 @@ func (w *BaseWindows) Base(path string) string {
 func (w *BaseWindows) HostPath(path string) string {
 	return ps.ToWindowsPath(path)
 }
+
+// Hostname on windows returns the hostname
+func (w *BaseWindows) Hostname(h os.Host) string {
+	hostname, _ := h.ExecOutput("hostname")
+
+	return hostname
+}
