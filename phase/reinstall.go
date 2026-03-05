@@ -101,6 +101,15 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return fmt.Errorf("k0s did not restart: %w", err)
 		}
+		statusFunc := func(_ context.Context) error {
+			if err := h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h)); err != nil {
+				return fmt.Errorf("k0s status command failed: %w", err)
+			}
+			return nil
+		}
+		if err := retry.WithDefaultTimeout(ctx, statusFunc); err != nil {
+			return fmt.Errorf("k0s status did not return successfully after restart: %w", err)
+		}
 		return nil
 	})
 	if err != nil {
