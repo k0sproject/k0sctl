@@ -6,14 +6,18 @@ import (
 	"io/fs"
 	"net/url"
 	gos "os"
+	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
 	"github.com/k0sproject/k0sctl/configurer"
+	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
+	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
 	"github.com/k0sproject/rig"
 	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/rig/os/registry"
@@ -22,6 +26,8 @@ import (
 )
 
 var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
+
+var _ binprovider.Host = (*Host)(nil)
 
 // Host contains all the needed details to work with hosts
 type Host struct {
@@ -46,9 +52,108 @@ type Host struct {
 	NoTaints               bool              `yaml:"noTaints,omitempty"`
 	Hooks                  Hooks             `yaml:"hooks,omitempty"`
 
-	UploadBinaryPath string                `yaml:"-"`
-	Metadata         HostMetadata          `yaml:"-"`
-	Configurer       configurer.Configurer `yaml:"-"`
+	Metadata   HostMetadata          `yaml:"-"`
+	Configurer configurer.Configurer `yaml:"-"`
+
+	binaryProvider              k0s.BinaryProvider  // user-set override via SetK0sBinaryProvider
+	cachedDefaultProvider       k0s.BinaryProvider  // auto-built default; rebuilt when target changes
+	cachedDefaultProviderTarget *version.Version    // target used to build cachedDefaultProvider
+}
+
+// SetK0sBinaryProvider overrides the binary acquisition strategy for this host.
+// When set, it takes precedence over the strategy inferred from the host's
+// configuration fields (uploadBinary, useExistingK0s, k0sDownloadURL, etc.).
+// This is the primary extension point for library users — for example, to pull
+// k0s from a private OCI registry rather than from GitHub.
+func (h *Host) SetK0sBinaryProvider(p k0s.BinaryProvider) {
+	h.binaryProvider = p
+}
+
+// InstalledK0sVersion returns the cached k0s binary version gathered during facts collection.
+func (h *Host) InstalledK0sVersion() *version.Version {
+	return h.Metadata.K0sBinaryVersion
+}
+
+// RunningK0sVersion returns the cached k0s service version gathered during facts collection.
+func (h *Host) RunningK0sVersion() *version.Version {
+	return h.Metadata.K0sRunningVersion
+}
+
+// K0sBinaryProvider returns the effective BinaryProvider for the host.
+// If one has been set via SetK0sBinaryProvider it is returned; otherwise the
+// provider is inferred from the host's configuration fields and constructed
+// with target as the desired k0s version. The default provider is cached per
+// target version and rebuilt automatically if the target changes (e.g. after
+// ValidateFacts resets a defaulted version to the running version).
+// target must be non-nil when using a default provider; passing nil is only
+// safe when a custom provider has been set via SetK0sBinaryProvider.
+func (h *Host) K0sBinaryProvider(target *version.Version) (k0s.BinaryProvider, error) {
+	if h.binaryProvider != nil {
+		return h.binaryProvider, nil
+	}
+	if target == nil {
+		return nil, fmt.Errorf("K0sBinaryProvider: target version is nil and no custom provider has been set")
+	}
+	if h.cachedDefaultProvider == nil || !target.Equal(h.cachedDefaultProviderTarget) {
+		if !h.UseExistingK0s && h.Configurer == nil && h.K0sInstallPath == "" {
+			return nil, fmt.Errorf("%s: cannot determine k0s install location: OS not yet detected (Configurer is nil) and k0sInstallPath is not set", h)
+		}
+		h.cachedDefaultProvider = h.defaultBinaryProvider(target)
+		h.cachedDefaultProviderTarget = target
+	}
+	return h.cachedDefaultProvider, nil
+}
+
+func (h *Host) requireConfigurer() (configurer.Configurer, error) {
+	if h.Configurer == nil {
+		return nil, fmt.Errorf("%s: host configurer is not resolved", h)
+	}
+	return h.Configurer, nil
+}
+
+// Dir returns the configurer-specific directory name for the given path.
+func (h *Host) Dir(path string) (string, error) {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return "", err
+	}
+	return cfg.Dir(path), nil
+}
+
+// OSKind returns the host OS kind via the resolved configurer.
+func (h *Host) OSKind() (string, error) {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return "", err
+	}
+	return cfg.OSKind(), nil
+}
+
+// DownloadURL downloads a file on the host using the resolved configurer.
+func (h *Host) DownloadURL(url, dest string, opts ...exec.Option) error {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return err
+	}
+	return cfg.DownloadURL(h, url, dest, opts...)
+}
+
+// Touch updates file modification timestamps via the resolved configurer.
+func (h *Host) Touch(path string, modTime time.Time, opts ...exec.Option) error {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return err
+	}
+	return cfg.Touch(h, path, modTime, opts...)
+}
+
+// DeleteFile removes a file via the resolved configurer.
+func (h *Host) DeleteFile(path string) error {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return err
+	}
+	return cfg.DeleteFile(h, path)
 }
 
 func (h *Host) SetDefaults() {
@@ -180,8 +285,13 @@ type HostMetadata struct {
 	DryRunFakeLeader  bool
 }
 
-// Resolve prepares host-scoped data after unmarshalling by resolving upload files.
+
+// Resolve prepares host-scoped data after unmarshalling by resolving upload files
+// and normalizing relative paths (like K0sBinaryPath) against baseDir.
 func (h *Host) Resolve(baseDir string) error {
+	if h.K0sBinaryPath != "" && !filepath.IsAbs(h.K0sBinaryPath) && baseDir != "" {
+		h.K0sBinaryPath = filepath.Join(baseDir, h.K0sBinaryPath)
+	}
 	return h.ResolveUploadFiles(baseDir)
 }
 
@@ -267,6 +377,16 @@ func (h *Host) K0sInstallLocation() string {
 	return h.Configurer.K0sBinaryPath()
 }
 
+// LocalK0sBinaryPath returns the local path to the developer-supplied binary, when set.
+func (h *Host) LocalK0sBinaryPath() string {
+	return h.K0sBinaryPath
+}
+
+// DownloadURLTemplate returns the host's k0s download override template, if any.
+func (h *Host) DownloadURLTemplate() string {
+	return h.K0sDownloadURLOverride
+}
+
 // K0sJoinTokenPath returns the token file path from install flags or configurer
 func (h *Host) K0sJoinTokenPath() string {
 	if path := h.InstallFlags.GetValue("--token-file"); path != "" {
@@ -303,32 +423,6 @@ func (h *Host) Arch() (string, error) {
 	}
 	h.Metadata.Arch = arch
 	return arch, nil
-}
-
-// DefaultK0sDownloadURL returns the default download URL for the k0s binary based on host metadata
-func (h *Host) DefaultK0sDownloadURL(version *version.Version) (string, error) {
-	if h.Configurer == nil {
-		return "", fmt.Errorf("host configurer is not resolved")
-	}
-	if version == nil {
-		return "", fmt.Errorf("k0s version is nil")
-	}
-	arch, err := h.Arch()
-	if err != nil {
-		return "", err
-	}
-	return version.DownloadURL(h.Configurer.OSKind(), arch), nil
-}
-
-// K0sDownloadURL returns the effective download URL for the k0s binary, honoring host overrides.
-func (h *Host) K0sDownloadURL(version *version.Version) (string, error) {
-	if version == nil {
-		return "", fmt.Errorf("k0s version is nil")
-	}
-	if override := h.K0sDownloadURLOverride; override != "" {
-		return h.ExpandTokens(override, version), nil
-	}
-	return h.DefaultK0sDownloadURL(version)
 }
 
 func (h *Host) K0sRole() string {
@@ -469,12 +563,12 @@ func (h *Host) InstallK0sBinary(path string) error {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
 	// Best-effort permissions on POSIX; no-op on Windows
-	_ = h.setFileMode(dir, fs.FileMode(0o755))
+	_ = h.SetFileMode(dir, fs.FileMode(0o755))
 
 	if err := h.Configurer.MoveFile(h, path, h.K0sInstallLocation()); err != nil {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
-	_ = h.setFileMode(h.K0sInstallLocation(), fs.FileMode(0o750))
+	_ = h.SetFileMode(h.K0sInstallLocation(), fs.FileMode(0o750))
 
 	if h.Configurer.FileExist(h, path) {
 		if err := h.Configurer.DeleteFile(h, path); err != nil {
@@ -500,9 +594,13 @@ func (h *Host) K0sBinaryVersion() (*version.Version, error) {
 	return ver, nil
 }
 
-func (h *Host) setFileMode(path string, mode fs.FileMode) error {
+func (h *Host) SetFileMode(path string, mode fs.FileMode) error {
+	cfg, err := h.requireConfigurer()
+	if err != nil {
+		return err
+	}
 	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return h.Configurer.Chmod(h, path, perm, exec.Sudo(h))
+	return cfg.Chmod(h, path, perm, exec.Sudo(h))
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path

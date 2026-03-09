@@ -59,10 +59,18 @@ func (p *GenericPhase) parallelDo(ctx context.Context, hosts cluster.Hosts, func
 }
 
 func (p *GenericPhase) parallelDoUpload(ctx context.Context, hosts cluster.Hosts, funcs ...func(context.Context, *cluster.Host) error) error {
-    if p.manager.Concurrency == 0 {
-        return hosts.ParallelEach(ctx, funcs...)
-    }
-    return hosts.BatchedParallelEach(ctx, p.manager.ConcurrentUploads, funcs...)
+	if p.manager.Concurrency == 0 {
+		return hosts.ParallelEach(ctx, funcs...)
+	}
+
+	batchSize := p.manager.ConcurrentUploads
+	if batchSize <= 0 {
+		batchSize = p.manager.Concurrency
+	} else {
+		batchSize = min(batchSize, p.manager.Concurrency)
+	}
+
+	return hosts.BatchedParallelEach(ctx, batchSize, funcs...)
 }
 
 // runHooks executes hooks for the provided hosts honoring the given context.

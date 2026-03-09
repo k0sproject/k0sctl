@@ -7,12 +7,13 @@ import (
 	"testing"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
 	"github.com/k0sproject/rig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUploadK0sCreatesParentDir(t *testing.T) {
+func TestLocalBinaryProviderCreatesParentDir(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		t.Skip("No OS support module for darwin")
 	}
@@ -30,17 +31,26 @@ func TestUploadK0sCreatesParentDir(t *testing.T) {
 	dest := filepath.Join(destDir, destName)
 
 	h := &cluster.Host{
-		Connection:       rig.Connection{Localhost: &rig.Localhost{Enabled: true}},
-		UploadBinaryPath: src,
-		K0sInstallPath:   dest,
+		Connection:     rig.Connection{Localhost: &rig.Localhost{Enabled: true}},
+		K0sInstallPath: dest,
 	}
 	h.SetSudofn(func(cmd string) string { return cmd })
 	h.Connection.SetDefaults()
 	require.NoError(t, h.Connect())
 	require.NoError(t, h.ResolveConfigurer())
 
-	underTest := &UploadK0s{}
-	require.NoError(t, underTest.uploadBinary(t.Context(), h))
+	h.K0sBinaryPath = src
+	installPath := h.K0sInstallLocation()
+	h.SetK0sBinaryProvider(binprovider.NewLocalFile(h, h.K0sBinaryPath, installPath, func() bool {
+		return h.FileChanged(h.K0sBinaryPath, installPath)
+	}))
+
+	binaryProvider, err := h.K0sBinaryProvider(nil)
+	require.NoError(t, err)
+	tmpPath, err := binaryProvider.Stage(t.Context())
+	require.NoError(t, err)
+
+	h.Metadata.K0sBinaryTempFile = tmpPath
 
 	entries, err := os.ReadDir(destDir)
 	require.NoError(t, err)

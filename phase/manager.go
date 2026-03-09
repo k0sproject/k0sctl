@@ -195,6 +195,14 @@ func (m *Manager) Run(ctx context.Context) error {
 	log.Debug(m.Config.String())
 
 	defer func() {
+		if result != nil {
+			for _, p := range ran {
+				if c, ok := p.(withcleanup); ok {
+					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), p.Title())
+					c.CleanUp()
+				}
+			}
+		}
 		if m.DryRun {
 			if len(m.dryMessages) == 0 {
 				fmt.Fprintln(m.Writer, Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
@@ -206,15 +214,6 @@ func (m *Manager) Run(ctx context.Context) error {
 				fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
 				for _, msg := range msgs {
 					fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
-				}
-			}
-			return
-		}
-		if result != nil {
-			for _, p := range ran {
-				if c, ok := p.(withcleanup); ok {
-					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), p.Title())
-					c.CleanUp()
 				}
 			}
 		}
@@ -235,7 +234,8 @@ func (m *Manager) Run(ctx context.Context) error {
 		if p, ok := p.(withconfig); ok {
 			log.Debugf("Preparing phase '%s'", p.Title())
 			if err := p.Prepare(m.Config); err != nil {
-				return err
+				result = err
+				return result
 			}
 		}
 
@@ -250,7 +250,8 @@ func (m *Manager) Run(ctx context.Context) error {
 			log.Debugf("running before for phase '%s'", p.Title())
 			if err := bp.Before(); err != nil {
 				log.Debugf("before failed '%s'", err.Error())
-				return err
+				result = err
+				return result
 			}
 		}
 
@@ -258,8 +259,10 @@ func (m *Manager) Run(ctx context.Context) error {
 		log.Infof(text, title)
 
 		if dp, ok := p.(withDryRun); ok && m.DryRun {
+			ran = append(ran, p)
 			if err := dp.DryRun(); err != nil {
-				return err
+				result = err
+				return result
 			}
 			continue
 		}
@@ -273,7 +276,8 @@ func (m *Manager) Run(ctx context.Context) error {
 			if ap, ok := p.(withAfter); ok {
 				log.Debugf("running after for phase '%s'", p.Title())
 				if herr := ap.After(); herr != nil {
-					return herr
+					result = herr
+					return result
 				}
 			}
 		}

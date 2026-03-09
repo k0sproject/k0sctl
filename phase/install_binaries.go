@@ -26,18 +26,28 @@ func (p *InstallBinaries) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		if h.Reset && h.Metadata.K0sBinaryVersion != nil {
+			logrus.Debugf("%s: skipping binary install (reset with existing binary %s)", h, h.Metadata.K0sBinaryVersion)
 			return false
 		}
 
 		// Upgrade is handled in UpgradeControllers/UpgradeWorkers phases
 		if h.Metadata.NeedsUpgrade {
+			logrus.Debugf("%s: skipping binary install (upgrade handled by upgrade phase)", h)
 			return false
 		}
 
 		if h.UseExistingK0s {
+			logrus.Debugf("%s: skipping binary install (useExistingK0s)", h)
 			return false
 		}
-		return h.Metadata.K0sBinaryTempFile != ""
+
+		if h.Metadata.K0sBinaryTempFile == "" {
+			logrus.Debugf("%s: skipping binary install (no staged binary)", h)
+			return false
+		}
+
+		logrus.Debugf("%s: will install k0s binary from staged file %s", h, h.Metadata.K0sBinaryTempFile)
+		return true
 	})
 	return nil
 }

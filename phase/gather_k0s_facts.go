@@ -104,25 +104,39 @@ func (p *GatherK0sFacts) reportUseExistingHosts() error {
 			continue
 		}
 
-		hostVersion := h.Metadata.K0sRunningVersion
-		if hostVersion == nil {
-			hostVersion = h.Metadata.K0sBinaryVersion
-		}
-
-		if hostVersion == nil {
+		if h.Metadata.K0sBinaryVersion == nil {
 			return fmt.Errorf("%s: useExistingK0s=true but no k0s binary found on host", h)
 		}
 
-		if hostVersion != nil {
-			log.Infof("%s: useExistingK0s=true, reusing existing k0s %s", h, hostVersion)
-		}
-
-		if !p.IsWet() {
-			msg := "reuse existing k0s binary; skip downloads/uploads/upgrades"
-			if hostVersion != nil {
-				msg = fmt.Sprintf("reuse existing k0s %s; skip downloads/uploads/upgrades", hostVersion)
+		if h.Metadata.NeedsUpgrade {
+			// NeedsUpgrade can be caused by a binary vs running version mismatch or by supplemental file changes.
+			binaryDiffersRunning := false
+			if h.Metadata.K0sBinaryVersion != nil && h.Metadata.K0sRunningVersion != nil && !h.Metadata.K0sBinaryVersion.Equal(h.Metadata.K0sRunningVersion) {
+				binaryDiffersRunning = true
 			}
-			p.DryMsg(h, msg)
+
+			if binaryDiffersRunning {
+				// Binary version differs from running version — service will be restarted.
+				log.Infof("%s: useExistingK0s=true, pre-placed k0s binary %s differs from running %s, service will be restarted", h, h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
+				if !p.IsWet() {
+					p.DryMsgf(h, "reuse pre-placed k0s binary %s; skip downloads/uploads; restart service (was %s)", h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
+				}
+			} else {
+				// No detected binary version mismatch; restart is due to supplemental/configuration changes.
+				if h.Metadata.K0sRunningVersion != nil {
+					log.Infof("%s: useExistingK0s=true, k0s %s will be restarted (running %s; supplemental files changed)", h, h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
+				} else {
+					log.Infof("%s: useExistingK0s=true, k0s %s will be restarted (supplemental files changed)", h, h.Metadata.K0sBinaryVersion)
+				}
+				if !p.IsWet() {
+					p.DryMsgf(h, "reuse pre-placed k0s binary %s; skip downloads/uploads; restart service", h.Metadata.K0sBinaryVersion)
+				}
+			}
+		} else {
+			log.Infof("%s: useExistingK0s=true, reusing existing k0s %s", h, h.Metadata.K0sBinaryVersion)
+			if !p.IsWet() {
+				p.DryMsgf(h, "reuse existing k0s %s; skip downloads/uploads/upgrades", h.Metadata.K0sBinaryVersion)
+			}
 		}
 
 		var desired *version.Version
@@ -130,13 +144,13 @@ func (p *GatherK0sFacts) reportUseExistingHosts() error {
 			desired = p.Config.Spec.K0s.Version
 		}
 
-		if desired == nil || desired.Equal(hostVersion) {
+		if desired == nil || desired.Equal(h.Metadata.K0sBinaryVersion) {
 			continue
 		}
 
-		log.Warnf("%s: spec.k0s.version is %s but host will remain on %s because useExistingK0s=true", h, desired, hostVersion)
+		log.Warnf("%s: spec.k0s.version is %s but host has k0s binary %s because useExistingK0s=true", h, desired, h.Metadata.K0sBinaryVersion)
 		if !p.IsWet() {
-			p.DryMsgf(h, "WARNING: host would remain on k0s %s while spec.k0s.version=%s (useExistingK0s=true)", hostVersion, desired)
+			p.DryMsgf(h, "WARNING: host has k0s binary %s while spec.k0s.version=%s (useExistingK0s=true)", h.Metadata.K0sBinaryVersion, desired)
 		}
 	}
 
@@ -352,7 +366,11 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		p.Config.Spec.K0s.Version = status.Version
 	}
 
-	h.Metadata.NeedsUpgrade = p.needsUpgrade(h)
+	needsUpgrade, err := p.needsUpgrade(h)
+	if err != nil {
+		return err
+	}
+	h.Metadata.NeedsUpgrade = needsUpgrade
 
 	var args cluster.Flags
 	if len(status.Args) > 2 {
@@ -421,41 +439,30 @@ func (p *GatherK0sFacts) handleRoleMismatch(h *cluster.Host, detectedRole string
 	return nil
 }
 
-func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) bool {
+func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) (bool, error) {
 	if h.Reset {
-		return false
+		return false, nil
 	}
-	if h.UseExistingK0s {
-		return false
-	}
-
-	// If supplimental files or a k0s binary have been specified explicitly,
-	// always upgrade.  This covers the scenario where a user moves from a
-	// default-install cluster to one fed by OCI image bundles (ie. airgap)
 	for _, f := range h.Files {
 		if f.IsURL() {
 			log.Debugf("%s: marked for upgrade because there are URL source file uploads for the host", h)
-			return true
+			return true, nil
 		}
-
 		for _, s := range f.Sources {
 			dest := f.DestinationFile
 			if dest == "" {
 				dest = path.Join(f.DestinationDir, s.Path)
 			}
 			src := path.Join(f.Base, s.Path)
-
 			if h.FileChanged(src, dest) {
 				log.Debugf("%s: marked for upgrade because file was changed for upload %s", h, src)
-				return true
+				return true, nil
 			}
 		}
 	}
-
-	if h.K0sBinaryPath != "" && h.FileChanged(h.K0sBinaryPath, h.Configurer.K0sBinaryPath()) {
-		log.Debugf("%s: marked for upgrade because of a static k0s binary path %s", h, h.K0sBinaryPath)
-		return true
+	provider, err := h.K0sBinaryProvider(p.Config.Spec.K0s.Version)
+	if err != nil {
+		return false, err
 	}
-
-	return p.Config.Spec.K0s.Version.GreaterThan(h.Metadata.K0sRunningVersion)
+	return provider.NeedsUpgrade(), nil
 }
