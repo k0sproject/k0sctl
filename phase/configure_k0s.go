@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	gopath "path"
 	"slices"
+	"strings"
 	"time"
 
 	"al.essio.dev/pkg/shellescape"
@@ -226,6 +227,19 @@ func (p *ConfigureK0s) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, controllers, p.configureK0s)
 }
 
+func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
+	if cfg == nil {
+		return false
+	}
+	if !strings.EqualFold(cfg.DigString("spec", "network", "dualStack", "primaryAddressFamily"), "ipv6") {
+		return false
+	}
+	if enabled, ok := cfg.Dig("spec", "network", "nodeLocalLoadBalancing", "enabled").(bool); ok && enabled {
+		return true
+	}
+	return false
+}
+
 func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
 
@@ -338,7 +352,14 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 	}
 
 	if cfg.DigString("spec", "api", "address") == "" {
+		forceAddress := false
 		if onlyBindAddr, ok := cfg.Dig("spec", "api", "onlyBindToAddress").(bool); ok && onlyBindAddr {
+			forceAddress = true
+		}
+		if !forceAddress && requiresIPv6NodeLocalAPIAddress(cfg) {
+			forceAddress = true
+		}
+		if forceAddress {
 			cfg.DigMapping("spec", "api")["address"] = addr
 		}
 	}
