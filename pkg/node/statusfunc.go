@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -18,16 +17,14 @@ import (
 
 type retryFunc func(context.Context) error
 
-// kubectl get node -o json
+// kubeNodeStatus represents the output of `kubectl get node <name> -o json` for a single Node
 type kubeNodeStatus struct {
-	Items []struct {
-		Status struct {
-			Conditions []struct {
-				Status string `json:"status"`
-				Type   string `json:"type"`
-			} `json:"conditions"`
-		} `json:"status"`
-	} `json:"items"`
+	Status struct {
+		Conditions []struct {
+			Status string `json:"status"`
+			Type   string `json:"type"`
+		} `json:"conditions"`
+	} `json:"status"`
 }
 
 // kubectl get events -o json
@@ -44,7 +41,7 @@ type statusEvents struct {
 // KubeNodeReady returns a function that returns an error unless the node is ready according to "kubectl get node"
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node -l kubernetes.io/hostname=%s -o json", strings.ToLower(h.Metadata.Hostname)), exec.HideOutput(), exec.Sudo(h))
+		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.Metadata.Hostname), exec.HideOutput(), exec.Sudo(h))
 		if err != nil {
 			return fmt.Errorf("failed to get node status: %w", err)
 		}
@@ -52,14 +49,12 @@ func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 		if err := json.Unmarshal([]byte(output), status); err != nil {
 			return fmt.Errorf("failed to decode kubectl get node status output: %w", err)
 		}
-		for _, i := range status.Items {
-			for _, c := range i.Status.Conditions {
-				if c.Type == "Ready" {
-					if c.Status == "True" {
-						return nil
-					}
-					return fmt.Errorf("node %s is not ready", h.Metadata.Hostname)
+		for _, c := range status.Status.Conditions {
+			if c.Type == "Ready" {
+				if c.Status == "True" {
+					return nil
 				}
+				return fmt.Errorf("node %s is not ready", h.Metadata.Hostname)
 			}
 		}
 		return fmt.Errorf("node %s 'Ready' condition not found", h.Metadata.Hostname)
