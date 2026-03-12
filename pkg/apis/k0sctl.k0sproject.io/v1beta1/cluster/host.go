@@ -535,27 +535,27 @@ func (h *Host) K0sDataDir() string {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host, options DrainOption) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
 }
 
 // CordonNode marks the node unschedulable
 func (h *Host) CordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
 }
 
 // UncordonNode marks the node schedulable
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", node.Metadata.Hostname), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
 }
 
 // Taints returns all taints added to the node.
 func (h *Host) Taints(node *Host) ([]string, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, node.Metadata.Hostname), exec.Sudo(h))
+	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
 	}
@@ -564,7 +564,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", node.Metadata.Hostname, quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)), exec.Sudo(h))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -577,7 +577,7 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", node.Metadata.Hostname, quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)), exec.Sudo(h))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
