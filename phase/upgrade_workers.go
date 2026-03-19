@@ -228,7 +228,11 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		if err != nil {
 			return err
 		}
-		if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+		execOpts := []exec.Option{exec.Sudo(h)}
+		if h.IsWindows() {
+			execOpts = append(execOpts, exec.AllowWinStderr())
+		}
+		if err := h.Exec(cmd, execOpts...); err != nil {
 			return fmt.Errorf("failed to reinstall k0s: %w", err)
 		}
 		return nil
