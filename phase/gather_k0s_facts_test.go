@@ -17,7 +17,9 @@ func TestNeedsUpgrade(t *testing.T) {
 			},
 		},
 	}
+	// K0sInstallPath avoids a nil-Configurer dereference in K0sInstallLocation.
 	h := &cluster.Host{
+		K0sInstallPath: "/usr/local/bin/k0s",
 		Metadata: cluster.HostMetadata{
 			K0sRunningVersion: version.MustParse("1.23.3+k0s.1"),
 		},
@@ -25,13 +27,22 @@ func TestNeedsUpgrade(t *testing.T) {
 
 	p := GatherK0sFacts{GenericPhase: GenericPhase{Config: cfg}}
 
-	require.False(t, p.needsUpgrade(h))
+	result, err := p.needsUpgrade(h)
+	require.NoError(t, err)
+	require.False(t, result)
 	h.Metadata.K0sRunningVersion = version.MustParse("1.23.3+k0s.2")
-	require.False(t, p.needsUpgrade(h))
+	result, err = p.needsUpgrade(h)
+	require.NoError(t, err)
+	require.True(t, result)
 	h.Metadata.K0sRunningVersion = version.MustParse("1.23.3+k0s.0")
-	require.True(t, p.needsUpgrade(h))
-	h.UseExistingK0s = true
-	require.False(t, p.needsUpgrade(h))
+	result, err = p.needsUpgrade(h)
+	require.NoError(t, err)
+	require.True(t, result)
+
+	// UseExistingK0s on a fresh host: binary is unknown so NeedsUpgrade returns false.
+	result, err = p.needsUpgrade(&cluster.Host{UseExistingK0s: true})
+	require.NoError(t, err)
+	require.False(t, result)
 }
 
 func TestReportUseExistingHostsDryMessages(t *testing.T) {

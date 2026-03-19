@@ -32,9 +32,6 @@ func (p *UpgradeControllers) Prepare(config *v1beta1.Cluster) error {
 	controllers := p.Config.Spec.Hosts.Controllers()
 	log.Debugf("%d controllers in total", len(controllers))
 	p.hosts = controllers.Filter(func(h *cluster.Host) bool {
-		if h.Metadata.K0sBinaryTempFile == "" {
-			return false
-		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	log.Debugf("UpgradeControllers phase prepared, %d controllers needs upgrade", len(p.hosts))
@@ -76,11 +73,11 @@ func (p *UpgradeControllers) CleanUp() {
 // Run the phase
 func (p *UpgradeControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
-		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
-			return fmt.Errorf("k0s binary tempfile not found on host")
-		}
-
 		log.Infof("%s: starting upgrade", h)
+
+		if h.Metadata.K0sBinaryTempFile != "" && !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+			return fmt.Errorf("%s: k0s binary tempfile not found: %s", h, h.Metadata.K0sBinaryTempFile)
+		}
 
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
 			leader := p.Config.Spec.K0sLeader()
@@ -121,12 +118,17 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			return err
 		}
 
-		log.Debugf("%s: update binary", h)
-		err = p.Wet(h, "replace k0s binary", func() error {
-			return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
-		})
-		if err != nil {
-			return err
+		if h.Metadata.K0sBinaryTempFile != "" {
+			log.Debugf("%s: update binary", h)
+			err = p.Wet(h, "replace k0s binary", func() error {
+				return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
+			})
+			if err != nil {
+				return err
+			}
+			h.Metadata.K0sBinaryTempFile = ""
+		} else {
+			log.Debugf("%s: binary already in-place at %s, skipping binary replacement", h, h.K0sInstallLocation())
 		}
 
 		if len(h.Environment) > 0 {
@@ -139,6 +141,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			}
 		}
 
+		// Reinstall the service even when no binary was staged, to apply any flag or configuration changes.
 		err = p.Wet(h, "reinstall k0s service", func() error {
 			if p.Config.Spec.K0s.DynamicConfig {
 				h.InstallFlags.AddOrReplace("--enable-dynamic-config")

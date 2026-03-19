@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	cfg "github.com/k0sproject/k0sctl/configurer"
@@ -184,6 +185,28 @@ func TestBinaryPath(t *testing.T) {
 	h.Configurer = &mockconfigurer{}
 	h.Configurer.SetPath("K0sBinaryPath", "/foo/bar/k0s")
 	require.Equal(t, "/foo/bar", h.k0sBinaryPathDir())
+}
+
+func TestResolveK0sBinaryPath(t *testing.T) {
+	// Use t.TempDir() to get a real, OS-appropriate absolute path so tests pass on Windows too.
+	baseDir := t.TempDir()
+
+	t.Run("relative path is resolved against baseDir", func(t *testing.T) {
+		h := Host{K0sBinaryPath: filepath.Join("bin", "k0s")}
+		require.NoError(t, h.Resolve(baseDir))
+		require.Equal(t, filepath.Join(baseDir, "bin", "k0s"), h.K0sBinaryPath)
+	})
+	t.Run("absolute path is kept as-is", func(t *testing.T) {
+		absPath := filepath.Join(baseDir, "k0s")
+		h := Host{K0sBinaryPath: absPath}
+		require.NoError(t, h.Resolve(baseDir))
+		require.Equal(t, absPath, h.K0sBinaryPath)
+	})
+	t.Run("empty baseDir leaves path unchanged", func(t *testing.T) {
+		h := Host{K0sBinaryPath: filepath.Join("bin", "k0s")}
+		require.NoError(t, h.Resolve(""))
+		require.Equal(t, filepath.Join("bin", "k0s"), h.K0sBinaryPath)
+	})
 }
 
 func TestExpandTokens(t *testing.T) {

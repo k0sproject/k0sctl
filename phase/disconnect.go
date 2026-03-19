@@ -22,6 +22,7 @@ func (p *Disconnect) DryRun() error {
 		if h.Metadata.K0sBinaryTempFile != "" && h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
 			_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
 		}
+		h.Metadata.K0sBinaryTempFile = ""
 		return nil
 	})
 

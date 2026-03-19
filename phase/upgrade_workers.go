@@ -35,14 +35,11 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 	workers := p.Config.Spec.Hosts.Workers()
 	log.Debugf("%d workers in total", len(workers))
 	p.hosts = workers.Filter(func(h *cluster.Host) bool {
-		if h.Metadata.K0sBinaryTempFile == "" {
-			return false
-		}
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	err := p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
-		if !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
-			return fmt.Errorf("k0s binary tempfile not found on host")
+		if h.Metadata.K0sBinaryTempFile != "" && !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+			return fmt.Errorf("k0s binary tempfile not found: %s", h.Metadata.K0sBinaryTempFile)
 		}
 		return nil
 	})
@@ -203,12 +200,18 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		return err
 	}
 
-	log.Debugf("%s: update binary", h)
-	err = p.Wet(h, "replace k0s binary", func() error {
-		return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
-	})
-	if err != nil {
-		return err
+	if h.Metadata.K0sBinaryTempFile != "" {
+		log.Debugf("%s: update binary", h)
+		err = p.Wet(h, "replace k0s binary", func() error {
+			return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
+		})
+		if err != nil {
+			return err
+		}
+		// Clear the temp file metadata after successful update to avoid stale paths.
+		h.Metadata.K0sBinaryTempFile = ""
+	} else {
+		log.Debugf("%s: binary already in-place at %s, skipping binary replacement", h, h.K0sInstallLocation())
 	}
 
 	if len(h.Environment) > 0 {
@@ -221,6 +224,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		}
 	}
 
+	// Reinstall the service even when no binary was staged, to apply any flag or configuration changes.
 	err = p.Wet(h, "reinstall k0s service", func() error {
 		h.InstallFlags.AddOrReplace("--force")
 
