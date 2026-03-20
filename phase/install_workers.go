@@ -226,8 +226,12 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		execOpts := []exec.Option{exec.Sudo(h)}
+		if h.IsWindows() {
+			execOpts = append(execOpts, exec.AllowWinStderr())
+		}
 		err = p.Wet(h, fmt.Sprintf("install k0s worker with `%s`", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
-			return h.Exec(cmd, exec.Sudo(h))
+			return h.Exec(cmd, execOpts...)
 		})
 		if err != nil {
 			return err
