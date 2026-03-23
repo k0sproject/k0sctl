@@ -28,7 +28,7 @@ FROM docker.io/library/alpine:latest
 
 RUN apk add --no-cache tini openssh ca-certificates
 
-COPY --from=builder /out/k0sctl  /usr/local/bin/k0sctl
+COPY --from=builder /out/k0sctl /usr/local/bin/k0sctl
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
