@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /src
 
@@ -28,7 +28,7 @@ FROM docker.io/library/alpine:latest
 
 RUN apk add --no-cache tini openssh ca-certificates
 
-COPY --from=builder /out/k0sctl /k0sctl
+COPY --from=builder /out/k0sctl /usr/local/bin/k0sctl
 
 ENTRYPOINT ["/sbin/tini", "--"]
 
