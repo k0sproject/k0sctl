@@ -90,8 +90,8 @@ expectNoK0s() {
 }
 
 applyConfig() {
-  local extra_flag=$1
-  ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug "${extra_flag}" | tee "${log}"
+  local extra_flags=("$@")
+    ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug "${extra_flags[@]}" | tee "${log}"
 }
 
 deleteCluster
@@ -100,7 +100,7 @@ createCluster
 K0S_VERSION="${K0S_FROM}"
 
 colorEcho 3 "Installing ${K0S_VERSION} with --dry-run"
-applyConfig "--dry-run"
+applyConfig --dry-run
 expectNoK0s
 checkDryRunLines min 3
 dumpDryRunLines
@@ -111,7 +111,7 @@ expectK0sVersion "${K0S_FROM}"
 checkDryRunLines none
 
 colorEcho 3 "Installing ${K0S_VERSION} with --dry-run again"
-applyConfig "--dry-run"
+applyConfig --dry-run
 expectK0sVersion "${K0S_FROM}"
 dryRunNoChanges
 
@@ -119,17 +119,17 @@ colorEcho 4 "Succesfully installed ${K0S_FROM}, moving on to upgrade to ${K0S_TO
 K0S_VERSION="${K0S_TO}"
 
 colorEcho 3 "Upgrading to ${K0S_VERSION} with --dry-run"
-applyConfig "--dry-run"
+applyConfig --dry-run --force
 expectK0sVersion "${K0S_FROM}"
 checkDryRunLines min 3
 dumpDryRunLines
 
 colorEcho 3 "Upgrading to ${K0S_VERSION}"
-applyConfig
+applyConfig --force
 expectK0sVersion "${K0S_TO}"
 checkDryRunLines none
 
 colorEcho 3 "Upgrading to ${K0S_VERSION} with --dry-run again"
-applyConfig "--dry-run"
+applyConfig --dry-run --force
 expectK0sVersion "${K0S_TO}"
 dryRunNoChanges
