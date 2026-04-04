@@ -56,18 +56,59 @@ go install github.com/k0sproject/k0sctl@latest
 
 ### Package managers
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/k0sctl.svg)](https://repology.org/project/k0sctl/versions)
+
+Note: All packages except for Homebrew and WinGet are community maintained. Any
+issues should be reported to the respective package maintainers.
+
 #### [Homebrew](https://brew.sh/) (macOS, Linux)
 
 ```sh
 brew install k0sproject/tap/k0sctl
 ```
 
-#### [Chocolatey](https://chocolatey.org/) (Windows)
+#### [Nixpkgs](https://search.nixos.org/packages?query=k0sctl) (Linux, macOS)
 
-Note: The [chocolatey package](https://community.chocolatey.org/packages/k0sctl) is community maintained, any issues should be reported to the maintainer of the package.
+```sh
+nix profile install nixpkgs#k0sctl
+```
+
+#### [Alpine](https://pkgs.alpinelinux.org/packages?name=k0sctl) (Linux)
+
+Available in Alpine `community` repositories.
+
+```sh
+apk add k0sctl
+```
+
+#### [openSUSE](https://software.opensuse.org/package/k0sctl) (Linux)
+
+Available as an official package for openSUSE Tumbleweed.
+
+```sh
+zypper install k0sctl
+```
+
+#### [AUR](https://aur.archlinux.org/packages/k0sctl) (Arch Linux)
+
+Install with an AUR helper:
+
+```sh
+yay -S k0sctl-bin
+# or:
+paru -S k0sctl-bin
+```
+
+#### [Chocolatey](https://community.chocolatey.org/packages/k0sctl) (Windows)
 
 ```sh
 choco install k0sctl
+```
+
+#### [WinGet](https://learn.microsoft.com/windows/package-manager/winget/) (Windows)
+
+```pwsh
+winget install k0sproject.k0sctl
 ```
 
 ### Container usage
