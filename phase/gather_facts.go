@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
@@ -67,7 +68,7 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 		if n == "" {
 			return fmt.Errorf("%s: failed to resolve a hostname", h)
 		}
-		h.Metadata.Hostname = n
+		h.Metadata.Hostname = strings.ToLower(n)
 		log.Infof("%s: using %s as hostname", h, n)
 	}
 
