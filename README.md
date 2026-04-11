@@ -886,7 +886,7 @@ The maximum number of concurrent file uploads to perform. Same as the `--concurr
 The following tokens can be used in the `k0sDownloadURL` and `files.[*].src` fields:
 
 - `%%` - literal `%`
-- `%p` - host architecture (arm, arm64, amd64)
+- `%p` - host architecture (arm, arm64, amd64, riscv64)
 - `%v` - k0s version (v1.21.0+k0s.0)
 - `%x` - k0s binary extension (.exe on Windows, empty elsewhere)
 
