@@ -98,6 +98,8 @@ func (l *Linux) Arch(h os.Host) (string, error) {
 		return "arm64", nil
 	case "armv7l", "armv8l", "aarch32", "arm32", "armhfp", "arm-32":
 		return "arm", nil
+	case "riscv64":
+		return "riscv64", nil
 	default:
 		return arch, nil
 	}

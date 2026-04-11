@@ -761,7 +761,7 @@ func (h *Host) FileChanged(lpath, rpath string) bool {
 // The supported tokens are:
 //
 //   - %% - literal %
-//   - %p - host architecture (arm, arm64, amd64)
+//   - %p - host architecture (arm, arm64, amd64, riscv64)
 //   - %v - k0s version (v1.21.0+k0s.0)
 //   - %x - k0s binary extension (.exe on Windows)
 //
@@ -789,7 +789,7 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 				// Literal %.
 				builder.WriteByte('%')
 			case 'p':
-				// Host architecture (arm, arm64, amd64).
+				// Host architecture (arm, arm64, amd64, riscv64).
 				builder.WriteString(archToken)
 			case 'v':
 				// K0s version (v1.21.0+k0s.0)
