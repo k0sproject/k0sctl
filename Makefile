@@ -53,6 +53,19 @@ docker/build/linux-arm:
 		--load \
 		.
 
+bin/k0sctl-linux-riscv64: $(GO_SRCS)
+	GOOS=linux GOARCH=riscv64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o bin/k0sctl-linux-riscv64 main.go
+
+docker/build/linux-riscv64:
+	docker buildx build \
+		--platform=linux/riscv64 \
+		--build-arg ENVIRONMENT=$(ENVIRONMENT) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg TAG_NAME=$(TAG_NAME) \
+		-t ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-riscv64 \
+		--load \
+		.
+
 bin/k0sctl-win-amd64.exe: $(GO_SRCS)
 	GOOS=windows GOARCH=amd64 go build $(BUILD_FLAGS) -o bin/k0sctl-win-amd64.exe main.go
 
@@ -62,9 +75,9 @@ bin/k0sctl-darwin-amd64: $(GO_SRCS)
 bin/k0sctl-darwin-arm64: $(GO_SRCS)
 	GOOS=darwin GOARCH=arm64 go build $(BUILD_FLAGS) -o bin/k0sctl-darwin-arm64 main.go
 
-bins := k0sctl-linux-amd64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-win-amd64.exe k0sctl-darwin-amd64 k0sctl-darwin-arm64
+bins := k0sctl-linux-amd64 k0sctl-linux-arm64 k0sctl-linux-arm k0sctl-linux-riscv64 k0sctl-win-amd64.exe k0sctl-darwin-amd64 k0sctl-darwin-arm64
 
-dockers := linux-amd64 linux-arm64 linux-arm
+dockers := linux-amd64 linux-arm64 linux-arm linux-riscv64
 
 bin/checksums.txt: $(addprefix bin/,$(bins))
 	sha256sum -b $(addprefix bin/,$(bins)) | sed 's/bin\///' > $@
@@ -85,7 +98,7 @@ clean:
 
 .PHONY: clean-images
 clean-images:
-	docker rmi ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-amd64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm
+	docker rmi ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-amd64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-riscv64
 
 smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl smoke-controller-swap smoke-reinstall smoke-multidoc
 .PHONY: $(smoketests)

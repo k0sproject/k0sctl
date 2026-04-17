@@ -67,7 +67,7 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: .
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
           tags: |
             ghcr.io/k0sproject/k0sctl:latest
             ghcr.io/k0sproject/k0sctl:${{ steps.tag-name.outputs.tag }}
