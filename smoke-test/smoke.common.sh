@@ -29,6 +29,7 @@ downloadKubectl() {
     ARCH="amd64"
     case $(uname -m) in
         arm,arm64) ARCH="arm64" ;;
+        riscv64) ARCH="riscv64" ;;
     esac
     [ -f kubectl ] || (curl -L https://dl.k8s.io/release/v1.28.2/bin/${OS}/${ARCH}/kubectl > ./kubectl && chmod +x ./kubectl)
     ./kubectl version --client
