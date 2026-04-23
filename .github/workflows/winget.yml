@@ -1,0 +1,39 @@
+name: Bump WinGet package
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  bump:
+    name: Bump WinGet package
+    runs-on: windows-latest
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - name: Download winget-create
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Submit package update to Windows Package Manager Community Repository
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY_NAME: ${{ github.repository }}
+          # See https://aka.ms/winget-create-token
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.K0S_BOT_TOKEN }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          $version = $tag.TrimStart('v')
+
+          .\wingetcreate.exe update k0sproject.k0sctl `
+            --version "$version" `
+            --urls "https://github.com/$env:REPOSITORY_NAME/releases/download/$tag/k0sctl-win-amd64.exe" `
+            --submit
