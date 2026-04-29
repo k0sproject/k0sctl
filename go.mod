@@ -6,7 +6,7 @@ toolchain go1.26.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/Azure/go-ntlmssp v0.1.0 // indirect
+	github.com/Azure/go-ntlmssp v0.1.1 // indirect
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
 	github.com/a8m/envsubst v1.4.3
 	github.com/adrg/xdg v0.5.3
