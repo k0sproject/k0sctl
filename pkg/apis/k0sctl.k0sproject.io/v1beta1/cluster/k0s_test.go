@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/creasty/defaults"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -41,4 +42,33 @@ func TestVersionDefaulting(t *testing.T) {
 		require.NoError(t, defaults.Set(k0s))
 		require.NoError(t, k0s.Validate())
 	})
+}
+
+func TestNodeConfigUsesLowercaseMetadataKey(t *testing.T) {
+	k0s := &K0s{
+		Config: dig.Mapping{
+			"apiVersion": "k0s.k0sproject.io/v1beta1",
+			"kind":       "ClusterConfig",
+			"metadata": dig.Mapping{
+				"name": "k0s",
+			},
+			"spec": dig.Mapping{
+				"api": dig.Mapping{
+					"address": "10.0.0.1",
+				},
+				"network": dig.Mapping{
+					"provider": "kuberouter",
+				},
+				"storage": dig.Mapping{
+					"type": "etcd",
+				},
+			},
+		},
+	}
+
+	nodeConfig := k0s.NodeConfig()
+
+	require.Contains(t, nodeConfig, "metadata")
+	require.NotContains(t, nodeConfig, "Metadata")
+	require.Equal(t, "k0s", nodeConfig.DigString("metadata", "name"))
 }
