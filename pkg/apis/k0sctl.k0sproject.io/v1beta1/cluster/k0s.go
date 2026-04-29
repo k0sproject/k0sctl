@@ -133,7 +133,7 @@ func (k *K0s) NodeConfig() dig.Mapping {
 	return dig.Mapping{
 		"apiVersion": k.Config.DigString("apiVersion"),
 		"kind":       k.Config.DigString("kind"),
-		"Metadata": dig.Mapping{
+		"metadata": dig.Mapping{
 			"name": k.Config.DigMapping("metadata")["name"],
 		},
 		"spec": dig.Mapping{
