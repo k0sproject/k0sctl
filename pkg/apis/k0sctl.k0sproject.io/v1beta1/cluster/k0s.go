@@ -104,12 +104,18 @@ func validateVersion(value any) error {
 }
 
 func (k *K0s) Validate() error {
-	return validation.ValidateStruct(k,
+	if err := validation.ValidateStruct(k,
 		validation.Field(&k.Version, validation.By(validateVersion)),
 		validation.Field(&k.DynamicConfig, validation.By(k.validateMinDynamic())),
 		validation.Field(&k.VersionChannel, validation.In("stable", "latest"), validation.When(k.VersionChannel != "")),
 		validation.Field(&k.Airgap),
-	)
+	); err != nil {
+		return err
+	}
+	if k.Airgap != nil && k.Airgap.Enabled && (k.Version == nil || k.Version.IsZero()) {
+		return fmt.Errorf("version is required when airgap is enabled")
+	}
+	return nil
 }
 
 func (k *K0s) validateMinDynamic() func(any) error {

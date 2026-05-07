@@ -1,12 +1,16 @@
 package airgap
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/adrg/xdg"
 	"github.com/k0sproject/k0sctl/configurer"
 	linuxcfg "github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -88,6 +92,49 @@ func TestVerifySHA256(t *testing.T) {
 
 	require.NoError(t, VerifySHA256(file, fmt.Sprintf("%x", sum)))
 	require.ErrorContains(t, VerifySHA256(file, "0000"), "sha256 mismatch")
+}
+
+func TestEnsureCachedReplacesInvalidCachedBundle(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+	oldCacheHome, hadCacheHome := os.LookupEnv("XDG_CACHE_HOME")
+	require.NoError(t, os.Setenv("XDG_CACHE_HOME", t.TempDir()))
+	xdg.Reload()
+	t.Cleanup(func() {
+		if hadCacheHome {
+			require.NoError(t, os.Setenv("XDG_CACHE_HOME", oldCacheHome))
+		} else {
+			require.NoError(t, os.Unsetenv("XDG_CACHE_HOME"))
+		}
+		xdg.Reload()
+	})
+
+	content := []byte("good bundle")
+	sum := sha256.Sum256(content)
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		_, err := w.Write(content)
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	artifact := Artifact{
+		Name:   "bundle",
+		URL:    server.URL + "/bundle",
+		OS:     "linux",
+		Arch:   "amd64",
+		SHA256: fmt.Sprintf("%x", sum),
+	}
+	cachePath, err := CacheFilePath(k0sVersion, artifact.OS, artifact.Arch, artifact.Name)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Dir(cachePath), 0o755))
+	require.NoError(t, os.WriteFile(cachePath, []byte("bad bundle"), 0o644))
+
+	got, err := EnsureCached(context.Background(), k0sVersion, artifact)
+	require.NoError(t, err)
+	require.Equal(t, cachePath, got)
+	require.Equal(t, 1, requests)
+	require.NoError(t, VerifySHA256(cachePath, artifact.SHA256))
 }
 
 func TestLocalPath(t *testing.T) {

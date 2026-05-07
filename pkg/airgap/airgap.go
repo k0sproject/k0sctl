@@ -229,10 +229,16 @@ func EnsureCached(ctx context.Context, k0sVersion *version.Version, artifact Art
 	if _, err := os.Stat(dest); err == nil {
 		if artifact.SHA256 != "" {
 			if err := VerifySHA256(dest, artifact.SHA256); err != nil {
-				return "", fmt.Errorf("verify cached airgap bundle: %w", err)
+				log.Warnf("cached airgap bundle %s failed checksum verification, removing it: %v", dest, err)
+				if removeErr := os.Remove(dest); removeErr != nil {
+					return "", fmt.Errorf("remove invalid cached airgap bundle %s after checksum failure: %w", dest, removeErr)
+				}
+			} else {
+				return dest, nil
 			}
+		} else {
+			return dest, nil
 		}
-		return dest, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("stat airgap cache path %s: %w", dest, err)
 	}

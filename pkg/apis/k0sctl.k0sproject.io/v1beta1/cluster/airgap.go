@@ -52,7 +52,7 @@ func (a *Airgap) Validate() error {
 		validation.Field(&a.Mode, validation.Required, validation.In(AirgapModeUpload, AirgapModeRemoteDownload)),
 		validation.Field(&a.Path, validation.Required.When(a.Source == AirgapSourceLocal)),
 		validation.Field(&a.URL, validation.Required.When(a.Source == AirgapSourceURL)),
-		validation.Field(&a.SHA256, validation.By(validateSHA256)),
+		validation.Field(&a.SHA256, validation.By(validateSHA256), validation.By(validateSHA256Source(a.Source))),
 	); err != nil {
 		return err
 	}
@@ -77,6 +77,19 @@ func validateSHA256(value any) error {
 		return fmt.Errorf("must be 64 hex characters")
 	}
 	return nil
+}
+
+func validateSHA256Source(source string) validation.RuleFunc {
+	return func(value any) error {
+		checksum, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("not a string")
+		}
+		if source == AirgapSourceAuto && checksum != "" {
+			return fmt.Errorf("must be empty when source is %q", AirgapSourceAuto)
+		}
+		return nil
+	}
 }
 
 // Resolve prepares path-based airgap configuration after unmarshalling.
