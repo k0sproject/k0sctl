@@ -44,6 +44,50 @@ func TestVersionDefaulting(t *testing.T) {
 	})
 }
 
+func TestAirgapDefaults(t *testing.T) {
+	k0s := &K0s{Airgap: &Airgap{Enabled: true}}
+
+	require.NoError(t, defaults.Set(k0s))
+	require.NoError(t, k0s.Validate())
+	require.Equal(t, AirgapSourceAuto, k0s.Airgap.Source)
+	require.Equal(t, AirgapModeUpload, k0s.Airgap.Mode)
+}
+
+func TestAirgapValidateSetsDefaults(t *testing.T) {
+	airgap := &Airgap{Enabled: true}
+
+	require.NoError(t, airgap.Validate())
+	require.Equal(t, AirgapSourceAuto, airgap.Source)
+	require.Equal(t, AirgapModeUpload, airgap.Mode)
+}
+
+func TestAirgapValidation(t *testing.T) {
+	t.Run("local requires path", func(t *testing.T) {
+		k0s := &K0s{Airgap: &Airgap{Enabled: true, Source: AirgapSourceLocal}}
+		require.ErrorContains(t, k0s.Validate(), "Path: cannot be blank")
+	})
+
+	t.Run("url requires url", func(t *testing.T) {
+		k0s := &K0s{Airgap: &Airgap{Enabled: true, Source: AirgapSourceURL}}
+		require.ErrorContains(t, k0s.Validate(), "URL: cannot be blank")
+	})
+
+	t.Run("invalid source", func(t *testing.T) {
+		k0s := &K0s{Airgap: &Airgap{Enabled: true, Source: "other"}}
+		require.ErrorContains(t, k0s.Validate(), "Source: must be a valid value")
+	})
+
+	t.Run("remote download deferred", func(t *testing.T) {
+		k0s := &K0s{Airgap: &Airgap{Enabled: true, Mode: AirgapModeRemoteDownload}}
+		require.ErrorContains(t, k0s.Validate(), `mode "remoteDownload" is not supported yet`)
+	})
+
+	t.Run("invalid sha256", func(t *testing.T) {
+		k0s := &K0s{Airgap: &Airgap{Enabled: true, SHA256: "abc123"}}
+		require.ErrorContains(t, k0s.Validate(), "SHA256: must be 64 hex characters")
+	})
+}
+
 func TestNodeConfigUsesLowercaseMetadataKey(t *testing.T) {
 	k0s := &K0s{
 		Config: dig.Mapping{
