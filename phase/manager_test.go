@@ -1,8 +1,11 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -64,11 +67,11 @@ func TestConfigPhase(t *testing.T) {
 }
 
 type hookedPhase struct {
-    fn            func() error
-    beforeCalled  bool
-    afterCalled   bool
-    cleanupCalled bool
-    runCalled     bool
+	fn            func() error
+	beforeCalled  bool
+	afterCalled   bool
+	cleanupCalled bool
+	runCalled     bool
 }
 
 func (p *hookedPhase) Title() string {
@@ -76,13 +79,13 @@ func (p *hookedPhase) Title() string {
 }
 
 func (p *hookedPhase) Before() error {
-    p.beforeCalled = true
-    return nil
+	p.beforeCalled = true
+	return nil
 }
 
 func (p *hookedPhase) After() error {
-    p.afterCalled = true
-    return nil
+	p.afterCalled = true
+	return nil
 }
 
 func (p *hookedPhase) CleanUp() {
@@ -98,12 +101,39 @@ func (p *hookedPhase) Run(_ context.Context) error {
 }
 
 func TestHookedPhase(t *testing.T) {
-    m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
-    p := &hookedPhase{}
-    m.AddPhase(p)
-    require.Error(t, m.Run(context.Background()))
-    require.True(t, p.beforeCalled, "before hook was not called")
-    require.False(t, p.afterCalled, "after hook should not run on failure")
+	m := Manager{Config: &v1beta1.Cluster{Spec: &cluster.Spec{}}}
+	p := &hookedPhase{}
+	m.AddPhase(p)
+	require.Error(t, m.Run(context.Background()))
+	require.True(t, p.beforeCalled, "before hook was not called")
+	require.False(t, p.afterCalled, "after hook should not run on failure")
+}
+
+func TestDryRunOutputUsesManagerWriter(t *testing.T) {
+	oldStdout := os.Stdout
+	readPipe, writePipe, err := os.Pipe()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+	})
+	os.Stdout = writePipe
+
+	var writer bytes.Buffer
+	m := Manager{
+		Config: &v1beta1.Cluster{Spec: &cluster.Spec{}},
+		DryRun: true,
+		Writer: &writer,
+	}
+	m.DryMsg(nil, "custom dry-run message")
+
+	require.NoError(t, m.Run(context.Background()))
+	require.NoError(t, writePipe.Close())
+	stdout, err := io.ReadAll(readPipe)
+	require.NoError(t, err)
+	require.NoError(t, readPipe.Close())
+
+	require.Contains(t, writer.String(), "custom dry-run message")
+	require.NotContains(t, string(stdout), "custom dry-run message")
 }
 
 func TestContextCancel(t *testing.T) {
