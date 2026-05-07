@@ -104,8 +104,8 @@ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnr
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/k0sproject/dig v0.4.0 h1:yBxFUUxNXAMGBg6b7c6ypxdx/o3RmhoI5v5ABOw5tn0=
 github.com/k0sproject/dig v0.4.0/go.mod h1:rlZ7N7ZEcB4Fi96TPXkZ4dqyAiDWOGLapyL9YpZ7Qz4=
-github.com/k0sproject/rig v0.21.4 h1:FnBZNEzE+ND7o1P8bmTGawDIqtc33xuaclGHiP76kug=
-github.com/k0sproject/rig v0.21.4/go.mod h1:bdRDs2dJngbYAEWd6+irYlzUqqBeVXVBcSelpaIvuCw=
+github.com/k0sproject/rig v0.21.6 h1:9RqeA02FwAktHQpfKfftl69a3bjpyEKDqkiUxXtETtc=
+github.com/k0sproject/rig v0.21.6/go.mod h1:bdRDs2dJngbYAEWd6+irYlzUqqBeVXVBcSelpaIvuCw=
 github.com/k0sproject/version v0.8.0 h1:Yh1SFDeBqQ7etrGwffY8bWKdbAUjeBOhiZ6oQuuz4sM=
 github.com/k0sproject/version v0.8.0/go.mod h1:iNV3O8blndsQhxZ8zACfpQhrLDlrTvDlCzx+vgCFtSI=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
