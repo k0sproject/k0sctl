@@ -213,7 +213,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			for host, msgs := range m.dryMessages {
 				fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
 				for _, msg := range msgs {
-					fmt.Println(Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
+					fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
 				}
 			}
 		}
