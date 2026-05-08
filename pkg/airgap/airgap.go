@@ -7,15 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/adrg/xdg"
+	"github.com/k0sproject/k0sctl/internal/download"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -46,16 +45,6 @@ type Resolver interface {
 // GitHubReleaseResolver resolves official k0s release airgap bundles.
 type GitHubReleaseResolver struct{}
 
-var downloadHTTPClient = &http.Client{
-	Timeout: 10 * time.Minute,
-	Transport: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		ResponseHeaderTimeout: 30 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	},
-}
-
 // BundleName returns the official k0s airgap bundle filename.
 func BundleName(k0sVersion *version.Version, arch string) (string, error) {
 	if k0sVersion == nil || k0sVersion.IsZero() {
@@ -65,7 +54,11 @@ func BundleName(k0sVersion *version.Version, arch string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("k0s-airgap-bundle-%s-%s", k0sVersion.String(), platform), nil
+	return bundleNameForPlatform(k0sVersion, platform), nil
+}
+
+func bundleNameForPlatform(k0sVersion *version.Version, platform string) string {
+	return fmt.Sprintf("k0s-airgap-bundle-%s-%s", k0sVersion.String(), platform)
 }
 
 // BundleArch maps host architectures to released k0s airgap bundle architectures.
@@ -87,10 +80,10 @@ func (GitHubReleaseResolver) Resolve(k0sVersion *version.Version, osKind, arch s
 	if err != nil {
 		return Artifact{}, err
 	}
-	name, err := BundleName(k0sVersion, platform)
-	if err != nil {
-		return Artifact{}, err
+	if k0sVersion == nil || k0sVersion.IsZero() {
+		return Artifact{}, errors.New("k0s version is required")
 	}
+	name := bundleNameForPlatform(k0sVersion, platform)
 	return Artifact{
 		Name: name,
 		URL:  fmt.Sprintf("https://github.com/k0sproject/k0s/releases/download/%s/%s", url.QueryEscape(k0sVersion.String()), name),
@@ -114,10 +107,10 @@ func (r URLResolver) Resolve(k0sVersion *version.Version, osKind, arch string) (
 	if err != nil {
 		return Artifact{}, err
 	}
-	name, err := BundleName(k0sVersion, platform)
-	if err != nil {
-		return Artifact{}, err
+	if k0sVersion == nil || k0sVersion.IsZero() {
+		return Artifact{}, errors.New("k0s version is required")
 	}
+	name := bundleNameForPlatform(k0sVersion, platform)
 	expanded := ExpandURLTemplate(r.Template, k0sVersion, osKind, platform)
 	artifactName := artifactNameFromURL(expanded)
 	if artifactName == "" {
@@ -246,67 +239,18 @@ func EnsureCached(ctx context.Context, k0sVersion *version.Version, artifact Art
 		return "", errors.New("artifact URL is required")
 	}
 	log.Infof("downloading k0s airgap bundle %s for %s-%s", artifact.Name, artifact.OS, artifact.Arch)
-	if err := downloadToFile(ctx, artifact.URL, dest); err != nil {
+	if err := download.ToFile(ctx, artifact.URL, dest); err != nil {
 		return "", fmt.Errorf("download airgap bundle: %w", err)
 	}
 	if artifact.SHA256 != "" {
 		if err := VerifySHA256(dest, artifact.SHA256); err != nil {
+			if removeErr := os.Remove(dest); removeErr != nil && !os.IsNotExist(removeErr) {
+				return "", fmt.Errorf("remove invalid downloaded airgap bundle %s after checksum failure: %w", dest, removeErr)
+			}
 			return "", fmt.Errorf("verify downloaded airgap bundle: %w", err)
 		}
 	}
 	return dest, nil
-}
-
-func downloadToFile(ctx context.Context, url, dest string) (retErr error) {
-	dir := filepath.Dir(dest)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	tmpFile, err := os.CreateTemp(dir, filepath.Base(dest)+".tmp-")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmpFile.Name()
-	defer func() {
-		if tmpFile != nil {
-			if err := tmpFile.Close(); err != nil && retErr == nil {
-				retErr = err
-			}
-		}
-		if retErr != nil {
-			if err := os.Remove(tmpPath); err != nil && !os.IsNotExist(err) {
-				log.Warnf("failed to remove partial airgap download at %s: %v", tmpPath, err)
-			}
-		}
-	}()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := downloadHTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil && retErr == nil {
-			retErr = err
-		}
-	}()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected http status %s from %s", resp.Status, url)
-	}
-	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
-		return err
-	}
-	if err := tmpFile.Sync(); err != nil {
-		return err
-	}
-	if err := tmpFile.Close(); err != nil {
-		tmpFile = nil
-		return err
-	}
-	tmpFile = nil
-	return os.Rename(tmpPath, dest)
 }
 
 // VerifySHA256 checks a file against an expected SHA-256 hex digest.

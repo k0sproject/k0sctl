@@ -94,7 +94,7 @@ func TestAirgapValidation(t *testing.T) {
 
 	t.Run("airgap requires version", func(t *testing.T) {
 		k0s := &K0s{Airgap: &Airgap{Enabled: true}}
-		require.ErrorContains(t, k0s.Validate(), "version is required when airgap is enabled")
+		require.ErrorContains(t, k0s.Validate(), "spec.k0s.version is required when spec.k0s.airgap.enabled is true")
 	})
 }
 

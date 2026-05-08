@@ -137,6 +137,41 @@ func TestEnsureCachedReplacesInvalidCachedBundle(t *testing.T) {
 	require.NoError(t, VerifySHA256(cachePath, artifact.SHA256))
 }
 
+func TestEnsureCachedRemovesInvalidDownloadedBundle(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+	oldCacheHome, hadCacheHome := os.LookupEnv("XDG_CACHE_HOME")
+	require.NoError(t, os.Setenv("XDG_CACHE_HOME", t.TempDir()))
+	xdg.Reload()
+	t.Cleanup(func() {
+		if hadCacheHome {
+			require.NoError(t, os.Setenv("XDG_CACHE_HOME", oldCacheHome))
+		} else {
+			require.NoError(t, os.Unsetenv("XDG_CACHE_HOME"))
+		}
+		xdg.Reload()
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("bad bundle"))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	artifact := Artifact{
+		Name:   "bundle",
+		URL:    server.URL + "/bundle",
+		OS:     "linux",
+		Arch:   "amd64",
+		SHA256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+	}
+	cachePath, err := CacheFilePath(k0sVersion, artifact.OS, artifact.Arch, artifact.Name)
+	require.NoError(t, err)
+
+	_, err = EnsureCached(context.Background(), k0sVersion, artifact)
+	require.ErrorContains(t, err, "verify downloaded airgap bundle")
+	require.NoFileExists(t, cachePath)
+}
+
 func TestLocalPath(t *testing.T) {
 	dir := t.TempDir()
 	bundle := filepath.Join(dir, "bundle")
