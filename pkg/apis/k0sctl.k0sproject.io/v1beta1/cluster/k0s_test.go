@@ -92,10 +92,6 @@ func TestAirgapValidation(t *testing.T) {
 		require.ErrorContains(t, k0s.Validate(), `SHA256: must be empty when source is "auto"`)
 	})
 
-	t.Run("airgap requires version", func(t *testing.T) {
-		k0s := &K0s{Airgap: &Airgap{Enabled: true}}
-		require.ErrorContains(t, k0s.Validate(), "spec.k0s.version is required when spec.k0s.airgap.enabled is true")
-	})
 }
 
 func TestNodeConfigUsesLowercaseMetadataKey(t *testing.T) {

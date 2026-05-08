@@ -112,9 +112,6 @@ func (k *K0s) Validate() error {
 	); err != nil {
 		return err
 	}
-	if k.Airgap != nil && k.Airgap.Enabled && (k.Version == nil || k.Version.IsZero()) {
-		return fmt.Errorf("spec.k0s.version is required when spec.k0s.airgap.enabled is true")
-	}
 	return nil
 }
 
