@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/airgap"
 	v1beta1 "github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -20,6 +21,14 @@ type AirgapBundles struct {
 
 	plans       []airgap.Plan
 	planIndexes map[*cluster.Host]int
+
+	checksumMu        sync.Mutex
+	verifiedChecksums map[string]checksumVerification
+}
+
+type checksumVerification struct {
+	size            int64
+	modTimeUnixNano int64
 }
 
 // Title for the phase.
@@ -230,9 +239,30 @@ func (p *AirgapBundles) verifyChecksum(localPath, expected string) error {
 	if expected == "" {
 		return nil
 	}
+	stat, err := os.Stat(localPath)
+	if err != nil {
+		return fmt.Errorf("stat local airgap bundle %s: %w", localPath, err)
+	}
+
+	key := localPath + "\x00" + expected
+	current := checksumVerification{
+		size:            stat.Size(),
+		modTimeUnixNano: stat.ModTime().UnixNano(),
+	}
+
+	p.checksumMu.Lock()
+	defer p.checksumMu.Unlock()
+
+	if p.verifiedChecksums == nil {
+		p.verifiedChecksums = make(map[string]checksumVerification)
+	}
+	if verified, ok := p.verifiedChecksums[key]; ok && verified == current {
+		return nil
+	}
 	if err := airgap.VerifySHA256(localPath, expected); err != nil {
 		return fmt.Errorf("verify airgap bundle checksum: %w", err)
 	}
+	p.verifiedChecksums[key] = current
 	return nil
 }
 

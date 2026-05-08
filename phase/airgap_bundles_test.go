@@ -3,6 +3,7 @@ package phase
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -91,6 +92,18 @@ func TestAirgapBundlesLocalSourceFileRejectsMixedBundles(t *testing.T) {
 
 	phase := &AirgapBundles{}
 	require.ErrorContains(t, phase.Prepare(cfg), "spec.k0s.airgap.path points to a single file but planned hosts require multiple airgap bundles")
+}
+
+func TestAirgapBundlesVerifyChecksumMemoizesUnchangedBundle(t *testing.T) {
+	bundle := filepath.Join(t.TempDir(), "bundle")
+	content := []byte("bundle")
+	require.NoError(t, os.WriteFile(bundle, content, 0o644))
+	sum := sha256.Sum256(content)
+
+	phase := &AirgapBundles{}
+	require.NoError(t, phase.verifyChecksum(bundle, fmt.Sprintf("%x", sum)))
+	require.NoError(t, phase.verifyChecksum(bundle, fmt.Sprintf("%x", sum)))
+	require.Len(t, phase.verifiedChecksums, 1)
 }
 
 func TestAirgapBundlesPopulateCachesDeduplicatesDownloads(t *testing.T) {

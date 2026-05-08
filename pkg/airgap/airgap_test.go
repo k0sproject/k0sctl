@@ -44,14 +44,14 @@ func TestURLResolverResolveExpandsTokens(t *testing.T) {
 	k0sVersion := version.MustParse("v1.34.1+k0s.0")
 	resolver := URLResolver{
 		Template: "https://mirror.example.invalid/%o/%p/k0s-%v.tar?token=redacted",
-		SHA256:   "abc123",
+		SHA256:   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 	}
 
 	artifact, err := resolver.Resolve(k0sVersion, "linux", "arm64")
 	require.NoError(t, err)
 	require.Equal(t, "k0s-v1.34.1+k0s.0.tar", artifact.Name)
 	require.Equal(t, "https://mirror.example.invalid/linux/arm64/k0s-v1.34.1%2Bk0s.0.tar?token=redacted", artifact.URL)
-	require.Equal(t, "abc123", artifact.SHA256)
+	require.Equal(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", artifact.SHA256)
 }
 
 func TestURLResolverRejectsUnsafeArtifactName(t *testing.T) {
