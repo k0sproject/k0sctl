@@ -69,6 +69,20 @@ func TestURLResolverRejectsUnsafeArtifactName(t *testing.T) {
 	}
 }
 
+func TestURLResolverRedactsURLInArtifactNameErrors(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+
+	_, err := (URLResolver{Template: "https://user:pass@mirror.example.invalid/%zz?token=secret"}).Resolve(k0sVersion, "linux", "amd64")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "token=secret")
+	require.NotContains(t, err.Error(), "user:pass")
+
+	_, err = (URLResolver{Template: "https://user:pass@mirror.example.invalid/bad:name?token=secret"}).Resolve(k0sVersion, "linux", "amd64")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "token=secret")
+	require.NotContains(t, err.Error(), "user:pass")
+}
+
 func TestPlanHostsSelectsWorkerCapableLinuxHosts(t *testing.T) {
 	k0sVersion := version.MustParse("v1.34.1+k0s.0")
 	hosts := cluster.Hosts{

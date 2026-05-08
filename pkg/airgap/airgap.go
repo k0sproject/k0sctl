@@ -131,7 +131,7 @@ func (r URLResolver) Resolve(k0sVersion *version.Version, osKind, arch string) (
 func artifactNameFromURL(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("parse artifact URL %q: %w", rawURL, err)
+		return "", fmt.Errorf("parse artifact URL %q: %w", download.RedactedURL(rawURL), urlParseCause(err))
 	}
 	if parsed.Path == "" {
 		return "", nil
@@ -141,9 +141,17 @@ func artifactNameFromURL(rawURL string) (string, error) {
 		return "", nil
 	}
 	if err := validateArtifactName(artifactName); err != nil {
-		return "", fmt.Errorf("artifact name from URL %q: %w", rawURL, err)
+		return "", fmt.Errorf("artifact name from URL %q: %w", download.RedactedURL(rawURL), err)
 	}
 	return artifactName, nil
+}
+
+func urlParseCause(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Err
+	}
+	return err
 }
 
 func validateArtifactName(name string) error {

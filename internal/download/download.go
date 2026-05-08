@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,8 +28,8 @@ var httpClient = &http.Client{
 	},
 }
 
-// ToFile downloads url to dest using a temporary file in the destination directory.
-func ToFile(ctx context.Context, url, dest string) (retErr error) {
+// ToFile downloads rawURL to dest using a temporary file in the destination directory.
+func ToFile(ctx context.Context, rawURL, dest string) (retErr error) {
 	dir := filepath.Dir(dest)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -50,7 +51,7 @@ func ToFile(ctx context.Context, url, dest string) (retErr error) {
 			}
 		}
 	}()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return err
 	}
@@ -64,7 +65,7 @@ func ToFile(ctx context.Context, url, dest string) (retErr error) {
 		}
 	}()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected http status %s from %s", resp.Status, url)
+		return fmt.Errorf("unexpected http status %s from %s", resp.Status, RedactedURL(rawURL))
 	}
 	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
 		return err
@@ -85,4 +86,17 @@ func ToFile(ctx context.Context, url, dest string) (retErr error) {
 		return err
 	}
 	return nil
+}
+
+// RedactedURL returns a URL string suitable for error messages.
+func RedactedURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "<redacted>"
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	parsed.Fragment = ""
+	return parsed.String()
 }
