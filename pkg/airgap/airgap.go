@@ -112,7 +112,10 @@ func (r URLResolver) Resolve(k0sVersion *version.Version, osKind, arch string) (
 	}
 	name := bundleNameForPlatform(k0sVersion, platform)
 	expanded := ExpandURLTemplate(r.Template, k0sVersion, osKind, platform)
-	artifactName := artifactNameFromURL(expanded)
+	artifactName, err := artifactNameFromURL(expanded)
+	if err != nil {
+		return Artifact{}, err
+	}
 	if artifactName == "" {
 		artifactName = name
 	}
@@ -125,16 +128,29 @@ func (r URLResolver) Resolve(k0sVersion *version.Version, osKind, arch string) (
 	}, nil
 }
 
-func artifactNameFromURL(rawURL string) string {
+func artifactNameFromURL(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Path == "" {
-		return ""
+		return "", nil
 	}
 	artifactName := path.Base(parsed.Path)
 	if artifactName == "." || artifactName == "/" {
-		return ""
+		return "", nil
 	}
-	return artifactName
+	if err := validateArtifactName(artifactName); err != nil {
+		return "", fmt.Errorf("artifact name from URL %q: %w", rawURL, err)
+	}
+	return artifactName, nil
+}
+
+func validateArtifactName(name string) error {
+	if name == "" {
+		return errors.New("artifact name is required")
+	}
+	if name == ".." || strings.Contains(name, "/") || strings.Contains(name, `\`) {
+		return fmt.Errorf("invalid artifact name %q", name)
+	}
+	return nil
 }
 
 // ExpandURLTemplate expands k0s-style URL tokens.
@@ -189,6 +205,9 @@ func PlanHosts(hosts cluster.Hosts, k0sVersion *version.Version, resolver Resolv
 		if err != nil {
 			return nil, fmt.Errorf("%s: resolve airgap bundle: %w", h, err)
 		}
+		if err := validateArtifactName(artifact.Name); err != nil {
+			return nil, fmt.Errorf("%s: resolve airgap bundle: %w", h, err)
+		}
 		plans = append(plans, Plan{
 			Host:        h,
 			Artifact:    artifact,
@@ -203,8 +222,8 @@ func CacheFilePath(k0sVersion *version.Version, osKind, arch, artifactName strin
 	if k0sVersion == nil || k0sVersion.IsZero() {
 		return "", errors.New("k0s version is required")
 	}
-	if artifactName == "" {
-		return "", errors.New("artifact name is required")
+	if err := validateArtifactName(artifactName); err != nil {
+		return "", err
 	}
 	fn := path.Join("k0sctl", "airgap", strings.TrimPrefix(k0sVersion.String(), "v"), osKind, arch, artifactName)
 	if cached, err := xdg.SearchCacheFile(fn); err == nil {

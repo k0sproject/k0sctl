@@ -54,6 +54,18 @@ func TestURLResolverResolveExpandsTokens(t *testing.T) {
 	require.Equal(t, "abc123", artifact.SHA256)
 }
 
+func TestURLResolverRejectsUnsafeArtifactName(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+
+	for _, template := range []string{
+		"https://mirror.example.invalid/%o/%p/..",
+		`https://mirror.example.invalid/%o/%p/bad\name`,
+	} {
+		_, err := (URLResolver{Template: template}).Resolve(k0sVersion, "linux", "amd64")
+		require.ErrorContains(t, err, "invalid artifact name")
+	}
+}
+
 func TestPlanHostsSelectsWorkerCapableLinuxHosts(t *testing.T) {
 	k0sVersion := version.MustParse("v1.34.1+k0s.0")
 	hosts := cluster.Hosts{

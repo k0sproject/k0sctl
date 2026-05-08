@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/adrg/xdg"
@@ -66,13 +67,30 @@ func TestAirgapBundlesLocalSourceUsesConfiguredSHA256(t *testing.T) {
 	k0sVersion := version.MustParse("v1.34.1+k0s.0")
 	cfg := airgapConfig(k0sVersion, cluster.Hosts{airgapHost("worker", "amd64")})
 	cfg.Spec.K0s.Airgap.Source = cluster.AirgapSourceLocal
-	cfg.Spec.K0s.Airgap.Path = t.TempDir()
+	bundle := filepath.Join(t.TempDir(), "bundle")
+	require.NoError(t, os.WriteFile(bundle, []byte("bundle"), 0o644))
+	cfg.Spec.K0s.Airgap.Path = bundle
 	cfg.Spec.K0s.Airgap.SHA256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 	phase := &AirgapBundles{}
 	require.NoError(t, phase.Prepare(cfg))
 	require.Len(t, phase.plans, 1)
 	require.Equal(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", phase.plans[0].Artifact.SHA256)
+}
+
+func TestAirgapBundlesLocalSourceFileRejectsMixedBundles(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+	bundle := filepath.Join(t.TempDir(), "bundle")
+	require.NoError(t, os.WriteFile(bundle, []byte("bundle"), 0o644))
+	cfg := airgapConfig(k0sVersion, cluster.Hosts{
+		airgapHost("worker", "amd64"),
+		airgapHost("worker", "arm64"),
+	})
+	cfg.Spec.K0s.Airgap.Source = cluster.AirgapSourceLocal
+	cfg.Spec.K0s.Airgap.Path = bundle
+
+	phase := &AirgapBundles{}
+	require.ErrorContains(t, phase.Prepare(cfg), "spec.k0s.airgap.path points to a single file but planned hosts require multiple airgap bundles")
 }
 
 func TestAirgapBundlesPopulateCachesDeduplicatesDownloads(t *testing.T) {

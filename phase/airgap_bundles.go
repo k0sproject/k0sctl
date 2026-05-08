@@ -48,10 +48,34 @@ func (p *AirgapBundles) Prepare(config *v1beta1.Cluster) error {
 		for i := range plans {
 			plans[i].Artifact.SHA256 = config.Spec.K0s.Airgap.SHA256
 		}
+		if err := p.validateLocalSourcePath(config.Spec.K0s.Airgap.Path, plans); err != nil {
+			return err
+		}
 	}
 	p.plans = plans
 	p.indexPlans()
 	p.warnPullPolicy()
+	return nil
+}
+
+func (p *AirgapBundles) validateLocalSourcePath(sourcePath string, plans []airgap.Plan) error {
+	if len(plans) == 0 {
+		return nil
+	}
+	stat, err := os.Stat(sourcePath)
+	if err != nil {
+		return fmt.Errorf("stat local airgap source %s: %w", sourcePath, err)
+	}
+	if stat.IsDir() {
+		return nil
+	}
+	artifactNames := make(map[string]struct{}, len(plans))
+	for _, plan := range plans {
+		artifactNames[plan.Artifact.Name] = struct{}{}
+	}
+	if len(artifactNames) > 1 {
+		return fmt.Errorf("spec.k0s.airgap.path points to a single file but planned hosts require multiple airgap bundles; use a directory containing per-architecture bundles")
+	}
 	return nil
 }
 
