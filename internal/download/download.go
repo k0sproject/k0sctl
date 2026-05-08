@@ -2,6 +2,7 @@ package download
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -53,11 +55,11 @@ func ToFile(ctx context.Context, rawURL, dest string) (retErr error) {
 	}()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("create download request for %s: %w", RedactedURL(rawURL), redactedURLError(rawURL, err))
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("download %s: %w", RedactedURL(rawURL), redactedURLError(rawURL, err))
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil && retErr == nil {
@@ -99,4 +101,12 @@ func RedactedURL(rawURL string) string {
 	parsed.ForceQuery = false
 	parsed.Fragment = ""
 	return parsed.String()
+}
+
+func redactedURLError(rawURL string, err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		return urlErr.Err
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), rawURL, RedactedURL(rawURL)))
 }

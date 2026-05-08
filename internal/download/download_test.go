@@ -45,6 +45,28 @@ func TestToFileRedactsURLOnHTTPStatusError(t *testing.T) {
 	require.Empty(t, tempFiles(t, dest))
 }
 
+func TestToFileRedactsURLOnRequestError(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "bundle")
+	err := ToFile(context.Background(), "http://user:pass@example.invalid/\n?token=secret", dest)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "create download request for <redacted>")
+	require.NotContains(t, err.Error(), "token=secret")
+	require.NotContains(t, err.Error(), "user:pass")
+	require.NoFileExists(t, dest)
+	require.Empty(t, tempFiles(t, dest))
+}
+
+func TestToFileRedactsURLOnTransportError(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "bundle")
+	err := ToFile(context.Background(), "http://user:pass@127.0.0.1:1/bundle?token=secret", dest)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "download http://127.0.0.1:1/bundle")
+	require.NotContains(t, err.Error(), "token=secret")
+	require.NotContains(t, err.Error(), "user:pass")
+	require.NoFileExists(t, dest)
+	require.Empty(t, tempFiles(t, dest))
+}
+
 func TestToFileRemovesPartialDownloadOnCopyError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Length", "10")
