@@ -206,7 +206,7 @@ func CacheFilePath(k0sVersion *version.Version, osKind, arch, artifactName strin
 	if artifactName == "" {
 		return "", errors.New("artifact name is required")
 	}
-	fn := filepath.Join("k0sctl", "airgap", strings.TrimPrefix(k0sVersion.String(), "v"), osKind, arch, artifactName)
+	fn := path.Join("k0sctl", "airgap", strings.TrimPrefix(k0sVersion.String(), "v"), osKind, arch, artifactName)
 	if cached, err := xdg.SearchCacheFile(fn); err == nil {
 		return cached, nil
 	}

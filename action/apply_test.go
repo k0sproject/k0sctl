@@ -15,8 +15,19 @@ func TestApplyIncludesAirgapBeforeWorkerPhases(t *testing.T) {
 	installWorkers := (&phase.InstallWorkers{}).Title()
 	upgradeWorkers := (&phase.UpgradeWorkers{}).Title()
 
-	require.Less(t, apply.Phases.Index(airgapPhase), apply.Phases.Index(initializeK0s))
-	require.Less(t, apply.Phases.Index(airgapPhase), apply.Phases.Index(installControllers))
-	require.Less(t, apply.Phases.Index(airgapPhase), apply.Phases.Index(installWorkers))
-	require.Less(t, apply.Phases.Index(airgapPhase), apply.Phases.Index(upgradeWorkers))
+	airgapIndex := apply.Phases.Index(airgapPhase)
+	initializeIndex := apply.Phases.Index(initializeK0s)
+	installControllersIndex := apply.Phases.Index(installControllers)
+	installWorkersIndex := apply.Phases.Index(installWorkers)
+	upgradeWorkersIndex := apply.Phases.Index(upgradeWorkers)
+
+	require.NotEqual(t, -1, airgapIndex)
+	require.NotEqual(t, -1, initializeIndex)
+	require.NotEqual(t, -1, installControllersIndex)
+	require.NotEqual(t, -1, installWorkersIndex)
+	require.NotEqual(t, -1, upgradeWorkersIndex)
+	require.Less(t, airgapIndex, initializeIndex)
+	require.Less(t, airgapIndex, installControllersIndex)
+	require.Less(t, airgapIndex, installWorkersIndex)
+	require.Less(t, airgapIndex, upgradeWorkersIndex)
 }
