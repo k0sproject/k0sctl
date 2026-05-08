@@ -94,6 +94,36 @@ func TestAirgapBundlesLocalSourceFileRejectsMixedBundles(t *testing.T) {
 	require.ErrorContains(t, phase.Prepare(cfg), "spec.k0s.airgap.path points to a single file but planned hosts require multiple airgap bundles")
 }
 
+func TestAirgapBundlesLocalSourceDirectoryRejectsMissingBundles(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+	dir := t.TempDir()
+	cfg := airgapConfig(k0sVersion, cluster.Hosts{
+		airgapHost("worker", "amd64"),
+		airgapHost("worker", "arm64"),
+	})
+	cfg.Spec.K0s.Airgap.Source = cluster.AirgapSourceLocal
+	cfg.Spec.K0s.Airgap.Path = dir
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "k0s-airgap-bundle-v1.34.1+k0s.0-amd64"), []byte("bundle"), 0o644))
+
+	phase := &AirgapBundles{}
+	require.ErrorContains(t, phase.Prepare(cfg), "spec.k0s.airgap.path is missing local airgap bundle(s): k0s-airgap-bundle-v1.34.1+k0s.0-arm64")
+}
+
+func TestAirgapBundlesLocalSourceDirectoryRejectsSHA256ForMixedBundles(t *testing.T) {
+	k0sVersion := version.MustParse("v1.34.1+k0s.0")
+	dir := t.TempDir()
+	cfg := airgapConfig(k0sVersion, cluster.Hosts{
+		airgapHost("worker", "amd64"),
+		airgapHost("worker", "arm64"),
+	})
+	cfg.Spec.K0s.Airgap.Source = cluster.AirgapSourceLocal
+	cfg.Spec.K0s.Airgap.Path = dir
+	cfg.Spec.K0s.Airgap.SHA256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	phase := &AirgapBundles{}
+	require.ErrorContains(t, phase.Prepare(cfg), "spec.k0s.airgap.sha256 cannot be used with a local directory source that requires multiple airgap bundles")
+}
+
 func TestAirgapBundlesVerifyChecksumMemoizesUnchangedBundle(t *testing.T) {
 	bundle := filepath.Join(t.TempDir(), "bundle")
 	content := []byte("bundle")

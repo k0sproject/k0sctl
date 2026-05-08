@@ -6,6 +6,9 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/airgap"
@@ -57,7 +60,7 @@ func (p *AirgapBundles) Prepare(config *v1beta1.Cluster) error {
 		for i := range plans {
 			plans[i].Artifact.SHA256 = config.Spec.K0s.Airgap.SHA256
 		}
-		if err := p.validateLocalSourcePath(config.Spec.K0s.Airgap.Path, plans); err != nil {
+		if err := p.validateLocalSourcePath(config.Spec.K0s.Airgap.Path, config.Spec.K0s.Airgap.SHA256, plans); err != nil {
 			return err
 		}
 	}
@@ -67,7 +70,7 @@ func (p *AirgapBundles) Prepare(config *v1beta1.Cluster) error {
 	return nil
 }
 
-func (p *AirgapBundles) validateLocalSourcePath(sourcePath string, plans []airgap.Plan) error {
+func (p *AirgapBundles) validateLocalSourcePath(sourcePath, sha256 string, plans []airgap.Plan) error {
 	if len(plans) == 0 {
 		return nil
 	}
@@ -75,15 +78,49 @@ func (p *AirgapBundles) validateLocalSourcePath(sourcePath string, plans []airga
 	if err != nil {
 		return fmt.Errorf("stat local airgap source %s: %w", sourcePath, err)
 	}
-	if stat.IsDir() {
-		return nil
-	}
 	artifactNames := make(map[string]struct{}, len(plans))
 	for _, plan := range plans {
 		artifactNames[plan.Artifact.Name] = struct{}{}
 	}
+	if stat.IsDir() {
+		if sha256 != "" && len(artifactNames) > 1 {
+			return fmt.Errorf("spec.k0s.airgap.sha256 cannot be used with a local directory source that requires multiple airgap bundles")
+		}
+		if err := validateLocalBundleDirectory(sourcePath, artifactNames); err != nil {
+			return err
+		}
+		return nil
+	}
 	if len(artifactNames) > 1 {
 		return fmt.Errorf("spec.k0s.airgap.path points to a single file but planned hosts require multiple airgap bundles; use a directory containing per-architecture bundles")
+	}
+	return nil
+}
+
+func validateLocalBundleDirectory(sourcePath string, artifactNames map[string]struct{}) error {
+	names := make([]string, 0, len(artifactNames))
+	for name := range artifactNames {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var missing []string
+	for _, name := range names {
+		bundlePath := filepath.Join(sourcePath, name)
+		stat, err := os.Stat(bundlePath)
+		if os.IsNotExist(err) {
+			missing = append(missing, name)
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("stat local airgap bundle %s: %w", bundlePath, err)
+		}
+		if stat.IsDir() {
+			return fmt.Errorf("local airgap bundle %s is a directory", bundlePath)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("spec.k0s.airgap.path is missing local airgap bundle(s): %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

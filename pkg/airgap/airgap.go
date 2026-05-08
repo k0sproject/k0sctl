@@ -281,18 +281,18 @@ func EnsureCached(ctx context.Context, k0sVersion *version.Version, artifact Art
 }
 
 // VerifySHA256 checks a file against an expected SHA-256 hex digest.
-func VerifySHA256(path, expected string) error {
+func VerifySHA256(filePath, expected string) error {
 	expected = strings.TrimSpace(strings.ToLower(expected))
 	if expected == "" {
 		return nil
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := file.Close(); err != nil {
-			log.Warnf("failed to close %s: %v", path, err)
+			log.Warnf("failed to close %s: %v", filePath, err)
 		}
 	}()
 	hash := sha256.New()
@@ -301,7 +301,7 @@ func VerifySHA256(path, expected string) error {
 	}
 	actual := hex.EncodeToString(hash.Sum(nil))
 	if actual != expected {
-		return fmt.Errorf("sha256 mismatch for %s: got %s, want %s", path, actual, expected)
+		return fmt.Errorf("sha256 mismatch for %s: got %s, want %s", filePath, actual, expected)
 	}
 	return nil
 }
