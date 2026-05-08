@@ -130,7 +130,10 @@ func (r URLResolver) Resolve(k0sVersion *version.Version, osKind, arch string) (
 
 func artifactNameFromURL(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Path == "" {
+	if err != nil {
+		return "", fmt.Errorf("parse artifact URL %q: %w", rawURL, err)
+	}
+	if parsed.Path == "" {
 		return "", nil
 	}
 	artifactName := path.Base(parsed.Path)
@@ -147,8 +150,13 @@ func validateArtifactName(name string) error {
 	if name == "" {
 		return errors.New("artifact name is required")
 	}
-	if name == ".." || strings.Contains(name, "/") || strings.Contains(name, `\`) {
+	if name == ".." || strings.ContainsAny(name, `<>:"/\|?*`) {
 		return fmt.Errorf("invalid artifact name %q", name)
+	}
+	for _, r := range name {
+		if r < 0x20 {
+			return fmt.Errorf("invalid artifact name %q", name)
+		}
 	}
 	return nil
 }
