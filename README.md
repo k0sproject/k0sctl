@@ -764,6 +764,43 @@ See also:
 
 * [k0s Dynamic Configuration](https://docs.k0sproject.io/stable/dynamic-configuration/)
 
+##### `spec.k0s.airgap` &lt;mapping&gt; (optional)
+
+Native k0s airgap bundle handling. When enabled, k0sctl resolves the airgap
+bundle matching `spec.k0s.version`, downloads or reads it on the machine running
+k0sctl, and uploads it to Linux hosts that run worker workloads.
+
+```yaml
+spec:
+  k0s:
+    version: v1.34.1+k0s.0
+    airgap:
+      enabled: true
+      source: auto
+```
+
+Supported fields:
+
+* `enabled`: Enables native airgap bundle handling. Default: `false`.
+* `source`: Bundle source. Supported values are `auto`, `local`, and `url`. Default: `auto` when enabled.
+* `mode`: Transfer mode. `upload` is supported. Default: `upload`.
+* `path`: Local bundle file or directory when `source: local`. Directory sources are matched by the official bundle filename for each host architecture.
+* `url`: URL template when `source: url`. Supports `%v` for k0s version, `%p` for architecture, `%o` for OS, and `%%` for a literal percent sign.
+* `sha256`: Optional SHA-256 checksum for `local` or `url` sources.
+
+Bundles are uploaded to `<data-dir>/images`, where `<data-dir>` is the host's
+k0s data directory. Hosts with role `worker`, `controller+worker`, and `single`
+receive bundles. Controller-only hosts do not need them. Windows workers are
+skipped for now.
+
+For fully disconnected environments, set
+`spec.k0s.config.spec.images.default_pull_policy: Never` in the embedded k0s
+configuration. k0sctl warns when airgap is enabled and that pull policy is not
+set, but it does not modify the k0s configuration automatically.
+
+The lower-level `spec.hosts[*].files` mechanism remains available for custom
+bundle placement and other advanced upload workflows.
+
 ##### `spec.k0s.config` &lt;mapping&gt; (optional) (default: auto-generated)
 
 Embedded k0s cluster configuration. See [k0s configuration documentation](https://docs.k0sproject.io/stable/configuration/) for details.
