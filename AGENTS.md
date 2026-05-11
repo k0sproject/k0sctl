@@ -1,97 +1,82 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- Root module: `github.com/k0sproject/k0sctl` (Go, aiming to keep version up to date).
-- Source layout:
-  - `main.go`: entrypoint for the CLI.
-  - `cmd/`: CLI commands/subcommands (e.g., `apply.go`, `init.go` which map to commands like "k0sctl apply", "k0sctl init").
-  - `phase/`: orchestration phases for cluster operations and the phase manager that runs them.
-  - `pkg/`: reusable packages (e.g., `k0sfeature/`, `manifest/`).
-  - `internal/`: internal helpers (e.g., `shell/`).
-  - `smoke-test/`: end‑to‑end smoke tests (Make targets, uses github.com/k0sproject/bootloose for test machines).
-  - `examples/`: somewhat outdated examples for Terraform use.
+## Project Shape
+- `main.go` is the CLI entrypoint.
+- `cmd/` defines CLI commands and flags using `urfave/cli/v2`.
+- `action/` contains command-level workflows that compose phases.
+- `phase/` contains orchestration phases and the phase manager.
+- `configurer/` contains OS/distro-specific command and path behavior.
+- `pkg/apis/k0sctl.k0sproject.io/v1beta1/` contains the config API types and validation.
+- `pkg/`, `internal/`, `smoke-test/`, `examples/`, and `integration/` contain reusable packages, private helpers, smoke tests, examples, and integration helpers.
 
-## What The App Does
-- Bootstraps and manages k0s Kubernetes clusters by connecting to nodes over SSH using github.com/k0sproject/rig as the SSH driver and target OS/distro compatibility layer.
-- Core operations: "apply" connects to hosts, installs k0s, configures, and starts it; "reset" uninstalls k0s and cleans up; "init" creates a sample config, "kubeconfig" generates a config to access the cluster using kubectl.
-- Input: `k0sctl.yaml` describing hosts, roles, and k0s version/config; output: actions executed remotely with clear phase logs.
-- `urfave/cli` is used as the CLI framework.
+## What k0sctl Does
+- Bootstraps and manages k0s clusters from `k0sctl.yaml`.
+- Connects to hosts primarily over SSH through `github.com/k0sproject/rig`; Windows workers may use SSH or WinRM. Rig is maintained by the same team and provides a consistent interface for remote execution, file transfer, and parallelism.
+- Main flows include `apply`, `reset`, `init`, `kubeconfig`, `backup`, and dynamic config edit/status commands.
+- Config flow: parse YAML into `v1beta1.Cluster`, apply defaults, validate, then run phases through `phase.Manager`.
 
-## Build, Test, and Development Commands
-- Build local binary: `make k0sctl` (outputs `./k0sctl`).
-- Cross‑builds: `make build-all` (artifacts in `bin/`).
-- Run unit tests: `make test` or `go test -v ./...`.
-- Lint: `make lint` (uses golangci-lint defaults).
-- Smoke tests (CI matrix in `.github/workflows/smoke.yml`): run locally with targets like `make smoke-basic`, `make smoke-upgrade`. Requires a working `bootloose` (k0sproject/bootloose) setup and virtualization/container tooling; commonly set `LINUX_IMAGE` env.
-- Run locally: `go run .` or `./k0sctl --help` after build.
+## Development Commands
+- Build: `make k0sctl`.
+- Cross-build: `make build-all`.
+- Unit tests: `make test` or `go test -v ./...`.
+- Lint: `make lint`.
+- Smoke tests: inspect `Makefile`, `smoke-test/Makefile`, and `.github/workflows/smoke.yml` for current targets and matrix.
+- Use the Go/toolchain version declared in `go.mod`
 
-## Coding Style & Naming Conventions
-- Follow standard Go style (`gofmt`, `goimports`), tabs for indentation.
-- Package names: short, lowercase; files use `snake_case.go`; tests `*_test.go`.
-- Keep CLI flags/env vars consistent with `cmd/` patterns.
-- Use latest Go or at least the version in `go.mod` (toolchain pinned).
+## Testing Rules
+- Unit tests must be hermetic: do not connect to real hosts, mutate remote state, rely on external network resources, or depend on host-specific config. Prefer mocks/fakes for unit tests.
+- For end-to-end and smoke coverage, prefer the native `ssh` transport (`ssh:` / Go `crypto/ssh`).
+- Use `openSSH:` only when explicitly testing the OpenSSH-client transport.
+- Name tests after behavior, e.g. `TestValidateHosts_*`.
 
-## Testing Guidelines
-- Unit tests: colocate `*_test.go`; use Go `testing`/`testify` as needed.
-- Coverage: no minimum enforced; run `go test -cover ./...` locally.
-- Smoke tests: mirror CI matrix in `.github/workflows/smoke.yml` (e.g., `smoke-basic`, `smoke-upgrade`, `smoke-reset`, `smoke-backup-restore`). Run locally if you have `bootloose` working.
-- Name tests after behavior (e.g., `TestValidateHosts_*`).
- - Transport in tests: prefer the `ssh` transport (Go `crypto/ssh`) for end-to-end/smoke coverage; only use `openSSH` when explicitly testing that transport mode.
- - Unit tests must not connect to real hosts or change remote state. Prefer `localhost` connections (Rig’s localhost driver) or mocks/fakes for execution and file transfer.
- - Keep tests hermetic and deterministic; avoid relying on external network resources, time-based flakiness, or host-specific configuration.
+## Phase Manager Rules
+- New phases must be idempotent, have human-readable titles, and live in `snake_case.go` files matching the phase intent. The struct name must be `PascalCase` matching the intent.
+- Wire phases from the relevant action by adding them to the manager in the correct order.
+- Respect `Manager.Concurrency` and `ConcurrentUploads` when doing parallel host work or uploads.
 
-## Commit & Pull Request Guidelines
-- Commits: concise, imperative; keep history clean by rebasing/editing instead of piling “fix typo” commits. Multiple well‑maintained commits welcome but maintainers often squash on merge.
-  - Example: `Fix panic when parsing multi-doc YAML`.
-- PRs: include problem statement, approach, impact; link issues; include sample config/output when changing CLI or phases.
-- CI: All checks must pass (lint, unit, smoke). Update `README.md` (source of truth) when config fields or behavior change; update `examples/` if applicable.
+## Phase Implementation
+- Embed `GenericPhase` in every new phase struct — it provides `Prepare`, `Wet`, `DryMsg`, `DryMsgf`, `parallelDo`, `parallelDoUpload`, and `SetManager`.
+- Use `p.parallelDo(ctx, hosts, func(ctx, h) error { ... })` for concurrent per-host work; it respects `Manager.Concurrency` automatically.
+- Use `p.parallelDoUpload(ctx, hosts, ...)` for file-transfer steps; it additionally respects `Manager.ConcurrentUploads`.
+- `Wet(host, dryMsg, mutatingFuncs...)` runs the functions only in wet mode and prints `dryMsg` in dry-run mode — use it for every remote mutation.
 
-## Security & Compliance
-- DCO required: sign off commits (`git commit -s`) with `Signed-off-by: Name <email>`.
-- Examples and tests must only use private addresses and redacted or test-generated key files.
-- Prefer the `openSSH` transport or SSH agent usage over embedding private keys in configs.
+## Dry-Run Rules
+- Any action that changes remote hosts must be guarded so `--dry-run` makes no remote changes.
+- Use `Wet(host, dryMsg, funcs...)` and `DryMsg(host, msg)` (both on `GenericPhase`) so dry-run output is an accurate per-host plan.
+- If a phase needs alternate dry-run behavior, implement the dry-run interface instead of partially running mutating logic.
 
-## Architecture Overview
-- CLI in `cmd/` maps subcommands to actions in action/ which compose phases and hand them to `phase.Manager`.
-- Config flow: parse `k0sctl.yaml` → build `v1beta1.Cluster` → defaults via `creasty/defaults` → run phases with logging.
-- Dry‑run: `Manager.DryRun=true` records intended actions (`DryMsg`, `Wet`) and prints a per‑host plan.
+## Logging
+- Use `log "github.com/sirupsen/logrus"` — it is the only logger in this project.
+- Per-host messages must prefix the host: `log.Infof("%s: doing thing", h)`.
+- Use `log.Debug`/`log.Debugf` for internal state, `log.Info`/`log.Infof` for user-visible progress, `log.Warn`/`log.Warnf` for recoverable problems.
+- Do not use `fmt.Print*` for diagnostic output.
 
-## Phase Manager
-- Contract: `type Phase interface { Run(ctx) error; Title() string }`.
-- Optional interfaces used by the manager:
-  - `withconfig.Prepare(*Cluster) error` for precompute/validation.
-  - `conditional.ShouldRun() bool` to skip dynamically.
-  - `beforehook.Before(title) error` and `afterhook.After(err) error` for hooks.
-  - `withDryRun.DryRun() error` for alternate dry‑run behavior.
-  - `withcleanup.CleanUp()` on failure paths; `withmanager.SetManager(*Manager)` for access to helpers.
-- Concurrency: `Manager.Concurrency` and `ConcurrentUploads` are respected by phases that parallelize work.
-- Naming: phase titles must be human‑readable and describe the intention (e.g., `PrepareHosts`, `InstallWorkers`, `UpgradeWorkers`). Files use `snake_case.go` matching the title.
+## Error Wrapping
+- Wrap errors with context using `fmt.Errorf("doing X: %w", err)`.
+- Do not re-wrap the same message twice up the call stack.
 
-## Transport Layer: k0sproject/rig
-- Rig provides connection/execution primitives used by phases: SSH (native) and OpenSSH client modes, file transfers, sudo elevation, bastion support, env propagation, and structured logging.
-- Windows/WinRM exists in rig but k0sctl targets Linux nodes; SSH is the primary transport here. Windows support may be added in the future.
-- Repo: `github.com/k0sproject/rig` (use v0.x). The `main` branch is for the future v2 API which k0sctl will eventually migrate to.
- - YAML keys: `ssh:` selects the native Go `crypto/ssh` transport (preferred default), `openSSH:` uses the locally installed OpenSSH client, and `localhost:` uses the local machine as the target.
+## Config API Changes
+When adding or changing fields in `pkg/apis/k0sctl.k0sproject.io/v1beta1/`:
+1. Update defaults (`creasty/defaults` struct tags or `SetDefaults` methods).
+2. Update `Validate()` if the field has invariants.
+3. Update `README.md` with the field name, type, default, and description.
+4. Add a unit test in the same package.
 
-## Extending & Adding Phases
-- Implement a new `phase.Phase` in `phase/` with a clear `Title()` and idempotent `Run(ctx)`; use optional interfaces where appropriate (Prepare, DryRun, hooks).
-- Wire it from the relevant action in `cmd/` by calling `manager.AddPhase(...)` in correct order.
-- Use manager helpers for dry‑run (`Wet`, `DryMsg`) and respect concurrency where parallel work occurs. Any action that changes remote hosts must be wrapped so that no changes are made when `--dry-run` is active.
-- Add unit tests and a focused smoke test target if the behavior impacts cluster state; update the CI matrix when adding OS/distro specifics.
+## Transport And Platform Notes
+- YAML keys: `ssh:` selects the native Go SSH transport, `openSSH:` uses the local OpenSSH client, `localhost:` targets the local machine, and `winRM:` is for Windows workers using WinRM, but SSH also functions on Windows if configured.
+- Linux is the primary target. Windows support is limited to worker nodes and requires compatible k0s versions; check `README.md` and config validation before changing Windows behavior.
+- Rig v0.x is the dependency line used here. Rig v2 API will be migrated to in the future.
 
-## OS/Distro Support
-- See CI matrix in `.github/workflows/smoke.yml` for tested distributions. When adding support, extend the matrix and add corresponding smoke tests.
+## Docs, CI, And Security
+- `README.md` is the user-facing source of truth for config fields and behavior. Update it when behavior, flags, or config schema changes.
+- Update examples only when they are relevant to the behavior being changed.
+- DCO is required: commits must be signed off with `git commit -s`.
+- Keep secrets, real cluster addresses, and private keys out of docs, examples, and tests. Use private/test addresses and redacted or generated key material.
+- Before assuming CI requirements, inspect `.github/workflows/`; workflows include more than unit tests and smoke tests.
 
-## Dependencies
-- Dependabot is enabled; manual bumps are fine.
-- Main dependencies are `github.com/k0sproject/rig`, `github.com/urfave/cli`, `github.com/stretchr/testify`, `github.com/creasty/defaults`, and `github.com/sirupsen/logrus`.
-- Rig and k0s are maintained by the same authors.
-
-## Agent Checklist (Compact)
-- Default transport: use `ssh` (Go `crypto/ssh`). Use `openSSH` only when testing that mode explicitly. Use `localhost` or mocks in unit tests; avoid any real host changes.
-- New phases: make them idempotent, implement `Title() string` and `Run(ctx)`; use `Prepare`, `ShouldRun`, hooks, and `DryRun()` when appropriate.
-- Dry-run: wrap mutating calls with `Manager.Wet(...)` and emit `DryMsg` so `--dry-run` prints an accurate plan without changing state.
-- Concurrency: respect `Manager.Concurrency` and `ConcurrentUploads` in parallel work.
-- Naming/style: file names `snake_case.go`, human-readable phase titles, follow Go formatting, keep CLI flags/env vars consistent with patterns in `cmd/`.
-- Security: do not embed secrets; prefer SSH agent or `openSSH` over inline keys in examples; use private/test addresses in docs/tests.
-- Docs/CI: update `README.md` when behavior/config changes; extend smoke matrix and add focused smoke tests for OS/distro changes.
+## Agent Token Discipline
+- Prefer narrow reads first: use `rg`, `git diff --stat`, `git diff --name-only`, targeted `sed`, and package-level tests before reading whole files, full diffs, or full logs.
+- Keep tool output capped. Start with small `max_output_tokens` values, then rerun narrower commands if more context is needed.
+- Avoid dumping raw smoke logs, full PR threads, or full `go test ./...` output into context. Search for specific failures, phases, files, or review comments instead.
+- Preserve useful discoveries in agent memory, `AGENTS.md`, or a focused note before ending a large investigation, so future sessions do not repeat the same repo sweep.
+- Start a fresh session after a substantial phase of work, especially after long PR review/comment loops, and seed it with only the current branch, failing check, unresolved comment, and relevant files.
