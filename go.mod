@@ -23,10 +23,10 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -34,7 +34,7 @@ require (
 require (
 	al.essio.dev/pkg/shellescape v1.6.0
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/version v0.8.0
 	github.com/sergi/go-diff v1.4.0
