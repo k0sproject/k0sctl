@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/v2/os"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +17,7 @@ type mockconfigurer struct {
 	skew time.Duration
 }
 
-func (c *mockconfigurer) SystemTime(_ os.Host) (time.Time, error) {
+func (c *mockconfigurer) SystemTime(_ cfg.Host) (time.Time, error) {
 	return time.Now().Add(c.skew), nil
 }
 
@@ -27,7 +26,7 @@ type mockValidator struct {
 	err error
 }
 
-func (c *mockValidator) ValidateHost(os.Host) error {
+func (c *mockValidator) ValidateHost(_ cfg.Host) error {
 	return c.err
 }
 

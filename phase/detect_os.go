@@ -38,7 +38,7 @@ func (p *DetectOS) Run(ctx context.Context) error {
 			// ID_LIKE fallback only applies to detected releases, not to a
 			// manually forced OS ID.
 			if h.OSIDOverride == "" {
-				if release, osErr := h.Client.OS(); osErr == nil && len(release.IDLike) > 0 {
+				if release, osErr := h.OS(); osErr == nil && len(release.IDLike) > 0 {
 					osStr := release.String()
 					log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE %v", h, osStr, release.IDLike)
 					for _, id := range release.IDLike {

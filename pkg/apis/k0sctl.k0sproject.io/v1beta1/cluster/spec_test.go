@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/k0sproject/dig"
-	"github.com/k0sproject/rig/v2"
+	rig "github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/protocol/ssh"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
@@ -24,11 +25,7 @@ func TestKubeAPIURL(t *testing.T) {
 			}, Hosts: Hosts{
 				&Host{
 					Role: "controller",
-					Connection: rig.Connection{
-						SSH: &rig.SSH{
-							Address: "10.0.0.1",
-						},
-					},
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
 				},
 			},
 		}
@@ -41,11 +38,7 @@ func TestKubeAPIURL(t *testing.T) {
 				&Host{
 					Role:           "controller",
 					PrivateAddress: "10.0.0.1",
-					Connection: rig.Connection{
-						SSH: &rig.SSH{
-							Address: "192.168.0.1",
-						},
-					},
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "192.168.0.1"}},
 				},
 			},
 		}

@@ -58,21 +58,17 @@ spec:
 
 var defaultHosts = cluster.Hosts{
 	&cluster.Host{
-		ClientWithConfig: rig.ClientWithConfig{
-			ConnectionConfig: rig.CompositeConfig{
-				SSH: &ssh.Config{
-					Address: "10.0.0.1",
-				},
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
+				Address: "10.0.0.1",
 			},
 		},
 		Role: "controller",
 	},
 	&cluster.Host{
-		ClientWithConfig: rig.ClientWithConfig{
-			ConnectionConfig: rig.CompositeConfig{
-				SSH: &ssh.Config{
-					Address: "10.0.0.2",
-				},
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
+				Address: "10.0.0.2",
 			},
 		},
 		Role: "worker",
@@ -96,12 +92,10 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 	}
 
 	host := &cluster.Host{
-		ClientWithConfig: rig.ClientWithConfig{
-			ConnectionConfig: rig.CompositeConfig{
-				SSH: &ssh.Config{
-					Address: addr,
-					Port:    port,
-				},
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
+				Address: addr,
+				Port:    port,
 			},
 		},
 	}
@@ -111,15 +105,15 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 		host.Role = "worker"
 	}
 	if user != "" {
-		host.ConnectionConfig.SSH.User = user
+		host.SSH.User = user
 	}
 
 	_ = defaults.Set(host)
 
 	if keypath == "" {
-		host.ConnectionConfig.SSH.KeyPath = nil
+		host.SSH.KeyPath = nil
 	} else {
-		host.ConnectionConfig.SSH.KeyPath = &keypath
+		host.SSH.KeyPath = &keypath
 	}
 
 	return host

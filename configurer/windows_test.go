@@ -1,12 +1,15 @@
 package configurer
 
 import (
+	"bufio"
 	"fmt"
 	"io"
-	"io/fs"
 	"testing"
 
+	rig "github.com/k0sproject/rig/v2"
 	"github.com/k0sproject/rig/v2/cmd"
+	"github.com/k0sproject/rig/v2/protocol"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,38 +89,26 @@ type mockWindowsHost struct {
 	lastExecOutputCmd string
 }
 
-func (m *mockWindowsHost) Upload(string, string, fs.FileMode, ...exec.Option) error {
+func (m *mockWindowsHost) String() string { return "" }
+func (m *mockWindowsHost) IsWindows() bool { return false }
+
+func (m *mockWindowsHost) Exec(string, ...cmd.ExecOption) error {
 	return nil
 }
 
-func (m *mockWindowsHost) Exec(string, ...exec.Option) error {
-	return nil
-}
-
-func (m *mockWindowsHost) ExecOutput(cmd string, _ ...exec.Option) (string, error) {
-	m.lastExecOutputCmd = cmd
+func (m *mockWindowsHost) ExecOutput(c string, _ ...cmd.ExecOption) (string, error) {
+	m.lastExecOutputCmd = c
 	if m.execOutputErr != nil {
 		return "", m.execOutputErr
 	}
 	return m.execOutputValue, nil
 }
 
-func (m *mockWindowsHost) Execf(string, ...interface{}) error {
-	return nil
-}
-
-func (m *mockWindowsHost) ExecOutputf(format string, args ...interface{}) (string, error) {
-	return m.ExecOutput(fmt.Sprintf(format, args...))
-}
-
-func (m *mockWindowsHost) ExecStreams(string, io.ReadCloser, io.Writer, io.Writer, ...exec.Option) (exec.Waiter, error) {
+func (m *mockWindowsHost) ExecReader(_ string, _ ...cmd.ExecOption) io.Reader        { return nil }
+func (m *mockWindowsHost) ExecScanner(_ string, _ ...cmd.ExecOption) *bufio.Scanner  { return nil }
+func (m *mockWindowsHost) StartBackground(_ string, _ ...cmd.ExecOption) (protocol.Waiter, error) {
 	return nil, nil
 }
 
-func (m *mockWindowsHost) String() string {
-	return ""
-}
-
-func (m *mockWindowsHost) Sudo(cmd string) (string, error) {
-	return cmd, nil
-}
+func (m *mockWindowsHost) Sudo() *rig.Client   { return nil }
+func (m *mockWindowsHost) FS() remotefs.FS     { return nil }
