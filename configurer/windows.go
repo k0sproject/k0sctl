@@ -152,7 +152,7 @@ func (w *BaseWindows) TempDir(h Host) (string, error) {
 // DownloadURL performs a download from a URL on the host
 func (w *BaseWindows) DownloadURL(h Host, url, destination string) error {
 	cmd := ps.Cmd(fmt.Sprintf(`Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s`, ps.SingleQuote(url), ps.DoubleQuotePath(ps.ToWindowsPath(destination))))
-	if err := h.Exec(cmd); err != nil {
+	if err := h.Sudo().Exec(cmd); err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	return nil
@@ -184,7 +184,7 @@ func (w *BaseWindows) Chown(h Host, path, owner string) error {
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (w *BaseWindows) KubeconfigPath(h Host, dataDir string) string {
 	adminConfPath := path.Join(dataDir, "pki", "admin.conf")
-	if _, err := h.FS().Stat(adminConfPath); err == nil {
+	if h.Sudo().FS().FileExist(adminConfPath) {
 		return strings.ReplaceAll(adminConfPath, "\\", "/")
 	}
 	return strings.ReplaceAll(path.Join(dataDir, "kubelet.conf"), "\\", "/")
