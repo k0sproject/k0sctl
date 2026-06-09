@@ -89,9 +89,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-// Development-only: point rig v2 at a local checkout while the migration is in
-// progress. Remove this directive (or replace it with a tagged version) before
-// release, e.g. `go mod edit -dropreplace github.com/k0sproject/rig/v2` then
-// `go get github.com/k0sproject/rig/v2@<tag>`.
-replace github.com/k0sproject/rig/v2 => /Users/kimmo/Projects/go/src/github.com/k0sproject/rig
