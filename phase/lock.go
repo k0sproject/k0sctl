@@ -80,12 +80,12 @@ func (p *Lock) startTicker(ctx context.Context, h *cluster.Host) error {
 		for {
 			select {
 			case <-ticker.C:
-				if err := h.Configurer.Touch(h, lfp, time.Now()); err != nil {
+				if err := h.Sudo().FS().Touch(lfp, time.Now()); err != nil {
 					log.Debugf("%s: failed to touch lock file: %s", h, err)
 				}
 			case <-ctx.Done():
 				log.Tracef("%s: stopped lock cycle, removing file", h)
-				if err := h.Configurer.DeleteFile(h, lfp); err != nil {
+				if err := h.Sudo().FS().Remove(lfp); err != nil {
 					log.Debugf("%s: failed to remove host lock file, k0sctl may have been previously aborted or crashed. the start of next invocation may be delayed until it expires: %s", h, err)
 				}
 				p.wg.Done()
@@ -107,7 +107,7 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 
 	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
-		stat, err := h.Configurer.Stat(h.Sudo(), lfp)
+		stat, err := h.Sudo().FS().Stat(lfp)
 		if err != nil {
 			return fmt.Errorf("lock file disappeared: %w", err)
 		}
@@ -119,7 +119,7 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 			if time.Since(stat.ModTime()) < 30*time.Second {
 				return fmt.Errorf("another instance of k0sctl is currently operating on the host, delete %s or wait 30 seconds for it to expire", lfp)
 			}
-			_ = h.Configurer.DeleteFile(h, lfp)
+			_ = h.Sudo().FS().Remove(lfp)
 			return fmt.Errorf("removed existing expired lock file, will retry")
 		}
 	}

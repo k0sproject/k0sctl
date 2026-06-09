@@ -70,7 +70,7 @@ func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
 
 func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error {
 	log.Debugf("%s: ensuring directory %s", h, dir)
-	if !h.Configurer.FileExist(h, dir) {
+	if !h.FS().FileExist(dir) {
 		targetPerm := perm
 		if targetPerm == "" {
 			targetPerm = "0755"
@@ -79,7 +79,7 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 			if v, perr := strconv.ParseUint(targetPerm, 8, 32); perr == nil {
 				return h.Sudo().FS().MkdirAll(dir, fs.FileMode(v))
 			}
-			return h.Configurer.MkDir(h, dir)
+			return h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755))
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
@@ -88,7 +88,7 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
-			return h.Configurer.Chown(h, dir, owner)
+			return h.Sudo().FS().Chown(dir, owner)
 		})
 		if err != nil {
 			return err
@@ -236,7 +236,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
 			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-			return h.Configurer.Chown(h, dest, owner)
+			return h.Sudo().FS().Chown(dest, owner)
 		})
 		if err != nil {
 			return err
@@ -256,7 +256,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if timestamp != nil {
 		err := p.Wet(h, fmt.Sprintf("set timestamp for %s to %s", dest, timestamp.String()), func() error {
 			log.Debugf("%s: touching %s", h, dest)
-			return h.Configurer.Touch(h, dest, *timestamp)
+			return h.Sudo().FS().Touch(dest, *timestamp)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to touch %s: %w", dest, err)

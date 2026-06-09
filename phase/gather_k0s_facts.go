@@ -53,7 +53,7 @@ func (p *GatherK0sFacts) Title() string {
 func (p *GatherK0sFacts) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	p.hosts = config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
-		return h.Configurer.FileExist(h, h.Configurer.K0sBinaryPath())
+		return h.FS().FileExist(h.Configurer.K0sBinaryPath())
 	})
 
 	return nil
@@ -290,7 +290,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.IsController() && h.Configurer.FileExist(h, h.K0sConfigPath()) {
+	if h.IsController() && h.FS().FileExist(h.K0sConfigPath()) {
 		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)

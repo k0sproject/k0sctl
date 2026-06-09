@@ -158,7 +158,7 @@ func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host
 		}
 		if time.Since(info.ModTime()) > cleanUpOlderThan {
 			log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, path)
-			if err := h.Configurer.DeleteFile(h, path); err != nil {
+			if err := h.Sudo().FS().Remove(path); err != nil {
 				log.Warnf("%s: failed to delete %s: %v", h, path, err)
 			}
 			return nil
@@ -182,7 +182,7 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 
 	// Collect skews relative to local time
 	err := p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
-		remote, err := h.Configurer.SystemTime(h)
+		remote, err := h.FS().SystemTime()
 		if err != nil {
 			return fmt.Errorf("failed to get time from %s: %w", h, err)
 		}

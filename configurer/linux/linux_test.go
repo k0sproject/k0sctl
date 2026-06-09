@@ -3,7 +3,6 @@ package linux
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 
@@ -26,8 +25,8 @@ type mockHost struct {
 	sudoClient *rig.Client
 }
 
-func (m *mockHost) String() string    { return "" }
-func (m *mockHost) IsWindows() bool   { return false }
+func (m *mockHost) String() string  { return "" }
+func (m *mockHost) IsWindows() bool { return false }
 
 func (m *mockHost) Exec(string, ...cmd.ExecOption) error {
 	return nil
@@ -92,21 +91,4 @@ func TestPaths(t *testing.T) {
 
 	require.Equal(t, "/var/lib/k0s/kubelet.conf", fc.KubeconfigPath(h2, fc.DataDirDefaultPath()))
 	require.Equal(t, "/var/lib/k0s/kubelet.conf", ubuntu.KubeconfigPath(h2, ubuntu.DataDirDefaultPath()))
-}
-
-func TestLookPath(t *testing.T) {
-	linuxCfg := &Ubuntu{}
-	mh := &mockHost{ExecOutputValue: "/usr/bin/k0s\n"}
-	path, err := linuxCfg.LookPath(mh, "k0s")
-	require.NoError(t, err)
-	require.Equal(t, "/usr/bin/k0s", path)
-	require.Contains(t, mh.LastExecOutputCmd, "command -v -- k0s")
-}
-
-func TestLookPathNotFound(t *testing.T) {
-	linuxCfg := &Ubuntu{}
-	mh := &mockHost{ExecOutputErr: fmt.Errorf("exit status 1")}
-	path, err := linuxCfg.LookPath(mh, "missing")
-	require.Error(t, err)
-	require.Empty(t, path)
 }

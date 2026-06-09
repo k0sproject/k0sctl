@@ -77,7 +77,7 @@ func (p *Backup) Run(_ context.Context) error {
 	log.Infof("%s: backing up", h)
 	var backupDir string
 	err := p.Wet(h, "create a tempdir using `mktemp -d`", func() error {
-		b, err := h.Configurer.TempDir(h)
+		b, err := h.FS().MkdirTemp("", "")
 		if err != nil {
 			return err
 		}
@@ -118,10 +118,10 @@ func (p *Backup) Run(_ context.Context) error {
 	defer func() {
 		if p.IsWet() {
 			log.Debugf("%s: cleaning up %s", h, remotePath)
-			if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
+			if err := h.Sudo().FS().Remove(remotePath); err != nil {
 				log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
 			}
-			if err := h.Configurer.DeleteDir(h, backupDir); err != nil {
+			if err := h.Sudo().FS().Remove(backupDir); err != nil {
 				log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
 			}
 		} else {

@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	ps "github.com/k0sproject/rig/v2/powershell"
 )
@@ -123,32 +122,6 @@ func (w *BaseWindows) K0sctlLockFilePath(h Host) string {
 	return `C:\\Windows\\Temp\\k0sctl.lock`
 }
 
-// TempFile returns a temp file path
-func (w *BaseWindows) TempFile(h Host) (string, error) {
-	output, err := h.ExecOutput(ps.Cmd(`[System.IO.Path]::GetTempFileName()`))
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
-	}
-	output = strings.TrimSpace(output)
-	// Normalize to use forward slashes
-	output = strings.ReplaceAll(output, "\\", "/")
-	return output, nil
-}
-
-// TempDir returns a temp dir path
-func (w *BaseWindows) TempDir(h Host) (string, error) {
-	// Create a unique temp directory and output its path
-	script := `$p = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString()); New-Item -ItemType Directory -Path $p | Out-Null; Write-Output $p`
-	output, err := h.ExecOutput(ps.Cmd(script))
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
-	}
-	output = strings.TrimSpace(output)
-	// Normalize to use forward slashes
-	output = strings.ReplaceAll(output, "\\", "/")
-	return output, nil
-}
-
 // DownloadURL performs a download from a URL on the host
 func (w *BaseWindows) DownloadURL(h Host, url, destination string) error {
 	cmd := ps.Cmd(fmt.Sprintf(`Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s`, ps.SingleQuote(url), ps.DoubleQuotePath(ps.ToWindowsPath(destination))))
@@ -163,22 +136,6 @@ func (w *BaseWindows) ReplaceK0sTokenPath(h Host, spath string) error {
 	// Replace literal REPLACEME with actual token path
 	cmd := ps.Cmd(fmt.Sprintf(`(Get-Content -Path %s) -replace 'REPLACEME', %s | Set-Content -Path %s -Encoding ascii`, ps.DoubleQuotePath(ps.ToWindowsPath(spath)), ps.SingleQuote(ps.ToWindowsPath(w.K0sJoinTokenPath())), ps.DoubleQuotePath(ps.ToWindowsPath(spath))))
 	return h.Exec(cmd)
-}
-
-// FileContains returns true if a file contains the substring
-func (w *BaseWindows) FileContains(h Host, path, s string) bool {
-	cmd := ps.Cmd(fmt.Sprintf(`if (Select-String -Path %s -Pattern %s -SimpleMatch -Quiet) { exit 0 } else { exit 1 }`, ps.DoubleQuotePath(ps.ToWindowsPath(path)), ps.SingleQuote(ps.ToWindowsPath(s))))
-	return h.Exec(cmd) == nil
-}
-
-// MoveFile moves a file on the host
-func (w *BaseWindows) MoveFile(h Host, src, dst string) error {
-	return h.Exec(ps.Cmd(fmt.Sprintf(`Move-Item -Force -Path %s -Destination %s`, ps.DoubleQuotePath(ps.ToWindowsPath(src)), ps.DoubleQuotePath(ps.ToWindowsPath(dst)))))
-}
-
-// Chown is a no-op on Windows; ownership semantics differ and are not managed here
-func (w *BaseWindows) Chown(h Host, path, owner string) error {
-	return nil
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
@@ -273,7 +230,7 @@ func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, er
 
 // UpsertFile creates a file in path with content only if the file does not exist already
 func (w *BaseWindows) UpsertFile(h Host, path, content string) error {
-	tmpf, err := w.TempFile(h)
+	tmpf, err := h.FS().CreateTemp("", "")
 	if err != nil {
 		return err
 	}
@@ -297,52 +254,6 @@ func (w *BaseWindows) UpsertFile(h Host, path, content string) error {
 	return nil
 }
 
-// DeleteDir removes a directory tree on the host
-func (w *BaseWindows) DeleteDir(h Host, path string) error {
-	return h.Exec(ps.Cmd(fmt.Sprintf(`Remove-Item -Recurse -Force -Path %s`, ps.DoubleQuotePath(ps.ToWindowsPath(path)))))
-}
-
-// MachineID returns a unique identifier for the host
-func (w *BaseWindows) MachineID(h Host) (string, error) {
-	return h.ExecOutput(ps.Cmd(`(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name MachineGuid).MachineGuid`))
-}
-
-// SystemTime returns the system time as UTC reported by the OS or an error if this fails
-func (w *BaseWindows) SystemTime(h Host) (time.Time, error) {
-	out, err := h.ExecOutput(ps.Cmd(`[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()`))
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to get system time: %w", err)
-	}
-	out = strings.TrimSpace(out)
-	var unixTime int64
-	if _, scanErr := fmt.Sscanf(out, "%d", &unixTime); scanErr != nil {
-		return time.Time{}, fmt.Errorf("failed to parse system time: %v", scanErr)
-	}
-	return time.Unix(unixTime, 0), nil
-}
-
-// LookPath resolves a binary path on the remote Windows host similarly to exec.LookPath
-func (w *BaseWindows) LookPath(h Host, file string) (string, error) {
-	file = strings.TrimSpace(file)
-	if file == "" {
-		return "", fmt.Errorf("invalid binary name")
-	}
-
-	script := fmt.Sprintf(`$cmd = Get-Command -Name %s -ErrorAction Stop; if (-not $cmd.Path) { throw 'command path not found' }; Write-Output $cmd.Path`, ps.SingleQuote(file))
-	output, err := h.ExecOutput(ps.Cmd(script))
-	if err != nil {
-		return "", fmt.Errorf("lookpath %s: %w", file, err)
-	}
-
-	path := strings.TrimSpace(output)
-	if path == "" {
-		return "", fmt.Errorf("lookpath %s: not found", file)
-	}
-
-	path = strings.ReplaceAll(path, "\\", "/")
-	return path, nil
-}
-
 // Dir returns the directory part of a path
 func (w *BaseWindows) Dir(path string) string {
 	index := strings.LastIndexAny(path, `\/`)
@@ -364,13 +275,6 @@ func (w *BaseWindows) Base(path string) string {
 // HostPath converts the provided path to a native Windows path representation
 func (w *BaseWindows) HostPath(path string) string {
 	return ps.ToWindowsPath(path)
-}
-
-// Hostname on windows returns the hostname
-func (w *BaseWindows) Hostname(h Host) string {
-	hostname, _ := h.ExecOutput("hostname")
-
-	return hostname
 }
 
 // StartService starts a named service
@@ -463,16 +367,6 @@ func (w *BaseWindows) ReadFile(h Host, filePath string) (string, error) {
 	return string(data), nil
 }
 
-// FileExist returns true when a file exists at path
-func (w *BaseWindows) FileExist(h Host, filePath string) bool {
-	return h.FS().FileExist(filePath)
-}
-
-// DeleteFile removes a file
-func (w *BaseWindows) DeleteFile(h Host, filePath string) error {
-	return h.Sudo().FS().Remove(filePath)
-}
-
 // CheckPrivilege verifies the connecting user has administrator privileges
 func (w *BaseWindows) CheckPrivilege(h Host) error {
 	script := `if (-not ([System.Security.Principal.WindowsPrincipal][System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'administrator privileges required' }`
@@ -482,24 +376,9 @@ func (w *BaseWindows) CheckPrivilege(h Host) error {
 	return nil
 }
 
-// IsContainer returns false; container detection is not implemented for Windows
-func (w *BaseWindows) IsContainer(h Host) bool {
-	return false
-}
-
 // FixContainer is a no-op on Windows
 func (w *BaseWindows) FixContainer(h Host) error {
 	return nil
-}
-
-// Stat returns file info for the given path
-func (w *BaseWindows) Stat(h Host, filePath string) (fs.FileInfo, error) {
-	return h.FS().Stat(filePath)
-}
-
-// MkDir creates a directory and all its parents
-func (w *BaseWindows) MkDir(h Host, dirPath string) error {
-	return h.Sudo().FS().MkdirAll(dirPath, fs.FileMode(0o755))
 }
 
 // Chmod changes file permissions (perm as octal string like "0644")
@@ -509,16 +388,6 @@ func (w *BaseWindows) Chmod(h Host, filePath, perm string) error {
 		return fmt.Errorf("invalid permissions %q: %w", perm, err)
 	}
 	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
-}
-
-// CommandExist returns true when a command is available on the host
-func (w *BaseWindows) CommandExist(h Host, command string) bool {
-	return h.FS().CommandExist(command)
-}
-
-// Touch updates file timestamps, creating the file if it doesn't exist
-func (w *BaseWindows) Touch(h Host, filePath string, ts time.Time) error {
-	return h.Sudo().FS().Touch(filePath, ts)
 }
 
 // InstallPackage is not supported on Windows

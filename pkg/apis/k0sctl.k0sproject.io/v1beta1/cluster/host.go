@@ -174,22 +174,14 @@ func (h *Host) DownloadURL(url, dest string) error {
 	return cfg.DownloadURL(h, url, dest)
 }
 
-// Touch updates file modification timestamps via the resolved configurer.
+// Touch updates file modification timestamps, creating the file if needed.
 func (h *Host) Touch(path string, modTime time.Time) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.Touch(h, path, modTime)
+	return h.Sudo().FS().Touch(path, modTime)
 }
 
-// DeleteFile removes a file via the resolved configurer.
+// DeleteFile removes a file from the host.
 func (h *Host) DeleteFile(path string) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.DeleteFile(h, path)
+	return h.Sudo().FS().Remove(path)
 }
 
 func (h *Host) SetDefaults() {
@@ -613,7 +605,7 @@ func (h *Host) k0sBinaryPathDir() string {
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
 func (h *Host) InstallK0sBinary(path string) error {
-	if !h.Configurer.FileExist(h, path) {
+	if !h.FS().FileExist(path) {
 		return fmt.Errorf("k0s binary tempfile not found")
 	}
 
@@ -625,13 +617,13 @@ func (h *Host) InstallK0sBinary(path string) error {
 	// Best-effort permissions on POSIX; no-op on Windows
 	_ = h.SetFileMode(dir, fs.FileMode(0o755))
 
-	if err := h.Configurer.MoveFile(h, path, h.K0sInstallLocation()); err != nil {
+	if err := h.Sudo().FS().Rename(path, h.K0sInstallLocation()); err != nil {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
 	_ = h.SetFileMode(h.K0sInstallLocation(), fs.FileMode(0o750))
 
-	if h.Configurer.FileExist(h, path) {
-		if err := h.Configurer.DeleteFile(h, path); err != nil {
+	if h.FS().FileExist(path) {
+		if err := h.Sudo().FS().Remove(path); err != nil {
 			log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
 		}
 	}
@@ -759,7 +751,7 @@ func (h *Host) NeedCurl() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "curl")
+	return !h.FS().CommandExist("curl")
 }
 
 // NeedIPTables returns true when the iptables package is needed on the host
@@ -777,7 +769,7 @@ func (h *Host) NeedIPTables() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "iptables")
+	return !h.FS().CommandExist("iptables")
 }
 
 // NeedInetUtils returns true when the inetutils package is needed on the host to run `hostname`.
@@ -787,7 +779,7 @@ func (h *Host) NeedInetUtils() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "hostname")
+	return !h.FS().CommandExist("hostname")
 }
 
 // FileChanged returns true when a remote file has different size or mtime compared to local
@@ -798,7 +790,7 @@ func (h *Host) FileChanged(lpath, rpath string) bool {
 		log.Debugf("%s: local stat failed: %s", h, err)
 		return true
 	}
-	rstat, err := h.Configurer.Stat(h.Sudo(), rpath)
+	rstat, err := h.Sudo().FS().Stat(rpath)
 	if err != nil {
 		log.Debugf("%s: remote stat failed: %s", h, err)
 		return true

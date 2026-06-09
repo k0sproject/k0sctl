@@ -35,14 +35,6 @@ func (c *mockconfigurer) Quote(value string) string {
 	return c.Linux.Quote(value)
 }
 
-func (c *mockconfigurer) Chown(_ cfg.Host, _, _ string) error {
-	return nil
-}
-
-func (c *mockconfigurer) MkDir(_ cfg.Host, _ string) error {
-	return nil
-}
-
 func (c *mockconfigurer) K0sCmdf(s string, args ...any) string {
 	return fmt.Sprintf("k0s %s", fmt.Sprintf(s, args...))
 }
