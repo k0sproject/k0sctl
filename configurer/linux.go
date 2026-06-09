@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/rig/v2/cmd"
@@ -111,21 +110,11 @@ func (l *Linux) K0sCmdf(template string, args ...any) string {
 
 // K0sctlLockFilePath returns a path to a lock file
 func (l *Linux) K0sctlLockFilePath(h Host) string {
-	if h.Sudo().Exec("test -d /run/lock") == nil {
+	if h.Sudo().FS().FileExist("/run/lock") {
 		return "/run/lock/k0sctl"
 	}
 
 	return "/tmp/k0sctl.lock"
-}
-
-// TempFile returns a temp file path
-func (l *Linux) TempFile(h Host) (string, error) {
-	return h.ExecOutput("mktemp")
-}
-
-// TempDir returns a temp dir path
-func (l *Linux) TempDir(h Host) (string, error) {
-	return h.ExecOutput("mktemp -d")
 }
 
 var trailingNumberRegex = regexp.MustCompile(`(\d+)$`)
@@ -156,21 +145,6 @@ func (l *Linux) DownloadURL(h Host, url, destination string) error {
 // ReplaceK0sTokenPath replaces the config path in the service stub
 func (l *Linux) ReplaceK0sTokenPath(h Host, spath string) error {
 	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
-}
-
-// FileContains returns true if a file contains the substring
-func (l *Linux) FileContains(h Host, path, s string) bool {
-	return h.Sudo().Exec(fmt.Sprintf(`grep -q "%s" "%s"`, s, path)) == nil
-}
-
-// MoveFile moves a file on the host
-func (l *Linux) MoveFile(h Host, src, dst string) error {
-	return h.Sudo().Exec(fmt.Sprintf(`mv "%s" "%s"`, src, dst))
-}
-
-// Chown sets owner for a file or directory
-func (l *Linux) Chown(h Host, path, owner string) error {
-	return h.Sudo().FS().Chown(path, owner)
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
@@ -250,7 +224,7 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 
 // UpsertFile creates a file in path with content only if the file does not exist already
 func (l *Linux) UpsertFile(h Host, path, content string) error {
-	tmpf, err := l.TempFile(h)
+	tmpf, err := h.FS().CreateTemp("", "")
 	if err != nil {
 		return err
 	}
@@ -273,49 +247,6 @@ func (l *Linux) UpsertFile(h Host, path, content string) error {
 	}
 
 	return nil
-}
-
-// DeleteDir removes an empty directory on the host
-func (l *Linux) DeleteDir(h Host, path string) error {
-	return h.Sudo().Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)))
-}
-
-// MachineID returns a unique identifier for the host
-func (l *Linux) MachineID(h Host) (string, error) {
-	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
-}
-
-// SystemTime returns the system time as UTC reported by the OS or an error if this fails
-func (l *Linux) SystemTime(h Host) (time.Time, error) {
-	// get utc time as a unix timestamp
-	out, err := h.ExecOutput("date -u +\"%s\"")
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to get system time: %w", err)
-	}
-	unixTime, err := strconv.ParseInt(out, 10, 64)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to parse system time: %w", err)
-	}
-	return time.Unix(unixTime, 0), nil
-}
-
-// LookPath behaves similarly to exec.LookPath but resolves the binary on the remote host
-func (l *Linux) LookPath(h Host, file string) (string, error) {
-	if file == "" {
-		return "", fmt.Errorf("invalid binary name")
-	}
-
-	output, err := h.ExecOutput(fmt.Sprintf("command -v -- %s", shellescape.Quote(file)))
-	if err != nil {
-		return "", fmt.Errorf("lookpath %s: %w", file, err)
-	}
-
-	path := strings.TrimSpace(output)
-	if path == "" {
-		return "", fmt.Errorf("lookpath %s: not found", file)
-	}
-
-	return path, nil
 }
 
 // Dir returns the directory part of a path
@@ -443,34 +374,12 @@ func (l *Linux) ReadFile(h Host, filePath string) (string, error) {
 	return string(data), nil
 }
 
-// FileExist returns true when a file exists at path
-func (l *Linux) FileExist(h Host, filePath string) bool {
-	return h.FS().FileExist(filePath)
-}
-
-// DeleteFile removes a file
-func (l *Linux) DeleteFile(h Host, filePath string) error {
-	return h.Sudo().FS().Remove(filePath)
-}
-
-// Hostname returns the hostname of the remote host
-func (l *Linux) Hostname(h Host) string {
-	hostname, _ := h.FS().Hostname()
-	return hostname
-}
-
 // CheckPrivilege returns an error when the user does not have privilege to run sudo
 func (l *Linux) CheckPrivilege(h Host) error {
 	if err := h.Sudo().Exec("true"); err != nil {
 		return fmt.Errorf("sudo privilege check failed: %w", err)
 	}
 	return nil
-}
-
-// IsContainer returns true when the host is running inside a container
-func (l *Linux) IsContainer(h Host) bool {
-	isContainer, _ := h.FS().IsContainer()
-	return isContainer
 }
 
 // FixContainer applies container-specific fixes
@@ -481,16 +390,6 @@ func (l *Linux) FixContainer(h Host) error {
 	return nil
 }
 
-// Stat returns file info for the given path
-func (l *Linux) Stat(h Host, filePath string) (fs.FileInfo, error) {
-	return h.FS().Stat(filePath)
-}
-
-// MkDir creates a directory and all its parents
-func (l *Linux) MkDir(h Host, dirPath string) error {
-	return h.Sudo().FS().MkdirAll(dirPath, fs.FileMode(0o755))
-}
-
 // Chmod changes file permissions (perm as octal string like "0644")
 func (l *Linux) Chmod(h Host, filePath, perm string) error {
 	mode, err := strconv.ParseUint(perm, 8, 32)
@@ -498,16 +397,6 @@ func (l *Linux) Chmod(h Host, filePath, perm string) error {
 		return fmt.Errorf("invalid permissions %q: %w", perm, err)
 	}
 	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
-}
-
-// CommandExist returns true when a command is available on the host
-func (l *Linux) CommandExist(h Host, command string) bool {
-	return h.FS().CommandExist(command)
-}
-
-// Touch updates file timestamps, creating the file if it doesn't exist
-func (l *Linux) Touch(h Host, filePath string, ts time.Time) error {
-	return h.Sudo().FS().Touch(filePath, ts)
 }
 
 // InstallPackage installs packages using the host's package manager. Distro

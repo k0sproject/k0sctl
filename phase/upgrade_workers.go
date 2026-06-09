@@ -38,7 +38,7 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	err := p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
-		if h.Metadata.K0sBinaryTempFile != "" && !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+		if h.Metadata.K0sBinaryTempFile != "" && !h.FS().FileExist(h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found: %s", h.Metadata.K0sBinaryTempFile)
 		}
 		return nil

@@ -129,13 +129,13 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 		log.Debugf("%s: resetting k0s completed", h)
 
 		log.Debugf("%s: removing config...", h)
-		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sConfigPath()); dErr != nil {
+		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sConfigPath()); dErr != nil {
 			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing config completed", h)
 
 		log.Debugf("%s: removing k0s binary...", h)
-		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); dErr != nil {
+		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sBinaryPath()); dErr != nil {
 			log.Warnf("%s: failed to remove existing binary %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing binary completed", h)

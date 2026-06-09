@@ -122,12 +122,12 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		if err != nil {
 			return fmt.Errorf("failed to build k0s config for %s: %w", h, err)
 		}
-		tempConfigPath, err := h.Configurer.TempFile(h)
+		tempConfigPath, err := h.FS().CreateTemp("", "")
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for config: %w", err)
 		}
 		defer func() {
-			if err := h.Configurer.DeleteFile(h, tempConfigPath); err != nil {
+			if err := h.Sudo().FS().Remove(tempConfigPath); err != nil {
 				log.Warnf("%s: failed to delete temporary file %s: %s", h, tempConfigPath, err)
 			}
 		}()
@@ -281,18 +281,18 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 
 func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error {
 	path := h.K0sConfigPath()
-	if h.Configurer.FileExist(h, path) {
-		if !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
+	if h.FS().FileExist(path) {
+		if ok, _ := h.Sudo().FS().FileContains(path, " generated-by-k0sctl"); !ok {
 			newpath := path + ".old"
 			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
-			if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
+			if err := h.Sudo().FS().Rename(path, newpath); err != nil {
 				return err
 			}
 		}
 	}
 
 	log.Debugf("%s: writing k0s configuration", h)
-	tempConfigPath, err := h.Configurer.TempFile(h)
+	tempConfigPath, err := h.FS().CreateTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
@@ -305,13 +305,13 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configPath := h.K0sConfigPath()
 	configDir := gopath.Dir(configPath)
 
-	if !h.Configurer.FileExist(h, configDir) {
+	if !h.FS().FileExist(configDir) {
 		if err := h.Sudo().FS().MkdirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}
 
-	if err := h.Configurer.MoveFile(h, tempConfigPath, configPath); err != nil {
+	if err := h.Sudo().FS().Rename(tempConfigPath, configPath); err != nil {
 		return fmt.Errorf("failed to install k0s configuration: %w", err)
 	}
 	if err := chmodWithMode(h, configPath, fs.FileMode(0o600)); err != nil {

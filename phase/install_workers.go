@@ -163,7 +163,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 
 		err = p.Wet(h, "validate api connection to control plane", func() error {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			tempfile, err := h.Configurer.TempFile(h)
+			tempfile, err := h.FS().CreateTemp("", "")
 			if err != nil {
 				return fmt.Errorf("failed to create temp file for kubeconfig: %w", err)
 			}
@@ -175,7 +175,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			}
 
 			defer func() {
-				if err := h.Configurer.DeleteFile(h, tempfile); err != nil {
+				if err := h.Sudo().FS().Remove(tempfile); err != nil {
 					log.Warnf("%s: failed to delete temp kubeconfig file %s: %v", h, tempfileHostPath, err)
 				}
 			}()
@@ -206,9 +206,9 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 					return err
 				}
 			}
-			if h.Configurer.FileExist(h, sp) {
+			if h.FS().FileExist(sp) {
 				err := p.Wet(h, "remove existing k0s service file", func() error {
-					return h.Configurer.DeleteFile(h, sp)
+					return h.Sudo().FS().Remove(sp)
 				})
 				if err != nil {
 					return err

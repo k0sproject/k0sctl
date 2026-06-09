@@ -53,7 +53,7 @@ func (p *Restore) Prepare(config *v1beta1.Cluster) error {
 func (p *Restore) Run(ctx context.Context) error {
 	// Push the backup file to controller
 	h := p.leader
-	tmpDir, err := h.Configurer.TempDir(h)
+	tmpDir, err := h.FS().MkdirTemp("", "")
 	if err != nil {
 		return err
 	}
@@ -63,11 +63,11 @@ func (p *Restore) Run(ctx context.Context) error {
 	}
 
 	defer func() {
-		if err := h.Configurer.DeleteFile(h, dstFile); err != nil {
+		if err := h.Sudo().FS().Remove(dstFile); err != nil {
 			log.Warnf("%s: failed to remove backup file %s: %s", h, dstFile, err)
 		}
 
-		if err := h.Configurer.DeleteDir(h, tmpDir); err != nil {
+		if err := h.Sudo().FS().Remove(tmpDir); err != nil {
 			log.Warnf("%s: failed to remove backup temp dir %s: %s", h, tmpDir, err)
 		}
 	}()

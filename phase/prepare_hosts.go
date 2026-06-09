@@ -103,7 +103,7 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 		}
 	}
 
-	if h.Configurer.IsContainer(h) {
+	if isContainer, _ := h.FS().IsContainer(); isContainer {
 		log.Infof("%s: is a container, applying a fix", h)
 		if err := h.Configurer.FixContainer(h); err != nil {
 			return err

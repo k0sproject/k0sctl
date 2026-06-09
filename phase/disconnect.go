@@ -19,8 +19,8 @@ func (p *Disconnect) Title() string {
 // DryRun cleans up the temporary k0s binary from the hosts
 func (p *Disconnect) DryRun() error {
 	_ = p.Config.Spec.Hosts.ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
-		if h.Metadata.K0sBinaryTempFile != "" && h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
-			_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
+		if h.Metadata.K0sBinaryTempFile != "" && h.FS().FileExist(h.Metadata.K0sBinaryTempFile) {
+			_ = h.Sudo().FS().Remove(h.Metadata.K0sBinaryTempFile)
 		}
 		h.Metadata.K0sBinaryTempFile = ""
 		return nil
