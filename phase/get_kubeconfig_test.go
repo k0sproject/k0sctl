@@ -9,6 +9,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/protocol/ssh"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -41,7 +42,7 @@ func TestGetKubeconfig(t *testing.T) {
 		Spec: &cluster.Spec{
 			K0s: &cluster.K0s{Config: dig.Mapping{}},
 			Hosts: []*cluster.Host{
-				{Role: "controller", Connection: rig.Connection{SSH: &rig.SSH{Address: "10.0.0.1", Port: 22}}},
+				{Role: "controller", CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1", Port: 22}}},
 			},
 		},
 	}

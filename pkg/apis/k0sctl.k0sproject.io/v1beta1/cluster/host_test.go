@@ -1,15 +1,14 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
 
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
-	"github.com/k0sproject/rig/v2"
-	"github.com/k0sproject/rig/v2/cmd"
-	"github.com/k0sproject/rig/v2/os"
+	rig "github.com/k0sproject/rig/v2"
 	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 )
@@ -36,11 +35,11 @@ func (c *mockconfigurer) Quote(value string) string {
 	return c.Linux.Quote(value)
 }
 
-func (c *mockconfigurer) Chown(_ os.Host, _, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) Chown(_ cfg.Host, _, _ string) error {
 	return nil
 }
 
-func (c *mockconfigurer) MkDir(_ os.Host, _ string, _ ...exec.Option) error {
+func (c *mockconfigurer) MkDir(_ cfg.Host, _ string) error {
 	return nil
 }
 
@@ -74,8 +73,8 @@ func TestK0sConfigPath(t *testing.T) {
 }
 
 func TestK0sInstallCommand(t *testing.T) {
-	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
-	_ = h.Connect()
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", CompositeConfig: rig.CompositeConfig{Localhost: rig.LocalhostConfig(true)}}
+	_ = h.Connect(context.Background())
 	h.Configurer = &mockconfigurer{}
 	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
 	h.Configurer.SetPath("K0sJoinTokenPath", "from-configurer")
@@ -127,8 +126,8 @@ func TestK0sInstallCommand(t *testing.T) {
 }
 
 func TestK0sInstallCommandWindowsKubeletExtraArgs(t *testing.T) {
-	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
-	_ = h.Connect()
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", CompositeConfig: rig.CompositeConfig{Localhost: rig.LocalhostConfig(true)}}
+	_ = h.Connect(context.Background())
 	winQuoter := &cfg.BaseWindows{}
 	h.Configurer = &mockconfigurer{quoteFn: winQuoter.Quote}
 	h.Configurer.SetPath("K0sConfigPath", "from-configurer")
@@ -142,8 +141,8 @@ func TestK0sInstallCommandWindowsKubeletExtraArgs(t *testing.T) {
 }
 
 func TestK0sResetCommand(t *testing.T) {
-	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", Connection: rig.Connection{Localhost: &rig.Localhost{Enabled: true}}}
-	_ = h.Connect()
+	h := Host{Role: "worker", DataDir: "/tmp/k0s", KubeletRootDir: "/tmp/kubelet", CompositeConfig: rig.CompositeConfig{Localhost: rig.LocalhostConfig(true)}}
+	_ = h.Connect(context.Background())
 
 	h.Configurer = &mockconfigurer{}
 	require.Equal(t, `k0s reset --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet`, h.K0sResetCommand())

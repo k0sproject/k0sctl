@@ -42,12 +42,31 @@ var rigLogger = slog.New(sloglogrus.Option{
 // Connect establishes the connection to the host, injecting k0sctl's logger so
 // that rig's internal logging is routed into k0sctl's logrus output.
 func (h *Host) Connect(ctx context.Context) error {
-	return h.ClientWithConfig.Connect(ctx, rig.WithLogger(rigLogger))
+	if h.Client == nil {
+		client, err := rig.NewClient(
+			rig.WithConnectionFactory(&h.CompositeConfig),
+			rig.WithLogger(rigLogger),
+		)
+		if err != nil {
+			return fmt.Errorf("create rig client: %w", err)
+		}
+		h.Client = client
+	}
+	return h.Client.Connect(ctx)
+}
+
+// String returns a human-readable description of the host, safe before Connect.
+func (h *Host) String() string {
+	if h.Client != nil {
+		return h.Client.String()
+	}
+	return h.Address()
 }
 
 // Host contains all the needed details to work with hosts
 type Host struct {
-	rig.ClientWithConfig `yaml:",inline"`
+	rig.CompositeConfig `yaml:",inline"`
+	*rig.Client         `yaml:"-"`
 
 	Role                   string            `yaml:"role"`
 	Reset                  bool              `yaml:"reset,omitempty"`
@@ -178,7 +197,7 @@ func (h *Host) SetDefaults() {
 		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
 	}
 
-	_ = defaults.Set(&h.ConnectionConfig)
+	_ = defaults.Set(&h.CompositeConfig)
 
 	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
 		log.Debugf("%s: changed role from '%s' to 'single' because of --single installFlag", h, h.Role)
@@ -238,10 +257,12 @@ func validateBalancedQuotes(val any) error {
 }
 
 func (h *Host) Validate() error {
-	// Validate the embedded rig connection configuration (protocol selection,
-	// addresses, ports, etc.). In rig v2 this lives on CompositeConfig.Validate.
-	if err := h.ConnectionConfig.Validate(); err != nil {
-		return err
+	// Validate connection config only when a protocol is configured; hosts without
+	// connection config are valid for unit tests and partial configurations.
+	if h.SSH != nil || h.WinRM != nil || bool(h.Localhost) || h.OpenSSH != nil {
+		if err := h.CompositeConfig.Validate(); err != nil {
+			return err
+		}
 	}
 
 	if err := validation.ValidateStruct(h,
@@ -311,9 +332,9 @@ func (h *Host) Resolve(baseDir string) error {
 	return h.ResolveUploadFiles(baseDir)
 }
 
-// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-
-// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
+// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml.
+// The alias type prevents recursion; the client is reset so Connect re-creates
+// it with any updated connection config.
 func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 	type host Host
 	yh := (*host)(h)
@@ -324,30 +345,45 @@ func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
+	if h.Client != nil {
+		h.Disconnect()
+		h.Client = nil
+	}
+
 	return defaults.Set(h)
 }
 
-// Address returns an address for the host
+// Address returns an address for the host, falling back to the configured
+// connection address when the client is not yet connected.
 func (h *Host) Address() string {
 	if h.Client != nil {
 		if addr := h.Client.Address(); addr != "" {
 			return addr
 		}
 	}
+	if h.SSH != nil && h.SSH.Address != "" {
+		return h.SSH.Address
+	}
+	if h.WinRM != nil && h.WinRM.Address != "" {
+		return h.WinRM.Address
+	}
+	if h.OpenSSH != nil && h.OpenSSH.Address != "" {
+		return h.OpenSSH.Address
+	}
 	return "127.0.0.1"
 }
 
 // Protocol returns host communication protocol
 func (h *Host) Protocol() string {
-	if h.ConnectionConfig.SSH != nil {
+	if h.SSH != nil {
 		return "ssh"
 	}
 
-	if h.ConnectionConfig.WinRM != nil {
+	if h.WinRM != nil {
 		return "winrm"
 	}
 
-	if bool(h.ConnectionConfig.Localhost) {
+	if bool(h.Localhost) {
 		return "local"
 	}
 
@@ -359,7 +395,7 @@ func (h *Host) IsWindows() bool {
 	if h.Client != nil {
 		return h.Client.IsWindows()
 	}
-	return h.ConnectionConfig.WinRM != nil
+	return h.WinRM != nil
 }
 
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
@@ -367,7 +403,7 @@ func (h *Host) ResolveConfigurer() error {
 	if h.OSIDOverride != "" {
 		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
 	} else if h.OSRelease == nil {
-		release, err := h.Client.OS()
+		release, err := h.OS()
 		if err != nil {
 			return fmt.Errorf("OS detection failed: %w", err)
 		}
@@ -820,7 +856,7 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 				builder.WriteString(url.QueryEscape(k0sVersion.String()))
 			case 'x':
 				// K0s binary extension (.exe on Windows).
-				if h.IsConnected() && h.IsWindows() {
+				if h.Client != nil && h.IsConnected() && h.IsWindows() {
 					builder.WriteString(".exe")
 				}
 			default:
