@@ -2,43 +2,35 @@ package windows
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/registry"
-	ps "github.com/k0sproject/rig/pkg/powershell"
+	"github.com/k0sproject/rig/v2/cmd"
+	rigos "github.com/k0sproject/rig/v2/os"
+	ps "github.com/k0sproject/rig/v2/powershell"
 )
 
 // Windows provides OS support for Windows systems
 type Windows struct {
-	os.Windows
 	configurer.BaseWindows
 }
 
 var _ configurer.Configurer = (*Windows)(nil)
 var _ configurer.HostValidator = (*Windows)(nil)
 
-// Hostname resolves ambiguity between os.Windows and configurer.BaseWindows;
-// delegate to BaseWindows for configurer.Configurer.
-func (c *Windows) Hostname(h os.Host) string {
-	return c.BaseWindows.Hostname(h)
-}
-
 func init() {
-	registry.RegisterOSModule(
-		func(osv rig.OSVersion) bool {
-			return osv.ID == "windows" || osv.IDLike == "windows"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "windows" || slices.Contains(r.IDLike, "windows")
 		},
-		func() interface{} {
+		func() any {
 			return &Windows{}
 		},
 	)
 }
 
-func (c *Windows) ValidateHost(h os.Host) error {
+func (c *Windows) ValidateHost(h configurer.Host) error {
 	state, err := detectContainersFeatureState(h)
 	if err != nil {
 		return err
@@ -52,7 +44,7 @@ func (c *Windows) ValidateHost(h os.Host) error {
 	return fmt.Errorf(`windows feature "Containers" must be enabled (current state: %s)`, state)
 }
 
-func detectContainersFeatureState(h os.Host) (string, error) {
+func detectContainersFeatureState(h configurer.Host) (string, error) {
 	commands := []string{
 		`(Get-WindowsFeature -Name Containers -ErrorAction SilentlyContinue).InstallState`,
 		`(Get-WindowsOptionalFeature -Online -FeatureName Containers -ErrorAction SilentlyContinue).State`,
@@ -84,9 +76,9 @@ func writeFileScript(path string) string {
 	return fmt.Sprintf(`[System.IO.File]::WriteAllText(%s, [Console]::In.ReadToEnd(), [System.Text.UTF8Encoding]::new($false))`, ps.DoubleQuotePath(ps.ToWindowsPath(path)))
 }
 
-func (c *Windows) WriteFile(h os.Host, path, content, mode string) error {
-	cmd := ps.Cmd(writeFileScript(path))
-	err := h.Exec(cmd, exec.Stdin(content), exec.RedactString(content))
+func (c *Windows) WriteFile(h configurer.Host, path, content, mode string) error {
+	cmdStr := ps.Cmd(writeFileScript(path))
+	err := h.Exec(cmdStr, cmd.StdinString(content), cmd.Redact(content))
 	if err != nil {
 		return fmt.Errorf("failed to write to file %s: %w", path, err)
 	}
@@ -97,9 +89,9 @@ func (c *Windows) WriteFile(h os.Host, path, content, mode string) error {
 // ServiceScriptPath synthesizes an identifier for the Windows service configuration.
 // Windows services do not have init scripts, so we verify that the service exists
 // and return a pseudo path that can be used for logging and detection.
-func (c *Windows) ServiceScriptPath(h os.Host, service string) (string, error) {
-	cmd := ps.Cmd(fmt.Sprintf(`sc.exe query %s | Out-Null`, ps.SingleQuote(service)))
-	if err := h.Exec(cmd); err != nil {
+func (c *Windows) ServiceScriptPath(h configurer.Host, service string) (string, error) {
+	cmdStr := ps.Cmd(fmt.Sprintf(`sc.exe query %s | Out-Null`, ps.SingleQuote(service)))
+	if err := h.Exec(cmdStr); err != nil {
 		return "", fmt.Errorf("failed to find service %s: %w", service, err)
 	}
 

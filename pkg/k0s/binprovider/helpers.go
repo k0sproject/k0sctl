@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -86,12 +86,12 @@ func stageUpload(h Host, src, installPath string) (tmp string, err error) {
 	if err != nil {
 		return "", err
 	}
-	if err := h.SudoFsys().MkDirAll(dir, fs.FileMode(0o755)); err != nil {
+	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
 		return "", fmt.Errorf("create k0s binary dir %s: %w", dir, err)
 	}
 
 	log.Infof("%s: uploading k0s binary from %s to %s", h, src, tmp)
-	if err := h.Upload(src, tmp, 0o600, exec.Sudo(h), exec.LogError(true)); err != nil {
+	if err := remotefs.Upload(h.Sudo().FS(), src, tmp, remotefs.WithPermissions(fs.FileMode(0o600))); err != nil {
 		return "", fmt.Errorf("upload k0s binary: %w", err)
 	}
 	uploaded = true
@@ -100,7 +100,7 @@ func stageUpload(h Host, src, installPath string) (tmp string, err error) {
 	if err != nil {
 		return "", fmt.Errorf("stat %s: %w", src, err)
 	}
-	if err := h.Touch(tmp, stat.ModTime(), exec.Sudo(h)); err != nil {
+	if err := h.Touch(tmp, stat.ModTime()); err != nil {
 		return "", fmt.Errorf("failed to touch %s: %w", tmp, err)
 	}
 	if !h.IsWindows() {
@@ -122,10 +122,10 @@ func stageDownload(h Host, url, installPath string, targetVersion *version.Versi
 
 	log.Infof("%s: downloading k0s %s", h, targetVersion)
 	log.Debugf("%s: ensuring k0s install directory exists %s", h, dir)
-	if err := h.SudoFsys().MkDirAll(dir, fs.FileMode(0o755)); err != nil {
+	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
 		return "", fmt.Errorf("failed to create k0s install directory: %w", err)
 	}
-	if err := h.DownloadURL(url, tmp, exec.Sudo(h)); err != nil {
+	if err := h.DownloadURL(url, tmp); err != nil {
 		if rmErr := h.DeleteFile(tmp); rmErr != nil {
 			log.Debugf("%s: failed to remove partial k0s binary %s: %v", h, tmp, rmErr)
 		}

@@ -5,21 +5,20 @@ import (
 	"io/fs"
 	"time"
 
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/pkg/rigfs"
+	rig "github.com/k0sproject/rig/v2"
 	"github.com/k0sproject/version"
 )
 
 // Host defines the subset of host behavior that the binary providers rely on.
-// cluster.Host implements this interface via thin wrappers over its configurer
-// and metadata fields so the providers can live in this standalone package.
+// cluster.Host implements this interface via its embedded rig client and thin
+// wrappers over its configurer and metadata fields so the providers can live in
+// this standalone package.
 type Host interface {
 	fmt.Stringer
 
-	// Basic rig/exec capabilities used by exec.Sudo and file transfers.
-	Sudo(cmd string) (string, error)
-	Upload(src, dst string, perm fs.FileMode, opts ...exec.Option) error
-	SudoFsys() rigfs.Fsys
+	// Sudo returns a privilege-escalated rig client used for file transfers and
+	// command execution that require elevated permissions.
+	Sudo() *rig.Client
 	IsWindows() bool
 
 	// Host facts.
@@ -33,8 +32,8 @@ type Host interface {
 	// configurer has not been resolved yet.
 	Dir(path string) (string, error)
 	OSKind() (string, error)
-	DownloadURL(url, dest string, opts ...exec.Option) error
-	Touch(path string, modTime time.Time, opts ...exec.Option) error
+	DownloadURL(url, dest string) error
+	Touch(path string, modTime time.Time) error
 	DeleteFile(path string) error
 	SetFileMode(path string, mode fs.FileMode) error
 }

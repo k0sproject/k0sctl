@@ -12,15 +12,13 @@ import (
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
 	"github.com/k0sproject/k0sctl/configurer"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os/registry"
+	rig "github.com/k0sproject/rig/v2"
+	rigos "github.com/k0sproject/rig/v2/os"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,7 +29,7 @@ var _ binprovider.Host = (*Host)(nil)
 
 // Host contains all the needed details to work with hosts
 type Host struct {
-	rig.Connection `yaml:",inline"`
+	rig.ClientWithConfig `yaml:",inline"`
 
 	Role                   string            `yaml:"role"`
 	Reset                  bool              `yaml:"reset,omitempty"`
@@ -54,10 +52,11 @@ type Host struct {
 
 	Metadata   HostMetadata          `yaml:"-"`
 	Configurer configurer.Configurer `yaml:"-"`
+	OSRelease  *rigos.Release        `yaml:"-"`
 
-	binaryProvider              k0s.BinaryProvider  // user-set override via SetK0sBinaryProvider
-	cachedDefaultProvider       k0s.BinaryProvider  // auto-built default; rebuilt when target changes
-	cachedDefaultProviderTarget *version.Version    // target used to build cachedDefaultProvider
+	binaryProvider              k0s.BinaryProvider // user-set override via SetK0sBinaryProvider
+	cachedDefaultProvider       k0s.BinaryProvider // auto-built default; rebuilt when target changes
+	cachedDefaultProviderTarget *version.Version   // target used to build cachedDefaultProvider
 }
 
 // SetK0sBinaryProvider overrides the binary acquisition strategy for this host.
@@ -130,21 +129,21 @@ func (h *Host) OSKind() (string, error) {
 }
 
 // DownloadURL downloads a file on the host using the resolved configurer.
-func (h *Host) DownloadURL(url, dest string, opts ...exec.Option) error {
+func (h *Host) DownloadURL(url, dest string) error {
 	cfg, err := h.requireConfigurer()
 	if err != nil {
 		return err
 	}
-	return cfg.DownloadURL(h, url, dest, opts...)
+	return cfg.DownloadURL(h, url, dest)
 }
 
 // Touch updates file modification timestamps via the resolved configurer.
-func (h *Host) Touch(path string, modTime time.Time, opts ...exec.Option) error {
+func (h *Host) Touch(path string, modTime time.Time) error {
 	cfg, err := h.requireConfigurer()
 	if err != nil {
 		return err
 	}
-	return cfg.Touch(h, path, modTime, opts...)
+	return cfg.Touch(h, path, modTime)
 }
 
 // DeleteFile removes a file via the resolved configurer.
@@ -158,10 +157,10 @@ func (h *Host) DeleteFile(path string) error {
 
 func (h *Host) SetDefaults() {
 	if h.OSIDOverride != "" {
-		h.OSVersion = &rig.OSVersion{ID: h.OSIDOverride}
+		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
 	}
 
-	_ = defaults.Set(h.Connection)
+	_ = defaults.Set(&h.ConnectionConfig)
 
 	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
 		log.Debugf("%s: changed role from '%s' to 'single' because of --single installFlag", h, h.Role)
@@ -221,9 +220,9 @@ func validateBalancedQuotes(val any) error {
 }
 
 func (h *Host) Validate() error {
-	// For rig validation
-	v := validator.New()
-	if err := v.Struct(h); err != nil {
+	// Validate the embedded rig connection configuration (protocol selection,
+	// addresses, ports, etc.). In rig v2 this lives on CompositeConfig.Validate.
+	if err := h.ConnectionConfig.Validate(); err != nil {
 		return err
 	}
 
@@ -285,7 +284,6 @@ type HostMetadata struct {
 	DryRunFakeLeader  bool
 }
 
-
 // Resolve prepares host-scoped data after unmarshalling by resolving upload files
 // and normalizing relative paths (like K0sBinaryPath) against baseDir.
 func (h *Host) Resolve(baseDir string) error {
@@ -308,32 +306,30 @@ func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
-	if h.SSH != nil && h.SSH.HostKey != "" {
-		log.Warnf("%s: host.ssh.hostKey is deprecated, use a ssh known hosts file instead", h)
-	}
-
 	return defaults.Set(h)
 }
 
 // Address returns an address for the host
 func (h *Host) Address() string {
-	if addr := h.Connection.Address(); addr != "" {
-		return addr
+	if h.Client != nil {
+		if addr := h.Client.Address(); addr != "" {
+			return addr
+		}
 	}
 	return "127.0.0.1"
 }
 
 // Protocol returns host communication protocol
 func (h *Host) Protocol() string {
-	if h.SSH != nil {
+	if h.ConnectionConfig.SSH != nil {
 		return "ssh"
 	}
 
-	if h.WinRM != nil {
+	if h.ConnectionConfig.WinRM != nil {
 		return "winrm"
 	}
 
-	if h.Localhost != nil {
+	if bool(h.ConnectionConfig.Localhost) {
 		return "local"
 	}
 
@@ -342,30 +338,40 @@ func (h *Host) Protocol() string {
 
 // IsWindows returns true when the detected OS is Windows
 func (h *Host) IsWindows() bool {
-	if h.OSVersion == nil {
-		return false
+	if h.Client != nil {
+		return h.Client.IsWindows()
 	}
-	return strings.EqualFold(h.OSVersion.ID, "windows")
+	return h.ConnectionConfig.WinRM != nil
 }
 
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
-	bf, err := registry.GetOSModuleBuilder(*h.OSVersion)
-	if err != nil {
-		return err
+	if h.OSIDOverride != "" {
+		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
+	} else if h.OSRelease == nil {
+		release, err := h.Client.OS()
+		if err != nil {
+			return fmt.Errorf("OS detection failed: %w", err)
+		}
+		h.OSRelease = release
 	}
 
-	if c, ok := bf().(configurer.Configurer); ok {
-		h.Configurer = c
-
-		return nil
+	bf, ok := configurer.ResolveOSModule(h.OSRelease)
+	if !ok {
+		return fmt.Errorf("unsupported OS: %s", h.OSRelease.ID)
 	}
 
+	c, ok := bf().(configurer.Configurer)
+	if !ok {
+		return fmt.Errorf("unsupported OS: %s", h.OSRelease.ID)
+	}
+
+	h.Configurer = c
 	if h.K0sInstallPath != "" {
 		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallPath)
 	}
 
-	return fmt.Errorf("unsupported OS")
+	return nil
 }
 
 // K0sInstallLocation returns the k0s binary path from the K0sInstallPath field or configurer.K0sBinaryPath()
@@ -559,7 +565,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 
 	dir := h.k0sBinaryPathDir()
 	log.Debugf("%s: k0s binary dir: %q", h, dir)
-	if err := h.SudoFsys().MkDirAll(dir, fs.FileMode(0o755)); err != nil {
+	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
 	// Best-effort permissions on POSIX; no-op on Windows
@@ -581,7 +587,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 
 func (h *Host) K0sBinaryVersion() (*version.Version, error) {
 	cmd := h.Configurer.K0sCmdf("version")
-	output, err := h.ExecOutput(cmd, exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -600,7 +606,7 @@ func (h *Host) SetFileMode(path string, mode fs.FileMode) error {
 		return err
 	}
 	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return cfg.Chmod(h, path, perm, exec.Sudo(h))
+	return cfg.Chmod(h, path, perm)
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path
@@ -633,27 +639,27 @@ func (h *Host) K0sDataDir() string {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host, options DrainOption) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), quote(h.Configurer, node.Metadata.Hostname)))
 }
 
 // CordonNode marks the node unschedulable
 func (h *Host) CordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.Configurer, node.Metadata.Hostname)))
 }
 
 // UncordonNode marks the node schedulable
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.Configurer, node.Metadata.Hostname)))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.Configurer, node.Metadata.Hostname)))
 }
 
 // Taints returns all taints added to the node.
 func (h *Host) Taints(node *Host) ([]string, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.Configurer, node.Metadata.Hostname)), exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.Configurer, node.Metadata.Hostname)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
 	}
@@ -662,7 +668,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -675,7 +681,7 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.Configurer, node.Metadata.Hostname), quote(h.Configurer, taint)))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
@@ -738,7 +744,7 @@ func (h *Host) FileChanged(lpath, rpath string) bool {
 		log.Debugf("%s: local stat failed: %s", h, err)
 		return true
 	}
-	rstat, err := h.Configurer.Stat(h, rpath, exec.Sudo(h))
+	rstat, err := h.Configurer.Stat(h.Sudo(), rpath)
 	if err != nil {
 		log.Debugf("%s: remote stat failed: %s", h, err)
 		return true

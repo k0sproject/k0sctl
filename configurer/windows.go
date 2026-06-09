@@ -1,7 +1,9 @@
 package configurer
 
 import (
+	"context"
 	"fmt"
+	"io/fs"
 	"path"
 	"regexp"
 	"strconv"
@@ -9,17 +11,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
-	ps "github.com/k0sproject/rig/pkg/powershell"
-	"github.com/k0sproject/rig/pkg/rigfs"
+	ps "github.com/k0sproject/rig/v2/powershell"
 )
 
-// Windows provides helpers and defaults for Windows hosts
+// BaseWindows provides helpers and defaults for Windows hosts
 type BaseWindows struct {
 	paths    map[string]string
 	pathMu   sync.RWMutex
 	pathOnce sync.Once
+}
+
+// Kind returns the OS kind identifier for Windows hosts
+func (w *BaseWindows) Kind() string {
+	return "windows"
 }
 
 // OSKind returns the identifier for Windows hosts
@@ -87,7 +91,7 @@ func (w *BaseWindows) SetPath(key, value string) {
 }
 
 // Arch returns the host processor architecture in the format k0s expects it
-func (w *BaseWindows) Arch(h os.Host) (string, error) {
+func (w *BaseWindows) Arch(h Host) (string, error) {
 	arch, err := h.ExecOutput(ps.Cmd(`$env:PROCESSOR_ARCHITECTURE`))
 	if err != nil {
 		return "", err
@@ -114,13 +118,13 @@ func (w *BaseWindows) K0sCmdf(template string, args ...interface{}) string {
 }
 
 // K0sctlLockFilePath returns a path to a lock file
-func (w *BaseWindows) K0sctlLockFilePath(h os.Host) string {
+func (w *BaseWindows) K0sctlLockFilePath(h Host) string {
 	// Use a system-wide temp location
 	return `C:\\Windows\\Temp\\k0sctl.lock`
 }
 
 // TempFile returns a temp file path
-func (w *BaseWindows) TempFile(h os.Host) (string, error) {
+func (w *BaseWindows) TempFile(h Host) (string, error) {
 	output, err := h.ExecOutput(ps.Cmd(`[System.IO.Path]::GetTempFileName()`))
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
@@ -132,7 +136,7 @@ func (w *BaseWindows) TempFile(h os.Host) (string, error) {
 }
 
 // TempDir returns a temp dir path
-func (w *BaseWindows) TempDir(h os.Host) (string, error) {
+func (w *BaseWindows) TempDir(h Host) (string, error) {
 	// Create a unique temp directory and output its path
 	script := `$p = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString()); New-Item -ItemType Directory -Path $p | Out-Null; Write-Output $p`
 	output, err := h.ExecOutput(ps.Cmd(script))
@@ -146,57 +150,48 @@ func (w *BaseWindows) TempDir(h os.Host) (string, error) {
 }
 
 // DownloadURL performs a download from a URL on the host
-func (w *BaseWindows) DownloadURL(h os.Host, url, destination string, opts ...exec.Option) error {
+func (w *BaseWindows) DownloadURL(h Host, url, destination string) error {
 	cmd := ps.Cmd(fmt.Sprintf(`Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s`, ps.SingleQuote(url), ps.DoubleQuotePath(ps.ToWindowsPath(destination))))
-	if err := h.Exec(cmd, opts...); err != nil {
+	if err := h.Exec(cmd); err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	return nil
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
-func (w *BaseWindows) ReplaceK0sTokenPath(h os.Host, spath string) error {
+func (w *BaseWindows) ReplaceK0sTokenPath(h Host, spath string) error {
 	// Replace literal REPLACEME with actual token path
 	cmd := ps.Cmd(fmt.Sprintf(`(Get-Content -Path %s) -replace 'REPLACEME', %s | Set-Content -Path %s -Encoding ascii`, ps.DoubleQuotePath(ps.ToWindowsPath(spath)), ps.SingleQuote(ps.ToWindowsPath(w.K0sJoinTokenPath())), ps.DoubleQuotePath(ps.ToWindowsPath(spath))))
 	return h.Exec(cmd)
 }
 
 // FileContains returns true if a file contains the substring
-func (w *BaseWindows) FileContains(h os.Host, path, s string) bool {
+func (w *BaseWindows) FileContains(h Host, path, s string) bool {
 	cmd := ps.Cmd(fmt.Sprintf(`if (Select-String -Path %s -Pattern %s -SimpleMatch -Quiet) { exit 0 } else { exit 1 }`, ps.DoubleQuotePath(ps.ToWindowsPath(path)), ps.SingleQuote(ps.ToWindowsPath(s))))
 	return h.Exec(cmd) == nil
 }
 
 // MoveFile moves a file on the host
-func (w *BaseWindows) MoveFile(h os.Host, src, dst string) error {
+func (w *BaseWindows) MoveFile(h Host, src, dst string) error {
 	return h.Exec(ps.Cmd(fmt.Sprintf(`Move-Item -Force -Path %s -Destination %s`, ps.DoubleQuotePath(ps.ToWindowsPath(src)), ps.DoubleQuotePath(ps.ToWindowsPath(dst)))))
 }
 
 // Chown is a no-op on Windows; ownership semantics differ and are not managed here
-func (w *BaseWindows) Chown(h os.Host, path, owner string, _ ...exec.Option) error {
+func (w *BaseWindows) Chown(h Host, path, owner string) error {
 	return nil
 }
 
-type withsudofsys interface {
-	SudoFsys() rigfs.Fsys
-}
-
 // KubeconfigPath returns the path to a kubeconfig on the host
-func (w *BaseWindows) KubeconfigPath(h os.Host, dataDir string) string {
+func (w *BaseWindows) KubeconfigPath(h Host, dataDir string) string {
 	adminConfPath := path.Join(dataDir, "pki", "admin.conf")
-	if hImpl, ok := h.(withsudofsys); ok {
-		if _, err := hImpl.SudoFsys().Stat(adminConfPath); err == nil {
-			adminConfPath = strings.ReplaceAll(adminConfPath, "\\", "/")
-			return adminConfPath
-		}
+	if _, err := h.FS().Stat(adminConfPath); err == nil {
+		return strings.ReplaceAll(adminConfPath, "\\", "/")
 	}
-	cfg := path.Join(dataDir, "kubelet.conf")
-	cfg = strings.ReplaceAll(cfg, "\\", "/")
-	return cfg
+	return strings.ReplaceAll(path.Join(dataDir, "kubelet.conf"), "\\", "/")
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (w *BaseWindows) KubectlCmdf(h os.Host, dataDir, s string, args ...interface{}) string {
+func (w *BaseWindows) KubectlCmdf(h Host, dataDir, s string, args ...interface{}) string {
 	if !strings.Contains(s, "--kubeconfig") {
 		kubecfgPath := ps.ToWindowsPath(w.KubeconfigPath(h, dataDir))
 		s = s + " --kubeconfig=" + ps.DoubleQuotePath(kubecfgPath)
@@ -206,7 +201,7 @@ func (w *BaseWindows) KubectlCmdf(h os.Host, dataDir, s string, args ...interfac
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
-func (w *BaseWindows) HTTPStatus(h os.Host, url string) (int, error) {
+func (w *BaseWindows) HTTPStatus(h Host, url string) (int, error) {
 	out, err := h.ExecOutput(ps.Cmd(fmt.Sprintf(`[int][System.Net.WebRequest]::Create(%s).GetResponse().StatusCode`, ps.SingleQuote(url))))
 	if err != nil {
 		return -1, fmt.Errorf("failed to get HTTP status code: %w", err)
@@ -218,8 +213,8 @@ func (w *BaseWindows) HTTPStatus(h os.Host, url string) (int, error) {
 	return code, nil
 }
 
-// PrivateInterface tries to find a private network interface (not implemented for Windows yet)
-func (w *BaseWindows) PrivateInterface(h os.Host) (string, error) {
+// PrivateInterface tries to find a private network interface
+func (w *BaseWindows) PrivateInterface(h Host) (string, error) {
 	cmd := ps.Cmd(`
 $if = Get-NetIPAddress -AddressFamily IPv4 |
   Where-Object { $_.IPAddress -match '^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)' } |
@@ -233,7 +228,7 @@ if (-not $if) {
 $if`)
 	cmd = strings.ReplaceAll(cmd, "\n", " ")
 	cmd = strings.ReplaceAll(cmd, "\t", " ")
-	output, err := h.ExecOutput(cmd, exec.Sudo(h))
+	output, err := h.ExecOutput(cmd)
 	if err != nil {
 		return "", fmt.Errorf("failed to detect private network interface: %s", err)
 	}
@@ -246,8 +241,8 @@ $if`)
 	return iface, nil
 }
 
-// PrivateAddress resolves internal ip from private interface (not implemented for Windows yet)
-func (w *BaseWindows) PrivateAddress(h os.Host, iface, publicip string) (string, error) {
+// PrivateAddress resolves internal ip from private interface
+func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	cmd := ps.Cmd(fmt.Sprintf(`
 (Get-NetIPAddress -InterfaceAlias %s -AddressFamily IPv4 |
   Where-Object {
@@ -277,7 +272,7 @@ func (w *BaseWindows) PrivateAddress(h os.Host, iface, publicip string) (string,
 }
 
 // UpsertFile creates a file in path with content only if the file does not exist already
-func (w *BaseWindows) UpsertFile(h os.Host, path, content string) error {
+func (w *BaseWindows) UpsertFile(h Host, path, content string) error {
 	tmpf, err := w.TempFile(h)
 	if err != nil {
 		return err
@@ -302,16 +297,18 @@ func (w *BaseWindows) UpsertFile(h os.Host, path, content string) error {
 	return nil
 }
 
-func (w *BaseWindows) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
-	return h.Exec(ps.Cmd(fmt.Sprintf(`Remove-Item -Recurse -Force -Path %s`, ps.DoubleQuotePath(ps.ToWindowsPath(path)))), opts...)
+// DeleteDir removes a directory tree on the host
+func (w *BaseWindows) DeleteDir(h Host, path string) error {
+	return h.Exec(ps.Cmd(fmt.Sprintf(`Remove-Item -Recurse -Force -Path %s`, ps.DoubleQuotePath(ps.ToWindowsPath(path)))))
 }
 
-func (w *BaseWindows) MachineID(h os.Host) (string, error) {
+// MachineID returns a unique identifier for the host
+func (w *BaseWindows) MachineID(h Host) (string, error) {
 	return h.ExecOutput(ps.Cmd(`(Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name MachineGuid).MachineGuid`))
 }
 
 // SystemTime returns the system time as UTC reported by the OS or an error if this fails
-func (w *BaseWindows) SystemTime(h os.Host) (time.Time, error) {
+func (w *BaseWindows) SystemTime(h Host) (time.Time, error) {
 	out, err := h.ExecOutput(ps.Cmd(`[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()`))
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to get system time: %w", err)
@@ -325,7 +322,7 @@ func (w *BaseWindows) SystemTime(h os.Host) (time.Time, error) {
 }
 
 // LookPath resolves a binary path on the remote Windows host similarly to exec.LookPath
-func (w *BaseWindows) LookPath(h os.Host, file string) (string, error) {
+func (w *BaseWindows) LookPath(h Host, file string) (string, error) {
 	file = strings.TrimSpace(file)
 	if file == "" {
 		return "", fmt.Errorf("invalid binary name")
@@ -370,8 +367,161 @@ func (w *BaseWindows) HostPath(path string) string {
 }
 
 // Hostname on windows returns the hostname
-func (w *BaseWindows) Hostname(h os.Host) string {
+func (w *BaseWindows) Hostname(h Host) string {
 	hostname, _ := h.ExecOutput("hostname")
 
 	return hostname
+}
+
+// StartService starts a named service
+func (w *BaseWindows) StartService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Start(context.Background())
+}
+
+// StopService stops a named service
+func (w *BaseWindows) StopService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Stop(context.Background())
+}
+
+// RestartService restarts a named service
+func (w *BaseWindows) RestartService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Restart(context.Background())
+}
+
+// ServiceIsRunning returns true when a named service is running
+func (w *BaseWindows) ServiceIsRunning(h Host, name string) bool {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return false
+	}
+	return svc.IsRunning(context.Background())
+}
+
+// ServiceScriptPath returns an identifier for the Windows service.
+func (w *BaseWindows) ServiceScriptPath(h Host, name string) (string, error) {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return "", err
+	}
+	return svc.ScriptPath(context.Background())
+}
+
+// DaemonReload is a no-op on Windows
+func (w *BaseWindows) DaemonReload(h Host) error {
+	return nil
+}
+
+// UpdateServiceEnvironment is a no-op on Windows; k0s services do not use
+// init-system environment overrides there.
+func (w *BaseWindows) UpdateServiceEnvironment(h Host, name string, env map[string]string) error {
+	return nil
+}
+
+// CleanupServiceEnvironment is a no-op on Windows.
+func (w *BaseWindows) CleanupServiceEnvironment(h Host, name string) error {
+	return nil
+}
+
+// UpdateEnvironment sets machine-level environment variables on the host
+func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {
+	for k, v := range env {
+		script := fmt.Sprintf(`[System.Environment]::SetEnvironmentVariable(%s, %s, [System.EnvironmentVariableTarget]::Machine)`, ps.SingleQuote(k), ps.SingleQuote(v))
+		if err := h.Exec(ps.Cmd(script)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WriteFile writes content to a file on the host
+func (w *BaseWindows) WriteFile(h Host, filePath, content, perm string) error {
+	mode, err := strconv.ParseUint(perm, 8, 32)
+	if err != nil {
+		return fmt.Errorf("invalid permissions %q: %w", perm, err)
+	}
+	return h.Sudo().FS().WriteFile(filePath, []byte(content), fs.FileMode(mode))
+}
+
+// ReadFile reads a file and returns its contents as a string
+func (w *BaseWindows) ReadFile(h Host, filePath string) (string, error) {
+	data, err := h.FS().ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// FileExist returns true when a file exists at path
+func (w *BaseWindows) FileExist(h Host, filePath string) bool {
+	return h.FS().FileExist(filePath)
+}
+
+// DeleteFile removes a file
+func (w *BaseWindows) DeleteFile(h Host, filePath string) error {
+	return h.Sudo().FS().Remove(filePath)
+}
+
+// CheckPrivilege verifies the connecting user has administrator privileges
+func (w *BaseWindows) CheckPrivilege(h Host) error {
+	script := `if (-not ([System.Security.Principal.WindowsPrincipal][System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'administrator privileges required' }`
+	if err := h.Exec(ps.Cmd(script)); err != nil {
+		return fmt.Errorf("administrator privileges check failed: %w", err)
+	}
+	return nil
+}
+
+// IsContainer returns false; container detection is not implemented for Windows
+func (w *BaseWindows) IsContainer(h Host) bool {
+	return false
+}
+
+// FixContainer is a no-op on Windows
+func (w *BaseWindows) FixContainer(h Host) error {
+	return nil
+}
+
+// Stat returns file info for the given path
+func (w *BaseWindows) Stat(h Host, filePath string) (fs.FileInfo, error) {
+	return h.FS().Stat(filePath)
+}
+
+// MkDir creates a directory and all its parents
+func (w *BaseWindows) MkDir(h Host, dirPath string) error {
+	return h.Sudo().FS().MkdirAll(dirPath, fs.FileMode(0o755))
+}
+
+// Chmod changes file permissions (perm as octal string like "0644")
+func (w *BaseWindows) Chmod(h Host, filePath, perm string) error {
+	mode, err := strconv.ParseUint(perm, 8, 32)
+	if err != nil {
+		return fmt.Errorf("invalid permissions %q: %w", perm, err)
+	}
+	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
+}
+
+// CommandExist returns true when a command is available on the host
+func (w *BaseWindows) CommandExist(h Host, command string) bool {
+	return h.FS().CommandExist(command)
+}
+
+// Touch updates file timestamps, creating the file if it doesn't exist
+func (w *BaseWindows) Touch(h Host, filePath string, ts time.Time) error {
+	return h.Sudo().FS().Touch(filePath, ts)
+}
+
+// InstallPackage is not supported on Windows
+func (w *BaseWindows) InstallPackage(h Host, pkg ...string) error {
+	return fmt.Errorf("package installation is not supported on Windows")
 }
