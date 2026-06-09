@@ -4,22 +4,20 @@ import (
 	"errors"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
+// Flatcar provides OS support for Flatcar Container Linux
 type Flatcar struct {
 	BaseLinux
-	os.Linux
 }
 
 var _ configurer.Configurer = (*Flatcar)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "flatcar"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "flatcar"
 		},
 		func() any {
 			fc := &Flatcar{}
@@ -29,6 +27,7 @@ func init() {
 	)
 }
 
-func (l *Flatcar) InstallPackage(h os.Host, pkg ...string) error {
+// InstallPackage is not supported on Flatcar Container Linux
+func (l *Flatcar) InstallPackage(h configurer.Host, pkg ...string) error {
 	return errors.New("FlatcarContainerLinux does not support installing packages manually")
 }

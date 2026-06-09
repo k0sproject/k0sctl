@@ -2,8 +2,7 @@ package linux
 
 import (
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
 // Ubuntu provides OS support for Ubuntu systems
@@ -14,9 +13,9 @@ type Ubuntu struct {
 var _ configurer.Configurer = (*Ubuntu)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "ubuntu"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "ubuntu"
 		},
 		func() any {
 			return &Ubuntu{}

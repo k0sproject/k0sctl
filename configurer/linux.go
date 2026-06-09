@@ -1,7 +1,9 @@
 package configurer
 
 import (
+	"context"
 	"fmt"
+	"io/fs"
 	"path"
 	"regexp"
 	"strconv"
@@ -10,8 +12,8 @@ import (
 	"time"
 
 	"al.essio.dev/pkg/shellescape"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/rig/v2/cmd"
+	"github.com/k0sproject/rig/v2/remotefs"
 )
 
 // Linux is a base module for various linux OS support packages
@@ -21,18 +23,15 @@ type Linux struct {
 	pathOnce sync.Once
 }
 
+// Kind returns the OS kind identifier for Linux hosts
+func (l *Linux) Kind() string {
+	return "linux"
+}
+
 // OSKind returns the identifier for Linux hosts
 func (l *Linux) OSKind() string {
 	return "linux"
 }
-
-// NOTE The Linux struct does not embed rig/os.Linux because it will confuse
-// go as the distro-configurers' parents embed it too. This means you can't
-// add functions to base Linux package that call functions in the rig/os.Linux package,
-// you can however write those functions in the distro-configurers.
-// An example of this problem is the ReplaceK0sTokenPath function, which would like to
-// call `l.ServiceScriptPath("kos")`, which was worked around here by getting the
-// path as a parameter.
 
 func (l *Linux) initPaths() {
 	l.pathOnce.Do(func() {
@@ -86,7 +85,7 @@ func (l *Linux) SetPath(key, value string) {
 }
 
 // Arch returns the host processor architecture in the format k0s expects it
-func (l *Linux) Arch(h os.Host) (string, error) {
+func (l *Linux) Arch(h Host) (string, error) {
 	arch, err := h.ExecOutput("uname -m")
 	if err != nil {
 		return "", err
@@ -111,8 +110,8 @@ func (l *Linux) K0sCmdf(template string, args ...any) string {
 }
 
 // K0sctlLockFilePath returns a path to a lock file
-func (l *Linux) K0sctlLockFilePath(h os.Host) string {
-	if h.Exec("test -d /run/lock", exec.Sudo(h)) == nil {
+func (l *Linux) K0sctlLockFilePath(h Host) string {
+	if h.Sudo().Exec("test -d /run/lock") == nil {
 		return "/run/lock/k0sctl"
 	}
 
@@ -120,12 +119,12 @@ func (l *Linux) K0sctlLockFilePath(h os.Host) string {
 }
 
 // TempFile returns a temp file path
-func (l *Linux) TempFile(h os.Host) (string, error) {
+func (l *Linux) TempFile(h Host) (string, error) {
 	return h.ExecOutput("mktemp")
 }
 
 // TempDir returns a temp dir path
-func (l *Linux) TempDir(h os.Host) (string, error) {
+func (l *Linux) TempDir(h Host) (string, error) {
 	return h.ExecOutput("mktemp -d")
 }
 
@@ -143,8 +142,8 @@ func trailingNumber(s string) (int, bool) {
 }
 
 // DownloadURL performs a download from a URL on the host
-func (l *Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Option) error {
-	err := h.Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)), opts...)
+func (l *Linux) DownloadURL(h Host, url, destination string) error {
+	err := h.Sudo().Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)))
 	if err != nil {
 		if exitCode, ok := trailingNumber(err.Error()); ok && exitCode == 22 {
 			return fmt.Errorf("download failed: http 404 - not found: %w", err)
@@ -155,48 +154,42 @@ func (l *Linux) DownloadURL(h os.Host, url, destination string, opts ...exec.Opt
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
-func (l *Linux) ReplaceK0sTokenPath(h os.Host, spath string) error {
+func (l *Linux) ReplaceK0sTokenPath(h Host, spath string) error {
 	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
 }
 
 // FileContains returns true if a file contains the substring
-func (l *Linux) FileContains(h os.Host, path, s string) bool {
-	return h.Execf(`grep -q "%s" "%s"`, s, path, exec.Sudo(h)) == nil
+func (l *Linux) FileContains(h Host, path, s string) bool {
+	return h.Sudo().Exec(fmt.Sprintf(`grep -q "%s" "%s"`, s, path)) == nil
 }
 
 // MoveFile moves a file on the host
-func (l *Linux) MoveFile(h os.Host, src, dst string) error {
-	return h.Execf(`mv "%s" "%s"`, src, dst, exec.Sudo(h))
+func (l *Linux) MoveFile(h Host, src, dst string) error {
+	return h.Sudo().Exec(fmt.Sprintf(`mv "%s" "%s"`, src, dst))
 }
 
 // Chown sets owner for a file or directory
-func (l *Linux) Chown(h os.Host, path, owner string, opts ...exec.Option) error {
-	if len(opts) == 0 {
-		opts = []exec.Option{exec.Sudo(h)}
-	}
-	cmd := fmt.Sprintf(`chown %s %s`, shellescape.Quote(owner), shellescape.Quote(path))
-	return h.Exec(cmd, opts...)
+func (l *Linux) Chown(h Host, path, owner string) error {
+	return h.Sudo().FS().Chown(path, owner)
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
-func (l *Linux) KubeconfigPath(h os.Host, dataDir string) string {
-	linux := &os.Linux{}
-
+func (l *Linux) KubeconfigPath(h Host, dataDir string) string {
 	// if admin.conf exists, use that
 	adminConfPath := path.Join(dataDir, "pki/admin.conf")
-	if linux.FileExist(h, adminConfPath) {
+	if h.Sudo().FS().FileExist(adminConfPath) {
 		return adminConfPath
 	}
 	return path.Join(dataDir, "kubelet.conf")
 }
 
 // KubectlCmdf returns a command line in sprintf manner for running kubectl on the host using the kubeconfig from KubeconfigPath
-func (l *Linux) KubectlCmdf(h os.Host, dataDir, s string, args ...any) string {
+func (l *Linux) KubectlCmdf(h Host, dataDir, s string, args ...any) string {
 	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.KubeconfigPath(h, dataDir), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
-func (l *Linux) HTTPStatus(h os.Host, url string) (int, error) {
+func (l *Linux) HTTPStatus(h Host, url string) (int, error) {
 	output, err := h.ExecOutput(fmt.Sprintf(`curl -kso /dev/null --connect-timeout 20 -w "%%{http_code}" "%s"`, url))
 	if err != nil {
 		return -1, err
@@ -212,7 +205,7 @@ func (l *Linux) HTTPStatus(h os.Host, url string) (int, error) {
 const sbinPath = `PATH=/usr/local/sbin:/usr/sbin:/sbin:$PATH`
 
 // PrivateInterface tries to find a private network interface
-func (l *Linux) PrivateInterface(h os.Host) (string, error) {
+func (l *Linux) PrivateInterface(h Host) (string, error) {
 	output, err := h.ExecOutput(fmt.Sprintf(`%s; (ip route list scope global | grep -E "\b(172|10|192\.168)\.") || (ip route list | grep -m1 default)`, sbinPath))
 	if err == nil {
 		re := regexp.MustCompile(`\bdev (\w+)`)
@@ -227,7 +220,7 @@ func (l *Linux) PrivateInterface(h os.Host) (string, error) {
 }
 
 // PrivateAddress resolves internal ip from private interface
-func (l *Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error) {
+func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	output, err := h.ExecOutput(fmt.Sprintf("%s ip -o addr show dev %s scope global", sbinPath, iface))
 	if err != nil {
 		return "", fmt.Errorf("failed to find private interface with name %s: %s. Make sure you've set correct 'privateInterface' for the host in config", iface, output)
@@ -256,42 +249,44 @@ func (l *Linux) PrivateAddress(h os.Host, iface, publicip string) (string, error
 }
 
 // UpsertFile creates a file in path with content only if the file does not exist already
-func (l *Linux) UpsertFile(h os.Host, path, content string) error {
+func (l *Linux) UpsertFile(h Host, path, content string) error {
 	tmpf, err := l.TempFile(h)
 	if err != nil {
 		return err
 	}
-	if err := h.Execf(`cat > "%s"`, tmpf, exec.Stdin(content), exec.Sudo(h)); err != nil {
+	if err := h.Sudo().Exec(fmt.Sprintf(`cat > "%s"`, tmpf), cmd.StdinString(content)); err != nil {
 		return err
 	}
 
 	defer func() {
-		_ = h.Execf(`rm -f "%s"`, tmpf, exec.Sudo(h))
+		_ = h.Sudo().Exec(fmt.Sprintf(`rm -f "%s"`, tmpf))
 	}()
 
 	// mv -n is atomic
-	if err := h.Execf(`mv -n "%s" "%s"`, tmpf, path, exec.Sudo(h)); err != nil {
+	if err := h.Sudo().Exec(fmt.Sprintf(`mv -n "%s" "%s"`, tmpf, path)); err != nil {
 		return fmt.Errorf("upsert failed: %w", err)
 	}
 
 	// if original tempfile still exists, error out
-	if h.Execf(`test -f "%s"`, tmpf) == nil {
+	if h.Exec(fmt.Sprintf(`test -f "%s"`, tmpf)) == nil {
 		return fmt.Errorf("upsert failed")
 	}
 
 	return nil
 }
 
-func (l *Linux) DeleteDir(h os.Host, path string, opts ...exec.Option) error {
-	return h.Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)), opts...)
+// DeleteDir removes an empty directory on the host
+func (l *Linux) DeleteDir(h Host, path string) error {
+	return h.Sudo().Exec(fmt.Sprintf(`rmdir %s`, shellescape.Quote(path)))
 }
 
-func (l *Linux) MachineID(h os.Host) (string, error) {
+// MachineID returns a unique identifier for the host
+func (l *Linux) MachineID(h Host) (string, error) {
 	return h.ExecOutput(`cat /etc/machine-id || cat /var/lib/dbus/machine-id`)
 }
 
 // SystemTime returns the system time as UTC reported by the OS or an error if this fails
-func (l *Linux) SystemTime(h os.Host) (time.Time, error) {
+func (l *Linux) SystemTime(h Host) (time.Time, error) {
 	// get utc time as a unix timestamp
 	out, err := h.ExecOutput("date -u +\"%s\"")
 	if err != nil {
@@ -305,12 +300,12 @@ func (l *Linux) SystemTime(h os.Host) (time.Time, error) {
 }
 
 // LookPath behaves similarly to exec.LookPath but resolves the binary on the remote host
-func (l *Linux) LookPath(h os.Host, file string) (string, error) {
+func (l *Linux) LookPath(h Host, file string) (string, error) {
 	if file == "" {
 		return "", fmt.Errorf("invalid binary name")
 	}
 
-	output, err := h.ExecOutputf("command -v -- %s", shellescape.Quote(file))
+	output, err := h.ExecOutput(fmt.Sprintf("command -v -- %s", shellescape.Quote(file)))
 	if err != nil {
 		return "", fmt.Errorf("lookpath %s: %w", file, err)
 	}
@@ -336,4 +331,187 @@ func (l *Linux) Base(p string) string {
 // HostPath returns the given path unchanged for linux hosts
 func (l *Linux) HostPath(p string) string {
 	return p
+}
+
+// StartService starts a named service
+func (l *Linux) StartService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Start(context.Background())
+}
+
+// StopService stops a named service
+func (l *Linux) StopService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Stop(context.Background())
+}
+
+// RestartService restarts a named service
+func (l *Linux) RestartService(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.Restart(context.Background())
+}
+
+// ServiceIsRunning returns true when a named service is running
+func (l *Linux) ServiceIsRunning(h Host, name string) bool {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return false
+	}
+	return svc.IsRunning(context.Background())
+}
+
+// ServiceScriptPath returns the path to the service unit file
+func (l *Linux) ServiceScriptPath(h Host, name string) (string, error) {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return "", err
+	}
+	return svc.ScriptPath(context.Background())
+}
+
+// DaemonReload reloads the init system daemon configuration
+func (l *Linux) DaemonReload(h Host) error {
+	svc, err := h.Sudo().Service("k0scontroller")
+	if err != nil {
+		return err
+	}
+	return svc.DaemonReload(context.Background())
+}
+
+// UpdateServiceEnvironment sets environment overrides for a service
+func (l *Linux) UpdateServiceEnvironment(h Host, name string, env map[string]string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	return svc.SetEnvironment(context.Background(), env)
+}
+
+// CleanupServiceEnvironment removes environment overrides for a service
+func (l *Linux) CleanupServiceEnvironment(h Host, name string) error {
+	svc, err := h.Sudo().Service(name)
+	if err != nil {
+		return err
+	}
+	// SetEnvironment with an empty map clears any previously set overrides.
+	return svc.SetEnvironment(context.Background(), map[string]string{})
+}
+
+// UpdateEnvironment upserts the given key-value pairs into /etc/environment
+// (replacing any existing line for the same key) and exports them into the
+// current shell environment.
+func (l *Linux) UpdateEnvironment(h Host, env map[string]string) error {
+	fsys := h.Sudo().FS()
+	for k, v := range env {
+		patch := remotefs.ReplaceOrAppend(remotefs.ByPrefix(k+"="), fmt.Sprintf("%s=%s", k, v))
+		if err := remotefs.PatchFile(fsys, "/etc/environment", []remotefs.Patch{patch}, remotefs.WithCreate(fs.FileMode(0o644))); err != nil {
+			return fmt.Errorf("failed to update /etc/environment: %w", err)
+		}
+	}
+
+	// Export the values into the current session environment.
+	if err := h.Sudo().Exec(`while read -r pair; do if [ -n "$pair" ] && [ "${pair#\#}" = "$pair" ]; then export "$pair" || exit 2; fi; done < /etc/environment`); err != nil {
+		return fmt.Errorf("failed to update environment: %w", err)
+	}
+	return nil
+}
+
+// WriteFile writes content to a file with the given permissions (octal string like "0644")
+func (l *Linux) WriteFile(h Host, filePath, content, perm string) error {
+	mode, err := strconv.ParseUint(perm, 8, 32)
+	if err != nil {
+		return fmt.Errorf("invalid permissions %q: %w", perm, err)
+	}
+	return h.Sudo().FS().WriteFile(filePath, []byte(content), fs.FileMode(mode))
+}
+
+// ReadFile reads a file and returns its contents as a string
+func (l *Linux) ReadFile(h Host, filePath string) (string, error) {
+	data, err := h.FS().ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// FileExist returns true when a file exists at path
+func (l *Linux) FileExist(h Host, filePath string) bool {
+	return h.FS().FileExist(filePath)
+}
+
+// DeleteFile removes a file
+func (l *Linux) DeleteFile(h Host, filePath string) error {
+	return h.Sudo().FS().Remove(filePath)
+}
+
+// Hostname returns the hostname of the remote host
+func (l *Linux) Hostname(h Host) string {
+	hostname, _ := h.FS().Hostname()
+	return hostname
+}
+
+// CheckPrivilege returns an error when the user does not have privilege to run sudo
+func (l *Linux) CheckPrivilege(h Host) error {
+	if err := h.Sudo().Exec("true"); err != nil {
+		return fmt.Errorf("sudo privilege check failed: %w", err)
+	}
+	return nil
+}
+
+// IsContainer returns true when the host is running inside a container
+func (l *Linux) IsContainer(h Host) bool {
+	isContainer, _ := h.FS().IsContainer()
+	return isContainer
+}
+
+// FixContainer applies container-specific fixes
+func (l *Linux) FixContainer(h Host) error {
+	if err := h.Sudo().Exec("mount --make-rshared / 2> /dev/null"); err != nil {
+		return fmt.Errorf("failed to mount / as rshared: %w", err)
+	}
+	return nil
+}
+
+// Stat returns file info for the given path
+func (l *Linux) Stat(h Host, filePath string) (fs.FileInfo, error) {
+	return h.FS().Stat(filePath)
+}
+
+// MkDir creates a directory and all its parents
+func (l *Linux) MkDir(h Host, dirPath string) error {
+	return h.Sudo().FS().MkdirAll(dirPath, fs.FileMode(0o755))
+}
+
+// Chmod changes file permissions (perm as octal string like "0644")
+func (l *Linux) Chmod(h Host, filePath, perm string) error {
+	mode, err := strconv.ParseUint(perm, 8, 32)
+	if err != nil {
+		return fmt.Errorf("invalid permissions %q: %w", perm, err)
+	}
+	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
+}
+
+// CommandExist returns true when a command is available on the host
+func (l *Linux) CommandExist(h Host, command string) bool {
+	return h.FS().CommandExist(command)
+}
+
+// Touch updates file timestamps, creating the file if it doesn't exist
+func (l *Linux) Touch(h Host, filePath string, ts time.Time) error {
+	return h.Sudo().FS().Touch(filePath, ts)
+}
+
+// InstallPackage installs packages using the host's package manager. Distro
+// configurers override this with the appropriate package manager command.
+func (l *Linux) InstallPackage(h Host, pkg ...string) error {
+	return fmt.Errorf("package installation is not implemented for this Linux distribution")
 }
