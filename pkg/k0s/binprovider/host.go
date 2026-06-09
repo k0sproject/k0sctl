@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rig "github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
 )
 
@@ -16,6 +17,8 @@ import (
 type Host interface {
 	fmt.Stringer
 
+	// FS returns the remote filesystem, accessible without privilege escalation.
+	FS() remotefs.FS
 	// Sudo returns a privilege-escalated rig client used for file transfers and
 	// command execution that require elevated permissions.
 	Sudo() *rig.Client

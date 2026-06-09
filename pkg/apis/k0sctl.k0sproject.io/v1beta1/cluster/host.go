@@ -60,7 +60,7 @@ func (h *Host) String() string {
 	if h.Client != nil {
 		return h.Client.String()
 	}
-	return h.Address()
+	return h.CompositeConfig.String()
 }
 
 // Host contains all the needed details to work with hosts
