@@ -1,11 +1,9 @@
 package linux
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/k0sproject/k0sctl/configurer"
 	rigos "github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/sh"
 )
 
 // BaseLinux for tricking go interfaces
@@ -33,7 +31,7 @@ func init() {
 
 // InstallPackage installs packages via apk
 func (l *Alpine) InstallPackage(h configurer.Host, pkg ...string) error {
-	return h.Sudo().Exec(fmt.Sprintf("apk add --update %s", strings.Join(pkg, " ")))
+	return h.Sudo().Exec(sh.Command("apk", append([]string{"add", "--update"}, pkg...)...))
 }
 
 // Prepare installs prerequisite packages on Alpine hosts
