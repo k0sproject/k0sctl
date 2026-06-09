@@ -10,7 +10,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -108,7 +107,7 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 
 	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
-		stat, err := h.Configurer.Stat(h, lfp, exec.Sudo(h), exec.HideCommand())
+		stat, err := h.Configurer.Stat(h.Sudo(), lfp)
 		if err != nil {
 			return fmt.Errorf("lock file disappeared: %w", err)
 		}

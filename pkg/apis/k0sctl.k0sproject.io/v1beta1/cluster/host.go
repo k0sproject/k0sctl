@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/url"
 	gos "os"
 	"path/filepath"
@@ -20,12 +21,29 @@ import (
 	rig "github.com/k0sproject/rig/v2"
 	rigos "github.com/k0sproject/rig/v2/os"
 	"github.com/k0sproject/version"
+	sloglogrus "github.com/samber/slog-logrus/v2"
 	log "github.com/sirupsen/logrus"
 )
 
 var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 
 var _ binprovider.Host = (*Host)(nil)
+
+// rigLogger bridges rig v2's slog-based logging into k0sctl's logrus output.
+// It wraps the logrus standard logger (the same singleton configured in cmd's
+// logging setup), so any level and hook changes applied there are reflected
+// automatically. rig v2 has no global logger setter; the logger is injected
+// per client via rig.WithLogger at Connect time (see Host.Connect).
+var rigLogger = slog.New(sloglogrus.Option{
+	Level:  slog.LevelDebug,
+	Logger: log.StandardLogger(),
+}.NewLogrusHandler())
+
+// Connect establishes the connection to the host, injecting k0sctl's logger so
+// that rig's internal logging is routed into k0sctl's logrus output.
+func (h *Host) Connect(ctx context.Context) error {
+	return h.ClientWithConfig.Connect(ctx, rig.WithLogger(rigLogger))
+}
 
 // Host contains all the needed details to work with hosts
 type Host struct {

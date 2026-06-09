@@ -16,7 +16,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
-	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -78,7 +77,7 @@ func (p *GatherK0sFacts) Run(ctx context.Context) error {
 		p.Config.Spec.K0s.Metadata.ClusterID = id
 	}
 
-	if err := p.investigateEtcd(); err != nil {
+	if err := p.investigateEtcd(ctx); err != nil {
 		return err
 	}
 
@@ -195,20 +194,20 @@ func (p *GatherK0sFacts) isInternalEtcd() bool {
 	return true
 }
 
-func (p *GatherK0sFacts) investigateEtcd() error {
+func (p *GatherK0sFacts) investigateEtcd(ctx context.Context) error {
 	if !p.isInternalEtcd() {
 		log.Debugf("%s: skipping etcd member list", p.leader)
 		return nil
 	}
 
-	if err := p.listEtcdMembers(p.leader); err != nil {
+	if err := p.listEtcdMembers(ctx, p.leader); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
+func (p *GatherK0sFacts) listEtcdMembers(ctx context.Context, h *cluster.Host) error {
 	log.Infof("%s: listing etcd members", h)
 	// etcd member-list outputs json like:
 	// {"members":{"controller0":"https://172.17.0.2:2380","controller1":"https://172.17.0.3:2380"}}
@@ -219,13 +218,12 @@ func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 	// out if none of both was a JSON document.
 
 	var stdout, stderr bytes.Buffer
-	if cmd, err := h.ExecStreams(
-		h.Configurer.K0sCmdf("etcd member-list --data-dir=%s", h.K0sDataDir()),
-		nil /*stdin*/, &stdout, &stderr,
-		exec.Sudo(h),
-	); err != nil {
+	proc := h.Sudo().Proc(h.Configurer.K0sCmdf("etcd member-list --data-dir=%s", h.K0sDataDir()))
+	proc.Stdout = &stdout
+	proc.Stderr = &stderr
+	if waiter, err := proc.Start(ctx); err != nil {
 		return fmt.Errorf("failed to create etcd member-list command: %w", err)
-	} else if err := cmd.Wait(); err != nil {
+	} else if err := waiter.Wait(); err != nil {
 		return fmt.Errorf("failed to run etcd member-list command: %w", err)
 	}
 
@@ -277,7 +275,7 @@ func (p *GatherK0sFacts) listEtcdMembers(h *cluster.Host) error {
 }
 
 func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) error {
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("version"), exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("version"))
 	if err != nil {
 		log.Debugf("%s: no 'k0s' binary in PATH", h)
 		return nil
@@ -309,7 +307,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 	}
 
-	output, err = h.ExecOutput(h.Configurer.K0sCmdf("status -o json"), exec.Sudo(h))
+	output, err = h.Sudo().ExecOutput(h.Configurer.K0sCmdf("status -o json"))
 	if err != nil {
 		if existingServiceScript == "" {
 			log.Debugf("%s: an existing k0s instance is not running and does not seem to have been installed as a service", h)

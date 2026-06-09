@@ -16,7 +16,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
@@ -137,7 +136,9 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 			return err
 		}
 
-		if err := p.validateConfig(h, tempConfigPath); err != nil {
+		// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
+		// TODO: thread a real ctx if the Prepare interface ever takes a context.
+		if err := p.validateConfig(context.TODO(), h, tempConfigPath); err != nil {
 			return err
 		}
 
@@ -211,7 +212,7 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 		cmd = p.leader.Configurer.K0sCmdf("default-config")
 	}
 
-	cfg, err := p.leader.ExecOutput(cmd, exec.Sudo(p.leader))
+	cfg, err := p.leader.Sudo().ExecOutput(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -240,7 +241,7 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 	return false
 }
 
-func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
+func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
 
 	if h.Metadata.K0sBinaryTempFile != "" {
@@ -252,11 +253,13 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	}
 
 	var stderrBuf bytes.Buffer
-	command, err := h.ExecStreams(p.buildConfigValidateCommand(h, configPath), nil, nil, &stderrBuf, exec.Sudo(h))
+	proc := h.Sudo().Proc(p.buildConfigValidateCommand(h, configPath))
+	proc.Stderr = &stderrBuf
+	waiter, err := proc.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("can't run spec.k0s.config validation: %w", err)
 	}
-	if err := command.Wait(); err != nil {
+	if err := waiter.Wait(); err != nil {
 		return fmt.Errorf("spec.k0s.config validation failed:: %w (%s)", err, stderrBuf.String())
 	}
 
@@ -303,7 +306,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configDir := gopath.Dir(configPath)
 
 	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.SudoFsys().MkDirAll(configDir, 0o750); err != nil {
+		if err := h.Sudo().FS().MkdirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}

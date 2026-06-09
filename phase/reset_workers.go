@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -117,11 +116,14 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 
 		log.Debugf("%s: resetting k0s...", h)
 		var stdoutbuf, stderrbuf bytes.Buffer
-		cmd, err := h.ExecStreams(h.K0sResetCommand(), nil, &stdoutbuf, &stderrbuf, exec.Sudo(h))
+		proc := h.Sudo().Proc(h.K0sResetCommand())
+		proc.Stdout = &stdoutbuf
+		proc.Stderr = &stderrbuf
+		waiter, err := proc.Start(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to run k0s reset: %w", err)
 		}
-		if err := cmd.Wait(); err != nil {
+		if err := waiter.Wait(); err != nil {
 			log.Warnf("%s: k0s reset reported failure: %s %s", h, stderrbuf.String(), stdoutbuf.String())
 		}
 		log.Debugf("%s: resetting k0s completed", h)

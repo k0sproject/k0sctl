@@ -10,7 +10,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -71,7 +71,7 @@ func (p *InstallWorkers) After() error {
 		}
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for worker %s", h), func() error {
 			log.Debugf("%s: invalidating join token for worker %d", p.leader, i+1)
-			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
+			return p.leader.Sudo().Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID))
 		})
 		if err != nil {
 			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
@@ -107,7 +107,7 @@ func (p *InstallWorkers) CleanUp() {
 			}
 		}
 		if h.Metadata.K0sInstalled && p.IsWet() {
-			if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
+			if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
 				log.Warnf("%s: k0s reset failed", h)
 			}
 		}
@@ -151,7 +151,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-			if err := h.SudoFsys().MkDirAll(h.Configurer.Dir(tokenPath), 0o700); err != nil {
+			if err := h.Sudo().FS().MkdirAll(h.Configurer.Dir(tokenPath), 0o700); err != nil {
 				log.Warnf("%s: failed to create k0s config dir %s: %v", h, h.K0sDataDir(), err)
 			}
 			log.Infof("%s: writing join token to %s", h, tokenPath)
@@ -181,7 +181,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			}()
 
 			err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-				err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw=/version --kubeconfig=%s", h.Configurer.Quote(tempfileHostPath)), exec.Sudo(h))
+				err := h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw=/version --kubeconfig=%s", h.Configurer.Quote(tempfileHostPath)))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
 				}
@@ -222,16 +222,16 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			h.InstallFlags.AddOrReplace("--force=true")
 		}
 
-		cmd, err := h.K0sInstallCommand()
+		installCmd, err := h.K0sInstallCommand()
 		if err != nil {
 			return err
 		}
-		execOpts := []exec.Option{exec.Sudo(h)}
-		if h.IsWindows() {
-			execOpts = append(execOpts, exec.AllowWinStderr())
-		}
-		err = p.Wet(h, fmt.Sprintf("install k0s worker with `%s`", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
-			return h.Exec(cmd, execOpts...)
+		err = p.Wet(h, fmt.Sprintf("install k0s worker with `%s`", strings.ReplaceAll(installCmd, h.K0sInstallLocation(), "k0s")), func() error {
+			sudo := h.Sudo()
+			if h.IsWindows() {
+				return sudo.Exec(installCmd, cmd.AllowWinStderr())
+			}
+			return sudo.Exec(installCmd)
 		})
 		if err != nil {
 			return err

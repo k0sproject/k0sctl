@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,9 +35,9 @@ func (p *ApplyManifests) ShouldRun() bool {
 }
 
 // Run the phase
-func (p *ApplyManifests) Run(_ context.Context) error {
+func (p *ApplyManifests) Run(ctx context.Context) error {
 	for name, content := range p.Config.Metadata.Manifests {
-		if err := p.apply(name, content); err != nil {
+		if err := p.apply(ctx, name, content); err != nil {
 			return err
 		}
 	}
@@ -47,7 +45,7 @@ func (p *ApplyManifests) Run(_ context.Context) error {
 	return nil
 }
 
-func (p *ApplyManifests) apply(name string, content []byte) error {
+func (p *ApplyManifests) apply(ctx context.Context, name string, content []byte) error {
 	if !p.IsWet() {
 		p.DryMsgf(p.leader, "apply manifest %s (%d bytes)", name, len(content))
 		return nil
@@ -57,11 +55,15 @@ func (p *ApplyManifests) apply(name string, content []byte) error {
 	kubectlCmd := p.leader.Configurer.KubectlCmdf(p.leader, p.leader.K0sDataDir(), "apply -f -")
 	var stdout, stderr bytes.Buffer
 
-	cmd, err := p.leader.ExecStreams(kubectlCmd, io.NopCloser(bytes.NewReader(content)), &stdout, &stderr, exec.Sudo(p.leader))
+	proc := p.leader.Sudo().Proc(kubectlCmd)
+	proc.Stdin = bytes.NewReader(content)
+	proc.Stdout = &stdout
+	proc.Stderr = &stderr
+	waiter, err := proc.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to run apply for manifest %s: %w", name, err)
 	}
-	if err := cmd.Wait(); err != nil {
+	if err := waiter.Wait(); err != nil {
 		log.Errorf("%s: kubectl apply failed for manifest %s", p.leader, name)
 		log.Errorf("%s: kubectl apply stderr: %s", p.leader, stderr.String())
 	}

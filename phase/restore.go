@@ -8,7 +8,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/remotefs"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -50,7 +50,7 @@ func (p *Restore) Prepare(config *v1beta1.Cluster) error {
 }
 
 // Run the phase
-func (p *Restore) Run(_ context.Context) error {
+func (p *Restore) Run(ctx context.Context) error {
 	// Push the backup file to controller
 	h := p.leader
 	tmpDir, err := h.Configurer.TempDir(h)
@@ -58,7 +58,7 @@ func (p *Restore) Run(_ context.Context) error {
 		return err
 	}
 	dstFile := path.Join(tmpDir, "k0s_backup.tar.gz")
-	if err := h.Upload(p.RestoreFrom, dstFile, 0o600, exec.LogError(true)); err != nil {
+	if err := remotefs.Upload(h.FS(), p.RestoreFrom, dstFile, remotefs.WithPermissions(0o600)); err != nil {
 		return err
 	}
 
@@ -67,7 +67,7 @@ func (p *Restore) Run(_ context.Context) error {
 			log.Warnf("%s: failed to remove backup file %s: %s", h, dstFile, err)
 		}
 
-		if err := h.Configurer.DeleteDir(h, tmpDir, exec.Sudo(h)); err != nil {
+		if err := h.Configurer.DeleteDir(h, tmpDir); err != nil {
 			log.Warnf("%s: failed to remove backup temp dir %s: %s", h, tmpDir, err)
 		}
 	}()
@@ -75,12 +75,15 @@ func (p *Restore) Run(_ context.Context) error {
 	// Run restore
 	log.Infof("%s: restoring cluster state", h)
 	var stdout, stderr bytes.Buffer
-	cmd, err := h.ExecStreams(h.K0sRestoreCommand(dstFile), nil, &stdout, &stderr, exec.Sudo(h))
+	proc := h.Sudo().Proc(h.K0sRestoreCommand(dstFile))
+	proc.Stdout = &stdout
+	proc.Stderr = &stderr
+	waiter, err := proc.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("run restore: %w", err)
 	}
 
-	if err := cmd.Wait(); err != nil {
+	if err := waiter.Wait(); err != nil {
 		log.Debugf("%s: restore stdout: %s", h, stdout.String())
 		log.Errorf("%s: restore failed: %s", h, stderr.String())
 		return fmt.Errorf("restore failed: %w", err)

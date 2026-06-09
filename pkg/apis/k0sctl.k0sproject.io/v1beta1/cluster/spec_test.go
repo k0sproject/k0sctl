@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/k0sproject/dig"
-	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/v2"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
