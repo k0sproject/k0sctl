@@ -260,7 +260,7 @@ func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, conf
 		return fmt.Errorf("can't run spec.k0s.config validation: %w", err)
 	}
 	if err := waiter.Wait(); err != nil {
-		return fmt.Errorf("spec.k0s.config validation failed:: %w (%s)", err, stderrBuf.String())
+		return fmt.Errorf("spec.k0s.config validation failed: %w (%s)", err, stderrBuf.String())
 	}
 
 	return nil
