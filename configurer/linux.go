@@ -10,9 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/rig/v2/remotefs"
+	"github.com/k0sproject/rig/v2/sh"
 )
 
 // Linux is a base module for various linux OS support packages
@@ -72,7 +72,7 @@ func (l *Linux) DataDirDefaultPath() string {
 
 // Quote wraps shellescape.Quote for consumers that need OS-aware escaping
 func (l *Linux) Quote(value string) string {
-	return shellescape.Quote(value)
+	return sh.Quote(value)
 }
 
 // SetPath sets a path for a key
@@ -132,7 +132,7 @@ func trailingNumber(s string) (int, bool) {
 
 // DownloadURL performs a download from a URL on the host
 func (l *Linux) DownloadURL(h Host, url, destination string) error {
-	err := h.Sudo().Exec(fmt.Sprintf(`curl -sSLf -o %s %s`, shellescape.Quote(destination), shellescape.Quote(url)))
+	err := h.Sudo().Exec(sh.Command("curl", "-sSLf", "-o", destination, url))
 	if err != nil {
 		if exitCode, ok := trailingNumber(err.Error()); ok && exitCode == 22 {
 			return fmt.Errorf("download failed: http 404 - not found: %w", err)
@@ -144,7 +144,7 @@ func (l *Linux) DownloadURL(h Host, url, destination string) error {
 
 // ReplaceK0sTokenPath replaces the config path in the service stub
 func (l *Linux) ReplaceK0sTokenPath(h Host, spath string) error {
-	return h.Exec(fmt.Sprintf("sed -i 's^REPLACEME^%s^g' %s", l.K0sJoinTokenPath(), spath))
+	return h.Exec(sh.Command("sed", "-i", fmt.Sprintf("s^REPLACEME^%s^g", l.K0sJoinTokenPath()), spath))
 }
 
 // KubeconfigPath returns the path to a kubeconfig on the host
@@ -164,7 +164,7 @@ func (l *Linux) KubectlCmdf(h Host, dataDir, s string, args ...any) string {
 
 // HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
 func (l *Linux) HTTPStatus(h Host, url string) (int, error) {
-	output, err := h.ExecOutput(fmt.Sprintf(`curl -kso /dev/null --connect-timeout 20 -w "%%{http_code}" "%s"`, url))
+	output, err := h.ExecOutput(sh.Command("curl", "-kso", "/dev/null", "--connect-timeout", "20", "-w", "%{http_code}", url))
 	if err != nil {
 		return -1, err
 	}
@@ -195,7 +195,7 @@ func (l *Linux) PrivateInterface(h Host) (string, error) {
 
 // PrivateAddress resolves internal ip from private interface
 func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
-	output, err := h.ExecOutput(fmt.Sprintf("%s ip -o addr show dev %s scope global", sbinPath, iface))
+	output, err := h.ExecOutput(sbinPath + " " + sh.Command("ip", "-o", "addr", "show", "dev", iface, "scope", "global"))
 	if err != nil {
 		return "", fmt.Errorf("failed to find private interface with name %s: %s. Make sure you've set correct 'privateInterface' for the host in config", iface, output)
 	}
@@ -228,21 +228,21 @@ func (l *Linux) UpsertFile(h Host, path, content string) error {
 	if err != nil {
 		return err
 	}
-	if err := h.Sudo().Exec(fmt.Sprintf(`cat > "%s"`, tmpf), cmd.StdinString(content)); err != nil {
+	if err := h.Sudo().Exec(sh.CommandBuilder("cat").OutToFile(tmpf).String(), cmd.StdinString(content)); err != nil {
 		return err
 	}
 
 	defer func() {
-		_ = h.Sudo().Exec(fmt.Sprintf(`rm -f "%s"`, tmpf))
+		_ = h.Sudo().Exec(sh.Command("rm", "-f", tmpf))
 	}()
 
 	// mv -n is atomic
-	if err := h.Sudo().Exec(fmt.Sprintf(`mv -n "%s" "%s"`, tmpf, path)); err != nil {
+	if err := h.Sudo().Exec(sh.Command("mv", "-n", tmpf, path)); err != nil {
 		return fmt.Errorf("upsert failed: %w", err)
 	}
 
 	// if original tempfile still exists, error out
-	if h.Exec(fmt.Sprintf(`test -f "%s"`, tmpf)) == nil {
+	if h.Exec(sh.Command("test", "-f", tmpf)) == nil {
 		return fmt.Errorf("upsert failed")
 	}
 
