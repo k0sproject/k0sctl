@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/k0sproject/rig/exec"
 )
 
 type ConfigStatus struct {
@@ -16,10 +15,10 @@ type ConfigStatus struct {
 	Writer      io.Writer
 }
 
-func (c ConfigStatus) Run(_ context.Context) error {
+func (c ConfigStatus) Run(ctx context.Context) error {
 	h := c.Config.Spec.K0sLeader()
 
-	if err := h.Connect(); err != nil {
+	if err := h.Connect(ctx); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 	defer h.Disconnect()
@@ -32,7 +31,7 @@ func (c ConfigStatus) Run(_ context.Context) error {
 		format = "-o " + format
 	}
 
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get event --field-selector involvedObject.name=k0s %s", format), exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get event --field-selector involvedObject.name=k0s %s", format))
 	if err != nil {
 		return fmt.Errorf("%s: %w", h, err)
 	}

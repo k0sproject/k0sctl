@@ -21,8 +21,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/manifest"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
@@ -385,8 +384,7 @@ func initLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
-	exec.DisableRedact = ctx.Bool("no-redact")
-	rig.SetLogger(log.StandardLogger())
+	cmd.DisableRedact = ctx.Bool("no-redact")
 	return initFileLogger(ctx)
 }
 
@@ -395,9 +393,8 @@ func initLogging(ctx *cli.Context) error {
 func initSilentLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
-	exec.DisableRedact = ctx.Bool("no-redact")
+	cmd.DisableRedact = ctx.Bool("no-redact")
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
-	rig.SetLogger(log.StandardLogger())
 	return initFileLogger(ctx)
 }
 

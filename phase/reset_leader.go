@@ -8,7 +8,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -68,7 +67,7 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 	}
 
 	log.Debugf("%s: resetting k0s...", p.leader)
-	out, err := p.leader.ExecOutput(p.leader.K0sResetCommand(), exec.Sudo(p.leader))
+	out, err := p.leader.Sudo().ExecOutput(p.leader.K0sResetCommand())
 	if err != nil {
 		log.Debugf("%s: k0s reset failed: %s", p.leader, out)
 		log.Warnf("%s: k0s reported failure: %v", p.leader, err)

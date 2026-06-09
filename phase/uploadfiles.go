@@ -11,7 +11,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/remotefs"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -77,9 +77,9 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 		}
 		err := p.Wet(h, fmt.Sprintf("create a directory for uploading: `mkdir -p \"%s\"`", dir), func() error {
 			if v, perr := strconv.ParseUint(targetPerm, 8, 32); perr == nil {
-				return h.SudoFsys().MkDirAll(dir, fs.FileMode(v))
+				return h.Sudo().FS().MkdirAll(dir, fs.FileMode(v))
 			}
-			return h.Configurer.MkDir(h, dir, exec.Sudo(h))
+			return h.Configurer.MkDir(h, dir)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
@@ -88,7 +88,7 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for directory %s to %s", dir, owner), func() error {
-			return h.Configurer.Chown(h, dir, owner, exec.Sudo(h))
+			return h.Configurer.Chown(h, dir, owner)
 		})
 		if err != nil {
 			return err
@@ -143,7 +143,7 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 						perm = fs.FileMode(v)
 					}
 				}
-				return h.Upload(path.Join(f.Base, s.Path), dest, perm, exec.Sudo(h), exec.LogError(true))
+				return remotefs.Upload(h.Sudo().FS(), path.Join(f.Base, s.Path), dest, remotefs.WithPermissions(perm))
 			})
 			if err != nil {
 				return err
@@ -186,7 +186,7 @@ func (p *UploadFiles) uploadData(h *cluster.Host, f *cluster.UploadFile) error {
 
 	err := p.Wet(h, fmt.Sprintf("upload inline data => %s", dest), func() error {
 		fileMode, _ := strconv.ParseUint(f.PermString, 8, 32)
-		remoteFile, err := h.SudoFsys().OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
+		remoteFile, err := h.Sudo().FS().OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(fileMode))
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 
 	expandedURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
 	err := p.Wet(h, fmt.Sprintf("download file %s => %s", expandedURL, f.DestinationFile), func() error {
-		return h.Configurer.DownloadURL(h, expandedURL, f.DestinationFile, exec.Sudo(h))
+		return h.Configurer.DownloadURL(h, expandedURL, f.DestinationFile)
 	})
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
 			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
-			return h.Configurer.Chown(h, dest, owner, exec.Sudo(h))
+			return h.Configurer.Chown(h, dest, owner)
 		})
 		if err != nil {
 			return err
@@ -256,7 +256,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 	if timestamp != nil {
 		err := p.Wet(h, fmt.Sprintf("set timestamp for %s to %s", dest, timestamp.String()), func() error {
 			log.Debugf("%s: touching %s", h, dest)
-			return h.Configurer.Touch(h, dest, *timestamp, exec.Sudo(h))
+			return h.Configurer.Touch(h, dest, *timestamp)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to touch %s: %w", dest, err)
@@ -275,5 +275,5 @@ func chmodWithString(h *cluster.Host, path, perm string) error {
 
 func chmodWithMode(h *cluster.Host, path string, mode fs.FileMode) error {
 	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return h.Configurer.Chmod(h, path, perm, exec.Sudo(h))
+	return h.Configurer.Chmod(h, path, perm)
 }

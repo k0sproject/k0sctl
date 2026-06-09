@@ -6,8 +6,8 @@ import (
 	"io/fs"
 	"testing"
 
-	"github.com/k0sproject/rig/exec"
-	ps "github.com/k0sproject/rig/pkg/powershell"
+	"github.com/k0sproject/rig/v2/cmd"
+	ps "github.com/k0sproject/rig/v2/powershell"
 	"github.com/stretchr/testify/require"
 )
 

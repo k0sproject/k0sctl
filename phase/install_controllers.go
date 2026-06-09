@@ -11,7 +11,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -68,7 +67,7 @@ func (p *InstallControllers) CleanUp() {
 			}
 		}
 		if h.Metadata.K0sInstalled && p.IsWet() {
-			if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
+			if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
 				log.Warnf("%s: k0s reset failed", h)
 			}
 		}
@@ -89,7 +88,7 @@ func (p *InstallControllers) After() error {
 		h.Metadata.K0sTokenData.Token = ""
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for controller %s", h), func() error {
 			log.Debugf("%s: invalidating join token for controller %d", p.leader, i+1)
-			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
+			return p.leader.Sudo().Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID))
 		})
 		if err != nil {
 			log.Warnf("%s: failed to invalidate controller join token: %v", p.leader, err)
@@ -234,11 +233,14 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 
 	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		var stdout, stderr bytes.Buffer
-		runner, err := h.ExecStreams(cmd, nil, &stdout, &stderr, exec.Sudo(h))
+		proc := h.Sudo().Proc(cmd)
+		proc.Stdout = &stdout
+		proc.Stderr = &stderr
+		waiter, err := proc.Start(ctx)
 		if err != nil {
 			return fmt.Errorf("run k0s install: %w", err)
 		}
-		if err := runner.Wait(); err != nil {
+		if err := waiter.Wait(); err != nil {
 			log.Errorf("%s: k0s install failed: %s %s", h, stdout.String(), stderr.String())
 			return fmt.Errorf("k0s install failed: %w", err)
 		}
@@ -270,7 +272,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 		}
 
 		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
+			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"))
 			if err != nil {
 				return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
 			}

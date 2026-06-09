@@ -10,7 +10,8 @@ import (
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/protocol/ssh"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
@@ -57,17 +58,21 @@ spec:
 
 var defaultHosts = cluster.Hosts{
 	&cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
-				Address: "10.0.0.1",
+		ClientWithConfig: rig.ClientWithConfig{
+			ConnectionConfig: rig.CompositeConfig{
+				SSH: &ssh.Config{
+					Address: "10.0.0.1",
+				},
 			},
 		},
 		Role: "controller",
 	},
 	&cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
-				Address: "10.0.0.2",
+		ClientWithConfig: rig.ClientWithConfig{
+			ConnectionConfig: rig.CompositeConfig{
+				SSH: &ssh.Config{
+					Address: "10.0.0.2",
+				},
 			},
 		},
 		Role: "worker",
@@ -91,10 +96,12 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 	}
 
 	host := &cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
-				Address: addr,
-				Port:    port,
+		ClientWithConfig: rig.ClientWithConfig{
+			ConnectionConfig: rig.CompositeConfig{
+				SSH: &ssh.Config{
+					Address: addr,
+					Port:    port,
+				},
 			},
 		},
 	}
@@ -104,15 +111,15 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 		host.Role = "worker"
 	}
 	if user != "" {
-		host.SSH.User = user
+		host.ConnectionConfig.SSH.User = user
 	}
 
 	_ = defaults.Set(host)
 
 	if keypath == "" {
-		host.SSH.KeyPath = nil
+		host.ConnectionConfig.SSH.KeyPath = nil
 	} else {
-		host.SSH.KeyPath = &keypath
+		host.ConnectionConfig.SSH.KeyPath = &keypath
 	}
 
 	return host

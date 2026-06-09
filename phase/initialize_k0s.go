@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -66,7 +65,7 @@ func (p *InitializeK0s) CleanUp() {
 		}
 	}
 	if h.Metadata.K0sInstalled {
-		if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
+		if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
 			log.Warnf("%s: k0s reset failed", h)
 		}
 	}
@@ -94,7 +93,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 	}
 
 	err = p.Wet(p.leader, fmt.Sprintf("install first k0s controller using `%s`", strings.ReplaceAll(cmd, p.leader.K0sInstallLocation(), "k0s")), func() error {
-		return h.Exec(cmd, exec.Sudo(h))
+		return h.Sudo().Exec(cmd)
 	}, func() error {
 		p.leader.Metadata.DryRunFakeLeader = true
 		return nil
@@ -132,7 +131,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 
 		log.Infof("%s: wait for kubernetes to reach ready state", h)
 		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"), exec.Sudo(h))
+			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"))
 			if out != "ok" {
 				return fmt.Errorf("kubernetes api /readyz responded with %q", out)
 			}

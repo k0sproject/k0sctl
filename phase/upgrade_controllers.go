@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -153,7 +152,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+			if err := h.Sudo().Exec(cmd); err != nil {
 				return fmt.Errorf("failed to reinstall k0s: %w", err)
 			}
 			return nil
@@ -180,7 +179,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 
 		if p.IsWet() {
 			err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-				out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
+				out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"))
 				if err != nil {
 					return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
 				}

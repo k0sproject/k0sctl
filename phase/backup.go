@@ -9,7 +9,6 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -94,7 +93,7 @@ func (p *Backup) Run(_ context.Context) error {
 
 	cmd := h.K0sBackupCommand(backupDir)
 	err = p.Wet(h, fmt.Sprintf("create backup using `%s`", cmd), func() error {
-		return h.Exec(h.K0sBackupCommand(backupDir), exec.Sudo(h))
+		return h.Sudo().Exec(h.K0sBackupCommand(backupDir))
 	})
 	if err != nil {
 		return err
@@ -103,7 +102,7 @@ func (p *Backup) Run(_ context.Context) error {
 	// get the name of the backup file
 	var remoteFile string
 	if p.IsWet() {
-		entries, err := fs.ReadDir(h.SudoFsys(), backupDir)
+		entries, err := fs.ReadDir(h.Sudo().FS(), backupDir)
 		if err != nil {
 			return err
 		}
@@ -122,7 +121,7 @@ func (p *Backup) Run(_ context.Context) error {
 			if err := h.Configurer.DeleteFile(h, remotePath); err != nil {
 				log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
 			}
-			if err := h.Configurer.DeleteDir(h, backupDir, exec.Sudo(h)); err != nil {
+			if err := h.Configurer.DeleteDir(h, backupDir); err != nil {
 				log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
 			}
 		} else {
@@ -131,7 +130,7 @@ func (p *Backup) Run(_ context.Context) error {
 	}()
 
 	if p.IsWet() {
-		f, err := h.SudoFsys().Open(remotePath)
+		f, err := h.Sudo().FS().Open(remotePath)
 		if err != nil {
 			return fmt.Errorf("open backup for streaming: %w", err)
 		}

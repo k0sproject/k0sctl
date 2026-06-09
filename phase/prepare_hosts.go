@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os"
+	"github.com/k0sproject/rig/v2"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,7 +33,7 @@ func (p *PrepareHosts) Run(ctx context.Context) error {
 }
 
 type prepare interface {
-	Prepare(os.Host) error
+	Prepare(configurer.Host) error
 }
 
 // updateEnvironment updates the environment variables on the host and reconnects to
@@ -42,7 +42,7 @@ func (p *PrepareHosts) updateEnvironment(ctx context.Context, h *cluster.Host) e
 	if err := h.Configurer.UpdateEnvironment(h, h.Environment); err != nil {
 		return err
 	}
-	if h.Connection.Protocol() != "SSH" {
+	if h.Protocol() != "ssh" {
 		return nil
 	}
 	// XXX: this is a workaround. UpdateEnvironment on rig's os/linux.go writes
@@ -53,9 +53,9 @@ func (p *PrepareHosts) updateEnvironment(ctx context.Context, h *cluster.Host) e
 	// server configuration (sshd only accepts LC_* variables by default).
 	log.Infof("%s: reconnecting to apply new environment", h)
 	h.Disconnect()
-	return retry.Timeout(ctx, 10*time.Minute, func(_ context.Context) error {
-		if err := h.Connect(); err != nil {
-			if errors.Is(err, rig.ErrCantConnect) || strings.Contains(err.Error(), "host key mismatch") {
+	return retry.Timeout(ctx, 10*time.Minute, func(ctx context.Context) error {
+		if err := h.Connect(ctx); err != nil {
+			if errors.Is(err, rig.ErrNonRetryable) || strings.Contains(err.Error(), "host key mismatch") {
 				return errors.Join(retry.ErrAbort, err)
 			}
 			return fmt.Errorf("failed to reconnect to %s: %w", h, err)
