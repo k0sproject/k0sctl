@@ -86,8 +86,13 @@ func stageUpload(h Host, src, installPath string) (tmp string, err error) {
 	if err != nil {
 		return "", err
 	}
-	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
-		return "", fmt.Errorf("create k0s binary dir %s: %w", dir, err)
+	// Try without sudo first so the directory stays user-owned when the caller
+	// has write access (e.g. test temp dirs). Fall back to sudo for system paths
+	// like /usr/local/bin where root ownership is required.
+	if mkErr := h.FS().MkdirAll(dir, fs.FileMode(0o755)); mkErr != nil {
+		if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
+			return "", fmt.Errorf("create k0s binary dir %s: %w", dir, err)
+		}
 	}
 
 	log.Infof("%s: uploading k0s binary from %s to %s", h, src, tmp)
