@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/rig/v2/sh"
 )
@@ -160,33 +159,6 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	}
 
 	return "", fmt.Errorf("not found")
-}
-
-// UpsertFile creates a file in path with content only if the file does not exist already
-func (l *Linux) UpsertFile(h Host, path, content string) error {
-	tmpf, err := h.FS().CreateTemp("", "")
-	if err != nil {
-		return err
-	}
-	if err := h.Sudo().Exec(sh.CommandBuilder("cat").OutToFile(tmpf).String(), cmd.StdinString(content)); err != nil {
-		return err
-	}
-
-	defer func() {
-		_ = h.Sudo().Exec(sh.Command("rm", "-f", tmpf))
-	}()
-
-	// mv -n is atomic
-	if err := h.Sudo().Exec(sh.Command("mv", "-n", tmpf, path)); err != nil {
-		return fmt.Errorf("upsert failed: %w", err)
-	}
-
-	// if original tempfile still exists, error out
-	if h.Exec(sh.Command("test", "-f", tmpf)) == nil {
-		return fmt.Errorf("upsert failed")
-	}
-
-	return nil
 }
 
 // HostPath returns the given path unchanged for linux hosts

@@ -27,7 +27,6 @@ type Configurer interface {
 	UpdateServiceEnvironment(Host, string, map[string]string) error
 	CleanupServiceEnvironment(Host, string) error
 	K0sctlLockFilePath(Host) string
-	UpsertFile(Host, string, string) error
 	SetPath(string, string)
 	HostPath(string) string
 }
