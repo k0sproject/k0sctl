@@ -30,17 +30,12 @@ func init() {
 	)
 }
 
-// InstallPackage installs packages via apk
-func (l *Alpine) InstallPackage(h configurer.Host, pkg ...string) error {
-	pm := h.Sudo().PackageManager()
+// Prepare installs prerequisite packages on Alpine hosts
+func (l *Alpine) Prepare(h configurer.Host) error {
 	ctx := context.Background()
+	pm := h.Sudo().PackageManager()
 	if err := pm.Update(ctx); err != nil {
 		return err
 	}
-	return pm.Install(ctx, pkg...)
-}
-
-// Prepare installs prerequisite packages on Alpine hosts
-func (l *Alpine) Prepare(h configurer.Host) error {
-	return l.InstallPackage(h, "findutils", "coreutils")
+	return pm.Install(ctx, "findutils", "coreutils")
 }

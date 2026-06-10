@@ -86,13 +86,6 @@ func (w *BaseWindows) K0sctlLockFilePath(h Host) string {
 	return `C:\\Windows\\Temp\\k0sctl.lock`
 }
 
-// ReplaceK0sTokenPath replaces the config path in the service stub
-func (w *BaseWindows) ReplaceK0sTokenPath(h Host, spath string) error {
-	// Replace literal REPLACEME with actual token path
-	cmd := ps.Cmd(fmt.Sprintf(`(Get-Content -Path %s) -replace 'REPLACEME', %s | Set-Content -Path %s -Encoding ascii`, ps.DoubleQuotePath(ps.ToWindowsPath(spath)), ps.SingleQuote(ps.ToWindowsPath(w.K0sJoinTokenPath())), ps.DoubleQuotePath(ps.ToWindowsPath(spath))))
-	return h.Exec(cmd)
-}
-
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (w *BaseWindows) KubeconfigPath(h Host, dataDir string) string {
 	adminConfPath := path.Join(dataDir, "pki", "admin.conf")
@@ -187,7 +180,3 @@ func (w *BaseWindows) FixContainer(h Host) error {
 	return nil
 }
 
-// InstallPackage is not supported on Windows
-func (w *BaseWindows) InstallPackage(h Host, pkg ...string) error {
-	return fmt.Errorf("package installation is not supported on Windows")
-}

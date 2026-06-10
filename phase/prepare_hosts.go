@@ -93,12 +93,15 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 		pkgs = append(pkgs, "inetutils")
 	}
 
-	for _, pkg := range pkgs {
-		err := p.Wet(h, fmt.Sprintf("install package %s", pkg), func() error {
-			log.Infof("%s: installing package %s", h, pkg)
-			return h.Configurer.InstallPackage(h, pkg)
-		})
-		if err != nil {
+	if len(pkgs) > 0 {
+		if err := p.Wet(h, fmt.Sprintf("install packages: %s", strings.Join(pkgs, ", ")), func() error {
+			log.Infof("%s: installing packages: %s", h, strings.Join(pkgs, ", "))
+			pm := h.Sudo().PackageManager()
+			if err := pm.Update(ctx); err != nil {
+				return fmt.Errorf("failed to update package lists: %w", err)
+			}
+			return pm.Install(ctx, pkgs...)
+		}); err != nil {
 			return err
 		}
 	}

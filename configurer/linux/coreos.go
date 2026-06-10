@@ -1,7 +1,6 @@
 package linux
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/k0sproject/k0sctl/configurer"
@@ -24,9 +23,4 @@ func init() {
 			return &CoreOS{}
 		},
 	)
-}
-
-// InstallPackage is not supported on CoreOS
-func (l *CoreOS) InstallPackage(h configurer.Host, pkg ...string) error {
-	return errors.New("CoreOS does not support installing packages manually")
 }

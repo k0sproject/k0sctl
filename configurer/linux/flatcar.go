@@ -1,8 +1,6 @@
 package linux
 
 import (
-	"errors"
-
 	"github.com/k0sproject/k0sctl/configurer"
 	rigos "github.com/k0sproject/rig/v2/os"
 )
@@ -25,9 +23,4 @@ func init() {
 			return fc
 		},
 	)
-}
-
-// InstallPackage is not supported on Flatcar Container Linux
-func (l *Flatcar) InstallPackage(h configurer.Host, pkg ...string) error {
-	return errors.New("FlatcarContainerLinux does not support installing packages manually")
 }

@@ -89,11 +89,6 @@ func (l *Linux) K0sctlLockFilePath(h Host) string {
 	return "/tmp/k0sctl.lock"
 }
 
-// ReplaceK0sTokenPath replaces the config path in the service stub
-func (l *Linux) ReplaceK0sTokenPath(h Host, spath string) error {
-	return h.Exec(sh.Command("sed", "-i", fmt.Sprintf("s^REPLACEME^%s^g", l.K0sJoinTokenPath()), spath))
-}
-
 // KubeconfigPath returns the path to a kubeconfig on the host
 func (l *Linux) KubeconfigPath(h Host, dataDir string) string {
 	// if admin.conf exists, use that
@@ -183,8 +178,3 @@ func (l *Linux) FixContainer(h Host) error {
 	return nil
 }
 
-// InstallPackage installs packages using the host's package manager. Distro
-// configurers override this with the appropriate package manager command.
-func (l *Linux) InstallPackage(h Host, pkg ...string) error {
-	return fmt.Errorf("package installation is not implemented for this Linux distribution")
-}
