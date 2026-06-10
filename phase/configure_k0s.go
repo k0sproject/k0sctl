@@ -132,7 +132,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 			}
 		}()
 
-		if err := h.Configurer.WriteFile(h, tempConfigPath, cfgNew, "0600"); err != nil {
+		if err := h.Sudo().FS().WriteFile(tempConfigPath, []byte(cfgNew), 0o600); err != nil {
 			return err
 		}
 
@@ -297,7 +297,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
 
-	if err := h.Configurer.WriteFile(h, tempConfigPath, h.Metadata.K0sNewConfig, "0600"); err != nil {
+	if err := h.Sudo().FS().WriteFile(tempConfigPath, []byte(h.Metadata.K0sNewConfig), 0o600); err != nil {
 		return err
 	}
 

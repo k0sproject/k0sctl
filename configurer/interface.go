@@ -16,12 +16,10 @@ type Configurer interface {
 	K0sConfigPath() string
 	DataDirDefaultPath() string
 	K0sJoinTokenPath() string
-	WriteFile(Host, string, string, string) error
 	UpdateEnvironment(Host, map[string]string) error
 	DaemonReload(Host) error
 	ReplaceK0sTokenPath(Host, string) error
 	ServiceScriptPath(Host, string) (string, error)
-	ReadFile(Host, string) (string, error)
 	DownloadURL(Host, string, string) error
 	InstallPackage(Host, ...string) error
 	KubectlCmdf(Host, string, string, ...interface{}) string

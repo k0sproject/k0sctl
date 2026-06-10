@@ -124,11 +124,12 @@ func (p *EnsureJoinTokenWorkaround) ShouldRun() bool {
 func (p *EnsureJoinTokenWorkaround) Run(_ context.Context) error {
 	for _, h := range p.hosts {
 		tokenPath := h.K0sJoinTokenPath()
-		content, err := h.Configurer.ReadFile(h, tokenPath)
+		data, err := h.FS().ReadFile(tokenPath)
 		if err != nil {
 			log.Debugf("%s: could not read join token file %s, skipping workaround: %v", h, tokenPath, err)
 			continue
 		}
+		content := string(data)
 		if isBase64(strings.TrimSpace(content)) {
 			log.Debugf("%s: join token file %s already contains base64 content, no workaround needed", h, tokenPath)
 			continue
@@ -139,7 +140,7 @@ func (p *EnsureJoinTokenWorkaround) Run(_ context.Context) error {
 			if err != nil {
 				return fmt.Errorf("build dummy join token: %w", err)
 			}
-			return h.Configurer.WriteFile(h, tokenPath, dummyToken, "0600")
+			return h.Sudo().FS().WriteFile(tokenPath, []byte(dummyToken), 0o600)
 		}); err != nil {
 			log.Warnf("%s: failed to write dummy token to %s: %v", h, tokenPath, err)
 		}

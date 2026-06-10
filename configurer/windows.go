@@ -318,24 +318,6 @@ func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {
 	return nil
 }
 
-// WriteFile writes content to a file on the host
-func (w *BaseWindows) WriteFile(h Host, filePath, content, perm string) error {
-	mode, err := strconv.ParseUint(perm, 8, 32)
-	if err != nil {
-		return fmt.Errorf("invalid permissions %q: %w", perm, err)
-	}
-	return h.Sudo().FS().WriteFile(filePath, []byte(content), fs.FileMode(mode))
-}
-
-// ReadFile reads a file and returns its contents as a string
-func (w *BaseWindows) ReadFile(h Host, filePath string) (string, error) {
-	data, err := h.FS().ReadFile(filePath)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
 // CheckPrivilege verifies the connecting user has administrator privileges
 func (w *BaseWindows) CheckPrivilege(h Host) error {
 	script := `if (-not ([System.Security.Principal.WindowsPrincipal][System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'administrator privileges required' }`

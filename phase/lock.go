@@ -111,11 +111,11 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 		if err != nil {
 			return fmt.Errorf("lock file disappeared: %w", err)
 		}
-		content, err := h.Configurer.ReadFile(h, lfp)
+		data, err := h.FS().ReadFile(lfp)
 		if err != nil {
 			return fmt.Errorf("failed to read lock file:  %w", err)
 		}
-		if content != p.instanceID {
+		if string(data) != p.instanceID {
 			if time.Since(stat.ModTime()) < 30*time.Second {
 				return fmt.Errorf("another instance of k0sctl is currently operating on the host, delete %s or wait 30 seconds for it to expire", lfp)
 			}

@@ -332,24 +332,6 @@ func (l *Linux) UpdateEnvironment(h Host, env map[string]string) error {
 	return nil
 }
 
-// WriteFile writes content to a file with the given permissions (octal string like "0644")
-func (l *Linux) WriteFile(h Host, filePath, content, perm string) error {
-	mode, err := strconv.ParseUint(perm, 8, 32)
-	if err != nil {
-		return fmt.Errorf("invalid permissions %q: %w", perm, err)
-	}
-	return h.Sudo().FS().WriteFile(filePath, []byte(content), fs.FileMode(mode))
-}
-
-// ReadFile reads a file and returns its contents as a string
-func (l *Linux) ReadFile(h Host, filePath string) (string, error) {
-	data, err := h.FS().ReadFile(filePath)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
 // CheckPrivilege returns an error when the user does not have privilege to run sudo
 func (l *Linux) CheckPrivilege(h Host) error {
 	if err := h.Sudo().Exec("true"); err != nil {

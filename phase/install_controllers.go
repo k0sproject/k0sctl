@@ -94,7 +94,7 @@ func (p *InstallControllers) After() error {
 			log.Warnf("%s: failed to invalidate controller join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
-			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
+			if err := h.Sudo().FS().WriteFile(h.K0sJoinTokenPath(), []byte("# overwritten by k0sctl after join\n"), 0o600); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
 			return nil
@@ -210,7 +210,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	tokenPath := h.K0sJoinTokenPath()
 	log.Infof("%s: writing join token to %s", h, tokenPath)
 	err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-		return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+		return h.Sudo().FS().WriteFile(tokenPath, []byte(h.Metadata.K0sTokenData.Token), 0o600)
 	})
 	if err != nil {
 		return err
