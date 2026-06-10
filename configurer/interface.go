@@ -22,7 +22,6 @@ type Configurer interface {
 	ReplaceK0sTokenPath(Host, string) error
 	ServiceScriptPath(Host, string) (string, error)
 	ReadFile(Host, string) (string, error)
-	Chmod(Host, string, string) error
 	DownloadURL(Host, string, string) error
 	InstallPackage(Host, ...string) error
 	KubectlCmdf(Host, string, string, ...interface{}) string
@@ -36,8 +35,6 @@ type Configurer interface {
 	K0sctlLockFilePath(Host) string
 	UpsertFile(Host, string, string) error
 	SetPath(string, string)
-	Dir(string) string
-	Base(string) string
 	HostPath(string) string
 }
 

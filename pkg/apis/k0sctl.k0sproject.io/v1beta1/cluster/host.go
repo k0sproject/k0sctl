@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	gos "os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -147,13 +148,9 @@ func (h *Host) requireConfigurer() (configurer.Configurer, error) {
 	return h.Configurer, nil
 }
 
-// Dir returns the configurer-specific directory name for the given path.
+// Dir returns the directory name for the given path using the remote filesystem.
 func (h *Host) Dir(path string) (string, error) {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return "", err
-	}
-	return cfg.Dir(path), nil
+	return h.FS().Dir(path), nil
 }
 
 // OSKind returns the host OS kind via the resolved configurer.
@@ -600,7 +597,7 @@ func (h *Host) K0sServiceName() string {
 }
 
 func (h *Host) k0sBinaryPathDir() string {
-	return h.Configurer.Dir(h.K0sInstallLocation())
+	return path.Dir(h.K0sInstallLocation())
 }
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
@@ -647,12 +644,7 @@ func (h *Host) K0sBinaryVersion() (*version.Version, error) {
 }
 
 func (h *Host) SetFileMode(path string, mode fs.FileMode) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return cfg.Chmod(h, path, perm)
+	return h.Sudo().FS().Chmod(path, mode)
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path

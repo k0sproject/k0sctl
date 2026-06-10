@@ -254,24 +254,6 @@ func (w *BaseWindows) UpsertFile(h Host, path, content string) error {
 	return nil
 }
 
-// Dir returns the directory part of a path
-func (w *BaseWindows) Dir(path string) string {
-	index := strings.LastIndexAny(path, `\/`)
-	if index == -1 {
-		return "."
-	}
-	return path[:index]
-}
-
-// Base returns the last element of a path
-func (w *BaseWindows) Base(path string) string {
-	index := strings.LastIndexAny(path, `\/`)
-	if index == -1 {
-		return path
-	}
-	return path[index+1:]
-}
-
 // HostPath converts the provided path to a native Windows path representation
 func (w *BaseWindows) HostPath(path string) string {
 	return ps.ToWindowsPath(path)
@@ -379,15 +361,6 @@ func (w *BaseWindows) CheckPrivilege(h Host) error {
 // FixContainer is a no-op on Windows
 func (w *BaseWindows) FixContainer(h Host) error {
 	return nil
-}
-
-// Chmod changes file permissions (perm as octal string like "0644")
-func (w *BaseWindows) Chmod(h Host, filePath, perm string) error {
-	mode, err := strconv.ParseUint(perm, 8, 32)
-	if err != nil {
-		return fmt.Errorf("invalid permissions %q: %w", perm, err)
-	}
-	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
 }
 
 // InstallPackage is not supported on Windows

@@ -274,6 +274,5 @@ func chmodWithString(h *cluster.Host, path, perm string) error {
 }
 
 func chmodWithMode(h *cluster.Host, path string, mode fs.FileMode) error {
-	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return h.Configurer.Chmod(h, path, perm)
+	return h.Sudo().FS().Chmod(path, mode)
 }
