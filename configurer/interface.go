@@ -5,7 +5,6 @@ type Configurer interface {
 	Kind() string
 	OSKind() string
 	Quote(string) string
-	CheckPrivilege(Host) error
 	StartService(Host, string) error
 	StopService(Host, string) error
 	RestartService(Host, string) error

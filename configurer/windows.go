@@ -316,15 +316,6 @@ func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {
 	return nil
 }
 
-// CheckPrivilege verifies the connecting user has administrator privileges
-func (w *BaseWindows) CheckPrivilege(h Host) error {
-	script := `if (-not ([System.Security.Principal.WindowsPrincipal][System.Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'administrator privileges required' }`
-	if err := h.Exec(ps.Cmd(script)); err != nil {
-		return fmt.Errorf("administrator privileges check failed: %w", err)
-	}
-	return nil
-}
-
 // FixContainer is a no-op on Windows
 func (w *BaseWindows) FixContainer(h Host) error {
 	return nil
