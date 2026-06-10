@@ -151,7 +151,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
 		tokenPath := h.K0sJoinTokenPath()
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-			if err := h.Sudo().FS().MkdirAll(h.Configurer.Dir(tokenPath), 0o700); err != nil {
+			if err := h.Sudo().FS().MkdirAll(h.FS().Dir(tokenPath), 0o700); err != nil {
 				log.Warnf("%s: failed to create k0s config dir %s: %v", h, h.K0sDataDir(), err)
 			}
 			log.Infof("%s: writing join token to %s", h, tokenPath)

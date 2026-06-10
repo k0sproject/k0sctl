@@ -249,16 +249,6 @@ func (l *Linux) UpsertFile(h Host, path, content string) error {
 	return nil
 }
 
-// Dir returns the directory part of a path
-func (l *Linux) Dir(p string) string {
-	return path.Dir(p)
-}
-
-// Base returns the base part of a path
-func (l *Linux) Base(p string) string {
-	return path.Base(p)
-}
-
 // HostPath returns the given path unchanged for linux hosts
 func (l *Linux) HostPath(p string) string {
 	return p
@@ -388,15 +378,6 @@ func (l *Linux) FixContainer(h Host) error {
 		return fmt.Errorf("failed to mount / as rshared: %w", err)
 	}
 	return nil
-}
-
-// Chmod changes file permissions (perm as octal string like "0644")
-func (l *Linux) Chmod(h Host, filePath, perm string) error {
-	mode, err := strconv.ParseUint(perm, 8, 32)
-	if err != nil {
-		return fmt.Errorf("invalid permissions %q: %w", perm, err)
-	}
-	return h.Sudo().FS().Chmod(filePath, fs.FileMode(mode))
 }
 
 // InstallPackage installs packages using the host's package manager. Distro
