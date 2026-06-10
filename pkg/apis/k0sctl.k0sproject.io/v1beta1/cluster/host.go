@@ -21,6 +21,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
 	rig "github.com/k0sproject/rig/v2"
 	rigos "github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
 	sloglogrus "github.com/samber/slog-logrus/v2"
 	log "github.com/sirupsen/logrus"
@@ -729,8 +730,8 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
-func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
-	status, err := h.Configurer.HTTPStatus(h, url)
+func (h *Host) CheckHTTPStatus(ctx context.Context, url string, expected ...int) error {
+	status, err := remotefs.HTTPStatus(ctx, h.FS(), url)
 	if err != nil {
 		return err
 	}
