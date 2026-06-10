@@ -106,22 +106,34 @@ func (p *Lock) startLock(ctx context.Context, h *cluster.Host) error {
 func (p *Lock) tryLock(h *cluster.Host) error {
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 
-	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
-		stat, err := h.Sudo().FS().Stat(lfp)
-		if err != nil {
-			return fmt.Errorf("lock file disappeared: %w", err)
+	f, err := h.Sudo().FS().OpenFile(lfp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		// File already exists — check if it belongs to us or is stale.
+		stat, statErr := h.Sudo().FS().Stat(lfp)
+		if statErr != nil {
+			return fmt.Errorf("lock file disappeared: %w", statErr)
 		}
-		data, err := h.FS().ReadFile(lfp)
-		if err != nil {
-			return fmt.Errorf("failed to read lock file:  %w", err)
+		data, readErr := h.Sudo().FS().ReadFile(lfp)
+		if readErr != nil {
+			return fmt.Errorf("failed to read lock file: %w", readErr)
 		}
-		if string(data) != p.instanceID {
-			if time.Since(stat.ModTime()) < 30*time.Second {
-				return fmt.Errorf("another instance of k0sctl is currently operating on the host, delete %s or wait 30 seconds for it to expire", lfp)
-			}
-			_ = h.Sudo().FS().Remove(lfp)
-			return fmt.Errorf("removed existing expired lock file, will retry")
+		if string(data) == p.instanceID {
+			// We already hold the lock.
+			return nil
 		}
+		if time.Since(stat.ModTime()) < 30*time.Second {
+			return fmt.Errorf("another instance of k0sctl is currently operating on the host, delete %s or wait 30 seconds for it to expire", lfp)
+		}
+		_ = h.Sudo().FS().Remove(lfp)
+		return fmt.Errorf("removed existing expired lock file, will retry")
+	}
+
+	if _, writeErr := f.Write([]byte(p.instanceID)); writeErr != nil {
+		_ = f.Close()
+		return fmt.Errorf("failed to write lock file: %w", writeErr)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close lock file: %w", err)
 	}
 
 	return nil

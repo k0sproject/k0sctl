@@ -185,32 +185,6 @@ func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, er
 	return ip, nil
 }
 
-// UpsertFile creates a file in path with content only if the file does not exist already
-func (w *BaseWindows) UpsertFile(h Host, path, content string) error {
-	tmpf, err := h.FS().CreateTemp("", "")
-	if err != nil {
-		return err
-	}
-	// Write content to temp file
-	if err := h.Exec(ps.Cmd(fmt.Sprintf(`Set-Content -Path %s -Value @'
-%s
-'@ -Encoding ascii`, ps.DoubleQuotePath(ps.ToWindowsPath(tmpf)), content))); err != nil {
-		return err
-	}
-
-	// Atomically move if destination does not exist
-	script := ps.Cmd(fmt.Sprintf(`if (!(Test-Path -Path %s)) { Move-Item -Path %s -Destination %s } else { Remove-Item -Path %s -Force }`, ps.DoubleQuotePath(ps.ToWindowsPath(path)), ps.DoubleQuotePath(ps.ToWindowsPath(tmpf)), ps.DoubleQuotePath(ps.ToWindowsPath(path)), ps.DoubleQuotePath(ps.ToWindowsPath(tmpf))))
-	if err := h.Exec(script); err != nil {
-		return fmt.Errorf("upsert failed: %w", err)
-	}
-
-	// Ensure temp file is gone
-	if h.Exec(ps.Cmd(fmt.Sprintf(`Test-Path -Path %s`, ps.DoubleQuotePath(ps.ToWindowsPath(tmpf))))) == nil {
-		return fmt.Errorf("upsert failed")
-	}
-	return nil
-}
-
 // HostPath converts the provided path to a native Windows path representation
 func (w *BaseWindows) HostPath(path string) string {
 	return ps.ToWindowsPath(path)
