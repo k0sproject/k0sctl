@@ -1,7 +1,6 @@
 package configurer
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"path"
@@ -156,78 +155,6 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	return "", fmt.Errorf("not found")
 }
 
-// StartService starts a named service
-func (l *Linux) StartService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Start(context.Background())
-}
-
-// StopService stops a named service
-func (l *Linux) StopService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Stop(context.Background())
-}
-
-// RestartService restarts a named service
-func (l *Linux) RestartService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Restart(context.Background())
-}
-
-// ServiceIsRunning returns true when a named service is running
-func (l *Linux) ServiceIsRunning(h Host, name string) bool {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return false
-	}
-	return svc.IsRunning(context.Background())
-}
-
-// ServiceScriptPath returns the path to the service unit file
-func (l *Linux) ServiceScriptPath(h Host, name string) (string, error) {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return "", err
-	}
-	return svc.ScriptPath(context.Background())
-}
-
-// DaemonReload reloads the init system daemon configuration
-func (l *Linux) DaemonReload(h Host) error {
-	svc, err := h.Sudo().Service("k0scontroller")
-	if err != nil {
-		return err
-	}
-	return svc.DaemonReload(context.Background())
-}
-
-// UpdateServiceEnvironment sets environment overrides for a service
-func (l *Linux) UpdateServiceEnvironment(h Host, name string, env map[string]string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.SetEnvironment(context.Background(), env)
-}
-
-// CleanupServiceEnvironment removes environment overrides for a service
-func (l *Linux) CleanupServiceEnvironment(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	// SetEnvironment with an empty map clears any previously set overrides.
-	return svc.SetEnvironment(context.Background(), map[string]string{})
-}
 
 // UpdateEnvironment upserts the given key-value pairs into /etc/environment
 // (replacing any existing line for the same key) and exports them into the

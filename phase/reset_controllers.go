@@ -102,9 +102,11 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 			}
 		}
 
-		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+		if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+		} else if svc.IsRunning(ctx) {
 			log.Debugf("%s: stopping k0s...", h)
-			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+			if err := svc.Stop(ctx); err != nil {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
@@ -150,7 +152,9 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		log.Debugf("%s: removing binary completed", h)
 
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
 		}

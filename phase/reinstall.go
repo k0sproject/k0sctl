@@ -93,7 +93,11 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 	}
 
 	err = p.Wet(h, "restart k0s service", func() error {
-		if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+		if err := svc.Restart(ctx); err != nil {
 			return fmt.Errorf("failed to restart k0s: %w", err)
 		}
 		log.Infof("%s: waiting for the k0s service to start", h)

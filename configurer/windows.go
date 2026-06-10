@@ -1,7 +1,6 @@
 package configurer
 
 import (
-	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -171,66 +170,6 @@ func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, er
 	return ip, nil
 }
 
-// StartService starts a named service
-func (w *BaseWindows) StartService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Start(context.Background())
-}
-
-// StopService stops a named service
-func (w *BaseWindows) StopService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Stop(context.Background())
-}
-
-// RestartService restarts a named service
-func (w *BaseWindows) RestartService(h Host, name string) error {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return err
-	}
-	return svc.Restart(context.Background())
-}
-
-// ServiceIsRunning returns true when a named service is running
-func (w *BaseWindows) ServiceIsRunning(h Host, name string) bool {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return false
-	}
-	return svc.IsRunning(context.Background())
-}
-
-// ServiceScriptPath returns an identifier for the Windows service.
-func (w *BaseWindows) ServiceScriptPath(h Host, name string) (string, error) {
-	svc, err := h.Sudo().Service(name)
-	if err != nil {
-		return "", err
-	}
-	return svc.ScriptPath(context.Background())
-}
-
-// DaemonReload is a no-op on Windows
-func (w *BaseWindows) DaemonReload(h Host) error {
-	return nil
-}
-
-// UpdateServiceEnvironment is a no-op on Windows; k0s services do not use
-// init-system environment overrides there.
-func (w *BaseWindows) UpdateServiceEnvironment(h Host, name string, env map[string]string) error {
-	return nil
-}
-
-// CleanupServiceEnvironment is a no-op on Windows.
-func (w *BaseWindows) CleanupServiceEnvironment(h Host, name string) error {
-	return nil
-}
 
 // UpdateEnvironment sets machine-level environment variables on the host
 func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {

@@ -62,7 +62,9 @@ func (p *InstallControllers) CleanUp() {
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %v", h, err)
 			}
 		}
@@ -254,15 +256,20 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 
 	if p.IsWet() {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
-			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+			if err := svc.SetEnvironment(ctx, h.Environment); err != nil {
 				return err
 			}
 		}
 
 		log.Infof("%s: starting service", h)
-		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 
@@ -271,7 +278,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 			return err
 		}
 
-		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+		err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"))
 			if err != nil {
 				return fmt.Errorf("readiness endpoint reports %q: %w", out, err)

@@ -131,8 +131,12 @@ func HTTPStatusFunc(h *cluster.Host, url string, expected ...int) retryFunc {
 
 // ServiceRunningFunc returns a function that returns an error until the service is running on the host
 func ServiceRunningFunc(h *cluster.Host, service string) retryFunc {
-	return func(_ context.Context) error {
-		if !h.Configurer.ServiceIsRunning(h, service) {
+	return func(ctx context.Context) error {
+		svc, err := h.Sudo().Service(service)
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", service, err)
+		}
+		if !svc.IsRunning(ctx) {
 			return fmt.Errorf("service %s is not running", service)
 		}
 		return nil
@@ -141,8 +145,12 @@ func ServiceRunningFunc(h *cluster.Host, service string) retryFunc {
 
 // ServiceStoppedFunc returns a function that returns an error if the service is not running on the host
 func ServiceStoppedFunc(h *cluster.Host, service string) retryFunc {
-	return func(_ context.Context) error {
-		if h.Configurer.ServiceIsRunning(h, service) {
+	return func(ctx context.Context) error {
+		svc, err := h.Sudo().Service(service)
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", service, err)
+		}
+		if svc.IsRunning(ctx) {
 			return fmt.Errorf("service %s is still running", service)
 		}
 		return nil

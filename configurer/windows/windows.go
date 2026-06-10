@@ -70,15 +70,3 @@ func detectContainersFeatureState(h configurer.Host) (string, error) {
 
 	return "", fmt.Errorf("failed to detect Containers feature state")
 }
-
-// ServiceScriptPath synthesizes an identifier for the Windows service configuration.
-// Windows services do not have init scripts, so we verify that the service exists
-// and return a pseudo path that can be used for logging and detection.
-func (c *Windows) ServiceScriptPath(h configurer.Host, service string) (string, error) {
-	cmdStr := ps.Cmd(fmt.Sprintf(`sc.exe query %s | Out-Null`, ps.SingleQuote(service)))
-	if err := h.Exec(cmdStr); err != nil {
-		return "", fmt.Errorf("failed to find service %s: %w", service, err)
-	}
-
-	return fmt.Sprintf("winservice:%s", service), nil
-}

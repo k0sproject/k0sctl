@@ -54,9 +54,11 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 		}
 	}
 
-	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
+	if leaderSvc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
+		log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+	} else if leaderSvc.IsRunning(ctx) {
 		log.Debugf("%s: stopping k0s...", p.leader)
-		if err := p.leader.Configurer.StopService(p.leader, p.leader.K0sServiceName()); err != nil {
+		if err := leaderSvc.Stop(ctx); err != nil {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
@@ -87,7 +89,9 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 	log.Debugf("%s: removing binary completed", p.leader)
 
 	if len(p.leader.Environment) > 0 {
-		if err := p.leader.Configurer.CleanupServiceEnvironment(p.leader, p.leader.K0sServiceName()); err != nil {
+		if svc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+		} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
 			log.Warnf("%s: failed to clean up service environment: %s", p.leader, err.Error())
 		}
 	}
