@@ -102,7 +102,9 @@ func (p *InstallWorkers) CleanUp() {
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %v", h, err)
 			}
 		}
@@ -196,16 +198,20 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			return err
 		}
 
-		if sp, err := h.Configurer.ServiceScriptPath(h, h.K0sServiceName()); err == nil {
-			if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
-				err := p.Wet(h, "stop existing k0s service", func() error {
-					log.Infof("%s: stopping service", h)
-					return h.Configurer.StopService(h, h.K0sServiceName())
-				})
-				if err != nil {
-					return err
-				}
+		svc, svcErr := h.Sudo().Service(h.K0sServiceName())
+		if svcErr != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
+		}
+		if svc.IsRunning(ctx) {
+			err := p.Wet(h, "stop existing k0s service", func() error {
+				log.Infof("%s: stopping service", h)
+				return svc.Stop(ctx)
+			})
+			if err != nil {
+				return err
 			}
+		}
+		if sp, err := svc.ScriptPath(ctx); err == nil && sp != "" {
 			if h.FS().FileExist(sp) {
 				err := p.Wet(h, "remove existing k0s service file", func() error {
 					return h.Sudo().FS().Remove(sp)
@@ -242,7 +248,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		if len(h.Environment) > 0 {
 			err := p.Wet(h, "update service environment variables", func() error {
 				log.Infof("%s: updating service environment", h)
-				return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+				return svc.SetEnvironment(ctx, h.Environment)
 			})
 			if err != nil {
 				return err
@@ -251,7 +257,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 
 		if p.IsWet() {
 			log.Infof("%s: starting service", h)
-			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+			if err := svc.Start(ctx); err != nil {
 				return err
 			}
 		}

@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/k0sproject/dig"
-	"github.com/k0sproject/rig/v2/sh"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
+	"github.com/k0sproject/rig/v2/sh"
 	"github.com/k0sproject/version"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
@@ -320,7 +320,11 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
 		log.Infof("%s: restarting k0s service", h)
-		if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+		if err := svc.Restart(ctx); err != nil {
 			return err
 		}
 

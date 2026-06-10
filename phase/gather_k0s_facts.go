@@ -16,6 +16,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
+	ps "github.com/k0sproject/rig/v2/powershell"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
@@ -301,10 +302,23 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 
 	var existingServiceScript string
 
-	for _, svc := range []string{"k0scontroller", "k0sworker", "k0sserver"} {
-		if path, err := h.Configurer.ServiceScriptPath(h, svc); err == nil && path != "" {
-			existingServiceScript = path
+	for _, svcName := range []string{"k0scontroller", "k0sworker", "k0sserver"} {
+		svc, err := h.Sudo().Service(svcName)
+		if err != nil {
+			continue
+		}
+		sp, err := svc.ScriptPath(ctx)
+		if err == nil && sp != "" {
+			existingServiceScript = sp
 			break
+		}
+		// On Windows the init system does not expose a script path. Verify the SCM
+		// service entry exists with sc.exe and use a pseudo-path for logging.
+		if h.IsWindows() {
+			if h.Exec(ps.Cmd(fmt.Sprintf(`sc.exe query %s | Out-Null`, ps.SingleQuote(svcName)))) == nil {
+				existingServiceScript = fmt.Sprintf("winservice:%s", svcName)
+				break
+			}
 		}
 	}
 

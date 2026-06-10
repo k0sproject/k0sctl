@@ -62,7 +62,9 @@ func (p *UpgradeControllers) After() error {
 func (p *UpgradeControllers) CleanUp() {
 	for _, h := range p.hosts {
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
 		}
@@ -104,8 +106,12 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		}
 
 		log.Debugf("%s: stop service", h)
+		svc, svcErr := h.Sudo().Service(h.K0sServiceName())
+		if svcErr != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
+		}
 		err := p.Wet(h, "stop k0s service", func() error {
-			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+			if err := svc.Stop(ctx); err != nil {
 				return err
 			}
 			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
@@ -133,7 +139,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
 			err := p.Wet(h, "update service environment", func() error {
-				return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+				return svc.SetEnvironment(ctx, h.Environment)
 			})
 			if err != nil {
 				return err
@@ -164,7 +170,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 
 		log.Debugf("%s: restart service", h)
 		err = p.Wet(h, "start k0s service with the new binary", func() error {
-			if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+			if err := svc.Start(ctx); err != nil {
 				return err
 			}
 			log.Infof("%s: waiting for the k0s service to start", h)
