@@ -468,6 +468,9 @@ func (h *Host) Arch() (string, error) {
 			return arch, nil
 		}
 	}
+	if h.Client == nil {
+		return "", fmt.Errorf("host is not connected")
+	}
 	release, err := h.Client.OSRelease()
 	if err != nil {
 		return "", fmt.Errorf("failed to detect host architecture: %w", err)
