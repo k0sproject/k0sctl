@@ -1,7 +1,6 @@
 package linux
 
 import (
-	"context"
 	"slices"
 
 	"github.com/k0sproject/k0sctl/configurer"
@@ -24,9 +23,4 @@ func init() {
 			return &Archlinux{}
 		},
 	)
-}
-
-// InstallPackage installs packages via pacman
-func (l *Archlinux) InstallPackage(h configurer.Host, pkg ...string) error {
-	return h.Sudo().PackageManager().Install(context.Background(), pkg...)
 }

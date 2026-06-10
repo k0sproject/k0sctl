@@ -10,8 +10,6 @@ type Configurer interface {
 	DataDirDefaultPath() string
 	K0sJoinTokenPath() string
 	UpdateEnvironment(Host, map[string]string) error
-	ReplaceK0sTokenPath(Host, string) error
-	InstallPackage(Host, ...string) error
 	KubectlCmdf(Host, string, string, ...interface{}) string
 	KubeconfigPath(Host, string) string
 	FixContainer(Host) error
