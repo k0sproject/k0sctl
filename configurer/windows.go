@@ -3,10 +3,8 @@ package configurer
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
