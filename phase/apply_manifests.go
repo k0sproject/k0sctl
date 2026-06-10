@@ -64,8 +64,7 @@ func (p *ApplyManifests) apply(ctx context.Context, name string, content []byte)
 		return fmt.Errorf("failed to run apply for manifest %s: %w", name, err)
 	}
 	if err := waiter.Wait(); err != nil {
-		log.Errorf("%s: kubectl apply failed for manifest %s", p.leader, name)
-		log.Errorf("%s: kubectl apply stderr: %s", p.leader, stderr.String())
+		return fmt.Errorf("kubectl apply failed for manifest %s: %w (stderr: %s)", name, err, stderr.String())
 	}
 	log.Infof("%s: kubectl apply: %s", p.leader, stdout.String())
 	return nil

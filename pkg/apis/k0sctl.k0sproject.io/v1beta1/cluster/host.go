@@ -455,15 +455,24 @@ func (h *Host) K0sConfigPath() string {
 	return h.Configurer.K0sConfigPath()
 }
 
-// Arch returns the host architecture, caching the result in metadata
+// Arch returns the host architecture, caching the result in metadata.
+// It first tries the k0sctl OSRelease field (which may be a synthetic override without
+// arch info), then falls back to rig's live OS detection via uname -m.
 func (h *Host) Arch() (string, error) {
 	if h.Metadata.Arch != "" {
 		return h.Metadata.Arch, nil
 	}
-	if h.OSRelease == nil {
-		return "", fmt.Errorf("host OS release is not resolved")
+	if h.OSRelease != nil {
+		if arch, err := h.OSRelease.Arch(); err == nil {
+			h.Metadata.Arch = arch
+			return arch, nil
+		}
 	}
-	arch, err := h.OSRelease.Arch()
+	release, err := h.Client.OSRelease()
+	if err != nil {
+		return "", fmt.Errorf("failed to detect host architecture: %w", err)
+	}
+	arch, err := release.Arch()
 	if err != nil {
 		return "", fmt.Errorf("failed to detect host architecture: %w", err)
 	}
@@ -594,7 +603,7 @@ func (h *Host) K0sServiceName() string {
 }
 
 func (h *Host) k0sBinaryPathDir() string {
-	return path.Dir(h.K0sInstallLocation())
+	return path.Dir(strings.ReplaceAll(h.K0sInstallLocation(), `\`, "/"))
 }
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath

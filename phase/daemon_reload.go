@@ -26,9 +26,9 @@ func (p *DaemonReload) ShouldRun() bool {
 func (p *DaemonReload) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: reloading service manager", h)
-		svc, err := h.Sudo().Service("k0scontroller")
+		svc, err := h.Sudo().Service(h.K0sServiceName())
 		if err != nil {
-			log.Warnf("%s: failed to get service k0scontroller: %s", h, err.Error())
+			log.Warnf("%s: failed to get service %s: %s", h, h.K0sServiceName(), err.Error())
 			return nil
 		}
 		if err := svc.DaemonReload(ctx); err != nil {
