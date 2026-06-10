@@ -4,7 +4,6 @@ package configurer
 type Configurer interface {
 	Kind() string
 	OSKind() string
-	Quote(string) string
 	StartService(Host, string) error
 	StopService(Host, string) error
 	RestartService(Host, string) error
@@ -28,7 +27,6 @@ type Configurer interface {
 	CleanupServiceEnvironment(Host, string) error
 	K0sctlLockFilePath(Host) string
 	SetPath(string, string)
-	HostPath(string) string
 }
 
 // HostValidator allows a Configurer to implement host-specific validation logic.

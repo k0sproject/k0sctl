@@ -46,7 +46,7 @@ type statusEvents struct {
 // On connection loss (e.g. SSH session dropped) it disconnects and reconnects so the next retry uses a fresh connection.
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(ctx context.Context) error {
-		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.Configurer.Quote(h.Metadata.Hostname)), cmd.HideOutput())
+		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(h.Metadata.Hostname)), cmd.HideOutput())
 		if err != nil {
 			err = fmt.Errorf("failed to get node status: %w", err)
 			if IsConnectionError(err) {

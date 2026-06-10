@@ -3,9 +3,13 @@ package cluster
 import (
 	"testing"
 
-	cfg "github.com/k0sproject/k0sctl/configurer"
+	"github.com/k0sproject/rig/v2/sh/shellescape"
 	"github.com/stretchr/testify/require"
 )
+
+type posixQuoter struct{}
+
+func (posixQuoter) ShellQuote(s string) string { return shellescape.Quote(s) }
 
 func TestFlags(t *testing.T) {
 	flags := Flags{"--admin-username=foofoo", "--san foo", "--ucp-insecure-tls"}
@@ -48,7 +52,7 @@ func TestFlagsWithQuotes(t *testing.T) {
 
 func TestString(t *testing.T) {
 	flags := Flags{"--help", "--setting=false"}
-	require.Equal(t, "--help --setting=false", flags.Join(&cfg.Linux{}))
+	require.Equal(t, "--help --setting=false", flags.Join(posixQuoter{}))
 }
 
 func TestGetBoolean(t *testing.T) {
