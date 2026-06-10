@@ -83,26 +83,6 @@ func (l *Linux) SetPath(key, value string) {
 	l.paths[key] = value
 }
 
-// Arch returns the host processor architecture in the format k0s expects it
-func (l *Linux) Arch(h Host) (string, error) {
-	arch, err := h.ExecOutput("uname -m")
-	if err != nil {
-		return "", err
-	}
-	switch arch {
-	case "x86_64":
-		return "amd64", nil
-	case "aarch64":
-		return "arm64", nil
-	case "armv7l", "armv8l", "aarch32", "arm32", "armhfp", "arm-32":
-		return "arm", nil
-	case "riscv64":
-		return "riscv64", nil
-	default:
-		return arch, nil
-	}
-}
-
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (l *Linux) K0sCmdf(template string, args ...any) string {
 	return fmt.Sprintf("%s %s", l.K0sBinaryPath(), fmt.Sprintf(template, args...))
