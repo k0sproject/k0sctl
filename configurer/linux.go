@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -95,31 +94,6 @@ func (l *Linux) K0sctlLockFilePath(h Host) string {
 	}
 
 	return "/tmp/k0sctl.lock"
-}
-
-var trailingNumberRegex = regexp.MustCompile(`(\d+)$`)
-
-func trailingNumber(s string) (int, bool) {
-	match := trailingNumberRegex.FindStringSubmatch(s)
-	if len(match) > 0 {
-		i, err := strconv.Atoi(match[1])
-		if err == nil {
-			return i, true
-		}
-	}
-	return 0, false
-}
-
-// DownloadURL performs a download from a URL on the host
-func (l *Linux) DownloadURL(h Host, url, destination string) error {
-	err := h.Sudo().Exec(sh.Command("curl", "-sSLf", "-o", destination, url))
-	if err != nil {
-		if exitCode, ok := trailingNumber(err.Error()); ok && exitCode == 22 {
-			return fmt.Errorf("download failed: http 404 - not found: %w", err)
-		}
-		return fmt.Errorf("download failed: %w", err)
-	}
-	return nil
 }
 
 // ReplaceK0sTokenPath replaces the config path in the service stub

@@ -163,13 +163,9 @@ func (h *Host) OSKind() (string, error) {
 	return cfg.OSKind(), nil
 }
 
-// DownloadURL downloads a file on the host using the resolved configurer.
+// DownloadURL downloads a file from url to dest on the host using the remote filesystem.
 func (h *Host) DownloadURL(url, dest string) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.DownloadURL(h, url, dest)
+	return h.Sudo().FS().DownloadURL(url, dest)
 }
 
 // Touch updates file modification timestamps, creating the file if needed.

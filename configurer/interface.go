@@ -18,7 +18,6 @@ type Configurer interface {
 	DaemonReload(Host) error
 	ReplaceK0sTokenPath(Host, string) error
 	ServiceScriptPath(Host, string) (string, error)
-	DownloadURL(Host, string, string) error
 	InstallPackage(Host, ...string) error
 	KubectlCmdf(Host, string, string, ...interface{}) string
 	KubeconfigPath(Host, string) string
