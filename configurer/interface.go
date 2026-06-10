@@ -9,7 +9,6 @@ type Configurer interface {
 	StopService(Host, string) error
 	RestartService(Host, string) error
 	ServiceIsRunning(Host, string) bool
-	Arch(Host) (string, error)
 	K0sCmdf(string, ...interface{}) string
 	K0sBinaryPath() string
 	K0sConfigPath() string

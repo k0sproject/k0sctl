@@ -87,25 +87,6 @@ func (w *BaseWindows) SetPath(key, value string) {
 	w.paths[key] = value
 }
 
-// Arch returns the host processor architecture in the format k0s expects it
-func (w *BaseWindows) Arch(h Host) (string, error) {
-	arch, err := h.ExecOutput(ps.Cmd(`$env:PROCESSOR_ARCHITECTURE`))
-	if err != nil {
-		return "", err
-	}
-
-	switch strings.ToUpper(strings.TrimSpace(arch)) {
-	case "AMD64", "X86_64":
-		return "amd64", nil
-	case "ARM64", "AARCH64":
-		return "arm64", nil
-	case "X86", "386", "I386":
-		return "386", nil
-	default:
-		return strings.ToLower(strings.TrimSpace(arch)), nil
-	}
-}
-
 // K0sCmdf can be used to construct k0s commands in sprintf style.
 func (w *BaseWindows) K0sCmdf(template string, args ...interface{}) string {
 	return ps.Cmd(fmt.Sprintf("& %s %s",

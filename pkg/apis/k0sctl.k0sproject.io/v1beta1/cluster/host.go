@@ -464,10 +464,10 @@ func (h *Host) Arch() (string, error) {
 	if h.Metadata.Arch != "" {
 		return h.Metadata.Arch, nil
 	}
-	if h.Configurer == nil {
-		return "", fmt.Errorf("host configurer is not resolved")
+	if h.OSRelease == nil {
+		return "", fmt.Errorf("host OS release is not resolved")
 	}
-	arch, err := h.Configurer.Arch(h)
+	arch, err := h.OSRelease.Arch()
 	if err != nil {
 		return "", fmt.Errorf("failed to detect host architecture: %w", err)
 	}
