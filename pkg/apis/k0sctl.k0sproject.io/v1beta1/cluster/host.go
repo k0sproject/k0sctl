@@ -483,12 +483,12 @@ func (h *Host) K0sRole() string {
 func (h *Host) K0sInstallFlags() (Flags, error) {
 	flags := Flags(h.InstallFlags)
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.FS(), h.FS().NativePath(h.K0sDataDir()))))
 
 	if h.KubeletRootDir != "" {
 		flags.AddOrReplace(fmt.Sprintf(
 			"--kubelet-root-dir=%s",
-			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+			quote(h.FS(), h.FS().NativePath(h.KubeletRootDir)),
 		))
 	}
 
@@ -503,11 +503,11 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	}
 
 	if !h.Metadata.IsK0sLeader {
-		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sJoinTokenPath()))))
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, quote(h.FS(), h.FS().NativePath(h.K0sJoinTokenPath()))))
 	}
 
 	if h.IsController() {
-		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sConfigPath()))))
+		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, quote(h.FS(), h.FS().NativePath(h.K0sConfigPath()))))
 	}
 
 	if strings.HasSuffix(h.Role, "worker") {
@@ -532,7 +532,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 			extra.AddOrReplace("--hostname-override=" + h.HostnameOverride)
 		}
 		if extra != nil {
-			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.Configurer, extra.Join(h.Configurer))))
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.FS(), extra.Join(h.FS()))))
 		}
 	}
 
@@ -551,31 +551,31 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		return "", err
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join(h.Configurer)), nil
+	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join(h.FS())), nil
 }
 
 // K0sResetCommand returns a full command that will reset k0s
 func (h *Host) K0sResetCommand() string {
 	var flags Flags
-	flags.Add(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
+	flags.Add(fmt.Sprintf("--data-dir=%s", quote(h.FS(), h.FS().NativePath(h.K0sDataDir()))))
 	if h.KubeletRootDir != "" {
 		flags.Add(fmt.Sprintf(
 			"--kubelet-root-dir=%s",
-			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+			quote(h.FS(), h.FS().NativePath(h.KubeletRootDir)),
 		))
 	}
 
-	return h.Configurer.K0sCmdf("reset %s", flags.Join(h.Configurer))
+	return h.Configurer.K0sCmdf("reset %s", flags.Join(h.FS()))
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", quote(h.Configurer, h.Configurer.HostPath(targetDir)), h.Configurer.HostPath(h.K0sDataDir()))
+	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", quote(h.FS(), h.FS().NativePath(targetDir)), h.FS().NativePath(h.K0sDataDir()))
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.Configurer.HostPath(h.K0sDataDir()), quote(h.Configurer, h.Configurer.HostPath(backupfile)))
+	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.FS().NativePath(h.K0sDataDir()), quote(h.FS(), h.FS().NativePath(backupfile)))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -680,27 +680,27 @@ func (h *Host) KubernetesNodeName() string {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host, options DrainOption) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), quote(h.Configurer, node.KubernetesNodeName())))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.FS()), quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // CordonNode marks the node unschedulable
 func (h *Host) CordonNode(node *Host) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.Configurer, node.KubernetesNodeName())))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // UncordonNode marks the node schedulable
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.Configurer, node.KubernetesNodeName())))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.Configurer, node.KubernetesNodeName())))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // Taints returns all taints added to the node.
 func (h *Host) Taints(node *Host) ([]string, error) {
-	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.Configurer, node.KubernetesNodeName())))
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
 	}
@@ -709,7 +709,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.Configurer, node.KubernetesNodeName()), quote(h.Configurer, taint)))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -722,7 +722,7 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.Configurer, node.KubernetesNodeName()), quote(h.Configurer, taint)))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
 }
 
 // CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected

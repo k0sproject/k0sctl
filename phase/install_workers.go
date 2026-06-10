@@ -168,7 +168,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 				return fmt.Errorf("failed to create temp file for kubeconfig: %w", err)
 			}
 			log.Debugf("%s: temp file path: %q", h, tempfile)
-			tempfileHostPath := h.Configurer.HostPath(tempfile)
+			tempfileHostPath := h.FS().NativePath(tempfile)
 			log.Debugf("%s: writing temp kubeconfig file %q", h, tempfileHostPath)
 			if err := h.Sudo().FS().WriteFile(tempfile, h.Metadata.K0sTokenData.Kubeconfig, 0o600); err != nil {
 				return fmt.Errorf("failed to write temp kubeconfig file: %w", err)
@@ -181,7 +181,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			}()
 
 			err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-				err := h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw=/version --kubeconfig=%s", h.Configurer.Quote(tempfileHostPath)))
+				err := h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw=/version --kubeconfig=%s", h.FS().ShellQuote(tempfileHostPath)))
 				if err != nil {
 					return fmt.Errorf("failed to connect to kubernetes api using the join token - check networking: %w", err)
 				}

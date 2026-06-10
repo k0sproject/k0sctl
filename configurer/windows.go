@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -64,19 +63,6 @@ func (w *BaseWindows) K0sJoinTokenPath() string {
 // DataDirDefaultPath returns the path to the k0s data dir on the host
 func (w *BaseWindows) DataDirDefaultPath() string {
 	return w.path("DataDirDefaultPath")
-}
-
-// Quote returns a PowerShell-safe double-quoted string when needed
-var windowsUnsafePattern = regexp.MustCompile(`[^\w@%+=:,./\\-]`)
-
-func (w *BaseWindows) Quote(value string) string {
-	if value == "" {
-		return `""`
-	}
-	if !windowsUnsafePattern.MatchString(value) {
-		return value
-	}
-	return ps.DoubleQuote(value)
 }
 
 // SetPath sets a path for a key
@@ -183,11 +169,6 @@ func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, er
 	}
 
 	return ip, nil
-}
-
-// HostPath converts the provided path to a native Windows path representation
-func (w *BaseWindows) HostPath(path string) string {
-	return ps.ToWindowsPath(path)
 }
 
 // StartService starts a named service

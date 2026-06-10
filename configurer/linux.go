@@ -68,11 +68,6 @@ func (l *Linux) DataDirDefaultPath() string {
 	return l.path("DataDirDefaultPath")
 }
 
-// Quote wraps shellescape.Quote for consumers that need OS-aware escaping
-func (l *Linux) Quote(value string) string {
-	return sh.Quote(value)
-}
-
 // SetPath sets a path for a key
 func (l *Linux) SetPath(key, value string) {
 	l.initPaths()
@@ -159,11 +154,6 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	}
 
 	return "", fmt.Errorf("not found")
-}
-
-// HostPath returns the given path unchanged for linux hosts
-func (l *Linux) HostPath(p string) string {
-	return p
 }
 
 // StartService starts a named service

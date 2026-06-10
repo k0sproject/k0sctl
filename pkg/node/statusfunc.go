@@ -47,7 +47,7 @@ type statusEvents struct {
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(ctx context.Context) error {
 		nodeName := h.KubernetesNodeName()
-		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.Configurer.Quote(nodeName)), cmd.HideOutput())
+		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(nodeName)), cmd.HideOutput())
 		if err != nil {
 			err = fmt.Errorf("failed to get node status: %w", err)
 			if IsConnectionError(err) {
