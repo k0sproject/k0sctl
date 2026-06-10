@@ -157,19 +157,6 @@ func (w *BaseWindows) KubectlCmdf(h Host, dataDir, s string, args ...interface{}
 	return w.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...))
 }
 
-// HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
-func (w *BaseWindows) HTTPStatus(h Host, url string) (int, error) {
-	out, err := h.ExecOutput(ps.Cmd(fmt.Sprintf(`[int][System.Net.WebRequest]::Create(%s).GetResponse().StatusCode`, ps.SingleQuote(url))))
-	if err != nil {
-		return -1, fmt.Errorf("failed to get HTTP status code: %w", err)
-	}
-	code, err := strconv.Atoi(strings.TrimSpace(out))
-	if err != nil {
-		return -1, fmt.Errorf("invalid response: %w", err)
-	}
-	return code, nil
-}
-
 // PrivateInterface tries to find a private network interface
 func (w *BaseWindows) PrivateInterface(h Host) (string, error) {
 	cmd := ps.Cmd(`

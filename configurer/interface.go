@@ -27,7 +27,6 @@ type Configurer interface {
 	KubectlCmdf(Host, string, string, ...interface{}) string
 	KubeconfigPath(Host, string) string
 	FixContainer(Host) error
-	HTTPStatus(Host, string) (int, error)
 	PrivateInterface(Host) (string, error)
 	PrivateAddress(Host, string, string) (string, error)
 	UpdateServiceEnvironment(Host, string, map[string]string) error

@@ -162,20 +162,6 @@ func (l *Linux) KubectlCmdf(h Host, dataDir, s string, args ...any) string {
 	return fmt.Sprintf(`env "KUBECONFIG=%s" %s`, l.KubeconfigPath(h, dataDir), l.K0sCmdf(`kubectl %s`, fmt.Sprintf(s, args...)))
 }
 
-// HTTPStatus makes a HTTP GET request to the url and returns the status code or an error
-func (l *Linux) HTTPStatus(h Host, url string) (int, error) {
-	output, err := h.ExecOutput(sh.Command("curl", "-kso", "/dev/null", "--connect-timeout", "20", "-w", "%{http_code}", url))
-	if err != nil {
-		return -1, err
-	}
-	status, err := strconv.Atoi(output)
-	if err != nil {
-		return -1, fmt.Errorf("invalid response: %s", err.Error())
-	}
-
-	return status, nil
-}
-
 const sbinPath = `PATH=/usr/local/sbin:/usr/sbin:/sbin:$PATH`
 
 // PrivateInterface tries to find a private network interface

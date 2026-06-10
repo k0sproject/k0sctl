@@ -123,8 +123,8 @@ func ScheduledEventsAfterFunc(h *cluster.Host, since time.Time) retryFunc {
 
 // HTTPStatus returns a function that returns an error unless the expected status code is returned for a HTTP get to the url
 func HTTPStatusFunc(h *cluster.Host, url string, expected ...int) retryFunc {
-	return func(_ context.Context) error {
-		return h.CheckHTTPStatus(url, expected...)
+	return func(ctx context.Context) error {
+		return h.CheckHTTPStatus(ctx, url, expected...)
 	}
 }
 
