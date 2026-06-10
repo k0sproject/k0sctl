@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -108,6 +109,9 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 
 	f, err := h.Sudo().FS().OpenFile(lfp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
+		if !errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("failed to create lock file %s: %w", lfp, err)
+		}
 		// File already exists — check if it belongs to us or is stale.
 		stat, statErr := h.Sudo().FS().Stat(lfp)
 		if statErr != nil {

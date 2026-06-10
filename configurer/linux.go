@@ -157,6 +157,12 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 func (l *Linux) UpdateEnvironment(h Host, env map[string]string) error {
 	fsys := h.Sudo().FS()
 	for k, v := range env {
+		if strings.ContainsAny(k, "=\n") {
+			return fmt.Errorf("invalid environment variable key %q: must not contain '=' or newline", k)
+		}
+		if strings.ContainsRune(v, '\n') {
+			return fmt.Errorf("invalid environment variable value for key %q: must not contain newline", k)
+		}
 		patch := remotefs.ReplaceOrAppend(remotefs.ByPrefix(k+"="), fmt.Sprintf("%s=%s", k, v))
 		if err := remotefs.PatchFile(fsys, "/etc/environment", []remotefs.Patch{patch}, remotefs.WithCreate(fs.FileMode(0o644))); err != nil {
 			return fmt.Errorf("failed to update /etc/environment: %w", err)

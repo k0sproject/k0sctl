@@ -138,7 +138,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 
 		// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
 		// TODO: thread a real ctx if the Prepare interface ever takes a context.
-		if err := p.validateConfig(context.TODO(), h, tempConfigPath); err != nil {
+		if err := p.validateConfig(context.Background(), h, tempConfigPath); err != nil {
 			return err
 		}
 

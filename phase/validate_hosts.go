@@ -142,7 +142,7 @@ const cleanUpOlderThan = 30 * time.Minute
 
 // clean up any k0s.tmp.* files from K0sBinaryPath that are older than 30 minutes and warn if there are any that are newer than that
 func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host) error {
-	binDir := path.Dir(h.K0sInstallLocation())
+	binDir := path.Dir(strings.ReplaceAll(h.K0sInstallLocation(), `\`, "/"))
 	err := fs.WalkDir(h.Sudo().FS(), binDir, func(entryPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallLocation(), err)
