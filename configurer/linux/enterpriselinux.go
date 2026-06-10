@@ -1,10 +1,9 @@
 package linux
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig/v2/sh"
 )
 
 // EnterpriseLinux is a base package for several RHEL-like enterprise linux distributions
@@ -12,10 +11,7 @@ type EnterpriseLinux struct {
 	configurer.Linux
 }
 
-// InstallPackage installs packages via yum
+// InstallPackage installs packages via yum or dnf
 func (l *EnterpriseLinux) InstallPackage(h configurer.Host, pkg ...string) error {
-	if err := h.Sudo().Exec(sh.Command("yum", append([]string{"install", "-y"}, pkg...)...)); err != nil {
-		return fmt.Errorf("failed to install packages: %w", err)
-	}
-	return nil
+	return h.Sudo().PackageManager().Install(context.Background(), pkg...)
 }

@@ -1,11 +1,10 @@
 package linux
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/k0sproject/k0sctl/configurer"
 	rigos "github.com/k0sproject/rig/v2/os"
-	"github.com/k0sproject/rig/v2/sh"
 )
 
 // SLES provides OS support for SUSE Linux Enterprise Server
@@ -28,11 +27,10 @@ func init() {
 
 // InstallPackage installs packages via zypper
 func (l *SLES) InstallPackage(h configurer.Host, pkg ...string) error {
-	if err := h.Sudo().Exec("zypper refresh"); err != nil {
-		return fmt.Errorf("failed to refresh zypper: %w", err)
+	pm := h.Sudo().PackageManager()
+	ctx := context.Background()
+	if err := pm.Update(ctx); err != nil {
+		return err
 	}
-	if err := h.Sudo().Exec(sh.Command("zypper", append([]string{"-n", "install", "-y"}, pkg...)...)); err != nil {
-		return fmt.Errorf("failed to install packages: %w", err)
-	}
-	return nil
+	return pm.Install(ctx, pkg...)
 }
