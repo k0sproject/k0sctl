@@ -101,15 +101,6 @@ func (w *BaseWindows) K0sctlLockFilePath(h Host) string {
 	return `C:\\Windows\\Temp\\k0sctl.lock`
 }
 
-// DownloadURL performs a download from a URL on the host
-func (w *BaseWindows) DownloadURL(h Host, url, destination string) error {
-	cmd := ps.Cmd(fmt.Sprintf(`Invoke-WebRequest -UseBasicParsing -Uri %s -OutFile %s`, ps.SingleQuote(url), ps.DoubleQuotePath(ps.ToWindowsPath(destination))))
-	if err := h.Sudo().Exec(cmd); err != nil {
-		return fmt.Errorf("download failed: %w", err)
-	}
-	return nil
-}
-
 // ReplaceK0sTokenPath replaces the config path in the service stub
 func (w *BaseWindows) ReplaceK0sTokenPath(h Host, spath string) error {
 	// Replace literal REPLACEME with actual token path

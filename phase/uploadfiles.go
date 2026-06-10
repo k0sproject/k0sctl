@@ -218,7 +218,7 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 
 	expandedURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
 	err := p.Wet(h, fmt.Sprintf("download file %s => %s", expandedURL, f.DestinationFile), func() error {
-		return h.Configurer.DownloadURL(h, expandedURL, f.DestinationFile)
+		return h.DownloadURL(expandedURL, f.DestinationFile)
 	})
 	if err != nil {
 		return err
