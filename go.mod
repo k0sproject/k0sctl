@@ -32,11 +32,10 @@ require (
 )
 
 require (
-	al.essio.dev/pkg/shellescape v1.6.0
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/rig v0.21.10
-	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260609175029-6a7bd412f456
+	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260610110012-061cdcdfba5d
 	github.com/k0sproject/version v0.8.0
 	github.com/samber/slog-logrus/v2 v2.5.4
 	github.com/sergi/go-diff v1.4.0
@@ -45,6 +44,7 @@ require (
 )
 
 require (
+	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/bodgit/ntlmssp v0.0.0-20240506230425-31973bb52d9b // indirect

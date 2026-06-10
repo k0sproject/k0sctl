@@ -105,12 +105,8 @@ func (p *ValidateHosts) validateUniqueMachineID(_ context.Context, h *cluster.Ho
 	return nil
 }
 
-func (p *ValidateHosts) validateSudo(_ context.Context, h *cluster.Host) error {
-	if err := h.Configurer.CheckPrivilege(h); err != nil {
-		return err
-	}
-
-	return nil
+func (p *ValidateHosts) validateSudo(ctx context.Context, h *cluster.Host) error {
+	return h.CheckSudo(ctx)
 }
 
 func (p *ValidateHosts) validateConfigurer(_ context.Context, h *cluster.Host) error {

@@ -332,14 +332,6 @@ func (l *Linux) UpdateEnvironment(h Host, env map[string]string) error {
 	return nil
 }
 
-// CheckPrivilege returns an error when the user does not have privilege to run sudo
-func (l *Linux) CheckPrivilege(h Host) error {
-	if err := h.Sudo().Exec("true"); err != nil {
-		return fmt.Errorf("sudo privilege check failed: %w", err)
-	}
-	return nil
-}
-
 // FixContainer applies container-specific fixes
 func (l *Linux) FixContainer(h Host) error {
 	if err := h.Sudo().Exec("mount --make-rshared / 2> /dev/null"); err != nil {
