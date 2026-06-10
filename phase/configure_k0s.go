@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/rig/v2/sh"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
@@ -270,7 +270,7 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
 		cmd := h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
 		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
-			cmd += fmt.Sprintf(" --feature-gates=%s", shellescape.Quote(fg))
+			cmd += fmt.Sprintf(" --feature-gates=%s", sh.Quote(fg))
 			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
 		}
 		return cmd
