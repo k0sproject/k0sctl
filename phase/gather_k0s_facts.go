@@ -291,7 +291,8 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
 	if h.IsController() && h.FS().FileExist(h.K0sConfigPath()) {
-		cfg, err := h.Configurer.ReadFile(h, h.K0sConfigPath())
+		cfgData, err := h.FS().ReadFile(h.K0sConfigPath())
+		cfg := string(cfgData)
 		if cfg != "" && err == nil {
 			log.Infof("%s: found existing configuration", h)
 			h.Metadata.K0sExistingConfig = cfg

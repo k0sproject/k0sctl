@@ -86,7 +86,7 @@ func (p *InstallWorkers) After() error {
 				}
 				content = dummyToken
 			}
-			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), content, "0600"); err != nil {
+			if err := h.Sudo().FS().WriteFile(h.K0sJoinTokenPath(), []byte(content), 0o600); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
 			return nil
@@ -155,7 +155,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 				log.Warnf("%s: failed to create k0s config dir %s: %v", h, h.K0sDataDir(), err)
 			}
 			log.Infof("%s: writing join token to %s", h, tokenPath)
-			return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+			return h.Sudo().FS().WriteFile(tokenPath, []byte(h.Metadata.K0sTokenData.Token), 0o600)
 		})
 		if err != nil {
 			return err
@@ -170,7 +170,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			log.Debugf("%s: temp file path: %q", h, tempfile)
 			tempfileHostPath := h.Configurer.HostPath(tempfile)
 			log.Debugf("%s: writing temp kubeconfig file %q", h, tempfileHostPath)
-			if err := h.Configurer.WriteFile(h, tempfile, string(h.Metadata.K0sTokenData.Kubeconfig), "0600"); err != nil {
+			if err := h.Sudo().FS().WriteFile(tempfile, h.Metadata.K0sTokenData.Kubeconfig, 0o600); err != nil {
 				return fmt.Errorf("failed to write temp kubeconfig file: %w", err)
 			}
 

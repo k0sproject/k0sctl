@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig/v2/cmd"
 	rigos "github.com/k0sproject/rig/v2/os"
 	ps "github.com/k0sproject/rig/v2/powershell"
 )
@@ -70,20 +69,6 @@ func detectContainersFeatureState(h configurer.Host) (string, error) {
 	}
 
 	return "", fmt.Errorf("failed to detect Containers feature state")
-}
-
-func writeFileScript(path string) string {
-	return fmt.Sprintf(`[System.IO.File]::WriteAllText(%s, [Console]::In.ReadToEnd(), [System.Text.UTF8Encoding]::new($false))`, ps.DoubleQuotePath(ps.ToWindowsPath(path)))
-}
-
-func (c *Windows) WriteFile(h configurer.Host, path, content, mode string) error {
-	cmdStr := ps.Cmd(writeFileScript(path))
-	err := h.Exec(cmdStr, cmd.StdinString(content), cmd.Redact(content))
-	if err != nil {
-		return fmt.Errorf("failed to write to file %s: %w", path, err)
-	}
-
-	return nil
 }
 
 // ServiceScriptPath synthesizes an identifier for the Windows service configuration.

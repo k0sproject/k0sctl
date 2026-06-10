@@ -14,11 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriteFileScriptUsesUTF8Encoding(t *testing.T) {
-	script := writeFileScript("C:/etc/k0s/k0stoken")
-	require.Contains(t, script, `[System.Text.UTF8Encoding]::new($false)`)
-	require.Contains(t, script, `C:\etc\k0s\k0stoken`)
-}
 
 func TestValidateHostRequiresContainersFeature(t *testing.T) {
 	featureCmd := ps.Cmd(`(Get-WindowsFeature -Name Containers -ErrorAction SilentlyContinue).InstallState`)
