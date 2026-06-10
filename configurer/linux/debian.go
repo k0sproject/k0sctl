@@ -1,11 +1,10 @@
 package linux
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/k0sproject/k0sctl/configurer"
 	rigos "github.com/k0sproject/rig/v2/os"
-	"github.com/k0sproject/rig/v2/sh"
 )
 
 // Debian provides OS support for Debian systems
@@ -28,11 +27,10 @@ func init() {
 
 // InstallPackage installs packages via apt-get
 func (l *Debian) InstallPackage(h configurer.Host, pkg ...string) error {
-	if err := h.Sudo().Exec("apt-get update"); err != nil {
-		return fmt.Errorf("failed to update apt cache: %w", err)
+	pm := h.Sudo().PackageManager()
+	ctx := context.Background()
+	if err := pm.Update(ctx); err != nil {
+		return err
 	}
-	if err := h.Sudo().Exec(sh.CommandBuilder("DEBIAN_FRONTEND=noninteractive apt-get install -y -q").Args(pkg...).String()); err != nil {
-		return fmt.Errorf("failed to install packages: %w", err)
-	}
-	return nil
+	return pm.Install(ctx, pkg...)
 }
