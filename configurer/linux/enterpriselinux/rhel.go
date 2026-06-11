@@ -5,8 +5,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/configurer"
 	k0slinux "github.com/k0sproject/k0sctl/configurer/linux"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
 // RHEL provides OS support for RedHat Enterprise Linux
@@ -17,9 +16,9 @@ type RHEL struct {
 var _ configurer.Configurer = (*RHEL)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "rhel" && !strings.Contains(os.Name, "CoreOS")
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "rhel" && !strings.Contains(r.Name, "CoreOS")
 		},
 		func() any {
 			return &RHEL{}

@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -103,9 +102,11 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 		}
 		log.Debugf("%s: deleting node", h)
 
-		if h.Configurer.ServiceIsRunning(h, h.K0sServiceName()) {
+		if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+		} else if svc.IsRunning(ctx) {
 			log.Debugf("%s: stopping k0s...", h)
-			if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+			if err := svc.Stop(ctx); err != nil {
 				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
 			}
 			log.Debugf("%s: waiting for k0s to stop", h)
@@ -117,29 +118,34 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 
 		log.Debugf("%s: resetting k0s...", h)
 		var stdoutbuf, stderrbuf bytes.Buffer
-		cmd, err := h.ExecStreams(h.K0sResetCommand(), nil, &stdoutbuf, &stderrbuf, exec.Sudo(h))
+		proc := h.Sudo().Proc(h.K0sResetCommand())
+		proc.Stdout = &stdoutbuf
+		proc.Stderr = &stderrbuf
+		waiter, err := proc.Start(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to run k0s reset: %w", err)
 		}
-		if err := cmd.Wait(); err != nil {
+		if err := waiter.Wait(); err != nil {
 			log.Warnf("%s: k0s reset reported failure: %s %s", h, stderrbuf.String(), stdoutbuf.String())
 		}
 		log.Debugf("%s: resetting k0s completed", h)
 
 		log.Debugf("%s: removing config...", h)
-		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sConfigPath()); dErr != nil {
+		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sConfigPath()); dErr != nil {
 			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing config completed", h)
 
 		log.Debugf("%s: removing k0s binary...", h)
-		if dErr := h.Configurer.DeleteFile(h, h.Configurer.K0sBinaryPath()); dErr != nil {
+		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sBinaryPath()); dErr != nil {
 			log.Warnf("%s: failed to remove existing binary %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
 		}
 		log.Debugf("%s: removing binary completed", h)
 
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
 		}

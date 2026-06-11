@@ -9,7 +9,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,7 +38,7 @@ func (p *UpgradeWorkers) Prepare(config *v1beta1.Cluster) error {
 		return !h.Reset && h.Metadata.NeedsUpgrade
 	})
 	err := p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
-		if h.Metadata.K0sBinaryTempFile != "" && !h.Configurer.FileExist(h, h.Metadata.K0sBinaryTempFile) {
+		if h.Metadata.K0sBinaryTempFile != "" && !h.FS().FileExist(h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("k0s binary tempfile not found: %s", h.Metadata.K0sBinaryTempFile)
 		}
 		return nil
@@ -79,7 +79,9 @@ func (p *UpgradeWorkers) CleanUp() {
 	}
 	_ = p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
 		}
@@ -184,9 +186,14 @@ func (p *UpgradeWorkers) finish(_ context.Context, h *cluster.Host) error {
 }
 
 func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) error {
+	svc, svcErr := h.Sudo().Service(h.K0sServiceName())
+	if svcErr != nil {
+		return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
+	}
+
 	log.Debugf("%s: stop service", h)
 	err := p.Wet(h, "stop k0s service", func() error {
-		if err := h.Configurer.StopService(h, h.K0sServiceName()); err != nil {
+		if err := svc.Stop(ctx); err != nil {
 			return err
 		}
 
@@ -217,7 +224,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	if len(h.Environment) > 0 {
 		log.Infof("%s: updating service environment", h)
 		err := p.Wet(h, "update service environment", func() error {
-			return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+			return svc.SetEnvironment(ctx, h.Environment)
 		})
 		if err != nil {
 			return err
@@ -228,15 +235,18 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	err = p.Wet(h, "reinstall k0s service", func() error {
 		h.InstallFlags.AddOrReplace("--force")
 
-		cmd, err := h.K0sInstallCommand()
+		installCmd, err := h.K0sInstallCommand()
 		if err != nil {
 			return err
 		}
-		execOpts := []exec.Option{exec.Sudo(h)}
+		sudo := h.Sudo()
 		if h.IsWindows() {
-			execOpts = append(execOpts, exec.AllowWinStderr())
+			if err := sudo.Exec(installCmd, cmd.AllowWinStderr()); err != nil {
+				return fmt.Errorf("failed to reinstall k0s: %w", err)
+			}
+			return nil
 		}
-		if err := h.Exec(cmd, execOpts...); err != nil {
+		if err := sudo.Exec(installCmd); err != nil {
 			return fmt.Errorf("failed to reinstall k0s: %w", err)
 		}
 		return nil
@@ -248,7 +258,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 
 	log.Debugf("%s: restart service", h)
 	err = p.Wet(h, "restart k0s service", func() error {
-		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 		if NoWait {

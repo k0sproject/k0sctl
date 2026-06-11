@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -61,12 +60,14 @@ func (p *InitializeK0s) CleanUp() {
 
 	log.Infof("%s: cleaning up", h)
 	if len(h.Environment) > 0 {
-		if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+		if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+		} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 			log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 		}
 	}
 	if h.Metadata.K0sInstalled {
-		if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
+		if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
 			log.Warnf("%s: k0s reset failed", h)
 		}
 	}
@@ -94,7 +95,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 	}
 
 	err = p.Wet(p.leader, fmt.Sprintf("install first k0s controller using `%s`", strings.ReplaceAll(cmd, p.leader.K0sInstallLocation(), "k0s")), func() error {
-		return h.Exec(cmd, exec.Sudo(h))
+		return h.Sudo().Exec(cmd)
 	}, func() error {
 		p.leader.Metadata.DryRunFakeLeader = true
 		return nil
@@ -108,7 +109,11 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 	if len(h.Environment) > 0 {
 		err = p.Wet(h, "configure k0s service environment variables", func() error {
 			log.Infof("%s: updating service environment", h)
-			return h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment)
+			svc, err := h.Sudo().Service(h.K0sServiceName())
+			if err != nil {
+				return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+			}
+			return svc.SetEnvironment(ctx, h.Environment)
 		}, func() error {
 			for k, v := range h.Environment {
 				p.DryMsgf(h, "%s=<%d characters>", k, len(v))
@@ -121,7 +126,11 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 	}
 
 	err = p.Wet(h, "start k0s service", func() error {
-		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 
@@ -131,8 +140,8 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 		}
 
 		log.Infof("%s: wait for kubernetes to reach ready state", h)
-		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"), exec.Sudo(h))
+		err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"))
 			if out != "ok" {
 				return fmt.Errorf("kubernetes api /readyz responded with %q", out)
 			}

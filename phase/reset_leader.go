@@ -8,7 +8,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -55,9 +54,11 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 		}
 	}
 
-	if p.leader.Configurer.ServiceIsRunning(p.leader, p.leader.K0sServiceName()) {
+	if leaderSvc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
+		log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+	} else if leaderSvc.IsRunning(ctx) {
 		log.Debugf("%s: stopping k0s...", p.leader)
-		if err := p.leader.Configurer.StopService(p.leader, p.leader.K0sServiceName()); err != nil {
+		if err := leaderSvc.Stop(ctx); err != nil {
 			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
 		}
 		log.Debugf("%s: waiting for k0s to stop", p.leader)
@@ -68,7 +69,7 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 	}
 
 	log.Debugf("%s: resetting k0s...", p.leader)
-	out, err := p.leader.ExecOutput(p.leader.K0sResetCommand(), exec.Sudo(p.leader))
+	out, err := p.leader.Sudo().ExecOutput(p.leader.K0sResetCommand())
 	if err != nil {
 		log.Debugf("%s: k0s reset failed: %s", p.leader, out)
 		log.Warnf("%s: k0s reported failure: %v", p.leader, err)
@@ -76,19 +77,21 @@ func (p *ResetLeader) Run(ctx context.Context) error {
 	log.Debugf("%s: resetting k0s completed", p.leader)
 
 	log.Debugf("%s: removing config...", p.leader)
-	if dErr := p.leader.Configurer.DeleteFile(p.leader, p.leader.Configurer.K0sConfigPath()); dErr != nil {
+	if dErr := p.leader.Sudo().FS().Remove(p.leader.Configurer.K0sConfigPath()); dErr != nil {
 		log.Warnf("%s: failed to remove existing configuration %s: %s", p.leader, p.leader.Configurer.K0sConfigPath(), dErr)
 	}
 	log.Debugf("%s: removing config completed", p.leader)
 
 	log.Debugf("%s: removing k0s binary...", p.leader)
-	if dErr := p.leader.Configurer.DeleteFile(p.leader, p.leader.Configurer.K0sBinaryPath()); dErr != nil {
+	if dErr := p.leader.Sudo().FS().Remove(p.leader.Configurer.K0sBinaryPath()); dErr != nil {
 		log.Warnf("%s: failed to remove existing binary %s: %s", p.leader, p.leader.Configurer.K0sConfigPath(), dErr)
 	}
 	log.Debugf("%s: removing binary completed", p.leader)
 
 	if len(p.leader.Environment) > 0 {
-		if err := p.leader.Configurer.CleanupServiceEnvironment(p.leader, p.leader.K0sServiceName()); err != nil {
+		if svc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
+			log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+		} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
 			log.Warnf("%s: failed to clean up service environment: %s", p.leader, err.Error())
 		}
 	}

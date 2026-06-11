@@ -13,7 +13,7 @@ import (
 	"github.com/jellydator/validation"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -150,15 +150,15 @@ func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry ti
 	k0sFlags.Add(fmt.Sprintf("--role %s", role))
 	k0sFlags.Add(fmt.Sprintf("--expiry %s", expiry))
 
-	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
+	k0sFlags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.FS(), h.FS().NativePath(h.K0sDataDir()))))
 
 	if k.Version.LessThanOrEqual(k0sTokenCreateConfigFlagUntil) {
-		k0sFlags.Add(fmt.Sprintf("--config %s", quote(h.Configurer, h.K0sConfigPath())))
+		k0sFlags.Add(fmt.Sprintf("--config %s", quote(h.FS(), h.K0sConfigPath())))
 	}
 
 	var token string
 	err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join(h.Configurer)), exec.HideOutput(), exec.Sudo(h))
+		output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join(h.FS())), cmd.HideOutput())
 		if err != nil {
 			return fmt.Errorf("create token: %w", err)
 		}
@@ -170,7 +170,7 @@ func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry ti
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
 func (k *K0s) GetClusterID(h *Host) (string, error) {
-	return h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"), exec.Sudo(h))
+	return h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get -n kube-system namespace kube-system -o template={{.metadata.uid}}"))
 }
 
 // TokenData is data collected from a decoded k0s token

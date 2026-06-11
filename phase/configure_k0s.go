@@ -10,13 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"al.essio.dev/pkg/shellescape"
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/sh"
 	"github.com/k0sproject/version"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
@@ -123,21 +122,23 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		if err != nil {
 			return fmt.Errorf("failed to build k0s config for %s: %w", h, err)
 		}
-		tempConfigPath, err := h.Configurer.TempFile(h)
+		tempConfigPath, err := h.FS().CreateTemp("", "")
 		if err != nil {
 			return fmt.Errorf("failed to create temporary file for config: %w", err)
 		}
 		defer func() {
-			if err := h.Configurer.DeleteFile(h, tempConfigPath); err != nil {
+			if err := h.Sudo().FS().Remove(tempConfigPath); err != nil {
 				log.Warnf("%s: failed to delete temporary file %s: %s", h, tempConfigPath, err)
 			}
 		}()
 
-		if err := h.Configurer.WriteFile(h, tempConfigPath, cfgNew, "0600"); err != nil {
+		if err := h.Sudo().FS().WriteFile(tempConfigPath, []byte(cfgNew), 0o600); err != nil {
 			return err
 		}
 
-		if err := p.validateConfig(h, tempConfigPath); err != nil {
+		// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
+		// TODO: thread a real ctx if the Prepare interface ever takes a context.
+		if err := p.validateConfig(context.Background(), h, tempConfigPath); err != nil {
 			return err
 		}
 
@@ -211,7 +212,7 @@ func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
 		cmd = p.leader.Configurer.K0sCmdf("default-config")
 	}
 
-	cfg, err := p.leader.ExecOutput(cmd, exec.Sudo(p.leader))
+	cfg, err := p.leader.Sudo().ExecOutput(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -240,7 +241,7 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 	return false
 }
 
-func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error {
+func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, configPath string) error {
 	log.Infof("%s: validating configuration", h)
 
 	if h.Metadata.K0sBinaryTempFile != "" {
@@ -252,12 +253,14 @@ func (p *ConfigureK0s) validateConfig(h *cluster.Host, configPath string) error 
 	}
 
 	var stderrBuf bytes.Buffer
-	command, err := h.ExecStreams(p.buildConfigValidateCommand(h, configPath), nil, nil, &stderrBuf, exec.Sudo(h))
+	proc := h.Sudo().Proc(p.buildConfigValidateCommand(h, configPath))
+	proc.Stderr = &stderrBuf
+	waiter, err := proc.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("can't run spec.k0s.config validation: %w", err)
 	}
-	if err := command.Wait(); err != nil {
-		return fmt.Errorf("spec.k0s.config validation failed:: %w (%s)", err, stderrBuf.String())
+	if err := waiter.Wait(); err != nil {
+		return fmt.Errorf("spec.k0s.config validation failed: %w (%s)", err, stderrBuf.String())
 	}
 
 	return nil
@@ -267,7 +270,7 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 	if p.Config.Spec.K0s.Version.GreaterThanOrEqual(configCreateSince) {
 		cmd := h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
 		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
-			cmd += fmt.Sprintf(" --feature-gates=%s", shellescape.Quote(fg))
+			cmd += fmt.Sprintf(" --feature-gates=%s", sh.Quote(fg))
 			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
 		}
 		return cmd
@@ -278,23 +281,23 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 
 func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error {
 	path := h.K0sConfigPath()
-	if h.Configurer.FileExist(h, path) {
-		if !h.Configurer.FileContains(h, path, " generated-by-k0sctl") {
+	if h.FS().FileExist(path) {
+		if ok, _ := h.Sudo().FS().FileContains(path, " generated-by-k0sctl"); !ok {
 			newpath := path + ".old"
 			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
-			if err := h.Configurer.MoveFile(h, path, newpath); err != nil {
+			if err := h.Sudo().FS().Rename(path, newpath); err != nil {
 				return err
 			}
 		}
 	}
 
 	log.Debugf("%s: writing k0s configuration", h)
-	tempConfigPath, err := h.Configurer.TempFile(h)
+	tempConfigPath, err := h.FS().CreateTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
 
-	if err := h.Configurer.WriteFile(h, tempConfigPath, h.Metadata.K0sNewConfig, "0600"); err != nil {
+	if err := h.Sudo().FS().WriteFile(tempConfigPath, []byte(h.Metadata.K0sNewConfig), 0o600); err != nil {
 		return err
 	}
 
@@ -302,13 +305,13 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configPath := h.K0sConfigPath()
 	configDir := gopath.Dir(configPath)
 
-	if !h.Configurer.FileExist(h, configDir) {
-		if err := h.SudoFsys().MkDirAll(configDir, 0o750); err != nil {
+	if !h.FS().FileExist(configDir) {
+		if err := h.Sudo().FS().MkdirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
 	}
 
-	if err := h.Configurer.MoveFile(h, tempConfigPath, configPath); err != nil {
+	if err := h.Sudo().FS().Rename(tempConfigPath, configPath); err != nil {
 		return fmt.Errorf("failed to install k0s configuration: %w", err)
 	}
 	if err := chmodWithMode(h, configPath, fs.FileMode(0o600)); err != nil {
@@ -317,7 +320,11 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
 		log.Infof("%s: restarting k0s service", h)
-		if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+		if err := svc.Restart(ctx); err != nil {
 			return err
 		}
 

@@ -11,7 +11,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -63,12 +62,14 @@ func (p *InstallControllers) CleanUp() {
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
 		log.Infof("%s: cleaning up", h)
 		if len(h.Environment) > 0 {
-			if err := h.Configurer.CleanupServiceEnvironment(h, h.K0sServiceName()); err != nil {
+			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
+				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %v", h, err)
 			}
 		}
 		if h.Metadata.K0sInstalled && p.IsWet() {
-			if err := h.Exec(h.K0sResetCommand(), exec.Sudo(h)); err != nil {
+			if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
 				log.Warnf("%s: k0s reset failed", h)
 			}
 		}
@@ -89,13 +90,13 @@ func (p *InstallControllers) After() error {
 		h.Metadata.K0sTokenData.Token = ""
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for controller %s", h), func() error {
 			log.Debugf("%s: invalidating join token for controller %d", p.leader, i+1)
-			return p.leader.Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID), exec.Sudo(p.leader))
+			return p.leader.Sudo().Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID))
 		})
 		if err != nil {
 			log.Warnf("%s: failed to invalidate controller join token: %v", p.leader, err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
-			if err := h.Configurer.WriteFile(h, h.K0sJoinTokenPath(), "# overwritten by k0sctl after join\n", "0600"); err != nil {
+			if err := h.Sudo().FS().WriteFile(h.K0sJoinTokenPath(), []byte("# overwritten by k0sctl after join\n"), 0o600); err != nil {
 				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
 			}
 			return nil
@@ -211,7 +212,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	tokenPath := h.K0sJoinTokenPath()
 	log.Infof("%s: writing join token to %s", h, tokenPath)
 	err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
-		return h.Configurer.WriteFile(h, tokenPath, h.Metadata.K0sTokenData.Token, "0600")
+		return h.Sudo().FS().WriteFile(tokenPath, []byte(h.Metadata.K0sTokenData.Token), 0o600)
 	})
 	if err != nil {
 		return err
@@ -234,11 +235,14 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 
 	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		var stdout, stderr bytes.Buffer
-		runner, err := h.ExecStreams(cmd, nil, &stdout, &stderr, exec.Sudo(h))
+		proc := h.Sudo().Proc(cmd)
+		proc.Stdout = &stdout
+		proc.Stderr = &stderr
+		waiter, err := proc.Start(ctx)
 		if err != nil {
 			return fmt.Errorf("run k0s install: %w", err)
 		}
-		if err := runner.Wait(); err != nil {
+		if err := waiter.Wait(); err != nil {
 			log.Errorf("%s: k0s install failed: %s %s", h, stdout.String(), stderr.String())
 			return fmt.Errorf("k0s install failed: %w", err)
 		}
@@ -252,15 +256,20 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	h.Metadata.K0sRunningVersion = p.Config.Spec.K0s.Version
 
 	if p.IsWet() {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+
 		if len(h.Environment) > 0 {
 			log.Infof("%s: updating service environment", h)
-			if err := h.Configurer.UpdateServiceEnvironment(h, h.K0sServiceName(), h.Environment); err != nil {
+			if err := svc.SetEnvironment(ctx, h.Environment); err != nil {
 				return err
 			}
 		}
 
 		log.Infof("%s: starting service", h)
-		if err := h.Configurer.StartService(h, h.K0sServiceName()); err != nil {
+		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 
@@ -269,8 +278,8 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 			return err
 		}
 
-		err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-			out, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"), exec.Sudo(h))
+		err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"))
 			if err != nil {
 				return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
 			}

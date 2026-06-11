@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/k0sproject/rig/exec"
+	rigcmd "github.com/k0sproject/rig/v2/cmd"
 
 	osexec "os/exec"
 
@@ -21,7 +21,7 @@ type ConfigEdit struct {
 	Stdin  io.Reader
 }
 
-func (c ConfigEdit) Run(_ context.Context) error {
+func (c ConfigEdit) Run(ctx context.Context) error {
 	stdoutFile, ok := c.Stdout.(*os.File)
 
 	if !ok || !isatty.IsTerminal(stdoutFile.Fd()) {
@@ -35,7 +35,7 @@ func (c ConfigEdit) Run(_ context.Context) error {
 
 	h := c.Config.Spec.K0sLeader()
 
-	if err := h.Connect(); err != nil {
+	if err := h.Connect(ctx); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 	defer h.Disconnect()
@@ -44,7 +44,7 @@ func (c ConfigEdit) Run(_ context.Context) error {
 		return err
 	}
 
-	oldCfg, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get clusterconfig k0s -o yaml"), exec.Sudo(h))
+	oldCfg, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get clusterconfig k0s -o yaml"))
 	if err != nil {
 		return fmt.Errorf("%s: %w", h, err)
 	}
@@ -81,7 +81,7 @@ func (c ConfigEdit) Run(_ context.Context) error {
 		return fmt.Errorf("configuration was not changed, aborting")
 	}
 
-	if err := h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "apply -n kube-system -f -"), exec.Stdin(newCfg), exec.Sudo(h)); err != nil {
+	if err := h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "apply -n kube-system -f -"), rigcmd.StdinString(newCfg)); err != nil {
 		return err
 	}
 

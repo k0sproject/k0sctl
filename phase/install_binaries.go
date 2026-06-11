@@ -95,7 +95,7 @@ func (p *InstallBinaries) CleanUp() {
 			return nil
 		}
 		logrus.Infof("%s: cleaning up k0s binary tempfile", h)
-		_ = h.Configurer.DeleteFile(h, h.Metadata.K0sBinaryTempFile)
+		_ = h.Sudo().FS().Remove(h.Metadata.K0sBinaryTempFile)
 		return nil
 	})
 	if err != nil {

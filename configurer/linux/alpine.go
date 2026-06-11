@@ -1,13 +1,10 @@
 package linux
 
 import (
-	"strings"
+	"context"
 
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
 // BaseLinux for tricking go interfaces
@@ -17,16 +14,15 @@ type BaseLinux struct {
 
 // Alpine provides OS support for Alpine Linux
 type Alpine struct {
-	os.Linux
 	BaseLinux
 }
 
 var _ configurer.Configurer = (*Alpine)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "alpine"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "alpine"
 		},
 		func() any {
 			return &Alpine{}
@@ -34,11 +30,12 @@ func init() {
 	)
 }
 
-// InstallPackage installs packages via slackpkg
-func (l *Alpine) InstallPackage(h os.Host, pkg ...string) error {
-	return h.Execf("apk add --update %s", strings.Join(pkg, " "), exec.Sudo(h))
-}
-
-func (l *Alpine) Prepare(h os.Host) error {
-	return l.InstallPackage(h, "findutils", "coreutils")
+// Prepare installs prerequisite packages on Alpine hosts
+func (l *Alpine) Prepare(h configurer.Host) error {
+	ctx := context.Background()
+	pm := h.Sudo().PackageManager()
+	if err := pm.Update(ctx); err != nil {
+		return err
+	}
+	return pm.Install(ctx, "findutils", "coreutils")
 }

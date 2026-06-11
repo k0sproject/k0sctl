@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	"k8s.io/client-go/tools/clientcmd"
 
 	log "github.com/sirupsen/logrus"
@@ -24,9 +24,9 @@ func (p *GetKubeconfig) Title() string {
 }
 
 var readKubeconfig = func(h *cluster.Host) (string, error) {
-	dataDir := h.Configurer.HostPath(h.K0sDataDir())
-	log.Debugf("%s: running %v", h, h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.Configurer.Quote(dataDir)))
-	output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.Configurer.Quote(dataDir)), exec.Sudo(h), exec.HideOutput())
+	dataDir := h.FS().NativePath(h.K0sDataDir())
+	log.Debugf("%s: running %v", h, h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.FS().ShellQuote(dataDir)))
+	output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.FS().ShellQuote(dataDir)), cmd.HideOutput())
 	if err != nil {
 		return "", fmt.Errorf("get kubeconfig from host: %w", err)
 	}
