@@ -81,7 +81,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 			if err := p.leader.DrainNode(
 				&cluster.Host{
 					Metadata: cluster.HostMetadata{
-						Hostname: h.Metadata.Hostname,
+						Hostname: h.KubernetesNodeName(),
 					},
 				},
 				p.Config.Spec.Options.Drain,
@@ -95,7 +95,7 @@ func (p *ResetWorkers) Run(ctx context.Context) error {
 		if !p.NoDelete {
 			if err := p.leader.DeleteNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
-					Hostname: h.Metadata.Hostname,
+					Hostname: h.KubernetesNodeName(),
 				},
 			}); err != nil {
 				log.Warnf("%s: failed to delete node: %s", h, err.Error())

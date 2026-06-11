@@ -414,7 +414,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	}
 
 	if !h.IsController() {
-		log.Infof("%s: checking if worker %s has joined", p.leader, h.Metadata.Hostname)
+		log.Infof("%s: checking if worker %s has joined", p.leader, h.KubernetesNodeName())
 		if err := node.KubeNodeReadyFunc(h)(ctx); err != nil {
 			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
 		} else {
