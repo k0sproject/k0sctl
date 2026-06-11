@@ -33,7 +33,7 @@ require (
 require (
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/jellydator/validation v1.2.0
-	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260610121539-333ab479066c
+	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260611090153-8bbc03d930d7
 	github.com/k0sproject/version v0.8.0
 	github.com/samber/slog-logrus/v2 v2.5.4
 	github.com/sergi/go-diff v1.4.0

@@ -731,9 +731,11 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.FS(), node.Metadata.Hostname), quote(h.FS(), taint)))
 }
 
-// CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
+// CheckHTTPStatus performs a web request to the url and returns an error if the
+// HTTP status code is not among the expected values. TLS certificate verification
+// is skipped to handle self-signed certificates (e.g. k0s kube-apiserver).
 func (h *Host) CheckHTTPStatus(ctx context.Context, url string, expected ...int) error {
-	status, err := remotefs.HTTPStatus(ctx, h.FS(), url)
+	status, err := remotefs.HTTPStatusInsecure(ctx, h.FS(), url)
 	if err != nil {
 		return err
 	}
@@ -742,7 +744,7 @@ func (h *Host) CheckHTTPStatus(ctx context.Context, url string, expected ...int)
 		return nil
 	}
 
-	return fmt.Errorf("expected response code %d but received %d", expected, status)
+	return fmt.Errorf("expected response code %v but received %d", expected, status)
 }
 
 // NeedCurl returns true when the curl package is needed on the host
