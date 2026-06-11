@@ -96,8 +96,8 @@ github.com/k0sproject/rig v0.21.11 h1:hXElTYqYJeKj0FhSkPALXZIlZxyhDsnhKYqhk13MTz
 github.com/k0sproject/rig v0.21.11/go.mod h1:EgLRaRBorLg7aeYGjj2qISKdpU9oxSJxW0Ccjz3gieE=
 github.com/k0sproject/rig v0.21.10 h1:VcozC0Ctwl2Ceoo69LZ4twAPVpzhIjp9qfufmMnyO9s=
 github.com/k0sproject/rig v0.21.10/go.mod h1:EgLRaRBorLg7aeYGjj2qISKdpU9oxSJxW0Ccjz3gieE=
-github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260610121539-333ab479066c h1:0NJUvw8kvcGBnTS0UDOj88BfY1GHbPKSoU0Gdxib2Ww=
-github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260610121539-333ab479066c/go.mod h1:4bp1yGRyoANCEe9aFAAJzttFvTRWMPnbleYBQUaY38c=
+github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260611090153-8bbc03d930d7 h1:HPE1JwOszS7+s1Jp5TpVWAIXpOXAVd175ymJ6h2TJZE=
+github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260611090153-8bbc03d930d7/go.mod h1:4bp1yGRyoANCEe9aFAAJzttFvTRWMPnbleYBQUaY38c=
 github.com/k0sproject/version v0.8.0 h1:Yh1SFDeBqQ7etrGwffY8bWKdbAUjeBOhiZ6oQuuz4sM=
 github.com/k0sproject/version v0.8.0/go.mod h1:iNV3O8blndsQhxZ8zACfpQhrLDlrTvDlCzx+vgCFtSI=
 github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 h1:Z9n2FFNUXsshfwJMBgNA0RU6/i7WVaAegv3PtuIHPMs=
