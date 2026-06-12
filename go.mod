@@ -14,7 +14,6 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/k0sproject/dig v0.4.0
-	github.com/k0sproject/rig v0.21.11
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20260407182533-5570be7f80cf // indirect
@@ -34,17 +33,15 @@ require (
 require (
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/jellydator/validation v1.2.0
-	github.com/k0sproject/rig v0.21.10
-	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260611090153-8bbc03d930d7
+	github.com/k0sproject/rig/v2 v2.0.0-beta.2.0.20260612130231-c3b7a51a0af6
 	github.com/k0sproject/version v0.8.0
 	github.com/samber/slog-logrus/v2 v2.5.4
 	github.com/sergi/go-diff v1.4.0
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 )
 
 require (
-	al.essio.dev/pkg/shellescape v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/bodgit/ntlmssp v0.0.0-20240506230425-31973bb52d9b // indirect

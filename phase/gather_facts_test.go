@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/k0sproject/dig"
+	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	rigOS "github.com/k0sproject/rig/os"
 	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ type privateAddressMock struct {
 	err  error
 }
 
-func (m *privateAddressMock) PrivateAddress(_ rigOS.Host, _, _ string) (string, error) {
+func (m *privateAddressMock) PrivateAddress(_ cfg.Host, _, _ string) (string, error) {
 	return m.addr, m.err
 }
 
