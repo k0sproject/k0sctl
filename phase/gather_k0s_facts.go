@@ -401,7 +401,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 
 		if p.Config.Spec.K0s.DynamicConfig {
-			h.InstallFlags.AddOrReplace("--enable-dynamic-config")
+			h.InstallFlags.AddOrReplace("--enable-dynamic-config=true")
 		}
 	}
 
