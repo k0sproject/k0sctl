@@ -99,7 +99,7 @@ func TestGetBoolean(t *testing.T) {
 		flags := Flags{"--flag1=1", "--flag2"}
 		result, err := flags.GetBoolean("--flag3")
 		require.NoError(t, err)
-		require.Equal(t, result, false)
+		require.False(t, result)
 	})
 }
 
@@ -120,7 +120,7 @@ func TestMap(t *testing.T) {
 	flags := Flags{"--flag1", "--flag2=foo", "--flag3=bar"}
 	m := flags.Map()
 	require.Len(t, m, 3)
-	require.Equal(t, "", m["--flag1"])
+	require.Empty(t, m["--flag1"])
 	require.Equal(t, "foo", m["--flag2"])
 	require.Equal(t, "bar", m["--flag3"])
 }

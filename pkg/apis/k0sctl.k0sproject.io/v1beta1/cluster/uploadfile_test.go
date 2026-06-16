@@ -140,8 +140,8 @@ func TestUploadFileResolveRelativeURLSetsDestination(t *testing.T) {
 	u := &UploadFile{Source: "https://example.com/assets/app.tar.gz", DestinationDir: "/opt"}
 	require.NoError(t, u.ResolveRelativeTo(""))
 	require.Equal(t, "/opt/app.tar.gz", u.DestinationFile)
-	require.Equal(t, "", u.Base)
-	require.Len(t, u.Sources, 0)
+	require.Empty(t, u.Base)
+	require.Empty(t, u.Sources)
 }
 
 func TestUploadFileResolveRelativeSingleFile(t *testing.T) {

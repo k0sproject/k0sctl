@@ -67,7 +67,7 @@ func TestConfigForLeavesAPIAddressWhenIPv6NodeLocalLBDisabled(t *testing.T) {
 
 	config, err := p.configFor(h)
 	require.NoError(t, err)
-	require.Equal(t, "", apiAddressFromConfig(t, config))
+	require.Empty(t, apiAddressFromConfig(t, config))
 }
 
 type apiSpec struct {
