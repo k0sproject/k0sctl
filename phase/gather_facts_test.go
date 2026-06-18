@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/k0sproject/dig"
-	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -15,8 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// linux.Ubuntu already embeds configurer.Linux (via linux.Debian) and satisfies
+// configurer.Configurer, so embedding it alone gives the mock all the no-op
+// configurer methods.
 type privateAddressMock struct {
-	cfg.Linux
 	linux.Ubuntu
 	addr string
 	err  error
