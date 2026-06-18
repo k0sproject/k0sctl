@@ -15,7 +15,7 @@ import (
 
 const ExpectedClusterAndContextName = "expected-context"
 const ExpectedUserName = "expected-user"
-const ExpectedClusterUrl = "https://example.org"
+const ExpectedClusterURL = "https://example.org"
 
 func fakeReader(h *cluster.Host) (string, error) {
 	return strings.ReplaceAll(`apiVersion: v1
@@ -35,6 +35,18 @@ users:
 - name: user
   user:
 `, "\t", "  "), nil
+}
+
+// requireKubeConfigEqual compares two kubeconfig YAML strings semantically by
+// parsing both, so the assertion is not coupled to clientcmd.Write formatting
+// or field ordering, which can change across client-go versions.
+func requireKubeConfigEqual(t *testing.T, expected, actual string) {
+	t.Helper()
+	expectedConfig, err := clientcmd.Load([]byte(expected))
+	require.NoError(t, err)
+	actualConfig, err := clientcmd.Load([]byte(actual))
+	require.NoError(t, err)
+	require.Equal(t, expectedConfig, actualConfig)
 }
 
 func TestGetKubeconfig(t *testing.T) {
@@ -109,10 +121,10 @@ users:
 - name: expected-user
   user: {}
 `
-	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
 	require.NoError(t, err)
-	require.Equal(t, expectedOutput, actualOutput)
+	requireKubeConfigEqual(t, expectedOutput, actualOutput)
 }
 
 func TestContextExtensionsRemain(t *testing.T) {
@@ -156,10 +168,10 @@ users:
 - name: expected-user
   user: {}
 `
-	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
 	require.NoError(t, err)
-	require.Equal(t, expectedOutput, actualOutput)
+	requireKubeConfigEqual(t, expectedOutput, actualOutput)
 }
 
 func TestNonCurrentContextObjectsAreDropped(t *testing.T) {
@@ -204,10 +216,48 @@ users:
 - name: expected-user
   user: {}
 `
-	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
 	require.NoError(t, err)
-	require.Equal(t, expectedOutput, actualOutput)
+	requireKubeConfigEqual(t, expectedOutput, actualOutput)
+}
+
+func TestMissingCurrentContextFallsBackToSoleContext(t *testing.T) {
+	input := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://localhost:6443
+  name: test-cluster
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: test-context
+kind: Config
+users:
+- name: test-user
+  user: {}
+`
+	expectedOutput := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://example.org
+  name: expected-context
+contexts:
+- context:
+    cluster: expected-context
+    user: expected-user
+  name: expected-context
+current-context: expected-context
+kind: Config
+users:
+- name: expected-user
+  user: {}
+`
+	actualOutput, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
+
+	require.NoError(t, err)
+	requireKubeConfigEqual(t, expectedOutput, actualOutput)
 }
 
 func TestMissingContext(t *testing.T) {
@@ -215,10 +265,34 @@ func TestMissingContext(t *testing.T) {
 current-context: test-context
 kind: Config
 `
-	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
-	require.Errorf(t, err, "missing context should fail")
-	require.Equal(t, err.Error(), "current context test-context not found in config")
+	require.EqualError(t, err, "current context test-context not found in config")
+}
+
+func TestEmptyCurrentContextWithMultipleContexts(t *testing.T) {
+	input := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://example.org
+  name: test-cluster
+- cluster:
+    server: https://example.org
+  name: test-cluster2
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: test-context
+- context:
+    cluster: test-cluster2
+    user: test-user2
+  name: test-context2
+kind: Config
+`
+	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
+
+	require.EqualError(t, err, "no current-context set and config does not contain exactly one context to fall back to")
 }
 
 func TestMissingAuthInfo(t *testing.T) {
@@ -235,10 +309,9 @@ contexts:
 current-context: test-context
 kind: Config
 `
-	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
-	require.Errorf(t, err, "missing user should fail")
-	require.Equal(t, err.Error(), "auth info test-user referenced by context test-context not found in config")
+	require.EqualError(t, err, "auth info test-user referenced by context test-context not found in config")
 }
 
 func TestMissingCluster(t *testing.T) {
@@ -254,8 +327,7 @@ users:
 - name: test-user
   user: {}
 `
-	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterUrl, ExpectedUserName)
+	_, err := kubeConfig(input, ExpectedClusterAndContextName, ExpectedClusterURL, ExpectedUserName)
 
-	require.Errorf(t, err, "missing user should fail")
-	require.Equal(t, err.Error(), "cluster test-cluster referenced by context test-context not found in config")
+	require.EqualError(t, err, "cluster test-cluster referenced by context test-context not found in config")
 }

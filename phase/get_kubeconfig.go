@@ -76,23 +76,35 @@ func (p *GetKubeconfig) Run(_ context.Context) error {
 func kubeConfig(raw string, name string, address, user string) (string, error) {
 	config, err := clientcmd.Load([]byte(raw))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parse kubeconfig: %w", err)
 	}
 
-	sourceContext := config.Contexts[config.CurrentContext]
+	// Prefer the explicit current-context, but fall back to the sole context
+	// when current-context is empty or points to a missing entry, as a
+	// kubeconfig with a single context may legally omit it.
+	contextName := config.CurrentContext
+	sourceContext := config.Contexts[contextName]
 	if sourceContext == nil {
-		return "", fmt.Errorf("current context %s not found in config", config.CurrentContext)
+		if len(config.Contexts) != 1 {
+			if contextName == "" {
+				return "", fmt.Errorf("no current-context set and config does not contain exactly one context to fall back to")
+			}
+			return "", fmt.Errorf("current context %s not found in config", contextName)
+		}
+		for ctxName, ctx := range config.Contexts {
+			contextName, sourceContext = ctxName, ctx
+		}
 	}
 
 	sourceCluster := config.Clusters[sourceContext.Cluster]
 	if sourceCluster == nil {
-		return "", fmt.Errorf("cluster %s referenced by context %s not found in config", sourceContext.Cluster, config.CurrentContext)
+		return "", fmt.Errorf("cluster %s referenced by context %s not found in config", sourceContext.Cluster, contextName)
 	}
 	sourceCluster.Server = address
 
 	sourceAuthInfo := config.AuthInfos[sourceContext.AuthInfo]
 	if sourceAuthInfo == nil {
-		return "", fmt.Errorf("auth info %s referenced by context %s not found in config", sourceContext.AuthInfo, config.CurrentContext)
+		return "", fmt.Errorf("auth info %s referenced by context %s not found in config", sourceContext.AuthInfo, contextName)
 	}
 
 	config.Clusters = map[string]*api.Cluster{
@@ -110,7 +122,7 @@ func kubeConfig(raw string, name string, address, user string) (string, error) {
 
 	out, err := clientcmd.Write(*config)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("serialize kubeconfig: %w", err)
 	}
 
 	return string(out), nil
