@@ -57,22 +57,18 @@ func TestInvestigateHostPrivateAddress(t *testing.T) {
 	const iface = "eth0"
 
 	makePhase := func(k0sConfig dig.Mapping) *GatherFacts {
-		p := &GatherFacts{
-			GenericPhase: GenericPhase{
-				Config: &v1beta1.Cluster{
-					Spec: &cluster.Spec{
-						K0s: &cluster.K0s{
-							Version: version.MustParse("v1.33.0"),
-							Config:  k0sConfig,
-						},
-					},
+		config := &v1beta1.Cluster{
+			Spec: &cluster.Spec{
+				K0s: &cluster.K0s{
+					Version: version.MustParse("v1.33.0"),
+					Config:  k0sConfig,
 				},
 			},
-			SkipMachineIDs: true,
 		}
-		// Run() precomputes this before investigateHost is called; mirror that
-		// here since these tests exercise investigateHost directly.
-		p.cplbVIPs = p.Config.Spec.CPLBVIPs()
+		p := &GatherFacts{SkipMachineIDs: true}
+		// Prepare() precomputes the CPLB VIP set the same way the manager would
+		// before Run/investigateHost run.
+		require.NoError(t, p.Prepare(config))
 		return p
 	}
 

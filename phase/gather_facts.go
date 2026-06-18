@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -32,12 +33,18 @@ func (p *GatherFacts) Title() string {
 	return "Gather host facts"
 }
 
-// Run the phase
-func (p *GatherFacts) Run(ctx context.Context) error {
+// Prepare the phase
+func (p *GatherFacts) Prepare(config *v1beta1.Cluster) error {
+	p.Config = config
 	// Precompute the set of control plane load balancing virtual IPs once so
 	// that investigateHost (which may run concurrently per host) can do a cheap
 	// lookup instead of re-parsing the k0s config for every host.
-	p.cplbVIPs = p.Config.Spec.CPLBVIPs()
+	p.cplbVIPs = config.Spec.CPLBVIPs()
+	return nil
+}
+
+// Run the phase
+func (p *GatherFacts) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.Config.Spec.Hosts, p.investigateHost)
 }
 
