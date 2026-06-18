@@ -3,14 +3,11 @@ package phase
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 
-	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 // Note: Passwordless sudo has not yet been confirmed when this runs
@@ -19,6 +16,8 @@ import (
 type GatherFacts struct {
 	GenericPhase
 	SkipMachineIDs bool
+
+	cplbVIPs map[string]struct{}
 }
 
 var (
@@ -35,6 +34,10 @@ func (p *GatherFacts) Title() string {
 
 // Run the phase
 func (p *GatherFacts) Run(ctx context.Context) error {
+	// Precompute the set of control plane load balancing virtual IPs once so
+	// that investigateHost (which may run concurrently per host) can do a cheap
+	// lookup instead of re-parsing the k0s config for every host.
+	p.cplbVIPs = p.Config.Spec.CPLBVIPs()
 	return p.parallelDo(ctx, p.Config.Spec.Hosts, p.investigateHost)
 }
 
@@ -84,9 +87,13 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 		}
 
 		if h.PrivateInterface != "" {
-			if addr, err := h.Configurer.PrivateAddress(h, h.PrivateInterface, h.Address()); err == nil && !isCPLBIP(addr, p.Config.Spec.K0s.Config) {
-				h.PrivateAddress = addr
-				log.Infof("%s: discovered %s as private address", h, addr)
+			if addr, err := h.Configurer.PrivateAddress(h, h.PrivateInterface, h.Address()); err == nil {
+				if _, isVIP := p.cplbVIPs[addr]; isVIP {
+					log.Debugf("%s: skipping autodetected private address %s because it is a control plane load balancing virtual IP", h, addr)
+				} else {
+					h.PrivateAddress = addr
+					log.Infof("%s: discovered %s as private address", h, addr)
+				}
 			}
 		}
 	}
@@ -110,67 +117,4 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 	}
 
 	return nil
-}
-
-type k0sCPLBConfig struct {
-	Spec struct {
-		Network struct {
-			ControlPlaneLoadBalancing struct {
-				Enabled    bool   `yaml:"enabled"`
-				Type       string `yaml:"type"`
-				Keepalived struct {
-					VRRPInstances []struct {
-						VirtualIPs []string `yaml:"virtualIPs"`
-					} `yaml:"vrrpInstances"`
-					VirtualServers []struct {
-						IPAddress string `yaml:"ipAddress"`
-					} `yaml:"virtualServers"`
-				} `yaml:"keepalived"`
-			} `yaml:"controlPlaneLoadBalancing"`
-		} `yaml:"network"`
-	} `yaml:"spec"`
-}
-
-// isCPLBIP returns true if the given IP is a CPLB IP: either VRRP instance or a virtual server
-func isCPLBIP(ip string, k0sConfig dig.Mapping) bool {
-	if k0sConfig == nil || net.ParseIP(ip) == nil {
-		return false
-	}
-
-	if cfg, err := yaml.Marshal(k0sConfig); err == nil {
-		k0scfg := k0sCPLBConfig{}
-		if err := yaml.Unmarshal(cfg, &k0scfg); err == nil {
-			cplb := k0scfg.Spec.Network.ControlPlaneLoadBalancing
-			if !cplb.Enabled {
-				return false
-			}
-
-			if cplb.Enabled && cplb.Type == "Keepalived" {
-				for _, vs := range cplb.Keepalived.VirtualServers {
-					if vs.IPAddress == ip {
-						return true
-					}
-				}
-				for _, instance := range cplb.Keepalived.VRRPInstances {
-					for _, vipCIDR := range instance.VirtualIPs {
-						// since it's not validated to be CIDR,
-						// make a direct comparison just in case
-						if vipCIDR == ip {
-							return true
-						}
-
-						vip, _, err := net.ParseCIDR(vipCIDR)
-						if err != nil {
-							continue
-						}
-						if vip.String() == ip {
-							return true
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return false
 }
