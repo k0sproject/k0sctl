@@ -38,8 +38,11 @@ func (p *GatherFacts) Prepare(config *v1beta1.Cluster) error {
 	p.Config = config
 	// Precompute the set of control plane load balancing virtual IPs once so
 	// that investigateHost (which may run concurrently per host) can do a cheap
-	// lookup instead of re-parsing the k0s config for every host.
-	p.cplbVIPs = config.Spec.CPLBVIPs()
+	// lookup instead of re-parsing the k0s config for every host. A nil cplbVIPs
+	// map is safe to read from, so leave it unset when there is no spec.
+	if config.Spec != nil {
+		p.cplbVIPs = config.Spec.CPLBVIPs()
+	}
 	return nil
 }
 
