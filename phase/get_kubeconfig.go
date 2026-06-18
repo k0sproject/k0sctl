@@ -3,9 +3,11 @@ package phase
 import (
 	"context"
 	"fmt"
+
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/exec"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -72,28 +74,55 @@ func (p *GetKubeconfig) Run(_ context.Context) error {
 // kubeConfig reads in the raw kubeconfig and changes the given address
 // and cluster name into it
 func kubeConfig(raw string, name string, address, user string) (string, error) {
-	cfg, err := clientcmd.Load([]byte(raw))
+	config, err := clientcmd.Load([]byte(raw))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parse kubeconfig: %w", err)
 	}
 
-	cfg.Clusters[name] = cfg.Clusters["local"]
-	delete(cfg.Clusters, "local")
-	cfg.Clusters[name].Server = address
+	// Prefer the explicit current-context, but fall back to the sole context
+	// when current-context is empty or points to a missing entry, as a
+	// kubeconfig with a single context may legally omit it.
+	contextName := config.CurrentContext
+	sourceContext := config.Contexts[contextName]
+	if sourceContext == nil {
+		if len(config.Contexts) != 1 {
+			if contextName == "" {
+				return "", fmt.Errorf("no current-context set and config does not contain exactly one context to fall back to")
+			}
+			return "", fmt.Errorf("current context %s not found in config", contextName)
+		}
+		for ctxName, ctx := range config.Contexts {
+			contextName, sourceContext = ctxName, ctx
+		}
+	}
 
-	cfg.Contexts[name] = cfg.Contexts["Default"]
-	delete(cfg.Contexts, "Default")
-	cfg.Contexts[name].Cluster = name
-	cfg.Contexts[name].AuthInfo = user
+	sourceCluster := config.Clusters[sourceContext.Cluster]
+	if sourceCluster == nil {
+		return "", fmt.Errorf("cluster %s referenced by context %s not found in config", sourceContext.Cluster, contextName)
+	}
+	sourceCluster.Server = address
 
-	cfg.CurrentContext = name
+	sourceAuthInfo := config.AuthInfos[sourceContext.AuthInfo]
+	if sourceAuthInfo == nil {
+		return "", fmt.Errorf("auth info %s referenced by context %s not found in config", sourceContext.AuthInfo, contextName)
+	}
 
-	cfg.AuthInfos[user] = cfg.AuthInfos["user"]
-	delete(cfg.AuthInfos, "user")
+	config.Clusters = map[string]*api.Cluster{
+		name: sourceCluster,
+	}
+	config.AuthInfos = map[string]*api.AuthInfo{
+		user: sourceAuthInfo,
+	}
+	sourceContext.Cluster = name
+	sourceContext.AuthInfo = user
+	config.Contexts = map[string]*api.Context{
+		name: sourceContext,
+	}
+	config.CurrentContext = name
 
-	out, err := clientcmd.Write(*cfg)
+	out, err := clientcmd.Write(*config)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("serialize kubeconfig: %w", err)
 	}
 
 	return string(out), nil
