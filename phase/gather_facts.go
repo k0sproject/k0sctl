@@ -119,7 +119,7 @@ type k0sCPLBConfig struct {
 				Enabled    bool   `yaml:"enabled"`
 				Type       string `yaml:"type"`
 				Keepalived struct {
-					VRRPInstances struct {
+					VRRPInstances []struct {
 						VirtualIPs []string `yaml:"virtualIPs"`
 					} `yaml:"vrrpInstances"`
 					VirtualServers []struct {
@@ -151,19 +151,21 @@ func isCPLBIP(ip string, k0sConfig dig.Mapping) bool {
 						return true
 					}
 				}
-				for _, vipCIDR := range cplb.Keepalived.VRRPInstances.VirtualIPs {
-					// since it's not validated to be CIDR,
-					// make a direct comparison just in case
-					if vipCIDR == ip {
-						return true
-					}
+				for _, instance := range cplb.Keepalived.VRRPInstances {
+					for _, vipCIDR := range instance.VirtualIPs {
+						// since it's not validated to be CIDR,
+						// make a direct comparison just in case
+						if vipCIDR == ip {
+							return true
+						}
 
-					vip, _, err := net.ParseCIDR(vipCIDR)
-					if err != nil {
-						continue
-					}
-					if vip.String() == ip {
-						return true
+						vip, _, err := net.ParseCIDR(vipCIDR)
+						if err != nil {
+							continue
+						}
+						if vip.String() == ip {
+							return true
+						}
 					}
 				}
 			}

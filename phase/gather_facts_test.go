@@ -25,11 +25,11 @@ func (m *privateAddressMock) PrivateAddress(_ rigOS.Host, _, _ string) (string, 
 
 // makeCPLBConfig builds a dig.Mapping representing a k0s config with CPLB settings.
 func makeCPLBConfig(enabled bool, cplbType string, vrrpVIPs []string, virtualServerIPs []string) dig.Mapping {
-	vsEntries := make([]interface{}, len(virtualServerIPs))
+	vsEntries := make([]any, len(virtualServerIPs))
 	for i, ip := range virtualServerIPs {
 		vsEntries[i] = dig.Mapping{"ipAddress": ip}
 	}
-	vrrpEntries := make([]interface{}, len(vrrpVIPs))
+	vrrpEntries := make([]any, len(vrrpVIPs))
 	for i, ip := range vrrpVIPs {
 		vrrpEntries[i] = ip
 	}
@@ -40,7 +40,7 @@ func makeCPLBConfig(enabled bool, cplbType string, vrrpVIPs []string, virtualSer
 					"enabled": enabled,
 					"type":    cplbType,
 					"keepalived": dig.Mapping{
-						"vrrpInstances":  dig.Mapping{"virtualIPs": vrrpEntries},
+						"vrrpInstances":  []any{dig.Mapping{"virtualIPs": vrrpEntries}},
 						"virtualServers": vsEntries,
 					},
 				},
