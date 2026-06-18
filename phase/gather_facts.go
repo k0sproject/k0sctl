@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,8 @@ import (
 type GatherFacts struct {
 	GenericPhase
 	SkipMachineIDs bool
+
+	cplbVIPs map[string]struct{}
 }
 
 var (
@@ -28,6 +31,19 @@ var (
 // Title for the phase
 func (p *GatherFacts) Title() string {
 	return "Gather host facts"
+}
+
+// Prepare the phase
+func (p *GatherFacts) Prepare(config *v1beta1.Cluster) error {
+	p.Config = config
+	// Precompute the set of control plane load balancing virtual IPs once so
+	// that investigateHost (which may run concurrently per host) can do a cheap
+	// lookup instead of re-parsing the k0s config for every host. A nil cplbVIPs
+	// map is safe to read from, so leave it unset when there is no spec.
+	if config.Spec != nil {
+		p.cplbVIPs = config.Spec.CPLBVIPs()
+	}
+	return nil
 }
 
 // Run the phase
@@ -82,8 +98,12 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 
 		if h.PrivateInterface != "" {
 			if addr, err := h.Configurer.PrivateAddress(h, h.PrivateInterface, h.Address()); err == nil {
-				h.PrivateAddress = addr
-				log.Infof("%s: discovered %s as private address", h, addr)
+				if _, isVIP := p.cplbVIPs[addr]; isVIP {
+					log.Debugf("%s: skipping autodetected private address %s because it is a control plane load balancing virtual IP", h, addr)
+				} else {
+					h.PrivateAddress = addr
+					log.Infof("%s: discovered %s as private address", h, addr)
+				}
 			}
 		}
 	}

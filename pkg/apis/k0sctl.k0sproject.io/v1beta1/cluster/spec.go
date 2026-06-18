@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -118,6 +119,9 @@ type k0sCPLBConfig struct {
 				Enabled    bool   `yaml:"enabled"`
 				Type       string `yaml:"type"`
 				Keepalived struct {
+					VRRPInstances []struct {
+						VirtualIPs []string `yaml:"virtualIPs"`
+					} `yaml:"vrrpInstances"`
 					VirtualServers []struct {
 						IPAddress string `yaml:"ipAddress"`
 					} `yaml:"virtualServers"`
@@ -127,22 +131,78 @@ type k0sCPLBConfig struct {
 	} `yaml:"spec"`
 }
 
+// cplbConfig parses the keepalived control plane load balancing configuration
+// from the k0s config. The second return value is false if the config can't be
+// parsed or CPLB is not enabled with the Keepalived type.
+func (s *Spec) cplbConfig() (*k0sCPLBConfig, bool) {
+	if s.K0s == nil {
+		return nil, false
+	}
+
+	cfg, err := yaml.Marshal(s.K0s.Config)
+	if err != nil {
+		return nil, false
+	}
+
+	k0scfg := &k0sCPLBConfig{}
+	if err := yaml.Unmarshal(cfg, k0scfg); err != nil {
+		return nil, false
+	}
+
+	cplb := k0scfg.Spec.Network.ControlPlaneLoadBalancing
+	if !cplb.Enabled || cplb.Type != "Keepalived" {
+		return nil, false
+	}
+
+	return k0scfg, true
+}
+
+// CPLBVIPs returns the set of control plane load balancing virtual IPs
+// (keepalived virtualServers and vrrpInstances virtualIPs) declared in the k0s
+// config. VRRP virtual IPs are included both in their raw configured form and,
+// when configured in CIDR notation, as the bare IP address so that either form
+// matches. Returns an empty set if CPLB is not enabled or not using Keepalived.
+func (s *Spec) CPLBVIPs() map[string]struct{} {
+	vips := make(map[string]struct{})
+
+	k0scfg, ok := s.cplbConfig()
+	if !ok {
+		return vips
+	}
+
+	keepalived := k0scfg.Spec.Network.ControlPlaneLoadBalancing.Keepalived
+	for _, vs := range keepalived.VirtualServers {
+		if vs.IPAddress != "" {
+			vips[vs.IPAddress] = struct{}{}
+		}
+	}
+	for _, instance := range keepalived.VRRPInstances {
+		for _, vipCIDR := range instance.VirtualIPs {
+			if vipCIDR == "" {
+				continue
+			}
+			// the value is not validated to be in CIDR notation, so keep the
+			// raw form as well as the parsed bare IP to match either way
+			vips[vipCIDR] = struct{}{}
+			if vip, _, err := net.ParseCIDR(vipCIDR); err == nil {
+				vips[vip.String()] = struct{}{}
+			}
+		}
+	}
+
+	return vips
+}
+
 func (s *Spec) clusterExternalAddress() string {
 	if s.K0s != nil {
 		if a := s.K0s.Config.DigString("spec", "api", "externalAddress"); a != "" {
 			return a
 		}
 
-		if cfg, err := yaml.Marshal(s.K0s.Config); err == nil {
-			k0scfg := k0sCPLBConfig{}
-			if err := yaml.Unmarshal(cfg, &k0scfg); err == nil {
-				cplb := k0scfg.Spec.Network.ControlPlaneLoadBalancing
-				if cplb.Enabled && cplb.Type == "Keepalived" {
-					for _, vs := range cplb.Keepalived.VirtualServers {
-						if addr := vs.IPAddress; addr != "" {
-							return addr
-						}
-					}
+		if k0scfg, ok := s.cplbConfig(); ok {
+			for _, vs := range k0scfg.Spec.Network.ControlPlaneLoadBalancing.Keepalived.VirtualServers {
+				if addr := vs.IPAddress; addr != "" {
+					return addr
 				}
 			}
 		}
