@@ -87,7 +87,7 @@ func TestTimeout(t *testing.T) {
 		})
 		elapsed := time.Since(start)
 
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:testifylint
 		assert.Less(t, elapsed, 50*time.Millisecond)
 	})
 
@@ -99,7 +99,7 @@ func TestTimeout(t *testing.T) {
 		})
 		elapsed := time.Since(start)
 
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:testifylint
 		assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(10))
 	})
 
@@ -136,7 +136,7 @@ func TestTimes(t *testing.T) {
 			tries++
 			return errors.New("some error")
 		})
-		assert.Error(t, err, "foo")
+		assert.Error(t, err, "foo") //nolint:testifylint
 		assert.Equal(t, 2, tries)
 	})
 
@@ -146,7 +146,7 @@ func TestTimes(t *testing.T) {
 			tries++
 			return errors.Join(ErrAbort, errors.New("some error"))
 		})
-		assert.Error(t, err, "foo")
+		assert.Error(t, err, "foo") //nolint:testifylint
 		assert.Equal(t, 1, tries)
 	})
 }
@@ -165,6 +165,6 @@ func TestWithDefaultTimeout(t *testing.T) {
 	})
 	elapsed := time.Since(start)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:testifylint
 	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(5))
 }
