@@ -1,0 +1,72 @@
+name: Bump WinGet package
+
+on:
+  release:
+    types:
+      - published
+
+  workflow_dispatch:
+    inputs:
+      tag-name:
+        description: Tag name of the GitHub release to publish to WinGet
+        required: true
+        type: string
+
+env:
+  KOMAC_VERSION: 2.16.0
+  KOMAC_SHA256: 7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d
+
+jobs:
+  bump:
+    name: Bump WinGet package
+    runs-on: ubuntu-slim
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
+
+    env:
+      KOMAC_FORK_OWNER: ${{ github.repository_owner }}
+      KOMAC_CREATED_WITH: k0sctl "Bump WinGet package" GitHub workflow
+      KOMAC_CREATED_WITH_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/bump-winget-package.yml
+
+    steps:
+      - name: Resolve release metadata
+        id: metadata
+        env:
+          GH_REPO: k0sproject/k0sctl
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name || inputs.tag-name }}
+        run: |
+          set -eu
+          gh api "repos/{owner}/{repo}/releases/tags/$TAG_NAME" -q '
+            [
+              "package-version=\(.tag_name | sub("^v"; ""))",
+              "installer-urls=\(
+                ([.assets[] | select(.name == "k0sctl-win-amd64.exe") | .browser_download_url] | first) // error("no installer URL found")
+              )"
+            ]
+            | join("\n")
+          ' >>"$GITHUB_OUTPUT"
+
+      - name: Download Komac
+        run: |
+          set -eu
+          curl -sSLo komac.tar.gz "https://github.com/russellbanks/Komac/releases/download/v$KOMAC_VERSION/komac-$KOMAC_VERSION-x86_64-unknown-linux-gnu.tar.gz"
+          echo "$KOMAC_SHA256" komac.tar.gz | sha256sum -c
+          tar xf komac.tar.gz komac
+          rm komac.tar.gz
+
+      - name: Sync WinGet packages fork
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_FORK_TOKEN }}
+        run: ./komac sync-fork
+
+      - name: Update WinGet package
+        env:
+          PACKAGE_VERSION: ${{ steps.metadata.outputs.package-version }}
+          INSTALLER_URLS: ${{ steps.metadata.outputs.installer-urls }}
+          GITHUB_TOKEN: ${{ secrets.WINGET_UPSTREAM_TOKEN }}
+        run: ./komac update k0sproject.k0sctl --version "$PACKAGE_VERSION" --submit --urls "$INSTALLER_URLS"
+
+      - name: Clean up old branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_FORK_TOKEN }}
+        run: ./komac cleanup
