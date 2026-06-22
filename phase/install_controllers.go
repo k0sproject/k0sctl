@@ -129,16 +129,40 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 			h.Metadata.K0sTokenData.URL = p.Config.Spec.KubeAPIURL()
 		}
 	}
+	// The freshly initialized leader is the only controller guaranteed to be up
+	// and reachable during this phase, so it is the safe fallback join target if
+	// the token-embedded URL (derived from spec.api.externalAddress) cannot be
+	// reached - e.g. an externally managed keepalived VIP not currently assigned
+	// to the leader.
+	leaderJoinHost := p.leader.PrivateAddress
+	if leaderJoinHost == "" {
+		leaderJoinHost = p.leader.Address()
+	}
+
 	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
-		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
-			log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
-			if err := retry.WithDefaultTimeout(ctx, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
+		if !p.IsWet() && p.leader.Metadata.DryRunFakeLeader {
+			log.Warnf("%s: dry-run: skipping api connection validation because cluster is not actually running", h)
+			return nil
+		}
+
+		log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
+		if err := retry.WithDefaultTimeout(ctx, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err == nil {
+			return nil
+		} else {
+			// Fall back to joining via the leader's own address. Rewrite the
+			// token so the actual join targets the leader too, not just this
+			// preflight check.
+			rewritten, rerr := h.Metadata.K0sTokenData.WithJoinHost(leaderJoinHost)
+			if rerr != nil {
 				return fmt.Errorf("failed to connect from controller to kubernetes api - check networking: %w", err)
 			}
-		} else {
-			log.Warnf("%s: dry-run: skipping api connection validation to because cluster is not actually running", h)
+			log.Warnf("%s: api connection to %s failed, retrying via leader address %s", h, h.Metadata.K0sTokenData.URL, rewritten.URL)
+			if rerr := retry.WithDefaultTimeout(ctx, node.HTTPStatusFunc(h, rewritten.URL, 200, 401, 404)); rerr != nil {
+				return fmt.Errorf("failed to connect from controller to kubernetes api - check networking: %w", err)
+			}
+			h.Metadata.K0sTokenData = rewritten
+			return nil
 		}
-		return nil
 	})
 	if err != nil {
 		return err
