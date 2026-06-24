@@ -33,6 +33,7 @@ type K0s struct {
 	Version        *version.Version `yaml:"version,omitempty"`
 	VersionChannel string           `yaml:"versionChannel,omitempty"`
 	DynamicConfig  bool             `yaml:"dynamicConfig,omitempty" default:"false"`
+	Airgap         *Airgap          `yaml:"airgap,omitempty"`
 	Config         dig.Mapping      `yaml:"config,omitempty"`
 	Metadata       K0sMetadata      `yaml:"-"`
 }
@@ -77,12 +78,11 @@ func (k *K0s) MarshalYAML() (any, error) {
 
 // SetDefaults sets default values
 func (k *K0s) SetDefaults() {
-	if k.Version == nil {
-		return
-	}
-
-	if k.Version.IsZero() {
+	if k.Version != nil && k.Version.IsZero() {
 		k.Version = nil
+	}
+	if k.Airgap != nil {
+		k.Airgap.SetDefaults()
 	}
 }
 
@@ -104,11 +104,15 @@ func validateVersion(value any) error {
 }
 
 func (k *K0s) Validate() error {
-	return validation.ValidateStruct(k,
+	if err := validation.ValidateStruct(k,
 		validation.Field(&k.Version, validation.By(validateVersion)),
 		validation.Field(&k.DynamicConfig, validation.By(k.validateMinDynamic())),
 		validation.Field(&k.VersionChannel, validation.In("stable", "latest"), validation.When(k.VersionChannel != "")),
-	)
+		validation.Field(&k.Airgap),
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (k *K0s) validateMinDynamic() func(any) error {

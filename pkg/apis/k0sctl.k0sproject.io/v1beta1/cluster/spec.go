@@ -55,6 +55,9 @@ func isEmptyK0s(k *K0s) bool {
 	if k.Version != nil {
 		return false
 	}
+	if k.Airgap != nil && k.Airgap.Enabled {
+		return false
+	}
 	return len(k.Config) == 0
 }
 
@@ -109,6 +112,9 @@ func (s *Spec) ResolveUploadFilePaths(baseDir string) error {
 
 // Resolve prepares spec-level data after unmarshalling by cascading to hosts.
 func (s *Spec) Resolve(baseDir string) error {
+	if s.K0s != nil && s.K0s.Airgap != nil {
+		s.K0s.Airgap.Resolve(baseDir)
+	}
 	return s.ResolveUploadFilePaths(baseDir)
 }
 
