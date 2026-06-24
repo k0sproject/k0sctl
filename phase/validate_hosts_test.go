@@ -66,6 +66,43 @@ func TestValidateClockSkew(t *testing.T) {
 	})
 }
 
+func TestValidateUniqueHostname(t *testing.T) {
+	makeHost := func(hostname string) *cluster.Host {
+		h := &cluster.Host{Configurer: &mockconfigurer{}}
+		h.Metadata.Hostname = hostname
+		return h
+	}
+
+	t.Run("duplicate hostname same case", func(t *testing.T) {
+		hosts := cluster.Hosts{makeHost("worker-1"), makeHost("worker-1")}
+		p := &ValidateHosts{hncount: make(map[string]int, len(hosts))}
+		for _, h := range hosts {
+			p.hncount[h.KubernetesNodeName()]++
+		}
+		require.Error(t, p.validateUniqueHostname(context.Background(), hosts[0]))
+	})
+
+	t.Run("duplicate hostname different case", func(t *testing.T) {
+		hosts := cluster.Hosts{makeHost("Worker-1"), makeHost("worker-1")}
+		p := &ValidateHosts{hncount: make(map[string]int, len(hosts))}
+		for _, h := range hosts {
+			p.hncount[h.KubernetesNodeName()]++
+		}
+		require.Error(t, p.validateUniqueHostname(context.Background(), hosts[0]))
+		require.Error(t, p.validateUniqueHostname(context.Background(), hosts[1]))
+	})
+
+	t.Run("unique hostnames", func(t *testing.T) {
+		hosts := cluster.Hosts{makeHost("worker-1"), makeHost("worker-2")}
+		p := &ValidateHosts{hncount: make(map[string]int, len(hosts))}
+		for _, h := range hosts {
+			p.hncount[h.KubernetesNodeName()]++
+		}
+		require.NoError(t, p.validateUniqueHostname(context.Background(), hosts[0]))
+		require.NoError(t, p.validateUniqueHostname(context.Background(), hosts[1]))
+	})
+}
+
 func TestValidateConfigurer(t *testing.T) {
 	p := &ValidateHosts{}
 

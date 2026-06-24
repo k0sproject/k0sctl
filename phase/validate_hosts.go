@@ -39,7 +39,7 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 	controllerCount := len(p.Config.Spec.Hosts.Controllers())
 	var resetControllerCount int
 	for _, h := range p.Config.Spec.Hosts {
-		p.hncount[h.Metadata.Hostname]++
+		p.hncount[h.KubernetesNodeName()]++
 		if p.machineidcount != nil {
 			p.machineidcount[h.Metadata.MachineID]++
 		}
@@ -82,8 +82,8 @@ func (p *ValidateHosts) warnK0sBinaryPath(_ context.Context, h *cluster.Host) er
 }
 
 func (p *ValidateHosts) validateUniqueHostname(_ context.Context, h *cluster.Host) error {
-	if p.hncount[h.Metadata.Hostname] > 1 {
-		return fmt.Errorf("hostname is not unique: %s", h.Metadata.Hostname)
+	if p.hncount[h.KubernetesNodeName()] > 1 {
+		return fmt.Errorf("hostname is not unique: %s", h.KubernetesNodeName())
 	}
 
 	return nil
