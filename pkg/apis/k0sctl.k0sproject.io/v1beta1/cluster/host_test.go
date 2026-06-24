@@ -23,6 +23,11 @@ func TestHostK0sServiceName(t *testing.T) {
 	require.Equal(t, "k0scontroller", h.K0sServiceName())
 }
 
+func TestKubernetesNodeName(t *testing.T) {
+	h := Host{Metadata: HostMetadata{Hostname: "IN291O-worker-0"}}
+	require.Equal(t, "in291o-worker-0", h.KubernetesNodeName())
+}
+
 type mockconfigurer struct {
 	cfg.Linux
 	linux.Ubuntu

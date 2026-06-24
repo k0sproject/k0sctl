@@ -77,8 +77,8 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 	}
 
 	if h.HostnameOverride != "" {
-		log.Infof("%s: using %s from configuration as hostname", h, h.HostnameOverride)
-		h.Metadata.Hostname = h.HostnameOverride
+		h.Metadata.Hostname = strings.ToLower(h.HostnameOverride)
+		log.Infof("%s: using %s from configuration as hostname", h, h.Metadata.Hostname)
 	} else {
 		n := h.Configurer.Hostname(h)
 		if n == "" {
