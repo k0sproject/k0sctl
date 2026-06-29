@@ -169,9 +169,18 @@ func (l *Linux) UpdateEnvironment(h Host, env map[string]string) error {
 		}
 	}
 
-	// Export the values into the current session environment.
-	if err := h.Sudo().Exec(`while read -r pair; do if [ -n "$pair" ] && [ "${pair#\#}" = "$pair" ]; then export "$pair" || exit 2; fi; done < /etc/environment`); err != nil {
-		return fmt.Errorf("failed to update environment: %w", err)
+	// Export the values into the current session environment using the
+	// in-memory values with proper shell escaping. Reading them back from
+	// /etc/environment and running 'export "$pair"' would re-export any
+	// surrounding quote or escape characters literally.
+	var export strings.Builder
+	for k, v := range env {
+		fmt.Fprintf(&export, "export %s=%s\n", k, sh.Quote(v))
+	}
+	if export.Len() > 0 {
+		if err := h.Sudo().Exec(export.String()); err != nil {
+			return fmt.Errorf("failed to update environment: %w", err)
+		}
 	}
 	return nil
 }
