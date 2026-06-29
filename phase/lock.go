@@ -134,9 +134,11 @@ func (p *Lock) tryLock(h *cluster.Host) error {
 
 	if _, writeErr := f.Write([]byte(p.instanceID)); writeErr != nil {
 		_ = f.Close()
+		_ = h.Sudo().FS().Remove(lfp)
 		return fmt.Errorf("failed to write lock file: %w", writeErr)
 	}
 	if err := f.Close(); err != nil {
+		_ = h.Sudo().FS().Remove(lfp)
 		return fmt.Errorf("failed to close lock file: %w", err)
 	}
 
