@@ -280,7 +280,7 @@ func warnOldCache(_ *cli.Context) error {
 
 func warnRigMigration(_ *cli.Context) error {
 	log.Warnf("⚠️  This release replaces k0sctl's host connection and remote execution layer (rig v2).")
-	log.Warnf("This is the only difference between %s and the previous version.", k0sctl.Version)
+	log.Warnf("This is the only difference between %s and the previous release (v0.31.1).", k0sctl.Version)
 	log.Warnf("Behavior should be unchanged, but if you hit unexpected connection, sudo, OS detection or")
 	log.Warnf("file transfer issues, please report them at https://github.com/k0sproject/k0sctl/issues")
 	return nil
