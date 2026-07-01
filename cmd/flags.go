@@ -278,11 +278,19 @@ func warnOldCache(_ *cli.Context) error {
 	return nil
 }
 
-func warnRigMigration(_ *cli.Context) error {
-	log.Warnf("⚠️  This release replaces k0sctl's host connection and remote execution layer (rig v2).")
-	log.Warnf("This is the only difference between %s and the previous release (v0.31.1).", k0sctl.Version)
-	log.Warnf("Behavior should be unchanged, but if you hit unexpected connection, sudo, OS detection or")
-	log.Warnf("file transfer issues, please report them at https://github.com/k0sproject/k0sctl/issues")
+func warnRigMigration(ctx *cli.Context) error {
+	var warningRows []string
+	warningRows = append(warningRows, "")
+	warningRows = append(warningRows, "▌ This release replaces k0sctl's host connection and remote execution       ")
+	warningRows = append(warningRows, "▌ layer (rig v2). This is the only difference between this and the previous ")
+	warningRows = append(warningRows, "▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ")
+	warningRows = append(warningRows, "▌ unexpected connection, sudo, OS detection or file transfer issues, please ")
+	warningRows = append(warningRows, "▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ")
+	warningRows = append(warningRows, "▌ to v0.31.1 until the issue is resolved.                                   ")
+	warningRows = append(warningRows, "")
+	for _, row := range warningRows {
+		fmt.Fprintln(ctx.App.ErrWriter, Colorize.BgBlue(Colorize.BrightYellow(row)))
+	}
 	return nil
 }
 
