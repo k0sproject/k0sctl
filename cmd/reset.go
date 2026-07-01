@@ -24,7 +24,7 @@ var resetCommand = &cli.Command{
 		retryIntervalFlag,
 		retryTimeoutFlag,
 	},
-	Before: actions(initLogging, initConfig, initManager, displayCopyright),
+	Before: actions(initLogging, initConfig, initManager, displayCopyright, warnRigMigration),
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		resetAction := action.Reset{
