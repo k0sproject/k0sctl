@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -43,24 +42,17 @@ type statusEvents struct {
 }
 
 // KubeNodeReadyFunc returns a function that returns an error unless the node is ready according to "kubectl get node".
-// On connection loss (e.g. SSH session dropped) it disconnects and reconnects so the next retry uses a fresh connection.
+// A dropped connection needs no special handling here: rig reconnects transparently on the next attempt, so a transient
+// connection loss simply retries. Only a genuinely non-retryable failure (auth, host key mismatch, ...) aborts the loop.
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
-	return func(ctx context.Context) error {
+	return func(_ context.Context) error {
 		nodeName := h.KubernetesNodeName()
 		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(nodeName)), cmd.HideOutput())
 		if err != nil {
-			err = fmt.Errorf("failed to get node status: %w", err)
-			if IsConnectionError(err) {
-				log.Infof("%s: connection lost while waiting for node ready, reconnecting", h)
-				h.Disconnect()
-				if connErr := h.Connect(ctx); connErr != nil {
-					if errors.Is(connErr, protocol.ErrNonRetryable) || strings.Contains(connErr.Error(), "host key mismatch") {
-						return errors.Join(retry.ErrAbort, fmt.Errorf("reconnect failed: %w", connErr))
-					}
-					return fmt.Errorf("reconnect failed: %w (original: %v)", connErr, err)
-				}
+			if errors.Is(err, protocol.ErrNonRetryable) {
+				return errors.Join(retry.ErrAbort, fmt.Errorf("failed to get node status: %w", err))
 			}
-			return err
+			return fmt.Errorf("failed to get node status: %w", err)
 		}
 		status := &kubeNodeStatus{}
 		if err := json.Unmarshal([]byte(output), status); err != nil {
