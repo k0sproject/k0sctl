@@ -3,22 +3,20 @@ package enterpriselinux
 import (
 	"github.com/k0sproject/k0sctl/configurer"
 	k0slinux "github.com/k0sproject/k0sctl/configurer/linux"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
-// OracleLinux provides OS support for Oracle Linuc
+// OracleLinux provides OS support for Oracle Linux
 type OracleLinux struct {
 	k0slinux.EnterpriseLinux
-	configurer.Linux
 }
 
 var _ configurer.Configurer = (*OracleLinux)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "ol"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "ol"
 		},
 		func() any {
 			return &OracleLinux{}

@@ -4,24 +4,26 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/url"
 	gos "os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
 	"github.com/k0sproject/k0sctl/configurer"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
-	"github.com/k0sproject/rig/os/registry"
+	rig "github.com/k0sproject/rig/v2"
+	rigos "github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
+	sloglogrus "github.com/samber/slog-logrus/v2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,9 +31,44 @@ var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 
 var _ binprovider.Host = (*Host)(nil)
 
+// rigLogger bridges rig v2's slog-based logging into k0sctl's logrus output.
+// It wraps the logrus standard logger (the same singleton configured in cmd's
+// logging setup), so any level and hook changes applied there are reflected
+// automatically. rig v2 has no global logger setter; the logger is injected
+// per client via rig.WithLogger at Connect time (see Host.Connect).
+var rigLogger = slog.New(sloglogrus.Option{
+	Level:  slog.LevelDebug,
+	Logger: log.StandardLogger(),
+}.NewLogrusHandler())
+
+// Connect establishes the connection to the host, injecting k0sctl's logger so
+// that rig's internal logging is routed into k0sctl's logrus output.
+func (h *Host) Connect(ctx context.Context) error {
+	if h.Client == nil {
+		client, err := rig.NewClient(
+			rig.WithConnectionFactory(&h.CompositeConfig),
+			rig.WithLogger(rigLogger),
+		)
+		if err != nil {
+			return fmt.Errorf("create rig client: %w", err)
+		}
+		h.Client = client
+	}
+	return h.Client.Connect(ctx)
+}
+
+// String returns a human-readable description of the host, safe before Connect.
+func (h *Host) String() string {
+	if h.Client != nil {
+		return h.Client.String()
+	}
+	return h.CompositeConfig.String()
+}
+
 // Host contains all the needed details to work with hosts
 type Host struct {
-	rig.Connection `yaml:",inline"`
+	rig.CompositeConfig `yaml:",inline"`
+	*rig.Client         `yaml:"-"`
 
 	Role                   string            `yaml:"role"`
 	Reset                  bool              `yaml:"reset,omitempty"`
@@ -54,6 +91,7 @@ type Host struct {
 
 	Metadata   HostMetadata          `yaml:"-"`
 	Configurer configurer.Configurer `yaml:"-"`
+	OSRelease  *rigos.Release        `yaml:"-"`
 
 	binaryProvider              k0s.BinaryProvider // user-set override via SetK0sBinaryProvider
 	cachedDefaultProvider       k0s.BinaryProvider // auto-built default; rebuilt when target changes
@@ -111,13 +149,9 @@ func (h *Host) requireConfigurer() (configurer.Configurer, error) {
 	return h.Configurer, nil
 }
 
-// Dir returns the configurer-specific directory name for the given path.
+// Dir returns the directory name for the given path using the remote filesystem.
 func (h *Host) Dir(path string) (string, error) {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return "", err
-	}
-	return cfg.Dir(path), nil
+	return h.FS().Dir(path), nil
 }
 
 // OSKind returns the host OS kind via the resolved configurer.
@@ -129,39 +163,27 @@ func (h *Host) OSKind() (string, error) {
 	return cfg.OSKind(), nil
 }
 
-// DownloadURL downloads a file on the host using the resolved configurer.
-func (h *Host) DownloadURL(url, dest string, opts ...exec.Option) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.DownloadURL(h, url, dest, opts...)
+// DownloadURL downloads a file from url to dest on the host using the remote filesystem.
+func (h *Host) DownloadURL(url, dest string) error {
+	return h.Sudo().FS().DownloadURL(url, dest)
 }
 
-// Touch updates file modification timestamps via the resolved configurer.
-func (h *Host) Touch(path string, modTime time.Time, opts ...exec.Option) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.Touch(h, path, modTime, opts...)
+// Touch updates file modification timestamps, creating the file if needed.
+func (h *Host) Touch(path string, modTime time.Time) error {
+	return h.Sudo().FS().Touch(path, modTime)
 }
 
-// DeleteFile removes a file via the resolved configurer.
+// DeleteFile removes a file from the host.
 func (h *Host) DeleteFile(path string) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	return cfg.DeleteFile(h, path)
+	return h.Sudo().FS().Remove(path)
 }
 
 func (h *Host) SetDefaults() {
 	if h.OSIDOverride != "" {
-		h.OSVersion = &rig.OSVersion{ID: h.OSIDOverride}
+		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
 	}
 
-	_ = defaults.Set(h.Connection)
+	_ = defaults.Set(&h.CompositeConfig)
 
 	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
 		log.Debugf("%s: changed role from '%s' to 'single' because of --single installFlag", h, h.Role)
@@ -221,10 +243,12 @@ func validateBalancedQuotes(val any) error {
 }
 
 func (h *Host) Validate() error {
-	// For rig validation
-	v := validator.New()
-	if err := v.Struct(h); err != nil {
-		return err
+	// Validate connection config only when a protocol is configured; hosts without
+	// connection config are valid for unit tests and partial configurations.
+	if h.SSH != nil || h.WinRM != nil || bool(h.Localhost) || h.OpenSSH != nil {
+		if err := h.CompositeConfig.Validate(); err != nil {
+			return err
+		}
 	}
 
 	if err := validation.ValidateStruct(h,
@@ -294,9 +318,9 @@ func (h *Host) Resolve(baseDir string) error {
 	return h.ResolveUploadFiles(baseDir)
 }
 
-// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
-
-// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml
+// UnmarshalYAML sets in some sane defaults when unmarshaling the data from yaml.
+// The alias type prevents recursion; the client is reset so Connect re-creates
+// it with any updated connection config.
 func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 	type host Host
 	yh := (*host)(h)
@@ -307,17 +331,30 @@ func (h *Host) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
-	if h.SSH != nil && h.SSH.HostKey != "" {
-		log.Warnf("%s: host.ssh.hostKey is deprecated, use a ssh known hosts file instead", h)
+	if h.Client != nil {
+		h.Disconnect()
+		h.Client = nil
 	}
 
 	return defaults.Set(h)
 }
 
-// Address returns an address for the host
+// Address returns an address for the host, falling back to the configured
+// connection address when the client is not yet connected.
 func (h *Host) Address() string {
-	if addr := h.Connection.Address(); addr != "" {
-		return addr
+	if h.Client != nil {
+		if addr := h.Client.Address(); addr != "" {
+			return addr
+		}
+	}
+	if h.SSH != nil && h.SSH.Address != "" {
+		return h.SSH.Address
+	}
+	if h.WinRM != nil && h.WinRM.Address != "" {
+		return h.WinRM.Address
+	}
+	if h.OpenSSH != nil && h.OpenSSH.Address != "" {
+		return h.OpenSSH.Address
 	}
 	return "127.0.0.1"
 }
@@ -332,7 +369,7 @@ func (h *Host) Protocol() string {
 		return "winrm"
 	}
 
-	if h.Localhost != nil {
+	if bool(h.Localhost) {
 		return "local"
 	}
 
@@ -341,30 +378,40 @@ func (h *Host) Protocol() string {
 
 // IsWindows returns true when the detected OS is Windows
 func (h *Host) IsWindows() bool {
-	if h.OSVersion == nil {
-		return false
+	if h.Client != nil {
+		return h.Client.IsWindows()
 	}
-	return strings.EqualFold(h.OSVersion.ID, "windows")
+	return h.WinRM != nil
 }
 
 // ResolveConfigurer assigns a rig-style configurer to the Host (see configurer/)
 func (h *Host) ResolveConfigurer() error {
-	bf, err := registry.GetOSModuleBuilder(*h.OSVersion)
-	if err != nil {
-		return err
+	if h.OSIDOverride != "" {
+		h.OSRelease = &rigos.Release{ID: h.OSIDOverride}
+	} else if h.OSRelease == nil {
+		release, err := h.OS()
+		if err != nil {
+			return fmt.Errorf("OS detection failed: %w", err)
+		}
+		h.OSRelease = release
 	}
 
-	if c, ok := bf().(configurer.Configurer); ok {
-		h.Configurer = c
-
-		return nil
+	bf, ok := configurer.ResolveOSModule(h.OSRelease)
+	if !ok {
+		return fmt.Errorf("unsupported OS: %s", h.OSRelease.ID)
 	}
 
+	c, ok := bf().(configurer.Configurer)
+	if !ok {
+		return fmt.Errorf("unsupported OS: %s", h.OSRelease.ID)
+	}
+
+	h.Configurer = c
 	if h.K0sInstallPath != "" {
 		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallPath)
 	}
 
-	return fmt.Errorf("unsupported OS")
+	return nil
 }
 
 // K0sInstallLocation returns the k0s binary path from the K0sInstallPath field or configurer.K0sBinaryPath()
@@ -408,15 +455,27 @@ func (h *Host) K0sConfigPath() string {
 	return h.Configurer.K0sConfigPath()
 }
 
-// Arch returns the host architecture, caching the result in metadata
+// Arch returns the host architecture, caching the result in metadata.
+// It first tries the k0sctl OSRelease field (which may be a synthetic override without
+// arch info), then falls back to rig's live OS detection via uname -m.
 func (h *Host) Arch() (string, error) {
 	if h.Metadata.Arch != "" {
 		return h.Metadata.Arch, nil
 	}
-	if h.Configurer == nil {
-		return "", fmt.Errorf("host configurer is not resolved")
+	if h.OSRelease != nil {
+		if arch, err := h.OSRelease.Arch(); err == nil {
+			h.Metadata.Arch = arch
+			return arch, nil
+		}
 	}
-	arch, err := h.Configurer.Arch(h)
+	if h.Client == nil {
+		return "", fmt.Errorf("host is not connected")
+	}
+	release, err := h.Client.OSRelease()
+	if err != nil {
+		return "", fmt.Errorf("failed to detect host architecture: %w", err)
+	}
+	arch, err := release.Arch()
 	if err != nil {
 		return "", fmt.Errorf("failed to detect host architecture: %w", err)
 	}
@@ -436,12 +495,12 @@ func (h *Host) K0sRole() string {
 func (h *Host) K0sInstallFlags() (Flags, error) {
 	flags := Flags(h.InstallFlags)
 
-	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
+	flags.AddOrReplace(fmt.Sprintf("--data-dir=%s", quote(h.FS(), h.FS().NativePath(h.K0sDataDir()))))
 
 	if h.KubeletRootDir != "" {
 		flags.AddOrReplace(fmt.Sprintf(
 			"--kubelet-root-dir=%s",
-			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+			quote(h.FS(), h.FS().NativePath(h.KubeletRootDir)),
 		))
 	}
 
@@ -456,11 +515,11 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	}
 
 	if !h.Metadata.IsK0sLeader {
-		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sJoinTokenPath()))))
+		flags.AddUnlessExist(fmt.Sprintf(`--token-file=%s`, quote(h.FS(), h.FS().NativePath(h.K0sJoinTokenPath()))))
 	}
 
 	if h.IsController() {
-		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, quote(h.Configurer, h.Configurer.HostPath(h.K0sConfigPath()))))
+		flags.AddUnlessExist(fmt.Sprintf(`--config=%s`, quote(h.FS(), h.FS().NativePath(h.K0sConfigPath()))))
 	}
 
 	if strings.HasSuffix(h.Role, "worker") {
@@ -485,7 +544,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 			extra.AddOrReplace("--hostname-override=" + h.HostnameOverride)
 		}
 		if extra != nil {
-			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.Configurer, extra.Join(h.Configurer))))
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.FS(), extra.Join(h.FS()))))
 		}
 	}
 
@@ -504,31 +563,31 @@ func (h *Host) K0sInstallCommand() (string, error) {
 		return "", err
 	}
 
-	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join(h.Configurer)), nil
+	return h.Configurer.K0sCmdf("install %s %s", h.K0sRole(), flags.Join(h.FS())), nil
 }
 
 // K0sResetCommand returns a full command that will reset k0s
 func (h *Host) K0sResetCommand() string {
 	var flags Flags
-	flags.Add(fmt.Sprintf("--data-dir=%s", quote(h.Configurer, h.Configurer.HostPath(h.K0sDataDir()))))
+	flags.Add(fmt.Sprintf("--data-dir=%s", quote(h.FS(), h.FS().NativePath(h.K0sDataDir()))))
 	if h.KubeletRootDir != "" {
 		flags.Add(fmt.Sprintf(
 			"--kubelet-root-dir=%s",
-			quote(h.Configurer, h.Configurer.HostPath(h.KubeletRootDir)),
+			quote(h.FS(), h.FS().NativePath(h.KubeletRootDir)),
 		))
 	}
 
-	return h.Configurer.K0sCmdf("reset %s", flags.Join(h.Configurer))
+	return h.Configurer.K0sCmdf("reset %s", flags.Join(h.FS()))
 }
 
 // K0sBackupCommand returns a full command to be used as run k0s backup
 func (h *Host) K0sBackupCommand(targetDir string) string {
-	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", quote(h.Configurer, h.Configurer.HostPath(targetDir)), h.Configurer.HostPath(h.K0sDataDir()))
+	return h.Configurer.K0sCmdf("backup --save-path %s --data-dir %s", quote(h.FS(), h.FS().NativePath(targetDir)), h.FS().NativePath(h.K0sDataDir()))
 }
 
 // K0sRestoreCommand returns a full command to restore cluster state from a backup
 func (h *Host) K0sRestoreCommand(backupfile string) string {
-	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.Configurer.HostPath(h.K0sDataDir()), quote(h.Configurer, h.Configurer.HostPath(backupfile)))
+	return h.Configurer.K0sCmdf("restore --data-dir=%s %s", h.FS().NativePath(h.K0sDataDir()), quote(h.FS(), h.FS().NativePath(backupfile)))
 }
 
 // IsController returns true for controller and controller+worker roles
@@ -547,30 +606,30 @@ func (h *Host) K0sServiceName() string {
 }
 
 func (h *Host) k0sBinaryPathDir() string {
-	return h.Configurer.Dir(h.K0sInstallLocation())
+	return path.Dir(strings.ReplaceAll(h.K0sInstallLocation(), `\`, "/"))
 }
 
 // InstallK0sBinary installs the k0s binary from the provided file path to K0sBinaryPath
 func (h *Host) InstallK0sBinary(path string) error {
-	if !h.Configurer.FileExist(h, path) {
+	if !h.FS().FileExist(path) {
 		return fmt.Errorf("k0s binary tempfile not found")
 	}
 
 	dir := h.k0sBinaryPathDir()
 	log.Debugf("%s: k0s binary dir: %q", h, dir)
-	if err := h.SudoFsys().MkDirAll(dir, fs.FileMode(0o755)); err != nil {
+	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
 	// Best-effort permissions on POSIX; no-op on Windows
 	_ = h.SetFileMode(dir, fs.FileMode(0o755))
 
-	if err := h.Configurer.MoveFile(h, path, h.K0sInstallLocation()); err != nil {
+	if err := h.Sudo().FS().Rename(path, h.K0sInstallLocation()); err != nil {
 		return fmt.Errorf("install k0s binary: %w", err)
 	}
 	_ = h.SetFileMode(h.K0sInstallLocation(), fs.FileMode(0o750))
 
-	if h.Configurer.FileExist(h, path) {
-		if err := h.Configurer.DeleteFile(h, path); err != nil {
+	if h.FS().FileExist(path) {
+		if err := h.Sudo().FS().Remove(path); err != nil {
 			log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
 		}
 	}
@@ -580,7 +639,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 
 func (h *Host) K0sBinaryVersion() (*version.Version, error) {
 	cmd := h.Configurer.K0sCmdf("version")
-	output, err := h.ExecOutput(cmd, exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -594,12 +653,7 @@ func (h *Host) K0sBinaryVersion() (*version.Version, error) {
 }
 
 func (h *Host) SetFileMode(path string, mode fs.FileMode) error {
-	cfg, err := h.requireConfigurer()
-	if err != nil {
-		return err
-	}
-	perm := fmt.Sprintf("%04o", uint32(mode)&0o7777)
-	return cfg.Chmod(h, path, perm, exec.Sudo(h))
+	return h.Sudo().FS().Chmod(path, mode)
 }
 
 // UpdateK0sBinary updates the binary on the host from the provided file path
@@ -638,27 +692,27 @@ func (h *Host) KubernetesNodeName() string {
 
 // DrainNode drains the given node
 func (h *Host) DrainNode(node *Host, options DrainOption) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.Configurer), quote(h.Configurer, node.KubernetesNodeName())), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "drain %s %s", options.ToKubectlArgs(h.FS()), quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // CordonNode marks the node unschedulable
 func (h *Host) CordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.Configurer, node.KubernetesNodeName())), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "cordon %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // UncordonNode marks the node schedulable
 func (h *Host) UncordonNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.Configurer, node.KubernetesNodeName())), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "uncordon %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // DeleteNode deletes the given node from kubernetes
 func (h *Host) DeleteNode(node *Host) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.Configurer, node.KubernetesNodeName())), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
 // Taints returns all taints added to the node.
 func (h *Host) Taints(node *Host) ([]string, error) {
-	output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.Configurer, node.KubernetesNodeName())), exec.Sudo(h))
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
 	}
@@ -667,7 +721,7 @@ func (h *Host) Taints(node *Host) ([]string, error) {
 
 // AddTaint adds a taint to the node.
 func (h *Host) AddTaint(node *Host, taint string) error {
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.Configurer, node.KubernetesNodeName()), quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
 }
 
 // RemoveTaint removes a taint from the node.
@@ -680,12 +734,14 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		// Removing a taint not on the node results in an error, so no action is taken
 		return nil
 	}
-	return h.Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.Configurer, node.KubernetesNodeName()), quote(h.Configurer, taint)), exec.Sudo(h))
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
 }
 
-// CheckHTTPStatus will perform a web request to the url and return an error if the http status is not the expected
-func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
-	status, err := h.Configurer.HTTPStatus(h, url)
+// CheckHTTPStatus performs a web request to the url and returns an error if the
+// HTTP status code is not among the expected values. TLS certificate verification
+// is skipped to handle self-signed certificates (e.g. k0s kube-apiserver).
+func (h *Host) CheckHTTPStatus(ctx context.Context, url string, expected ...int) error {
+	status, err := remotefs.HTTPStatusInsecure(ctx, h.FS(), url)
 	if err != nil {
 		return err
 	}
@@ -694,7 +750,7 @@ func (h *Host) CheckHTTPStatus(url string, expected ...int) error {
 		return nil
 	}
 
-	return fmt.Errorf("expected response code %d but received %d", expected, status)
+	return fmt.Errorf("expected response code %v but received %d", expected, status)
 }
 
 // NeedCurl returns true when the curl package is needed on the host
@@ -704,7 +760,7 @@ func (h *Host) NeedCurl() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "curl")
+	return !h.FS().CommandExist("curl")
 }
 
 // NeedIPTables returns true when the iptables package is needed on the host
@@ -722,7 +778,7 @@ func (h *Host) NeedIPTables() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "iptables")
+	return !h.FS().CommandExist("iptables")
 }
 
 // NeedInetUtils returns true when the inetutils package is needed on the host to run `hostname`.
@@ -732,7 +788,7 @@ func (h *Host) NeedInetUtils() bool {
 		return false
 	}
 
-	return !h.Configurer.CommandExist(h, "hostname")
+	return !h.FS().CommandExist("hostname")
 }
 
 // FileChanged returns true when a remote file has different size or mtime compared to local
@@ -743,7 +799,7 @@ func (h *Host) FileChanged(lpath, rpath string) bool {
 		log.Debugf("%s: local stat failed: %s", h, err)
 		return true
 	}
-	rstat, err := h.Configurer.Stat(h, rpath, exec.Sudo(h))
+	rstat, err := h.Sudo().FS().Stat(rpath)
 	if err != nil {
 		log.Debugf("%s: remote stat failed: %s", h, err)
 		return true
@@ -801,7 +857,7 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 				builder.WriteString(url.QueryEscape(k0sVersion.String()))
 			case 'x':
 				// K0s binary extension (.exe on Windows).
-				if h.IsConnected() && h.IsWindows() {
+				if h.Client != nil && h.IsConnected() && h.IsWindows() {
 					builder.WriteString(".exe")
 				}
 			default:

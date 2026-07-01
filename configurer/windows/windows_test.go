@@ -1,21 +1,19 @@
 package windows
 
 import (
+	"bufio"
 	"fmt"
 	"io"
-	"io/fs"
 	"testing"
 
-	"github.com/k0sproject/rig/exec"
-	ps "github.com/k0sproject/rig/pkg/powershell"
+	rig "github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/cmd"
+	ps "github.com/k0sproject/rig/v2/powershell"
+	"github.com/k0sproject/rig/v2/protocol"
+	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriteFileScriptUsesUTF8Encoding(t *testing.T) {
-	script := writeFileScript("C:/etc/k0s/k0stoken")
-	require.Contains(t, script, `[System.Text.UTF8Encoding]::new($false)`)
-	require.Contains(t, script, `C:\etc\k0s\k0stoken`)
-}
 
 func TestValidateHostRequiresContainersFeature(t *testing.T) {
 	featureCmd := ps.Cmd(`(Get-WindowsFeature -Name Containers -ErrorAction SilentlyContinue).InstallState`)
@@ -71,39 +69,27 @@ func newStubHost(outputs map[string]commandResponse) *stubHost {
 	return &stubHost{execOutputs: outputs}
 }
 
-func (h *stubHost) Upload(string, string, fs.FileMode, ...exec.Option) error {
+func (h *stubHost) String() string    { return "stub" }
+func (h *stubHost) IsWindows() bool   { return false }
+
+func (h *stubHost) Exec(string, ...cmd.ExecOption) error {
 	return nil
 }
 
-func (h *stubHost) Exec(string, ...exec.Option) error {
-	return nil
-}
-
-func (h *stubHost) ExecOutput(cmd string, _ ...exec.Option) (string, error) {
-	h.execCalls = append(h.execCalls, cmd)
-	resp, ok := h.execOutputs[cmd]
+func (h *stubHost) ExecOutput(c string, _ ...cmd.ExecOption) (string, error) {
+	h.execCalls = append(h.execCalls, c)
+	resp, ok := h.execOutputs[c]
 	if !ok {
-		return "", fmt.Errorf("unexpected command: %s", cmd)
+		return "", fmt.Errorf("unexpected command: %s", c)
 	}
 	return resp.output, resp.err
 }
 
-func (h *stubHost) Execf(string, ...interface{}) error {
-	return nil
-}
-
-func (h *stubHost) ExecOutputf(string, ...interface{}) (string, error) {
-	return "", nil
-}
-
-func (h *stubHost) ExecStreams(string, io.ReadCloser, io.Writer, io.Writer, ...exec.Option) (exec.Waiter, error) {
+func (h *stubHost) ExecReader(_ string, _ ...cmd.ExecOption) io.Reader       { return nil }
+func (h *stubHost) ExecScanner(_ string, _ ...cmd.ExecOption) *bufio.Scanner { return nil }
+func (h *stubHost) StartBackground(_ string, _ ...cmd.ExecOption) (protocol.Waiter, error) {
 	return nil, nil
 }
 
-func (h *stubHost) String() string {
-	return "stub"
-}
-
-func (h *stubHost) Sudo(cmd string) (string, error) {
-	return cmd, nil
-}
+func (h *stubHost) Sudo() *rig.Client  { return nil }
+func (h *stubHost) FS() remotefs.FS    { return nil }

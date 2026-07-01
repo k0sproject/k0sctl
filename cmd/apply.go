@@ -71,7 +71,7 @@ var applyCommand = &cli.Command{
 		retryTimeoutFlag,
 		timeoutFlag,
 	},
-	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright, warnOldCache),
+	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright, warnOldCache, warnRigMigration),
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		var kubeconfigOut io.Writer

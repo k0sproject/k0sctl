@@ -59,7 +59,7 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 	log.Infof("%s: detected %s architecture", h, arch)
 
 	if !p.SkipMachineIDs && p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
-		id, err := h.Configurer.MachineID(h)
+		id, err := h.FS().MachineID()
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 		h.Metadata.Hostname = strings.ToLower(h.HostnameOverride)
 		log.Infof("%s: using %s from configuration as hostname", h, h.Metadata.Hostname)
 	} else {
-		n := h.Configurer.Hostname(h)
+		n, _ := h.FS().Hostname()
 		if n == "" {
 			return fmt.Errorf("%s: failed to resolve a hostname", h)
 		}
@@ -114,14 +114,14 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 
 	if h.UseExistingK0s {
 		if h.K0sBinaryPath == "" {
-			path, err := h.Configurer.LookPath(h, "k0s")
+			path, err := h.FS().LookPath("k0s")
 			if err != nil {
 				return fmt.Errorf("%s: useExistingK0s=true but no 'k0s' binary found in PATH, set k0sInstallPath to use a custom path", h)
 			}
 			log.Infof("%s: found existing 'k0s' binary at %s", h, path)
 			h.K0sInstallPath = path
 			h.Configurer.SetPath("K0sBinaryPath", path)
-		} else if !h.Configurer.FileExist(h, h.K0sBinaryPath) {
+		} else if !h.FS().FileExist(h.K0sBinaryPath) {
 			return fmt.Errorf("%s: useExistingK0s=true but no 'k0s' binary found at %s", h, h.K0sBinaryPath)
 		}
 	}

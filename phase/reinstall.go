@@ -10,7 +10,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig/exec"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -84,7 +83,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 	}
 	log.Infof("%s: reinstalling k0s", h)
 	err = p.Wet(h, fmt.Sprintf("reinstall k0s using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
-		if err := h.Exec(cmd, exec.Sudo(h)); err != nil {
+		if err := h.Sudo().Exec(cmd); err != nil {
 			return fmt.Errorf("failed to reinstall k0s: %w", err)
 		}
 		return nil
@@ -94,7 +93,11 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 	}
 
 	err = p.Wet(h, "restart k0s service", func() error {
-		if err := h.Configurer.RestartService(h, h.K0sServiceName()); err != nil {
+		svc, err := h.Sudo().Service(h.K0sServiceName())
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+		}
+		if err := svc.Restart(ctx); err != nil {
 			return fmt.Errorf("failed to restart k0s: %w", err)
 		}
 		log.Infof("%s: waiting for the k0s service to start", h)
@@ -102,7 +105,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 			return fmt.Errorf("k0s did not restart: %w", err)
 		}
 		statusFunc := func(_ context.Context) error {
-			if err := h.Exec(h.Configurer.K0sCmdf("status"), exec.Sudo(h)); err != nil {
+			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("status")); err != nil {
 				return fmt.Errorf("k0s status command failed: %w", err)
 			}
 			return nil

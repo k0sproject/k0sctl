@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/k0sproject/k0sctl/internal/shell"
+	"github.com/k0sproject/rig/v2/sh/shellescape"
 )
 
 // Flags is a slice of strings with added functions to ease manipulating lists of command-line flags
@@ -13,7 +13,7 @@ type Flags []string
 
 // Add adds a flag regardless if it exists already or not
 func (f *Flags) Add(s string) {
-	if ns, err := shell.Unquote(s); err == nil {
+	if ns, err := shellescape.Unquote(s); err == nil {
 		s = ns
 	}
 	*f = append(*f, s)
@@ -21,7 +21,7 @@ func (f *Flags) Add(s string) {
 
 // Add a flag with a value
 func (f *Flags) AddWithValue(key, value string) {
-	if nv, err := shell.Unquote(value); err == nil {
+	if nv, err := shellescape.Unquote(value); err == nil {
 		value = nv
 	}
 	*f = append(*f, key+"="+value)
@@ -29,7 +29,7 @@ func (f *Flags) AddWithValue(key, value string) {
 
 // AddUnlessExist adds a flag unless one with the same prefix exists
 func (f *Flags) AddUnlessExist(s string) {
-	if ns, err := shell.Unquote(s); err == nil {
+	if ns, err := shellescape.Unquote(s); err == nil {
 		s = ns
 	}
 	if f.Include(s) {
@@ -40,7 +40,7 @@ func (f *Flags) AddUnlessExist(s string) {
 
 // AddOrReplace replaces a flag with the same prefix or adds a new one if one does not exist
 func (f *Flags) AddOrReplace(s string) {
-	if ns, err := shell.Unquote(s); err == nil {
+	if ns, err := shellescape.Unquote(s); err == nil {
 		s = ns
 	}
 	idx := f.Index(s)
@@ -58,7 +58,7 @@ func (f Flags) Include(s string) bool {
 
 // Index returns an index to a flag with a matching prefix
 func (f Flags) Index(s string) int {
-	if ns, err := shell.Unquote(s); err == nil {
+	if ns, err := shellescape.Unquote(s); err == nil {
 		s = ns
 	}
 	var flag string
@@ -91,7 +91,7 @@ func (f Flags) GetValue(s string) string {
 	if fl == "" {
 		return ""
 	}
-	if nfl, err := shell.Unquote(fl); err == nil {
+	if nfl, err := shellescape.Unquote(fl); err == nil {
 		fl = nfl
 	}
 
@@ -176,7 +176,7 @@ func (f Flags) Each(fn func(string, string)) {
 			fn(flag, "")
 		} else {
 			key, value := flag[:sepidx], flag[sepidx+1:]
-			if unq, err := shell.Unquote(value); err == nil {
+			if unq, err := shellescape.Unquote(value); err == nil {
 				value = unq
 			}
 			fn(key, value)
@@ -214,11 +214,11 @@ func (f Flags) Equals(b Flags) bool {
 // NewFlags shell-splits and parses a string and returns new Flags or an error if splitting fails
 func NewFlags(s string) (Flags, error) {
 	var flags Flags
-	unq, err := shell.Unquote(s)
+	unq, err := shellescape.Unquote(s)
 	if err != nil {
 		return flags, fmt.Errorf("failed to unquote flags %q: %w", s, err)
 	}
-	parts, err := shell.Split(unq)
+	parts, err := shellescape.Split(unq)
 	if err != nil {
 		return flags, fmt.Errorf("failed to split flags %q: %w", s, err)
 	}

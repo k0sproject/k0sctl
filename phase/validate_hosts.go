@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"path"
+	"strings"
 	"slices"
 	"sync"
 	"time"
@@ -105,12 +106,8 @@ func (p *ValidateHosts) validateUniqueMachineID(_ context.Context, h *cluster.Ho
 	return nil
 }
 
-func (p *ValidateHosts) validateSudo(_ context.Context, h *cluster.Host) error {
-	if err := h.Configurer.CheckPrivilege(h); err != nil {
-		return err
-	}
-
-	return nil
+func (p *ValidateHosts) validateSudo(ctx context.Context, h *cluster.Host) error {
+	return h.CheckSudo(ctx)
 }
 
 func (p *ValidateHosts) validateConfigurer(_ context.Context, h *cluster.Host) error {
@@ -145,25 +142,32 @@ const cleanUpOlderThan = 30 * time.Minute
 
 // clean up any k0s.tmp.* files from K0sBinaryPath that are older than 30 minutes and warn if there are any that are newer than that
 func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host) error {
-	err := fs.WalkDir(h.SudoFsys(), filepath.Join(filepath.Dir(h.K0sInstallLocation()), "k0s.tmp.*"), func(path string, d fs.DirEntry, err error) error {
+	binDir := path.Dir(strings.ReplaceAll(h.K0sInstallLocation(), `\`, "/"))
+	err := fs.WalkDir(h.Sudo().FS(), binDir, func(entryPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Warnf("failed to walk k0s.tmp.* files in %s: %v", h.K0sInstallLocation(), err)
 			return nil
 		}
-		log.Debugf("%s: found k0s binary upload temporary file %s", h, path)
+		if d.IsDir() && entryPath != binDir {
+			return fs.SkipDir
+		}
+		if !strings.HasPrefix(d.Name(), "k0s.tmp.") {
+			return nil
+		}
+		log.Debugf("%s: found k0s binary upload temporary file %s", h, entryPath)
 		info, err := d.Info()
 		if err != nil {
-			log.Warnf("%s: failed to get info for %s: %v", h, path, err)
+			log.Warnf("%s: failed to get info for %s: %v", h, entryPath, err)
 			return nil
 		}
 		if time.Since(info.ModTime()) > cleanUpOlderThan {
-			log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, path)
-			if err := h.Configurer.DeleteFile(h, path); err != nil {
-				log.Warnf("%s: failed to delete %s: %v", h, path, err)
+			log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, entryPath)
+			if err := h.Sudo().FS().Remove(entryPath); err != nil {
+				log.Warnf("%s: failed to delete %s: %v", h, entryPath, err)
 			}
 			return nil
 		}
-		log.Warnf("%s: found k0s binary upload temporary file %s that is newer than %s", h, path, cleanUpOlderThan)
+		log.Warnf("%s: found k0s binary upload temporary file %s that is newer than %s", h, entryPath, cleanUpOlderThan)
 		return nil
 	})
 	if err != nil {
@@ -182,7 +186,7 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 
 	// Collect skews relative to local time
 	err := p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
-		remote, err := h.Configurer.SystemTime(h)
+		remote, err := h.FS().SystemTime()
 		if err != nil {
 			return fmt.Errorf("failed to get time from %s: %w", h, err)
 		}

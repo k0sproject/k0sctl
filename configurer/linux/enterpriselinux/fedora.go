@@ -5,22 +5,20 @@ import (
 
 	"github.com/k0sproject/k0sctl/configurer"
 	k0slinux "github.com/k0sproject/k0sctl/configurer/linux"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
 // Fedora provides OS support for Fedora
 type Fedora struct {
 	k0slinux.EnterpriseLinux
-	configurer.Linux
 }
 
 var _ configurer.Configurer = (*Fedora)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "fedora" && !strings.Contains(os.Name, "CoreOS")
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "fedora" && !strings.Contains(r.Name, "CoreOS")
 		},
 		func() any {
 			return &Fedora{}

@@ -2,8 +2,7 @@ package linux
 
 import (
 	"github.com/k0sproject/k0sctl/configurer"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/os/registry"
+	rigos "github.com/k0sproject/rig/v2/os"
 )
 
 // OpenSUSE provides OS support for OpenSUSE
@@ -14,9 +13,9 @@ type OpenSUSE struct {
 var _ configurer.Configurer = (*OpenSUSE)(nil)
 
 func init() {
-	registry.RegisterOSModule(
-		func(os rig.OSVersion) bool {
-			return os.ID == "opensuse" || os.ID == "opensuse-microos"
+	configurer.RegisterOSModule(
+		func(r *rigos.Release) bool {
+			return r.ID == "opensuse" || r.ID == "opensuse-microos"
 		},
 		func() any {
 			return &OpenSUSE{}

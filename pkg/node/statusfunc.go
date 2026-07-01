@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
+	"github.com/k0sproject/rig/v2/protocol"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -43,24 +42,17 @@ type statusEvents struct {
 }
 
 // KubeNodeReadyFunc returns a function that returns an error unless the node is ready according to "kubectl get node".
-// On connection loss (e.g. SSH session dropped) it disconnects and reconnects so the next retry uses a fresh connection.
+// A dropped connection needs no special handling here: rig reconnects transparently on the next attempt, so a transient
+// connection loss simply retries. Only a genuinely non-retryable failure (auth, host key mismatch, ...) aborts the loop.
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
 		nodeName := h.KubernetesNodeName()
-		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.Configurer.Quote(nodeName)), exec.HideOutput(), exec.Sudo(h))
+		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(nodeName)), cmd.HideOutput())
 		if err != nil {
-			err = fmt.Errorf("failed to get node status: %w", err)
-			if IsConnectionError(err) {
-				log.Infof("%s: connection lost while waiting for node ready, reconnecting", h)
-				h.Disconnect()
-				if connErr := h.Connect(); connErr != nil {
-					if errors.Is(connErr, rig.ErrCantConnect) || strings.Contains(connErr.Error(), "host key mismatch") {
-						return errors.Join(retry.ErrAbort, fmt.Errorf("reconnect failed: %w", connErr))
-					}
-					return fmt.Errorf("reconnect failed: %w (original: %v)", connErr, err)
-				}
+			if errors.Is(err, protocol.ErrNonRetryable) {
+				return errors.Join(retry.ErrAbort, fmt.Errorf("failed to get node status: %w", err))
 			}
-			return err
+			return fmt.Errorf("failed to get node status: %w", err)
 		}
 		status := &kubeNodeStatus{}
 		if err := json.Unmarshal([]byte(output), status); err != nil {
@@ -81,7 +73,7 @@ func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 // K0sDynamicConfigReadyFunc returns a function that returns an error unless the k0s dynamic config has been reconciled
 func K0sDynamicConfigReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.K0sDataDir()), exec.Sudo(h))
+		output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("kubectl --data-dir=%s -n kube-system get event --field-selector involvedObject.name=k0s -o json", h.K0sDataDir()))
 		if err != nil {
 			return fmt.Errorf("failed to get k0s config status events: %w", err)
 		}
@@ -102,7 +94,7 @@ func K0sDynamicConfigReadyFunc(h *cluster.Host) retryFunc {
 // The  returned function is intended to be used with pkg/retry.
 func ScheduledEventsAfterFunc(h *cluster.Host, since time.Time) retryFunc {
 	return func(_ context.Context) error {
-		output, err := h.ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get events --field-selector reason=Scheduled -o json"), exec.HideOutput(), exec.Sudo(h))
+		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "-n kube-system get events --field-selector reason=Scheduled -o json"), cmd.HideOutput())
 		if err != nil {
 			return fmt.Errorf("failed to get kube system events: %w", err)
 		}
@@ -124,15 +116,19 @@ func ScheduledEventsAfterFunc(h *cluster.Host, since time.Time) retryFunc {
 
 // HTTPStatus returns a function that returns an error unless the expected status code is returned for a HTTP get to the url
 func HTTPStatusFunc(h *cluster.Host, url string, expected ...int) retryFunc {
-	return func(_ context.Context) error {
-		return h.CheckHTTPStatus(url, expected...)
+	return func(ctx context.Context) error {
+		return h.CheckHTTPStatus(ctx, url, expected...)
 	}
 }
 
 // ServiceRunningFunc returns a function that returns an error until the service is running on the host
 func ServiceRunningFunc(h *cluster.Host, service string) retryFunc {
-	return func(_ context.Context) error {
-		if !h.Configurer.ServiceIsRunning(h, service) {
+	return func(ctx context.Context) error {
+		svc, err := h.Sudo().Service(service)
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", service, err)
+		}
+		if !svc.IsRunning(ctx) {
 			return fmt.Errorf("service %s is not running", service)
 		}
 		return nil
@@ -141,8 +137,12 @@ func ServiceRunningFunc(h *cluster.Host, service string) retryFunc {
 
 // ServiceStoppedFunc returns a function that returns an error if the service is not running on the host
 func ServiceStoppedFunc(h *cluster.Host, service string) retryFunc {
-	return func(_ context.Context) error {
-		if h.Configurer.ServiceIsRunning(h, service) {
+	return func(ctx context.Context) error {
+		svc, err := h.Sudo().Service(service)
+		if err != nil {
+			return fmt.Errorf("get service %s: %w", service, err)
+		}
+		if svc.IsRunning(ctx) {
 			return fmt.Errorf("service %s is still running", service)
 		}
 		return nil

@@ -7,7 +7,6 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
-	"github.com/k0sproject/k0sctl/configurer"
 )
 
 // Options for cluster operations.
@@ -70,7 +69,7 @@ func boolPtrValue(value *bool, def bool) bool {
 }
 
 // ToKubectlArgs converts the DrainOption to kubectl arguments.
-func (d *DrainOption) ToKubectlArgs(cfg configurer.Configurer) string {
+func (d *DrainOption) ToKubectlArgs(cfg quoter) string {
 	args := []string{}
 
 	if boolPtrValue(d.Force, true) {

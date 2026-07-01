@@ -10,7 +10,8 @@ import (
 	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	"github.com/k0sproject/rig"
+	"github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/protocol/ssh"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
@@ -57,16 +58,16 @@ spec:
 
 var defaultHosts = cluster.Hosts{
 	&cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
 				Address: "10.0.0.1",
 			},
 		},
 		Role: "controller",
 	},
 	&cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
 				Address: "10.0.0.2",
 			},
 		},
@@ -91,8 +92,8 @@ func hostFromAddress(addr, role, user, keypath string) *cluster.Host {
 	}
 
 	host := &cluster.Host{
-		Connection: rig.Connection{
-			SSH: &rig.SSH{
+		CompositeConfig: rig.CompositeConfig{
+			SSH: &ssh.Config{
 				Address: addr,
 				Port:    port,
 			},

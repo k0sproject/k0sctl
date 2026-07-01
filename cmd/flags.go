@@ -21,8 +21,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/manifest"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
-	"github.com/k0sproject/rig"
-	"github.com/k0sproject/rig/exec"
+	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
 	log "github.com/sirupsen/logrus"
@@ -279,6 +278,22 @@ func warnOldCache(_ *cli.Context) error {
 	return nil
 }
 
+func warnRigMigration(ctx *cli.Context) error {
+	var warningRows []string
+	warningRows = append(warningRows, "")
+	warningRows = append(warningRows, "▌ This release replaces k0sctl's host connection and remote execution       ")
+	warningRows = append(warningRows, "▌ layer (rig v2). This is the only difference between this and the previous ")
+	warningRows = append(warningRows, "▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ")
+	warningRows = append(warningRows, "▌ unexpected connection, sudo, OS detection or file transfer issues, please ")
+	warningRows = append(warningRows, "▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ")
+	warningRows = append(warningRows, "▌ to v0.31.1 until the issue is resolved.                                   ")
+	warningRows = append(warningRows, "")
+	for _, row := range warningRows {
+		fmt.Fprintln(ctx.App.ErrWriter, Colorize.BgBlue(Colorize.BrightYellow(row)))
+	}
+	return nil
+}
+
 func readConfig(ctx *cli.Context) (*v1beta1.Cluster, error) {
 	mr, err := ManifestReader(ctx.Context)
 	if err != nil {
@@ -385,8 +400,7 @@ func initLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
-	exec.DisableRedact = ctx.Bool("no-redact")
-	rig.SetLogger(log.StandardLogger())
+	cmd.DisableRedact = ctx.Bool("no-redact")
 	return initFileLogger(ctx)
 }
 
@@ -395,9 +409,8 @@ func initLogging(ctx *cli.Context) error {
 func initSilentLogging(ctx *cli.Context) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
-	exec.DisableRedact = ctx.Bool("no-redact")
+	cmd.DisableRedact = ctx.Bool("no-redact")
 	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
-	rig.SetLogger(log.StandardLogger())
 	return initFileLogger(ctx)
 }
 
