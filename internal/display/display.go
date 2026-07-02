@@ -88,8 +88,13 @@ func (d *Display) Handle(ctx context.Context, r slog.Record) error {
 	}
 
 	if d.st.tty != nil && d.st.tty.running() {
-		d.st.tty.send(ev)
-		return nil
+		// the live view starts on the first phase record: everything before
+		// it (logo, banners, config parsing) is direct terminal output that
+		// must complete before bubbletea switches the terminal to raw mode
+		if d.st.tty.hasStarted() || ev.Phase != "" {
+			d.st.tty.send(ev)
+			return nil
+		}
 	}
 
 	if d.screen.Enabled(ctx, r.Level) {

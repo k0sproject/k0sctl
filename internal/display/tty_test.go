@@ -139,6 +139,20 @@ func TestTTYModelManyHostsCapped(t *testing.T) {
 	assert.Contains(t, m.View(), "… 3 more hosts")
 }
 
+func TestFirstLine(t *testing.T) {
+	assert.Equal(t, "one line", firstLine("one line"))
+	assert.Equal(t, "first …", firstLine("first\nsecond\nthird"))
+}
+
+func TestTTYModelPhaseStepCounterInHeader(t *testing.T) {
+	m := testModel(t, false, nil)
+	ev := phaseStart("Upgrade")
+	ev.Step, ev.Total = 6, 24
+	update(t, m, eventMsg{ev: ev})
+
+	assert.Contains(t, m.View(), "6/24")
+}
+
 func TestTTYModelStopQuits(t *testing.T) {
 	m := testModel(t, false, nil)
 	update(t, m, eventMsg{ev: phaseStart("Upgrade")})

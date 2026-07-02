@@ -58,6 +58,12 @@ func (t *ttyRenderer) running() bool {
 	return !t.stopped
 }
 
+func (t *ttyRenderer) hasStarted() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.started
+}
+
 func (t *ttyRenderer) send(ev Event) {
 	t.mu.Lock()
 	if t.stopped {
@@ -129,6 +135,8 @@ type ttyModel struct {
 	spin  int
 
 	phase      string
+	phaseStep  int64
+	phaseTotal int64
 	phaseStart time.Time
 
 	order []string
@@ -227,7 +235,9 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 	if ev.Phase != "" && ev.Duration > 0 {
 		var line string
 		if ev.Err != "" {
-			line = m.styleRed.Render(fmt.Sprintf("✘ %s (%s): %s", ev.Phase, ev.Duration.Truncate(100*time.Millisecond), ev.Err))
+			// keep it on one line: multi-line content confuses the live
+			// region repaint, and the full error follows in the final output
+			line = m.styleRed.Render(fmt.Sprintf("✘ %s (%s): %s", ev.Phase, ev.Duration.Truncate(100*time.Millisecond), firstLine(ev.Err)))
 		} else {
 			line = m.styleGreen.Render("✔ ") + ev.Phase + m.styleDim.Render(fmt.Sprintf(" (%s)", ev.Duration.Truncate(100*time.Millisecond)))
 		}
@@ -243,6 +253,8 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 	// phase start record
 	if ev.Phase != "" && ev.Level == slog.LevelInfo {
 		m.phase = ev.Phase
+		m.phaseStep = ev.Step
+		m.phaseTotal = ev.Total
 		m.phaseStart = ev.Time
 		m.order = nil
 		m.rows = map[string]*hostRow{}
@@ -257,10 +269,13 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 			m.rows[ev.Host] = row
 			m.order = append(m.order, ev.Host)
 		}
-		if ev.Attempt > 0 {
+		switch {
+		case ev.Attempt > 0:
 			row.attempt = ev.Attempt
 			row.err = ev.Err
-		} else {
+		case ev.Level >= slog.LevelInfo:
+			// the row status tracks meaningful progress messages only;
+			// debug chatter stays in the log tails
 			row.msg = ev.Message
 			row.attempt = 0
 			row.err = ev.Err
@@ -274,13 +289,22 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 	// non-host records: persist warnings and errors and informative lines
 	switch {
 	case ev.Level >= slog.LevelError:
-		return m, tea.Println(m.styleRed.Render(ev.Message))
+		return m, tea.Println(m.styleRed.Render(firstLine(ev.Message)))
 	case ev.Level >= slog.LevelWarn:
-		return m, tea.Println(m.styleYellow.Render(ev.Message))
+		return m, tea.Println(m.styleYellow.Render(firstLine(ev.Message)))
 	case ev.Level >= slog.LevelInfo:
-		return m, tea.Println(ev.Message)
+		return m, tea.Println(firstLine(ev.Message))
 	}
 	return m, nil
+}
+
+// firstLine reduces a possibly multi-line message to its first line; content
+// persisted above the live region must be single-line or the repaint garbles.
+func firstLine(s string) string {
+	if first, _, found := strings.Cut(s, "\n"); found {
+		return first + " …"
+	}
+	return s
 }
 
 func (m *ttyModel) View() string {
@@ -293,6 +317,9 @@ func (m *ttyModel) View() string {
 	b.WriteString(m.styleCyan.Render(spinnerFrames[m.spin%len(spinnerFrames)]))
 	b.WriteString(" ")
 	b.WriteString(m.phase)
+	if m.phaseTotal > 0 {
+		b.WriteString(m.styleDim.Render(fmt.Sprintf(" · %d/%d", m.phaseStep, m.phaseTotal)))
+	}
 	if elapsed >= time.Second {
 		b.WriteString(m.styleDim.Render(fmt.Sprintf(" (%s)", elapsed)))
 	}
@@ -332,7 +359,12 @@ func (m *ttyModel) View() string {
 			line.WriteString(name)
 		}
 		line.WriteString("  ")
-		line.WriteString(row.msg)
+		if row.msg != "" {
+			line.WriteString(row.msg)
+		} else if last := m.t.st.rings.tail(h, 1); len(last) > 0 {
+			// no meaningful status yet: show the latest log activity dimmed
+			line.WriteString(m.styleDim.Render(last[0].Message))
+		}
 		if row.attempt > 0 {
 			line.WriteString(m.styleYellow.Render(fmt.Sprintf(" ⟳ %d", row.attempt)))
 			if row.err != "" {

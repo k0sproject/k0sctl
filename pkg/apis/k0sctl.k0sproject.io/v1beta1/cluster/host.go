@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/url"
 	gos "os"
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,8 +56,18 @@ func (h *Host) Log() *log.Logger {
 	return log.With(slog.String(log.KeyHost, h.String()))
 }
 
-// String returns a human-readable description of the host, safe before Connect.
+// String returns a human-readable name for the host. It intentionally
+// matches the name rig gives the underlying connection so that the host
+// identity in log records is the same before and after connecting.
 func (h *Host) String() string {
+	switch {
+	case h.SSH != nil:
+		return net.JoinHostPort(h.SSH.Address, strconv.Itoa(h.SSH.Port))
+	case h.WinRM != nil:
+		return net.JoinHostPort(h.WinRM.Address, strconv.Itoa(h.WinRM.Port))
+	case bool(h.Localhost):
+		return "localhost"
+	}
 	if h.Client != nil {
 		return h.Client.String()
 	}

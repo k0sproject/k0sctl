@@ -2,6 +2,7 @@ package display
 
 import (
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,5 +63,34 @@ func TestEventLine(t *testing.T) {
 
 	line := parseEvent(nil, r).line()
 
-	assert.Equal(t, "12:34:56 retrying attempt=4 error=connection refused component=test", line)
+	assert.Equal(t, `12:34:56 retrying attempt=4 error="connection refused" component=test`, line)
+}
+
+func TestNormalizeHostStripsConfigWrapper(t *testing.T) {
+	// rig tags records with the connection config's string before a
+	// connection exists; both identities must route to the same host
+	assert.Equal(t, "10.0.0.1:22", normalizeHost("ssh.Config{10.0.0.1:22}"))
+	assert.Equal(t, "10.0.0.1:5985", normalizeHost("winrm.Config{10.0.0.1:5985}"))
+	assert.Equal(t, "10.0.0.1:22", normalizeHost("10.0.0.1:22"))
+	assert.Equal(t, "localhost", normalizeHost("localhost"))
+	assert.Equal(t, "x.Config{}", normalizeHost("x.Config{}"), "empty inner keeps original")
+}
+
+func TestParseEventNormalizesHost(t *testing.T) {
+	r := record(t, slog.LevelDebug, "msg", log.KeyHost, "ssh.Config{10.0.0.1:22}")
+
+	assert.Equal(t, "10.0.0.1:22", parseEvent(nil, r).Host)
+}
+
+func TestEventLineSanitizesMultilineAndLongValues(t *testing.T) {
+	r := record(t, slog.LevelDebug, "executing command",
+		"command", "line one\nline two\nline three",
+		"blob", strings.Repeat("x", 500),
+	)
+
+	line := parseEvent(nil, r).line()
+
+	assert.NotContains(t, line, "\n", "tail lines must stay single-line")
+	assert.Contains(t, line, `command="line one\nline two\nline three"`)
+	assert.Less(t, len(line), 350, "long values must be truncated")
 }

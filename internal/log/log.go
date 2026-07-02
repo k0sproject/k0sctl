@@ -31,6 +31,10 @@ const (
 	// phase manager attaches it to phase start/completion records so that
 	// displays can track progress without parsing messages.
 	KeyPhase = "phase"
+	// KeyPhaseStep and KeyPhaseTotal carry the phase's position in the
+	// planned phase list on phase start records.
+	KeyPhaseStep  = "step"
+	KeyPhaseTotal = "of"
 	// KeyAttempt carries the retry attempt number on records emitted by
 	// pkg/retry, letting displays render live retry counters.
 	KeyAttempt = "attempt"

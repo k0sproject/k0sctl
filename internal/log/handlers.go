@@ -128,11 +128,19 @@ func (s *screenHandler) Handle(_ context.Context, r slog.Record) error {
 			host = a.Value.String()
 			return
 		}
-		// phase attr is consumed by the banner rendering on info level;
-		// on other levels (e.g. debug "phase completed") it stays visible
-		if a.Key == KeyPhase && phase == "" && r.Level == slog.LevelInfo {
-			phase = a.Value.String()
-			return
+		// phase banner attrs are consumed by the banner rendering on info
+		// level; on other levels (e.g. debug "phase completed") they stay
+		// visible
+		if r.Level == slog.LevelInfo {
+			switch a.Key {
+			case KeyPhase:
+				if phase == "" {
+					phase = a.Value.String()
+				}
+				return
+			case KeyPhaseStep, KeyPhaseTotal:
+				return
+			}
 		}
 		if a.Key == KeyError && a.Value.String() == "" {
 			return

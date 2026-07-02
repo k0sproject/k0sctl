@@ -223,7 +223,8 @@ func (m *Manager) Run(ctx context.Context) error {
 		}
 	}()
 
-	for _, p := range m.phases {
+	total := len(m.phases)
+	for i, p := range m.phases {
 		title := p.Title()
 
 		if err := ctx.Err(); err != nil {
@@ -259,7 +260,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		}
 
-		log.With(log.KeyPhase, title).Infof("==> Running phase: %s", title)
+		log.With(log.KeyPhase, title, log.KeyPhaseStep, i+1, log.KeyPhaseTotal, total).Infof("==> Running phase: %s", title)
 		phaseStart := time.Now()
 
 		if dp, ok := p.(withDryRun); ok && m.DryRun {

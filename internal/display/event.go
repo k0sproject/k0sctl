@@ -22,6 +22,8 @@ type Event struct {
 	Message  string
 	Host     string
 	Phase    string
+	Step     int64
+	Total    int64
 	Duration time.Duration
 	Attempt  int64
 	Err      string
@@ -39,11 +41,19 @@ func parseEvent(attrs []slog.Attr, r slog.Record) Event {
 		switch a.Key {
 		case log.KeyHost:
 			if ev.Host == "" {
-				ev.Host = a.Value.String()
+				ev.Host = normalizeHost(a.Value.String())
 			}
 		case log.KeyPhase:
 			if ev.Phase == "" {
 				ev.Phase = a.Value.String()
+			}
+		case log.KeyPhaseStep:
+			if a.Value.Kind() == slog.KindInt64 {
+				ev.Step = a.Value.Int64()
+			}
+		case log.KeyPhaseTotal:
+			if a.Value.Kind() == slog.KindInt64 {
+				ev.Total = a.Value.Int64()
 			}
 		case log.KeyDuration:
 			if a.Value.Kind() == slog.KindDuration {
@@ -58,7 +68,7 @@ func parseEvent(attrs []slog.Attr, r slog.Record) Event {
 				ev.Err = a.Value.String()
 			}
 		default:
-			ev.Rest = append(ev.Rest, a.Key+"="+a.Value.String())
+			ev.Rest = append(ev.Rest, a.Key+"="+attrValue(a.Value.String()))
 		}
 	}
 
@@ -85,11 +95,41 @@ func (ev Event) line() string {
 	}
 	if ev.Err != "" {
 		b.WriteString(" error=")
-		b.WriteString(ev.Err)
+		b.WriteString(attrValue(ev.Err))
 	}
 	for _, kv := range ev.Rest {
 		b.WriteString(" ")
 		b.WriteString(kv)
 	}
 	return b.String()
+}
+
+// normalizeHost merges the two host identities rig uses: before a connection
+// exists, rig tags records with the connection config's string, which renders
+// as e.g. `ssh.Config{addr:port}`; once connected, records carry plain
+// `addr:port`. k0sctl's Host.String() produces the latter, so the config
+// wrapper is stripped to route both to the same host.
+func normalizeHost(host string) string {
+	if start := strings.Index(host, ".Config{"); start > 0 && strings.HasSuffix(host, "}") {
+		if inner := host[start+len(".Config{") : len(host)-1]; inner != "" {
+			return inner
+		}
+	}
+	return host
+}
+
+// attrValueMax caps rendered attribute values in log tails; remote command
+// scripts can be kilobytes of multi-line text.
+const attrValueMax = 120
+
+// attrValue makes an attribute value fit on a single tail line: control
+// characters are escaped and long values truncated.
+func attrValue(s string) string {
+	if len(s) > attrValueMax {
+		s = s[:attrValueMax] + "…"
+	}
+	if strings.ContainsAny(s, " \t\n\r\"") {
+		return strconv.Quote(s)
+	}
+	return s
 }
