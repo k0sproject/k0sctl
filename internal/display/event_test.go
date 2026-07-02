@@ -63,17 +63,7 @@ func TestEventLine(t *testing.T) {
 
 	line := parseEvent(nil, r).line()
 
-	assert.Equal(t, `12:34:56 I retrying attempt=4 error="connection refused" component=test`, line)
-}
-
-func TestEventLineLevelMarks(t *testing.T) {
-	for mark, level := range map[string]slog.Level{
-		"T": log.LevelTrace, "D": slog.LevelDebug, "I": slog.LevelInfo,
-		"W": slog.LevelWarn, "E": slog.LevelError, "F": log.LevelFatal,
-	} {
-		line := parseEvent(nil, record(t, level, "msg")).line()
-		assert.Equal(t, "12:34:56 "+mark+" msg", line)
-	}
+	assert.Equal(t, `retrying attempt=4 error="connection refused" component=test`, line)
 }
 
 func TestNormalizeHostStripsConfigWrapper(t *testing.T) {

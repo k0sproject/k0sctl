@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/charmbracelet/lipgloss"
 	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
@@ -116,8 +117,25 @@ func (d *Display) WithGroup(_ string) slog.Handler {
 	return d
 }
 
+// levelStyle returns the style used for log tail lines of the given level:
+// warnings and errors get their level color, info stays plain, and
+// debug/trace chatter renders faint.
+func levelStyle(r *lipgloss.Renderer, l slog.Level) lipgloss.Style {
+	switch {
+	case l >= slog.LevelError:
+		return r.NewStyle().Foreground(lipgloss.Color("1"))
+	case l >= slog.LevelWarn:
+		return r.NewStyle().Foreground(lipgloss.Color("3"))
+	case l >= slog.LevelInfo:
+		return r.NewStyle()
+	default:
+		return r.NewStyle().Faint(true)
+	}
+}
+
 // dumpFailures prints the recent log tail of every host that reported an
-// error. It runs at most once per display.
+// error. It runs at most once per display. Unlike the live tails, dump lines
+// carry timestamps: the timing of what led up to the failure is the point.
 func (st *state) dumpFailures() {
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -126,10 +144,12 @@ func (st *state) dumpFailures() {
 	}
 	st.dumped = true
 
+	r := lipgloss.NewRenderer(st.out)
 	for host, events := range st.rings.failures(dumpLines) {
 		fmt.Fprintf(st.out, "\nlast %d log entries for host %s:\n", len(events), host)
 		for _, ev := range events {
-			fmt.Fprintf(st.out, "  %s\n", ev.line())
+			line := fmt.Sprintf("  %s %s", ev.Time.Format("15:04:05"), ev.line())
+			fmt.Fprintln(st.out, levelStyle(r, ev.Level).Render(line))
 		}
 	}
 }

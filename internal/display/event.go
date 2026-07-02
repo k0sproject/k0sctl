@@ -83,14 +83,11 @@ func parseEvent(attrs []slog.Attr, r slog.Record) Event {
 	return ev
 }
 
-// line renders the event as a single plain-text line for log tails,
-// including a one-letter level marker (T/D/I/W/E/F).
+// line renders the event as a single plain-text line for log tails. It
+// carries no timestamp or level tag: the level is conveyed by color at
+// render time, and the failure dump prefixes timestamps itself.
 func (ev Event) line() string {
 	var b strings.Builder
-	b.WriteString(ev.Time.Format("15:04:05"))
-	b.WriteString(" ")
-	b.WriteString(levelMark(ev.Level))
-	b.WriteString(" ")
 	b.WriteString(ev.Message)
 	if ev.Attempt > 0 {
 		b.WriteString(" attempt=")
@@ -105,23 +102,6 @@ func (ev Event) line() string {
 		b.WriteString(kv)
 	}
 	return b.String()
-}
-
-func levelMark(l slog.Level) string {
-	switch {
-	case l < slog.LevelDebug:
-		return "T"
-	case l < slog.LevelInfo:
-		return "D"
-	case l < slog.LevelWarn:
-		return "I"
-	case l < slog.LevelError:
-		return "W"
-	case l < log.LevelFatal:
-		return "E"
-	default:
-		return "F"
-	}
 }
 
 // normalizeHost merges the two host identities rig uses: before a connection

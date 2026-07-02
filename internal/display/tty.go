@@ -133,6 +133,7 @@ type hostRow struct {
 
 type ttyModel struct {
 	t     *ttyRenderer
+	r     *lipgloss.Renderer
 	width int
 	spin  int
 
@@ -160,6 +161,7 @@ func newTTYModel(t *ttyRenderer) *ttyModel {
 	r := lipgloss.NewRenderer(t.out)
 	return &ttyModel{
 		t:           t,
+		r:           r,
 		width:       80,
 		rows:        map[string]*hostRow{},
 		focus:       -1,
@@ -391,7 +393,8 @@ func (m *ttyModel) View() string {
 
 		if showTail(i) {
 			for _, tev := range m.t.st.rings.tail(h, depth) {
-				b.WriteString(ansi.Truncate(m.styleDim.Render("      │ "+tev.line()), m.width, "…"))
+				b.WriteString(m.styleDim.Render("      │ "))
+				b.WriteString(ansi.Truncate(levelStyle(m.r, tev.Level).Render(tev.line()), m.width-8, "…"))
 				b.WriteString("\n")
 			}
 		}
