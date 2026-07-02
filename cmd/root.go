@@ -73,6 +73,9 @@ func NewK0sctl(in io.Reader, out, errOut io.Writer) *cli.App {
 			return nil
 		},
 		After: func(ctx *cli.Context) error {
+			// stop the live display (restores the terminal) before any
+			// error output is printed
+			_ = stopDisplay(ctx)
 			return cancelTimeout(ctx)
 		},
 		Reader:    in,

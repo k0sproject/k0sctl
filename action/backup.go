@@ -40,6 +40,6 @@ func (b Backup) Run(ctx context.Context) error {
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)
-	log.Info(phase.Colorize.Green(text).String())
+	log.Info(text)
 	return nil
 }

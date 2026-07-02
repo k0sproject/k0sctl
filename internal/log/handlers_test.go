@@ -70,18 +70,48 @@ func TestScreenHandlerOtherAttrsRenderTrailing(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(NewScreenHandler(&buf, slog.LevelDebug, false))
 
-	logger.Info("did something", "phase", "apply")
+	logger.Info("did something", "component", "test")
 
-	assert.Equal(t, `INFO did something phase="apply"`+"\n", buf.String())
+	assert.Equal(t, `INFO did something component="test"`+"\n", buf.String())
 }
 
 func TestScreenHandlerHostAndTrailingAttrsCombined(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(NewScreenHandler(&buf, slog.LevelDebug, false))
 
-	logger.Info("msg", KeyHost, "node1", "phase", "apply")
+	logger.Info("msg", KeyHost, "node1", "component", "test")
 
-	assert.Equal(t, `INFO node1: msg phase="apply"`+"\n", buf.String())
+	assert.Equal(t, `INFO node1: msg component="test"`+"\n", buf.String())
+}
+
+func TestScreenHandlerPhaseBannerConsumesAttrOnInfo(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(NewScreenHandler(&buf, slog.LevelDebug, false))
+
+	// info-level records carrying the phase attr are phase banners: the
+	// attr is consumed and (with colors on) the message renders green
+	logger.Info("==> Running phase: apply", KeyPhase, "apply")
+
+	assert.Equal(t, "INFO ==> Running phase: apply\n", buf.String())
+}
+
+func TestScreenHandlerPhaseBannerColors(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(NewScreenHandler(&buf, slog.LevelDebug, true))
+
+	logger.Info("==> Running phase: apply", KeyPhase, "apply")
+
+	assert.Contains(t, buf.String(), "\x1b[32m==> Running phase: apply\x1b[0m")
+}
+
+func TestScreenHandlerPhaseAttrVisibleOnDebug(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(NewScreenHandler(&buf, slog.LevelDebug, false))
+
+	// non-info records keep the phase attr visible
+	logger.Debug("phase completed", KeyPhase, "apply")
+
+	assert.Equal(t, `DEBU phase completed phase="apply"`+"\n", buf.String())
 }
 
 func TestScreenHandlerDropsEmptyErrorAttr(t *testing.T) {

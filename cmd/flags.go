@@ -10,13 +10,17 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
 	glob "github.com/bmatcuk/doublestar/v4"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/internal/display"
 	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -24,7 +28,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/v2/cmd"
-	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
 	"github.com/urfave/cli/v2"
 )
@@ -133,8 +136,6 @@ var (
 			return nil
 		},
 	}
-
-	Colorize = aurora.NewAurora(false)
 )
 
 func cancelTimeout(_ *cli.Context) error {
@@ -280,17 +281,21 @@ func warnOldCache(_ *cli.Context) error {
 }
 
 func warnRigMigration(ctx *cli.Context) error {
-	var warningRows []string
-	warningRows = append(warningRows, "")
-	warningRows = append(warningRows, "▌ This release replaces k0sctl's host connection and remote execution       ")
-	warningRows = append(warningRows, "▌ layer (rig v2). This is the only difference between this and the previous ")
-	warningRows = append(warningRows, "▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ")
-	warningRows = append(warningRows, "▌ unexpected connection, sudo, OS detection or file transfer issues, please ")
-	warningRows = append(warningRows, "▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ")
-	warningRows = append(warningRows, "▌ to v0.31.1 until the issue is resolved.                                   ")
-	warningRows = append(warningRows, "")
+	style := lipgloss.NewRenderer(ctx.App.ErrWriter).NewStyle().
+		Foreground(lipgloss.Color("11")).
+		Background(lipgloss.Color("4"))
+	warningRows := []string{
+		"",
+		"▌ This release replaces k0sctl's host connection and remote execution       ",
+		"▌ layer (rig v2). This is the only difference between this and the previous ",
+		"▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ",
+		"▌ unexpected connection, sudo, OS detection or file transfer issues, please ",
+		"▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ",
+		"▌ to v0.31.1 until the issue is resolved.                                   ",
+		"",
+	}
 	for _, row := range warningRows {
-		fmt.Fprintln(ctx.App.ErrWriter, Colorize.BgBlue(Colorize.BrightYellow(row)))
+		fmt.Fprintln(ctx.App.ErrWriter, style.Render(row))
 	}
 	return nil
 }
@@ -418,23 +423,50 @@ func logLevelFromCtx(ctx *cli.Context, defaultLevel slog.Level) slog.Level {
 	}
 }
 
-// setupLogging builds the screen and file handlers and installs the fanout
+// activeDisplay is the display of the currently running command, stopped in
+// the app-level After hook so the terminal is restored before the process
+// exits or an error is printed.
+var activeDisplay *display.Display
+
+func stopDisplay(_ *cli.Context) error {
+	if activeDisplay != nil {
+		activeDisplay.Stop()
+	}
+	return nil
+}
+
+// setupLogging builds the display and file handlers and installs the fanout
 // of the two as the logger behind the internal/log package functions.
 func setupLogging(ctx *cli.Context, screenLevel slog.Level) error {
 	writer := ctx.App.Writer
-	var colors bool
-	if runtime.GOOS == "windows" {
+
+	outTTY := writerIsTerminal(writer)
+	colors := outTTY
+	if runtime.GOOS == "windows" && !outTTY {
+		// legacy consoles may not report as terminals but still want the
+		// ansi translation layer
 		writer = ansicolor.NewAnsiColorWriter(ctx.App.Writer)
 		colors = true
-	} else if outF, ok := writer.(*os.File); ok {
-		if fi, _ := outF.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
-			colors = true
-		}
 	}
 
-	if colors {
-		Colorize = aurora.NewAurora(true)
-		phase.Colorize = Colorize
+	// the live TTY display runs only at the default log level on a real
+	// terminal; --debug/--trace, --dry-run and quiet modes use plain lines
+	useTTY := outTTY && screenLevel == slog.LevelInfo && !ctx.Bool("dry-run")
+
+	if useTTY {
+		interactive := false
+		if inF, ok := ctx.App.Reader.(*os.File); ok && !slices.Contains(ctx.StringSlice("config"), "-") {
+			interactive = term.IsTerminal(inF.Fd())
+		}
+		// note: the callback runs inside the display's update loop and must
+		// not log; the display renders its own abort notice
+		activeDisplay = display.NewTTY(writer, screenLevel, interactive, func() {
+			if globalCancel != nil {
+				globalCancel()
+			}
+		})
+	} else {
+		activeDisplay = display.NewPlain(writer, screenLevel, colors)
 	}
 
 	lf, err := LogFile()
@@ -445,12 +477,19 @@ func setupLogging(ctx *cli.Context, screenLevel slog.Level) error {
 	fileLevel := min(slog.LevelDebug, screenLevel)
 
 	log.SetLogger(slog.New(log.NewFanoutHandler(
-		log.NewScreenHandler(writer, screenLevel, colors),
+		activeDisplay,
 		log.NewFileHandler(lf, fileLevel),
 	)))
 
 	ctx.Context = context.WithValue(ctx.Context, ctxLogFileKey{}, lf.Name())
 	return nil
+}
+
+func writerIsTerminal(w io.Writer) bool {
+	if f, ok := w.(*os.File); ok {
+		return term.IsTerminal(f.Fd())
+	}
+	return false
 }
 
 const logPath = "k0sctl/k0sctl.log"

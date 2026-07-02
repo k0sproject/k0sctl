@@ -6,11 +6,12 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/creasty/defaults"
 	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	"github.com/logrusorgru/aurora"
 )
 
 // NoWait is used by various phases to decide if node ready state should be waited for or not
@@ -18,9 +19,6 @@ var NoWait bool
 
 // Force is used by various phases to attempt a forced installation
 var Force bool
-
-// Colorize is an instance of "aurora", used to colorize the output
-var Colorize = aurora.NewAurora(false)
 
 // Phase represents a runnable phase which can be added to Manager.
 type Phase interface {
@@ -198,22 +196,28 @@ func (m *Manager) Run(ctx context.Context) error {
 		if result != nil {
 			for _, p := range ran {
 				if c, ok := p.(withcleanup); ok {
-					log.Infof(Colorize.Red("* Running clean-up for phase: %s").String(), p.Title())
+					log.With(log.KeyPhase, p.Title()).Warnf("* Running clean-up for phase: %s", p.Title())
 					c.CleanUp()
 				}
 			}
 		}
 		if m.DryRun {
+			r := lipgloss.NewRenderer(m.Writer)
+			green := r.NewStyle().Foreground(lipgloss.Color("10"))
+			brightRed := r.NewStyle().Foreground(lipgloss.Color("9"))
+			red := r.NewStyle().Foreground(lipgloss.Color("1"))
+			bold := r.NewStyle().Bold(true)
+
 			if len(m.dryMessages) == 0 {
-				fmt.Fprintln(m.Writer, Colorize.BrightGreen("dry-run: no cluster state altering actions would be performed"))
+				fmt.Fprintln(m.Writer, green.Render("dry-run: no cluster state altering actions would be performed"))
 				return
 			}
 
-			fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run: cluster state altering actions would be performed:"))
+			fmt.Fprintln(m.Writer, brightRed.Render("dry-run: cluster state altering actions would be performed:"))
 			for host, msgs := range m.dryMessages {
-				fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Bold(fmt.Sprintf("* %s :", host)))
+				fmt.Fprintln(m.Writer, brightRed.Render("dry-run:"), bold.Render(fmt.Sprintf("* %s :", host)))
 				for _, msg := range msgs {
-					fmt.Fprintln(m.Writer, Colorize.BrightRed("dry-run:"), Colorize.Red(" -"), msg)
+					fmt.Fprintln(m.Writer, brightRed.Render("dry-run:"), red.Render(" -"), msg)
 				}
 			}
 		}
@@ -255,15 +259,17 @@ func (m *Manager) Run(ctx context.Context) error {
 			}
 		}
 
-		text := Colorize.Green("==> Running phase: %s").String()
-		log.Infof(text, title)
+		log.With(log.KeyPhase, title).Infof("==> Running phase: %s", title)
+		phaseStart := time.Now()
 
 		if dp, ok := p.(withDryRun); ok && m.DryRun {
 			ran = append(ran, p)
 			if err := dp.DryRun(); err != nil {
+				logPhaseEnd(title, phaseStart, err)
 				result = err
 				return result
 			}
+			logPhaseEnd(title, phaseStart, nil)
 			continue
 		}
 
@@ -276,11 +282,14 @@ func (m *Manager) Run(ctx context.Context) error {
 			if ap, ok := p.(withAfter); ok {
 				log.Debugf("running after for phase '%s'", p.Title())
 				if herr := ap.After(); herr != nil {
+					logPhaseEnd(title, phaseStart, herr)
 					result = herr
 					return result
 				}
 			}
 		}
+
+		logPhaseEnd(title, phaseStart, result)
 
 		if result != nil {
 			return result
@@ -288,4 +297,16 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// logPhaseEnd emits a phase completion record carrying the phase title,
+// duration and any error as structured attributes. It goes out at debug
+// level: displays and the log file consume it, the plain info-level screen
+// output does not show it.
+func logPhaseEnd(title string, start time.Time, err error) {
+	l := log.With(log.KeyPhase, title, log.KeyDuration, time.Since(start))
+	if err != nil {
+		l = l.With(log.KeyError, err.Error())
+	}
+	l.Debug("phase completed")
 }

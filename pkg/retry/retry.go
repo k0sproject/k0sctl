@@ -26,7 +26,7 @@ var (
 // ~15 seconds have passed and then roughly twice a minute; the rest go to
 // debug.
 func logAttempt(ctx context.Context, attempt int, lastErr error) {
-	logger := log.FromContext(ctx).With("attempt", attempt, log.KeyError, lastErr.Error())
+	logger := log.FromContext(ctx).With(log.KeyAttempt, attempt, log.KeyError, lastErr.Error())
 	if attempt >= 3 && attempt%6 == 3 {
 		logger.Info("retrying")
 	} else {

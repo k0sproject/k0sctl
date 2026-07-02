@@ -117,6 +117,7 @@ func (hosts Hosts) Each(ctx context.Context, filters ...func(context.Context, *H
 				return fmt.Errorf("error from context: %w", err)
 			}
 			if err := filter(log.IntoContext(ctx, h.Log()), h); err != nil {
+				h.Log().With(log.KeyError, err.Error()).Error("phase failed")
 				return err
 			}
 		}
@@ -144,6 +145,7 @@ func (hosts Hosts) ParallelEach(ctx context.Context, filters ...func(context.Con
 					return
 				}
 				if err := filter(log.IntoContext(ctx, h.Log()), h); err != nil {
+					h.Log().With(log.KeyError, err.Error()).Error("phase failed")
 					mu.Lock()
 					errors = append(errors, fmt.Sprintf("%s: %s", h.String(), err.Error()))
 					mu.Unlock()

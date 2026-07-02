@@ -77,6 +77,7 @@ const (
 	ansiCyan   = "\x1b[36m"
 	ansiYellow = "\x1b[33m"
 	ansiRed    = "\x1b[31m"
+	ansiGreen  = "\x1b[32m"
 )
 
 func levelColor(l slog.Level) string {
@@ -118,13 +119,19 @@ func (s *screenHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 func (s *screenHandler) Handle(_ context.Context, r slog.Record) error {
-	var host string
+	var host, phase string
 	var rest []slog.Attr
 
 	collect := func(a slog.Attr) {
 		a.Value = a.Value.Resolve()
 		if a.Key == KeyHost && host == "" {
 			host = a.Value.String()
+			return
+		}
+		// phase attr is consumed by the banner rendering on info level;
+		// on other levels (e.g. debug "phase completed") it stays visible
+		if a.Key == KeyPhase && phase == "" && r.Level == slog.LevelInfo {
+			phase = a.Value.String()
 			return
 		}
 		if a.Key == KeyError && a.Value.String() == "" {
@@ -155,7 +162,14 @@ func (s *screenHandler) Handle(_ context.Context, r slog.Record) error {
 		b.WriteString(host)
 		b.WriteString(": ")
 	}
-	b.WriteString(r.Message)
+	// phase banners (info-level records carrying the phase attr) render green
+	if phase != "" && r.Level == slog.LevelInfo && s.colors {
+		b.WriteString(ansiGreen)
+		b.WriteString(r.Message)
+		b.WriteString(ansiReset)
+	} else {
+		b.WriteString(r.Message)
+	}
 	for _, a := range rest {
 		b.WriteString(" ")
 		b.WriteString(color)

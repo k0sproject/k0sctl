@@ -20,10 +20,20 @@ const (
 )
 
 // Attribute keys shared with rig so that records from both sources can be
-// routed and filtered uniformly.
+// routed and filtered uniformly, plus k0sctl's own keys for progress events.
 const (
-	KeyHost  = riglog.KeyHost
-	KeyError = riglog.KeyError
+	KeyHost     = riglog.KeyHost
+	KeyError    = riglog.KeyError
+	KeyDuration = riglog.KeyDuration
+	KeyExitCode = riglog.KeyExitCode
+
+	// KeyPhase marks records that carry phase lifecycle information: the
+	// phase manager attaches it to phase start/completion records so that
+	// displays can track progress without parsing messages.
+	KeyPhase = "phase"
+	// KeyAttempt carries the retry attempt number on records emitted by
+	// pkg/retry, letting displays render live retry counters.
+	KeyAttempt = "attempt"
 )
 
 var base atomic.Pointer[slog.Logger]

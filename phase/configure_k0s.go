@@ -192,7 +192,7 @@ func (p *ConfigureK0s) DryRun() error {
 		p.DryMsgf(h, "configuration changes:\n%s", dmp.DiffPrettyText(diffs))
 
 		if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
-			p.DryMsg(h, Colorize.BrightRed("restart the k0s service").String())
+			p.DryMsg(h, "restart the k0s service")
 		}
 	}
 	return nil
