@@ -53,6 +53,30 @@ func TestTTYModelPhaseCompletionClearsLiveRegion(t *testing.T) {
 	assert.Empty(t, m.View())
 }
 
+func TestTTYModelStepStack(t *testing.T) {
+	m := testModel(t, false, nil)
+	update(t, m, eventMsg{ev: phaseStart("Install controllers")})
+	steps := []string{"uploading k0s binary", "starting service", "waiting for service"}
+	for _, s := range steps {
+		update(t, m, eventMsg{ev: Event{Host: "h1", Level: slog.LevelInfo, Message: s}})
+	}
+	// consecutive duplicates don't stack
+	update(t, m, eventMsg{ev: Event{Host: "h1", Level: slog.LevelInfo, Message: "waiting for service"}})
+
+	require.Len(t, m.rows["h1"].steps, 3)
+	view := m.View()
+	for _, s := range steps {
+		assert.Contains(t, view, s, "all progress steps stay visible in the stack")
+	}
+
+	// the stack is capped at maxSteps, dropping the oldest
+	for i := range maxSteps {
+		update(t, m, eventMsg{ev: Event{Host: "h1", Level: slog.LevelInfo, Message: fmt.Sprintf("step-%d", i)}})
+	}
+	require.Len(t, m.rows["h1"].steps, maxSteps)
+	assert.NotContains(t, m.View(), "uploading k0s binary")
+}
+
 func TestTTYModelHostRowsInOrderWithRetryCounter(t *testing.T) {
 	m := testModel(t, false, nil)
 	update(t, m, eventMsg{ev: phaseStart("Upgrade")})
@@ -121,8 +145,10 @@ func TestTTYModelSpaceTogglesPeek(t *testing.T) {
 	for i := range 6 {
 		ev := Event{Host: fmt.Sprintf("h%d", i), Level: slog.LevelInfo, Message: "working"}
 		update(t, m, eventMsg{ev: ev})
-		// in production Display.Handle feeds the rings before the model
+		// in production Display.Handle feeds the rings before the model;
+		// the feed under the step stack renders below-info records
 		m.t.st.rings.add(ev)
+		m.t.st.rings.add(Event{Host: ev.Host, Level: slog.LevelDebug, Message: "executing command"})
 	}
 
 	// 6 hosts: tails hidden by default

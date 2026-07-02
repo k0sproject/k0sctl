@@ -123,12 +123,30 @@ func (t *ttyRenderer) stop() {
 	}
 }
 
+// maxSteps caps the per-host stack of progress messages shown in the
+// expanded host view.
+const maxSteps = 5
+
+// hostStep is one meaningful (info or higher) progress message of a host.
+type hostStep struct {
+	msg   string
+	level slog.Level
+}
+
 type hostRow struct {
 	host    string
-	msg     string
+	steps   []hostStep
 	attempt int64
 	err     string
 	level   slog.Level
+}
+
+// latest returns the most recent progress message, or "" when none arrived.
+func (r *hostRow) latest() string {
+	if len(r.steps) == 0 {
+		return ""
+	}
+	return r.steps[len(r.steps)-1].msg
 }
 
 type ttyModel struct {
@@ -282,9 +300,14 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 			row.attempt = ev.Attempt
 			row.err = ev.Err
 		case ev.Level >= slog.LevelInfo:
-			// the row status tracks meaningful progress messages only;
-			// debug chatter stays in the log tails
-			row.msg = ev.Message
+			// meaningful progress messages stack up on the row; debug
+			// chatter stays in the log feed below the stack
+			if row.latest() != ev.Message {
+				row.steps = append(row.steps, hostStep{msg: ev.Message, level: ev.Level})
+				if len(row.steps) > maxSteps {
+					row.steps = row.steps[1:]
+				}
+			}
 			row.attempt = 0
 			row.err = ev.Err
 		}
@@ -304,6 +327,36 @@ func (m *ttyModel) handleEvent(ev Event) (tea.Model, tea.Cmd) {
 		return m, tea.Println(firstLine(ev.Message))
 	}
 	return m, nil
+}
+
+// retrySuffix renders the live retry counter and error of a host row.
+func (m *ttyModel) retrySuffix(row *hostRow) string {
+	switch {
+	case row.attempt > 0 && row.err != "":
+		return m.styleYellow.Render(fmt.Sprintf(" ⟳ %d", row.attempt)) + m.styleDim.Render(fmt.Sprintf(" (%s)", row.err))
+	case row.attempt > 0:
+		return m.styleYellow.Render(fmt.Sprintf(" ⟳ %d", row.attempt))
+	case row.err != "":
+		return m.styleRed.Render(fmt.Sprintf(" (%s)", row.err))
+	}
+	return ""
+}
+
+// feed returns the host's most recent below-info records: the debug stream
+// that runs under the step stack. Info and higher records already appear in
+// the stack itself.
+func (m *ttyModel) feed(host string, n int) []Event {
+	events := m.t.st.rings.tail(host, ringSize)
+	var out []Event
+	for _, ev := range events {
+		if ev.Level < slog.LevelInfo && ev.Attempt == 0 {
+			out = append(out, ev)
+		}
+	}
+	if len(out) > n {
+		out = out[len(out)-n:]
+	}
+	return out
 }
 
 // firstLine reduces a possibly multi-line message to its first line; content
@@ -373,30 +426,38 @@ func (m *ttyModel) View() string {
 		default:
 			line.WriteString(name)
 		}
-		line.WriteString("  ")
-		if row.msg != "" {
-			line.WriteString(row.msg)
-		} else if last := m.t.st.rings.tail(h, 1); len(last) > 0 {
-			// no meaningful status yet: show the latest log activity dimmed
-			line.WriteString(m.styleDim.Render(last[0].Message))
-		}
-		if row.attempt > 0 {
-			line.WriteString(m.styleYellow.Render(fmt.Sprintf(" ⟳ %d", row.attempt)))
-			if row.err != "" {
-				line.WriteString(m.styleDim.Render(fmt.Sprintf(" (%s)", row.err)))
+
+		if !showTail(i) {
+			// collapsed: a single line with the latest progress message
+			line.WriteString("  ")
+			if msg := row.latest(); msg != "" {
+				line.WriteString(msg)
+			} else if last := m.t.st.rings.tail(h, 1); len(last) > 0 {
+				// no meaningful status yet: show the latest log activity dimmed
+				line.WriteString(m.styleDim.Render(last[0].Message))
 			}
-		} else if row.err != "" {
-			line.WriteString(m.styleRed.Render(fmt.Sprintf(" (%s)", row.err)))
+			line.WriteString(m.retrySuffix(row))
+			b.WriteString(ansi.Truncate(line.String(), m.width, "…"))
+			b.WriteString("\n")
+			continue
 		}
+
+		// expanded: the host's progress messages stack up under the name
+		// while the debug feed streams below the stack
 		b.WriteString(ansi.Truncate(line.String(), m.width, "…"))
 		b.WriteString("\n")
-
-		if showTail(i) {
-			for _, tev := range m.t.st.rings.tail(h, depth) {
-				b.WriteString(m.styleDim.Render("      │ "))
-				b.WriteString(ansi.Truncate(levelStyle(m.r, tev.Level).Render(tev.line()), m.width-8, "…"))
-				b.WriteString("\n")
+		for si, step := range row.steps {
+			stepLine := "      " + levelStyle(m.r, step.level).Render(step.msg)
+			if si == len(row.steps)-1 {
+				stepLine += m.retrySuffix(row)
 			}
+			b.WriteString(ansi.Truncate(stepLine, m.width, "…"))
+			b.WriteString("\n")
+		}
+		for _, tev := range m.feed(h, depth) {
+			b.WriteString(m.styleDim.Render("      │ "))
+			b.WriteString(ansi.Truncate(levelStyle(m.r, tev.Level).Render(tev.line()), m.width-8, "…"))
+			b.WriteString("\n")
 		}
 	}
 
