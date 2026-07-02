@@ -163,7 +163,6 @@ func (w *BaseWindows) PrivateAddress(h Host, iface, publicip string) (string, er
 	return ip, nil
 }
 
-
 // UpdateEnvironment sets machine-level environment variables on the host
 func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {
 	for k, v := range env {
@@ -179,4 +178,3 @@ func (w *BaseWindows) UpdateEnvironment(h Host, env map[string]string) error {
 func (w *BaseWindows) FixContainer(h Host) error {
 	return nil
 }
-

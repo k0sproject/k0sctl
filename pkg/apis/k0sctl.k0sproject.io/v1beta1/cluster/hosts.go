@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 // Hosts are destnation hosts
@@ -114,7 +116,7 @@ func (hosts Hosts) Each(ctx context.Context, filters ...func(context.Context, *H
 			if err := ctx.Err(); err != nil {
 				return fmt.Errorf("error from context: %w", err)
 			}
-			if err := filter(ctx, h); err != nil {
+			if err := filter(log.IntoContext(ctx, h.Log()), h); err != nil {
 				return err
 			}
 		}
@@ -141,7 +143,7 @@ func (hosts Hosts) ParallelEach(ctx context.Context, filters ...func(context.Con
 					mu.Unlock()
 					return
 				}
-				if err := filter(ctx, h); err != nil {
+				if err := filter(log.IntoContext(ctx, h.Log()), h); err != nil {
 					mu.Lock()
 					errors = append(errors, fmt.Sprintf("%s: %s", h.String(), err.Error()))
 					mu.Unlock()

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
-	log "github.com/sirupsen/logrus"
 )
 
 // UpgradeWorkers upgrades workers in batches
@@ -80,9 +80,9 @@ func (p *UpgradeWorkers) CleanUp() {
 	_ = p.parallelDo(context.Background(), p.hosts, func(_ context.Context, h *cluster.Host) error {
 		if len(h.Environment) > 0 {
 			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+				h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+				h.Log().Warnf("failed to clean up service environment: %s", err.Error())
 			}
 		}
 		_ = p.leader.UncordonNode(h)
@@ -112,14 +112,14 @@ func (p *UpgradeWorkers) Run(ctx context.Context) error {
 
 func (p *UpgradeWorkers) cordonWorker(_ context.Context, h *cluster.Host) error {
 	if p.NoDrain {
-		log.Debugf("%s: not cordoning because --no-drain given", h)
+		h.Log().Debugf("not cordoning because --no-drain given")
 		return nil
 	}
 	if !p.IsWet() {
 		p.DryMsg(h, "cordon node")
 		return nil
 	}
-	log.Debugf("%s: cordon", h)
+	h.Log().Debugf("cordon")
 	if err := p.leader.CordonNode(h); err != nil {
 		return fmt.Errorf("cordon node: %w", err)
 	}
@@ -134,12 +134,12 @@ func (p *UpgradeWorkers) uncordonWorker(_ context.Context, h *cluster.Host) erro
 		}
 		return nil
 	}
-	log.Debugf("%s: uncordon", h)
+	h.Log().Debugf("uncordon")
 	if err := p.leader.UncordonNode(h); err != nil {
 		return fmt.Errorf("uncordon node: %w", err)
 	}
 	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
-		log.Debugf("%s: remove taint: %s", h, t.String())
+		h.Log().Debugf("remove taint: %s", t.String())
 		if err := p.leader.RemoveTaint(h, t.String()); err != nil {
 			return fmt.Errorf("remove taint: %w", err)
 		}
@@ -149,11 +149,11 @@ func (p *UpgradeWorkers) uncordonWorker(_ context.Context, h *cluster.Host) erro
 
 func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 	if p.NoDrain {
-		log.Debugf("%s: not draining because --no-drain given", h)
+		h.Log().Debugf("not draining because --no-drain given")
 		return nil
 	}
 	if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
-		log.Debugf("%s: add taint: %s", h, t.String())
+		h.Log().Debugf("add taint: %s", t.String())
 		err := p.Wet(h, "add taint "+t.String(), func() error {
 			if err := p.leader.AddTaint(h, t.String()); err != nil {
 				return fmt.Errorf("add taint: %w", err)
@@ -168,7 +168,7 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 		p.DryMsg(h, "drain node")
 		return nil
 	}
-	log.Debugf("%s: drain", h)
+	h.Log().Debugf("drain")
 	if err := p.leader.DrainNode(h, p.Config.Spec.Options.Drain); err != nil {
 		return fmt.Errorf("drain node: %w", err)
 	}
@@ -176,12 +176,12 @@ func (p *UpgradeWorkers) drainWorker(_ context.Context, h *cluster.Host) error {
 }
 
 func (p *UpgradeWorkers) start(_ context.Context, h *cluster.Host) error {
-	log.Infof("%s: starting upgrade", h)
+	h.Log().Infof("starting upgrade")
 	return nil
 }
 
 func (p *UpgradeWorkers) finish(_ context.Context, h *cluster.Host) error {
-	log.Infof("%s: upgrade finished", h)
+	h.Log().Infof("upgrade finished")
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
 	}
 
-	log.Debugf("%s: stop service", h)
+	h.Log().Debugf("stop service")
 	err := p.Wet(h, "stop k0s service", func() error {
 		if err := svc.Stop(ctx); err != nil {
 			return err
@@ -208,7 +208,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	}
 
 	if h.Metadata.K0sBinaryTempFile != "" {
-		log.Debugf("%s: update binary", h)
+		h.Log().Debugf("update binary")
 		err = p.Wet(h, "replace k0s binary", func() error {
 			return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
 		})
@@ -218,11 +218,11 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		// Clear the temp file metadata after successful update to avoid stale paths.
 		h.Metadata.K0sBinaryTempFile = ""
 	} else {
-		log.Debugf("%s: binary already in-place at %s, skipping binary replacement", h, h.K0sInstallLocation())
+		h.Log().Debugf("binary already in-place at %s, skipping binary replacement", h.K0sInstallLocation())
 	}
 
 	if len(h.Environment) > 0 {
-		log.Infof("%s: updating service environment", h)
+		h.Log().Infof("updating service environment")
 		err := p.Wet(h, "update service environment", func() error {
 			return svc.SetEnvironment(ctx, h.Environment)
 		})
@@ -256,15 +256,15 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	}
 	h.Metadata.K0sInstalled = true
 
-	log.Debugf("%s: restart service", h)
+	h.Log().Debugf("restart service")
 	err = p.Wet(h, "restart k0s service", func() error {
 		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 		if NoWait {
-			log.Debugf("%s: not waiting because --no-wait given", h)
+			h.Log().Debugf("not waiting because --no-wait given")
 		} else {
-			log.Infof("%s: waiting for node to become ready again", h)
+			h.Log().Infof("waiting for node to become ready again")
 			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeReadyFunc(h)); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}

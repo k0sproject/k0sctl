@@ -12,10 +12,10 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
 	"github.com/k0sproject/dig"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 

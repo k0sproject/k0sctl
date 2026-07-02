@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 var (
@@ -18,6 +18,21 @@ var (
 	// ErrAbort should be returned when an error occurs on which retrying should be aborted.
 	ErrAbort = errors.New("retrying aborted")
 )
+
+// logAttempt logs a retry attempt with structured attributes using the logger
+// carried by the context, so the host being retried against is attached when
+// the retry happens inside a per-host operation. To keep the default output
+// calm during normal short waits, attempts only surface at info level once
+// ~15 seconds have passed and then roughly twice a minute; the rest go to
+// debug.
+func logAttempt(ctx context.Context, attempt int, lastErr error) {
+	logger := log.FromContext(ctx).With("attempt", attempt, log.KeyError, lastErr.Error())
+	if attempt >= 3 && attempt%6 == 3 {
+		logger.Info("retrying")
+	} else {
+		logger.Debug("retrying")
+	}
+}
 
 // Context retries f at constant Interval until it succeeds or the context is cancelled.
 func Context(ctx context.Context, f func(ctx context.Context) error) error {
@@ -39,23 +54,23 @@ func Context(ctx context.Context, f func(ctx context.Context) error) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Tracef("retry.Context: context cancelled after %d attempts", attempt)
+			log.FromContext(ctx).Tracef("retry.Context: context cancelled after %d attempts", attempt)
 			return errors.Join(ctx.Err(), lastErr)
 		case <-ticker.C:
 			attempt++
 			if lastErr != nil {
-				log.Debugf("retrying, attempt %d - last error: %v", attempt, lastErr)
+				logAttempt(ctx, attempt, lastErr)
 			}
 			lastErr = f(ctx)
 			if errors.Is(lastErr, ErrAbort) {
-				log.Tracef("retry.Context: aborted after %d attempts", attempt)
+				log.FromContext(ctx).Tracef("retry.Context: aborted after %d attempts", attempt)
 				return lastErr
 			}
 			if lastErr == nil {
-				log.Tracef("retry.Context: succeeded after %d attempts", attempt)
+				log.FromContext(ctx).Tracef("retry.Context: succeeded after %d attempts", attempt)
 				return nil
 			}
-			log.Tracef("retry.Context: attempt %d failed: %s", attempt, lastErr)
+			log.FromContext(ctx).Tracef("retry.Context: attempt %d failed: %s", attempt, lastErr)
 		}
 	}
 }
@@ -96,24 +111,24 @@ func Times(ctx context.Context, times int, f func(context.Context) error) error 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Tracef("retry.Times: context cancelled after %d attempts", i)
+			log.FromContext(ctx).Tracef("retry.Times: context cancelled after %d attempts", i)
 			return errors.Join(ctx.Err(), lastErr)
 		case <-ticker.C:
 			if lastErr != nil {
-				log.Debugf("retrying: attempt %d of %d (previous error: %v)", i+1, times, lastErr)
+				logAttempt(ctx, i+1, lastErr)
 			}
 			lastErr = f(ctx)
 			if errors.Is(lastErr, ErrAbort) {
-				log.Tracef("retry.Times: aborted after %d attempts", i)
+				log.FromContext(ctx).Tracef("retry.Times: aborted after %d attempts", i)
 				return lastErr
 			}
 			if lastErr == nil {
-				log.Tracef("retry.Times: succeeded on attempt %d", i)
+				log.FromContext(ctx).Tracef("retry.Times: succeeded on attempt %d", i)
 				return nil
 			}
 			i++
 			if i >= times {
-				log.Tracef("retry.Times: exceeded %d attempts", times)
+				log.FromContext(ctx).Tracef("retry.Times: exceeded %d attempts", times)
 				return fmt.Errorf("retry limit exceeded after %d attempts: %w", times, lastErr)
 			}
 		}

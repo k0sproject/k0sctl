@@ -19,7 +19,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 // workerTokenWorkaroundVersion is the k0s version affected by https://github.com/k0sproject/k0s/issues/7202.
@@ -126,15 +125,15 @@ func (p *EnsureJoinTokenWorkaround) Run(_ context.Context) error {
 		tokenPath := h.K0sJoinTokenPath()
 		data, err := h.FS().ReadFile(tokenPath)
 		if err != nil {
-			log.Debugf("%s: could not read join token file %s, skipping workaround: %v", h, tokenPath, err)
+			h.Log().Debugf("could not read join token file %s, skipping workaround: %v", tokenPath, err)
 			continue
 		}
 		content := string(data)
 		if isBase64(strings.TrimSpace(content)) {
-			log.Debugf("%s: join token file %s already contains base64 content, no workaround needed", h, tokenPath)
+			h.Log().Debugf("join token file %s already contains base64 content, no workaround needed", tokenPath)
 			continue
 		}
-		log.Infof("%s: applying a workaround for k0s issue #7202", h)
+		h.Log().Infof("applying a workaround for k0s issue #7202")
 		if err := p.Wet(h, "write dummy token to fix k0s join token file", func() error {
 			dummyToken, err := buildDummyJoinToken()
 			if err != nil {
@@ -142,7 +141,7 @@ func (p *EnsureJoinTokenWorkaround) Run(_ context.Context) error {
 			}
 			return h.Sudo().FS().WriteFile(tokenPath, []byte(dummyToken), 0o600)
 		}); err != nil {
-			log.Warnf("%s: failed to write dummy token to %s: %v", h, tokenPath, err)
+			h.Log().Warnf("failed to write dummy token to %s: %v", tokenPath, err)
 		}
 	}
 	return nil

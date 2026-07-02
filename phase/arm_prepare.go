@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -40,7 +39,7 @@ func (p *PrepareArm) Prepare(config *v1beta1.Cluster) error {
 
 		arch, err := h.Arch()
 		if err != nil {
-			log.Warnf("%s: failed to detect architecture: %v", h, err)
+			h.Log().Warnf("failed to detect architecture: %v", err)
 			return false
 		}
 
@@ -76,7 +75,7 @@ func (p *PrepareArm) etcdUnsupportedArch(_ context.Context, h *cluster.Host) err
 	if err != nil {
 		return err
 	}
-	log.Warnf("%s: enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", h, arch)
+	h.Log().Warnf("enabling ETCD_UNSUPPORTED_ARCH=%s override - you may encounter problems with etcd", arch)
 	h.Environment["ETCD_UNSUPPORTED_ARCH"] = arch
 
 	return nil

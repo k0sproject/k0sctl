@@ -6,7 +6,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/v2/initsystem"
-	log "github.com/sirupsen/logrus"
 )
 
 // DaemonReload phase runs `systemctl daemon-reload` or equivalent on hosts whose
@@ -46,7 +45,7 @@ func (p *DaemonReload) ShouldRun() bool {
 // Run the phase
 func (p *DaemonReload) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.hosts, func(ctx context.Context, h *cluster.Host) error {
-		log.Infof("%s: reloading service manager", h)
+		h.Log().Infof("reloading service manager")
 		sudo := h.Sudo()
 		mgr, err := sudo.ServiceManager()
 		if err != nil {
@@ -57,7 +56,7 @@ func (p *DaemonReload) Run(ctx context.Context) error {
 			return nil
 		}
 		if err := reloader.DaemonReload(ctx, sudo); err != nil {
-			log.Warnf("%s: failed to reload service manager: %s", h, err.Error())
+			h.Log().Warnf("failed to reload service manager: %s", err.Error())
 		}
 		return nil
 	})

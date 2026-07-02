@@ -6,7 +6,7 @@ import (
 
 	"github.com/k0sproject/version"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 type DefaultK0sVersion struct {

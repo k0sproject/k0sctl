@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/creasty/defaults"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/logrusorgru/aurora"
-	log "github.com/sirupsen/logrus"
 )
 
 // NoWait is used by various phases to decide if node ready state should be waited for or not

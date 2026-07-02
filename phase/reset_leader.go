@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // ResetLeader phase removes the leader from the cluster and thus destroys the cluster
@@ -47,56 +47,57 @@ func (p *ResetLeader) DryRun() error {
 
 // Run the phase
 func (p *ResetLeader) Run(ctx context.Context) error {
+	ctx = log.IntoContext(ctx, p.leader.Log())
 	if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && p.leader.Role != "controller" {
-		log.Debugf("%s: add taint %s", p.leader, t.String())
+		p.leader.Log().Debugf("add taint %s", t.String())
 		if err := p.leader.AddTaint(p.leader, t.String()); err != nil {
 			return fmt.Errorf("add taint: %w", err)
 		}
 	}
 
 	if leaderSvc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
-		log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+		p.leader.Log().Warnf("failed to get service %s: %v", p.leader.K0sServiceName(), err)
 	} else if leaderSvc.IsRunning(ctx) {
-		log.Debugf("%s: stopping k0s...", p.leader)
+		p.leader.Log().Debugf("stopping k0s...")
 		if err := leaderSvc.Stop(ctx); err != nil {
-			log.Warnf("%s: failed to stop k0s: %s", p.leader, err.Error())
+			p.leader.Log().Warnf("failed to stop k0s: %s", err.Error())
 		}
-		log.Debugf("%s: waiting for k0s to stop", p.leader)
+		p.leader.Log().Debugf("waiting for k0s to stop")
 		if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(p.leader, p.leader.K0sServiceName())); err != nil {
-			log.Warnf("%s: k0s service stop: %s", p.leader, err.Error())
+			p.leader.Log().Warnf("k0s service stop: %s", err.Error())
 		}
-		log.Debugf("%s: stopping k0s completed", p.leader)
+		p.leader.Log().Debugf("stopping k0s completed")
 	}
 
-	log.Debugf("%s: resetting k0s...", p.leader)
+	p.leader.Log().Debugf("resetting k0s...")
 	out, err := p.leader.Sudo().ExecOutput(p.leader.K0sResetCommand())
 	if err != nil {
-		log.Debugf("%s: k0s reset failed: %s", p.leader, out)
-		log.Warnf("%s: k0s reported failure: %v", p.leader, err)
+		p.leader.Log().Debugf("k0s reset failed: %s", out)
+		p.leader.Log().Warnf("k0s reported failure: %v", err)
 	}
-	log.Debugf("%s: resetting k0s completed", p.leader)
+	p.leader.Log().Debugf("resetting k0s completed")
 
-	log.Debugf("%s: removing config...", p.leader)
+	p.leader.Log().Debugf("removing config...")
 	if dErr := p.leader.Sudo().FS().Remove(p.leader.Configurer.K0sConfigPath()); dErr != nil {
-		log.Warnf("%s: failed to remove existing configuration %s: %s", p.leader, p.leader.Configurer.K0sConfigPath(), dErr)
+		p.leader.Log().Warnf("failed to remove existing configuration %s: %s", p.leader.Configurer.K0sConfigPath(), dErr)
 	}
-	log.Debugf("%s: removing config completed", p.leader)
+	p.leader.Log().Debugf("removing config completed")
 
-	log.Debugf("%s: removing k0s binary...", p.leader)
+	p.leader.Log().Debugf("removing k0s binary...")
 	if dErr := p.leader.Sudo().FS().Remove(p.leader.Configurer.K0sBinaryPath()); dErr != nil {
-		log.Warnf("%s: failed to remove existing binary %s: %s", p.leader, p.leader.Configurer.K0sConfigPath(), dErr)
+		p.leader.Log().Warnf("failed to remove existing binary %s: %s", p.leader.Configurer.K0sConfigPath(), dErr)
 	}
-	log.Debugf("%s: removing binary completed", p.leader)
+	p.leader.Log().Debugf("removing binary completed")
 
 	if len(p.leader.Environment) > 0 {
 		if svc, err := p.leader.Sudo().Service(p.leader.K0sServiceName()); err != nil {
-			log.Warnf("%s: failed to get service %s: %v", p.leader, p.leader.K0sServiceName(), err)
+			p.leader.Log().Warnf("failed to get service %s: %v", p.leader.K0sServiceName(), err)
 		} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
-			log.Warnf("%s: failed to clean up service environment: %s", p.leader, err.Error())
+			p.leader.Log().Warnf("failed to clean up service environment: %s", err.Error())
 		}
 	}
 
-	log.Infof("%s: reset", p.leader)
+	p.leader.Log().Infof("reset")
 
 	return nil
 }

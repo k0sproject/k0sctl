@@ -12,7 +12,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/phase"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 type ApplyOptions struct {

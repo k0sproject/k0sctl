@@ -7,7 +7,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
-	log "github.com/sirupsen/logrus"
 )
 
 // StageBinaries stages k0s binaries on hosts that need them using the host's configured BinaryProvider.
@@ -27,7 +26,7 @@ func (p *StageBinaries) Prepare(config *v1beta1.Cluster) error {
 	var prepareErr error
 	p.hosts = p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool {
 		if h.Reset {
-			log.Debugf("%s: skipping binary staging (reset)", h)
+			h.Log().Debugf("skipping binary staging (reset)")
 			return false
 		}
 		provider, err := h.K0sBinaryProvider(p.Config.Spec.K0s.Version)
@@ -40,10 +39,10 @@ func (p *StageBinaries) Prepare(config *v1beta1.Cluster) error {
 		metaNeeds := h.Metadata.NeedsUpgrade
 		providerNeeds := provider.NeedsUpgrade()
 		if providerNeeds {
-			log.Debugf("%s: will stage binary via %T (metaNeedsUpgrade=%v, providerNeedsUpgrade=%v)", h, provider, metaNeeds, providerNeeds)
+			h.Log().Debugf("will stage binary via %T (metaNeedsUpgrade=%v, providerNeedsUpgrade=%v)", provider, metaNeeds, providerNeeds)
 			return true
 		}
-		log.Debugf("%s: binary staging not needed (metaNeedsUpgrade=%v, providerNeedsUpgrade=%v)", h, metaNeeds, providerNeeds)
+		h.Log().Debugf("binary staging not needed (metaNeedsUpgrade=%v, providerNeedsUpgrade=%v)", metaNeeds, providerNeeds)
 		return false
 	})
 	return prepareErr
@@ -105,13 +104,13 @@ func (p *StageBinaries) stageForHost(ctx context.Context, h *cluster.Host) error
 	if err != nil {
 		return err
 	}
-	log.Debugf("%s: staging k0s binary using %T", h, provider)
+	h.Log().Debugf("staging k0s binary using %T", provider)
 	tmp, err := provider.Stage(ctx)
 	if err != nil {
 		return err
 	}
 	if tmp != "" {
-		log.Debugf("%s: staged k0s binary to %s", h, tmp)
+		h.Log().Debugf("staged k0s binary to %s", tmp)
 	}
 	h.Metadata.K0sBinaryTempFile = tmp
 	return nil
@@ -154,7 +153,7 @@ func (p *StageBinaries) populateCaches(ctx context.Context, hosts cluster.Hosts)
 func (p *StageBinaries) CleanUp() {
 	_ = p.parallelDo(context.Background(), p.hosts, func(ctx context.Context, h *cluster.Host) error {
 		if h.Metadata.K0sBinaryTempFile != "" {
-			log.Debugf("%s: cleaning up k0s binary temp file", h)
+			h.Log().Debugf("cleaning up k0s binary temp file")
 		}
 		if provider, err := h.K0sBinaryProvider(p.Config.Spec.K0s.Version); err == nil {
 			provider.CleanUp(ctx)

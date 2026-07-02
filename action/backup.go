@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
-	log "github.com/sirupsen/logrus"
 )
 
 type Backup struct {

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"path"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/v2/remotefs"
-	log "github.com/sirupsen/logrus"
 )
 
 type Restore struct {
@@ -64,16 +64,16 @@ func (p *Restore) Run(ctx context.Context) error {
 
 	defer func() {
 		if err := h.Sudo().FS().Remove(dstFile); err != nil {
-			log.Warnf("%s: failed to remove backup file %s: %s", h, dstFile, err)
+			h.Log().Warnf("failed to remove backup file %s: %s", dstFile, err)
 		}
 
 		if err := h.Sudo().FS().Remove(tmpDir); err != nil {
-			log.Warnf("%s: failed to remove backup temp dir %s: %s", h, tmpDir, err)
+			h.Log().Warnf("failed to remove backup temp dir %s: %s", tmpDir, err)
 		}
 	}()
 
 	// Run restore
-	log.Infof("%s: restoring cluster state", h)
+	h.Log().Infof("restoring cluster state")
 	var stdout, stderr bytes.Buffer
 	proc := h.Sudo().Proc(h.K0sRestoreCommand(dstFile))
 	proc.Stdout = &stdout
@@ -84,8 +84,8 @@ func (p *Restore) Run(ctx context.Context) error {
 	}
 
 	if err := waiter.Wait(); err != nil {
-		log.Debugf("%s: restore stdout: %s", h, stdout.String())
-		log.Errorf("%s: restore failed: %s", h, stderr.String())
+		h.Log().Debugf("restore stdout: %s", stdout.String())
+		h.Log().Errorf("restore failed: %s", stderr.String())
 		return fmt.Errorf("restore failed: %w", err)
 	}
 

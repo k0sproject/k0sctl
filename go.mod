@@ -19,7 +19,6 @@ require (
 	github.com/masterzen/winrm v0.0.0-20260407182533-5570be7f80cf // indirect
 	github.com/mattn/go-isatty v0.0.22
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
-	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/crypto v0.53.0 // indirect
@@ -35,7 +34,6 @@ require (
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/rig/v2 v2.0.0
 	github.com/k0sproject/version v0.8.0
-	github.com/samber/slog-logrus/v2 v2.5.4
 	github.com/sergi/go-diff v1.4.0
 	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.36.2
@@ -69,8 +67,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/samber/lo v1.53.0 // indirect
-	github.com/samber/slog-common v0.22.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/tidwall/transform v0.0.0-20201103190739-32f242e2dbde // indirect
 	github.com/x448/float16 v0.8.4 // indirect

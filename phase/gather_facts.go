@@ -8,7 +8,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 // Note: Passwordless sudo has not yet been confirmed when this runs
@@ -56,7 +55,7 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 	if err != nil {
 		return err
 	}
-	log.Infof("%s: detected %s architecture", h, arch)
+	h.Log().Infof("detected %s architecture", arch)
 
 	if !p.SkipMachineIDs && p.Config.Spec.K0s.Version.LessThan(uniqueMachineIDSince) {
 		id, err := h.FS().MachineID()
@@ -78,31 +77,31 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 
 	if h.HostnameOverride != "" {
 		h.Metadata.Hostname = strings.ToLower(h.HostnameOverride)
-		log.Infof("%s: using %s from configuration as hostname", h, h.Metadata.Hostname)
+		h.Log().Infof("using %s from configuration as hostname", h.Metadata.Hostname)
 	} else {
 		n, _ := h.FS().Hostname()
 		if n == "" {
 			return fmt.Errorf("%s: failed to resolve a hostname", h)
 		}
 		h.Metadata.Hostname = strings.ToLower(n)
-		log.Infof("%s: using %s as hostname", h, n)
+		h.Log().Infof("using %s as hostname", n)
 	}
 
 	if h.PrivateAddress == "" {
 		if h.PrivateInterface == "" {
 			if iface, err := h.Configurer.PrivateInterface(h); err == nil {
 				h.PrivateInterface = iface
-				log.Infof("%s: discovered %s as private interface", h, iface)
+				h.Log().Infof("discovered %s as private interface", iface)
 			}
 		}
 
 		if h.PrivateInterface != "" {
 			if addr, err := h.Configurer.PrivateAddress(h, h.PrivateInterface, h.Address()); err == nil {
 				if _, isVIP := p.cplbVIPs[addr]; isVIP {
-					log.Debugf("%s: skipping autodetected private address %s because it is a control plane load balancing virtual IP", h, addr)
+					h.Log().Debugf("skipping autodetected private address %s because it is a control plane load balancing virtual IP", addr)
 				} else {
 					h.PrivateAddress = addr
-					log.Infof("%s: discovered %s as private address", h, addr)
+					h.Log().Infof("discovered %s as private address", addr)
 				}
 			}
 		}
@@ -118,7 +117,7 @@ func (p *GatherFacts) investigateHost(_ context.Context, h *cluster.Host) error 
 			if err != nil {
 				return fmt.Errorf("%s: useExistingK0s=true but no 'k0s' binary found in PATH, set k0sInstallPath to use a custom path", h)
 			}
-			log.Infof("%s: found existing 'k0s' binary at %s", h, path)
+			h.Log().Infof("found existing 'k0s' binary at %s", path)
 			h.K0sInstallPath = path
 			h.Configurer.SetPath("K0sBinaryPath", path)
 		} else if !h.FS().FileExist(h.K0sBinaryPath) {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"github.com/adrg/xdg"
 	glob "github.com/bmatcuk/doublestar/v4"
 	"github.com/k0sproject/dig"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/manifest"
@@ -24,7 +26,6 @@ import (
 	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -397,43 +398,57 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(io.Discard)
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
 	cmd.DisableRedact = ctx.Bool("no-redact")
-	return initFileLogger(ctx)
+	return setupLogging(ctx, logLevelFromCtx(ctx, slog.LevelInfo))
 }
 
 // initSilentLogging initializes the logger in silent mode
-// TODO too similar to initLogging
 func initSilentLogging(ctx *cli.Context) error {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(io.Discard)
 	cmd.DisableRedact = ctx.Bool("no-redact")
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
-	return initFileLogger(ctx)
+	return setupLogging(ctx, logLevelFromCtx(ctx, log.LevelFatal))
 }
 
-func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
+func logLevelFromCtx(ctx *cli.Context, defaultLevel slog.Level) slog.Level {
 	if ctx.Bool("trace") {
-		return log.TraceLevel
+		return log.LevelTrace
 	} else if ctx.Bool("debug") {
-		return log.DebugLevel
+		return slog.LevelDebug
 	} else {
 		return defaultLevel
 	}
 }
 
-func initScreenLogger(ctx *cli.Context, lvl log.Level) {
-	log.AddHook(screenLoggerHook(ctx, lvl))
-}
+// setupLogging builds the screen and file handlers and installs the fanout
+// of the two as the logger behind the internal/log package functions.
+func setupLogging(ctx *cli.Context, screenLevel slog.Level) error {
+	writer := ctx.App.Writer
+	var colors bool
+	if runtime.GOOS == "windows" {
+		writer = ansicolor.NewAnsiColorWriter(ctx.App.Writer)
+		colors = true
+	} else if outF, ok := writer.(*os.File); ok {
+		if fi, _ := outF.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
+			colors = true
+		}
+	}
 
-func initFileLogger(ctx *cli.Context) error {
+	if colors {
+		Colorize = aurora.NewAurora(true)
+		phase.Colorize = Colorize
+	}
+
 	lf, err := LogFile()
 	if err != nil {
 		return err
 	}
-	log.AddHook(fileLoggerHook(lf))
+	// the file always gets debug; --trace widens it to trace as well
+	fileLevel := min(slog.LevelDebug, screenLevel)
+
+	log.SetLogger(slog.New(log.NewFanoutHandler(
+		log.NewScreenHandler(writer, screenLevel, colors),
+		log.NewFileHandler(lf, fileLevel),
+	)))
+
 	ctx.Context = context.WithValue(ctx.Context, ctxLogFileKey{}, lf.Name())
 	return nil
 }
@@ -454,7 +469,7 @@ func LogFile() (*os.File, error) {
 		return nil, fmt.Errorf("failed to open log %s: %s", fn, err.Error())
 	}
 
-	fmt.Fprintf(logFile, "time=\"%s\" level=info msg=\"###### New session ######\"\n", time.Now().Format(time.RFC822))
+	fmt.Fprintf(logFile, "time=%s level=INFO msg=\"###### New session ######\"\n", time.Now().Format(time.RFC3339))
 
 	return logFile, nil
 }
@@ -501,80 +516,6 @@ func configReader(ctx *cli.Context, f string) (io.ReadCloser, error) {
 	}
 
 	return nil, fmt.Errorf("failed to locate configuration")
-}
-
-type loghook struct {
-	Writer    io.Writer
-	Formatter log.Formatter
-
-	levels []log.Level
-}
-
-func (h *loghook) SetLevel(level log.Level) {
-	h.levels = []log.Level{}
-	for _, l := range log.AllLevels {
-		if level >= l {
-			h.levels = append(h.levels, l)
-		}
-	}
-}
-
-func (h *loghook) Levels() []log.Level {
-	return h.levels
-}
-
-func (h *loghook) Fire(entry *log.Entry) error {
-	line, err := h.Formatter.Format(entry)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to format log entry: %v", err)
-		return err
-	}
-	_, err = h.Writer.Write(line)
-	return err
-}
-
-func screenLoggerHook(ctx *cli.Context, lvl log.Level) *loghook {
-	var forceColors bool
-	writer := ctx.App.Writer
-	if runtime.GOOS == "windows" {
-		writer = ansicolor.NewAnsiColorWriter((ctx.App.Writer))
-		forceColors = true
-	} else {
-		if outF, ok := writer.(*os.File); ok {
-			if fi, _ := outF.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
-				forceColors = true
-			}
-		}
-	}
-
-	if forceColors {
-		Colorize = aurora.NewAurora(true)
-		phase.Colorize = Colorize
-	}
-
-	l := &loghook{
-		Writer:    writer,
-		Formatter: &log.TextFormatter{DisableTimestamp: lvl < log.DebugLevel, ForceColors: forceColors},
-	}
-
-	l.SetLevel(lvl)
-
-	return l
-}
-
-func fileLoggerHook(logFile io.Writer) *loghook {
-	l := &loghook{
-		Formatter: &log.TextFormatter{
-			FullTimestamp:          true,
-			TimestampFormat:        time.RFC822,
-			DisableLevelTruncation: true,
-		},
-		Writer: logFile,
-	}
-
-	l.SetLevel(log.DebugLevel)
-
-	return l
 }
 
 func displayLogo(ctx *cli.Context) error {

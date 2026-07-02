@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/urfave/cli/v2"
 )
 

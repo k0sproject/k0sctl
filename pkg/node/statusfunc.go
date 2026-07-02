@@ -11,8 +11,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/rig/v2/protocol"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // this file contains functions that return functions that can be used with pkg/retry to wait on certain
@@ -104,10 +102,10 @@ func ScheduledEventsAfterFunc(h *cluster.Host, since time.Time) retryFunc {
 		}
 		for _, e := range events.Items {
 			if e.EventTime.Before(since) {
-				log.Tracef("%s: skipping prior event for %s: %s < %s", h, e.InvolvedObject.Name, e.EventTime.Format(time.RFC3339), since.Format(time.RFC3339))
+				h.Log().Tracef("skipping prior event for %s: %s < %s", e.InvolvedObject.Name, e.EventTime.Format(time.RFC3339), since.Format(time.RFC3339))
 				continue
 			}
-			log.Debugf("%s: found a 'Scheduled' event occuring after %s", h, since)
+			h.Log().Debugf("found a 'Scheduled' event occuring after %s", since)
 			return nil
 		}
 		return fmt.Errorf("didn't find any 'Scheduled' kube-system events after %s", since)

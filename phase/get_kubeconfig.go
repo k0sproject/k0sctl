@@ -8,8 +8,6 @@ import (
 	"github.com/k0sproject/rig/v2/cmd"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // GetKubeconfig is a phase to get and dump the admin kubeconfig
@@ -27,7 +25,7 @@ func (p *GetKubeconfig) Title() string {
 
 var readKubeconfig = func(h *cluster.Host) (string, error) {
 	dataDir := h.FS().NativePath(h.K0sDataDir())
-	log.Debugf("%s: running %v", h, h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.FS().ShellQuote(dataDir)))
+	h.Log().Debugf("running %v", h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.FS().ShellQuote(dataDir)))
 	output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("kubeconfig admin --data-dir=%s", h.FS().ShellQuote(dataDir)), cmd.HideOutput())
 	if err != nil {
 		return "", fmt.Errorf("get kubeconfig from host: %w", err)

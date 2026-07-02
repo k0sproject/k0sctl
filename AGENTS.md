@@ -46,9 +46,11 @@
 - If a phase needs alternate dry-run behavior, implement the dry-run interface instead of partially running mutating logic.
 
 ## Logging
-- Use `log "github.com/sirupsen/logrus"` — it is the only logger in this project.
-- Per-host messages must prefix the host: `log.Infof("%s: doing thing", h)`.
+- Use `log "github.com/k0sproject/k0sctl/internal/log"` — a thin printf-style facade over `log/slog`; it is the only logger in this project.
+- Host-scoped messages go through the host's logger: `h.Log().Infof("doing thing")` — this attaches the `host` attribute so records can be routed per host. Do not prefix messages with `%s: ` manually.
+- In code that receives a `context.Context` from a per-host operation (e.g. retry helpers), use `log.FromContext(ctx)` to inherit the host scope.
 - Use `log.Debug`/`log.Debugf` for internal state, `log.Info`/`log.Infof` for user-visible progress, `log.Warn`/`log.Warnf` for recoverable problems.
+- Structured attributes use rig v2's attribute keys (`log.KeyHost`, `log.KeyError`) so k0sctl and rig records stay uniform.
 - Do not use `fmt.Print*` for diagnostic output.
 
 ## Error Wrapping

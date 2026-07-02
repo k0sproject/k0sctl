@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func TestValidateHostRequiresContainersFeature(t *testing.T) {
 	featureCmd := ps.Cmd(`(Get-WindowsFeature -Name Containers -ErrorAction SilentlyContinue).InstallState`)
 	optionalCmd := ps.Cmd(`(Get-WindowsOptionalFeature -Online -FeatureName Containers -ErrorAction SilentlyContinue).State`)
@@ -69,8 +68,8 @@ func newStubHost(outputs map[string]commandResponse) *stubHost {
 	return &stubHost{execOutputs: outputs}
 }
 
-func (h *stubHost) String() string    { return "stub" }
-func (h *stubHost) IsWindows() bool   { return false }
+func (h *stubHost) String() string  { return "stub" }
+func (h *stubHost) IsWindows() bool { return false }
 
 func (h *stubHost) Exec(string, ...cmd.ExecOption) error {
 	return nil
@@ -91,5 +90,5 @@ func (h *stubHost) StartBackground(_ string, _ ...cmd.ExecOption) (protocol.Wait
 	return nil, nil
 }
 
-func (h *stubHost) Sudo() *rig.Client  { return nil }
-func (h *stubHost) FS() remotefs.FS    { return nil }
+func (h *stubHost) Sudo() *rig.Client { return nil }
+func (h *stubHost) FS() remotefs.FS   { return nil }
