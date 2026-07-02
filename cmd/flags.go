@@ -5,26 +5,30 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/a8m/envsubst"
 	"github.com/adrg/xdg"
 	glob "github.com/bmatcuk/doublestar/v4"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/internal/display"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/manifest"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	k0sctl "github.com/k0sproject/k0sctl/version"
 	"github.com/k0sproject/rig/v2/cmd"
-	"github.com/logrusorgru/aurora"
 	"github.com/shiena/ansicolor"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -132,8 +136,6 @@ var (
 			return nil
 		},
 	}
-
-	Colorize = aurora.NewAurora(false)
 )
 
 func cancelTimeout(_ *cli.Context) error {
@@ -279,17 +281,21 @@ func warnOldCache(_ *cli.Context) error {
 }
 
 func warnRigMigration(ctx *cli.Context) error {
-	var warningRows []string
-	warningRows = append(warningRows, "")
-	warningRows = append(warningRows, "▌ This release replaces k0sctl's host connection and remote execution       ")
-	warningRows = append(warningRows, "▌ layer (rig v2). This is the only difference between this and the previous ")
-	warningRows = append(warningRows, "▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ")
-	warningRows = append(warningRows, "▌ unexpected connection, sudo, OS detection or file transfer issues, please ")
-	warningRows = append(warningRows, "▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ")
-	warningRows = append(warningRows, "▌ to v0.31.1 until the issue is resolved.                                   ")
-	warningRows = append(warningRows, "")
+	style := lipgloss.NewRenderer(ctx.App.ErrWriter).NewStyle().
+		Foreground(lipgloss.Color("11")).
+		Background(lipgloss.Color("4"))
+	warningRows := []string{
+		"",
+		"▌ This release replaces k0sctl's host connection and remote execution       ",
+		"▌ layer (rig v2). This is the only difference between this and the previous ",
+		"▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ",
+		"▌ unexpected connection, sudo, OS detection or file transfer issues, please ",
+		"▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ",
+		"▌ to v0.31.1 until the issue is resolved.                                   ",
+		"",
+	}
 	for _, row := range warningRows {
-		fmt.Fprintln(ctx.App.ErrWriter, Colorize.BgBlue(Colorize.BrightYellow(row)))
+		fmt.Fprintln(ctx.App.ErrWriter, style.Render(row))
 	}
 	return nil
 }
@@ -397,45 +403,93 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(io.Discard)
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
 	cmd.DisableRedact = ctx.Bool("no-redact")
-	return initFileLogger(ctx)
+	return setupLogging(ctx, logLevelFromCtx(ctx, slog.LevelInfo))
 }
 
 // initSilentLogging initializes the logger in silent mode
-// TODO too similar to initLogging
 func initSilentLogging(ctx *cli.Context) error {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(io.Discard)
 	cmd.DisableRedact = ctx.Bool("no-redact")
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
-	return initFileLogger(ctx)
+	return setupLogging(ctx, logLevelFromCtx(ctx, log.LevelFatal))
 }
 
-func logLevelFromCtx(ctx *cli.Context, defaultLevel log.Level) log.Level {
+func logLevelFromCtx(ctx *cli.Context, defaultLevel slog.Level) slog.Level {
 	if ctx.Bool("trace") {
-		return log.TraceLevel
+		return log.LevelTrace
 	} else if ctx.Bool("debug") {
-		return log.DebugLevel
+		return slog.LevelDebug
 	} else {
 		return defaultLevel
 	}
 }
 
-func initScreenLogger(ctx *cli.Context, lvl log.Level) {
-	log.AddHook(screenLoggerHook(ctx, lvl))
+// activeDisplay is the display of the currently running command, stopped in
+// the app-level After hook so the terminal is restored before the process
+// exits or an error is printed.
+var activeDisplay *display.Display
+
+func stopDisplay(_ *cli.Context) error {
+	if activeDisplay != nil {
+		activeDisplay.Stop()
+	}
+	return nil
 }
 
-func initFileLogger(ctx *cli.Context) error {
+// setupLogging builds the display and file handlers and installs the fanout
+// of the two as the logger behind the internal/log package functions.
+func setupLogging(ctx *cli.Context, screenLevel slog.Level) error {
+	writer := ctx.App.Writer
+
+	outTTY := writerIsTerminal(writer)
+	colors := outTTY
+	if runtime.GOOS == "windows" && !outTTY {
+		// legacy consoles may not report as terminals but still want the
+		// ansi translation layer
+		writer = ansicolor.NewAnsiColorWriter(ctx.App.Writer)
+		colors = true
+	}
+
+	// the live TTY display runs only at the default log level on a real
+	// terminal; --debug/--trace, --dry-run and quiet modes use plain lines
+	useTTY := outTTY && screenLevel == slog.LevelInfo && !ctx.Bool("dry-run")
+
+	if useTTY {
+		interactive := false
+		if inF, ok := ctx.App.Reader.(*os.File); ok && !slices.Contains(ctx.StringSlice("config"), "-") {
+			interactive = term.IsTerminal(inF.Fd())
+		}
+		// note: the callback runs inside the display's update loop and must
+		// not log; the display renders its own abort notice
+		activeDisplay = display.NewTTY(writer, screenLevel, interactive, func() {
+			if globalCancel != nil {
+				globalCancel()
+			}
+		})
+	} else {
+		activeDisplay = display.NewPlain(writer, screenLevel, colors)
+	}
+
 	lf, err := LogFile()
 	if err != nil {
 		return err
 	}
-	log.AddHook(fileLoggerHook(lf))
+	// the file always gets debug; --trace widens it to trace as well
+	fileLevel := min(slog.LevelDebug, screenLevel)
+
+	log.SetLogger(slog.New(log.NewFanoutHandler(
+		activeDisplay,
+		log.NewFileHandler(lf, fileLevel),
+	)))
+
 	ctx.Context = context.WithValue(ctx.Context, ctxLogFileKey{}, lf.Name())
 	return nil
+}
+
+func writerIsTerminal(w io.Writer) bool {
+	if f, ok := w.(*os.File); ok {
+		return term.IsTerminal(f.Fd())
+	}
+	return false
 }
 
 const logPath = "k0sctl/k0sctl.log"
@@ -454,7 +508,7 @@ func LogFile() (*os.File, error) {
 		return nil, fmt.Errorf("failed to open log %s: %s", fn, err.Error())
 	}
 
-	fmt.Fprintf(logFile, "time=\"%s\" level=info msg=\"###### New session ######\"\n", time.Now().Format(time.RFC822))
+	fmt.Fprintf(logFile, "time=%s level=INFO msg=\"###### New session ######\"\n", time.Now().Format(time.RFC3339))
 
 	return logFile, nil
 }
@@ -501,80 +555,6 @@ func configReader(ctx *cli.Context, f string) (io.ReadCloser, error) {
 	}
 
 	return nil, fmt.Errorf("failed to locate configuration")
-}
-
-type loghook struct {
-	Writer    io.Writer
-	Formatter log.Formatter
-
-	levels []log.Level
-}
-
-func (h *loghook) SetLevel(level log.Level) {
-	h.levels = []log.Level{}
-	for _, l := range log.AllLevels {
-		if level >= l {
-			h.levels = append(h.levels, l)
-		}
-	}
-}
-
-func (h *loghook) Levels() []log.Level {
-	return h.levels
-}
-
-func (h *loghook) Fire(entry *log.Entry) error {
-	line, err := h.Formatter.Format(entry)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to format log entry: %v", err)
-		return err
-	}
-	_, err = h.Writer.Write(line)
-	return err
-}
-
-func screenLoggerHook(ctx *cli.Context, lvl log.Level) *loghook {
-	var forceColors bool
-	writer := ctx.App.Writer
-	if runtime.GOOS == "windows" {
-		writer = ansicolor.NewAnsiColorWriter((ctx.App.Writer))
-		forceColors = true
-	} else {
-		if outF, ok := writer.(*os.File); ok {
-			if fi, _ := outF.Stat(); (fi.Mode() & os.ModeCharDevice) != 0 {
-				forceColors = true
-			}
-		}
-	}
-
-	if forceColors {
-		Colorize = aurora.NewAurora(true)
-		phase.Colorize = Colorize
-	}
-
-	l := &loghook{
-		Writer:    writer,
-		Formatter: &log.TextFormatter{DisableTimestamp: lvl < log.DebugLevel, ForceColors: forceColors},
-	}
-
-	l.SetLevel(lvl)
-
-	return l
-}
-
-func fileLoggerHook(logFile io.Writer) *loghook {
-	l := &loghook{
-		Formatter: &log.TextFormatter{
-			FullTimestamp:          true,
-			TimestampFormat:        time.RFC822,
-			DisableLevelTruncation: true,
-		},
-		Writer: logFile,
-	}
-
-	l.SetLevel(log.DebugLevel)
-
-	return l
 }
 
 func displayLogo(ctx *cli.Context) error {

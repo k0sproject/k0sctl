@@ -6,11 +6,11 @@ import (
 	"math"
 	"strings"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 type Reinstall struct {
@@ -81,7 +81,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("%s: reinstalling k0s", h)
+	h.Log().Infof("reinstalling k0s")
 	err = p.Wet(h, fmt.Sprintf("reinstall k0s using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		if err := h.Sudo().Exec(cmd); err != nil {
 			return fmt.Errorf("failed to reinstall k0s: %w", err)
@@ -100,7 +100,7 @@ func (p *Reinstall) reinstall(ctx context.Context, h *cluster.Host) error {
 		if err := svc.Restart(ctx); err != nil {
 			return fmt.Errorf("failed to restart k0s: %w", err)
 		}
-		log.Infof("%s: waiting for the k0s service to start", h)
+		h.Log().Infof("waiting for the k0s service to start")
 		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return fmt.Errorf("k0s did not restart: %w", err)
 		}

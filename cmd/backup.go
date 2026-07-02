@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/k0sproject/k0sctl/action"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 

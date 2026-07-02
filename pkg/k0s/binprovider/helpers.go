@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 // stagedFile is embedded by providers that place a temporary binary on the remote host.

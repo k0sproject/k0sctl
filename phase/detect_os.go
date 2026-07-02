@@ -14,8 +14,6 @@ import (
 	_ "github.com/k0sproject/k0sctl/configurer/linux/enterpriselinux"
 	// anonymous import is needed to load the os configurers
 	_ "github.com/k0sproject/k0sctl/configurer/windows"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // DetectOS performs remote OS detection
@@ -32,7 +30,7 @@ func (p *DetectOS) Title() string {
 func (p *DetectOS) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, p.Config.Spec.Hosts, func(_ context.Context, h *cluster.Host) error {
 		if h.OSIDOverride != "" {
-			log.Infof("%s: OS ID has been manually set to %s", h, h.OSIDOverride)
+			h.Log().Infof("OS ID has been manually set to %s", h.OSIDOverride)
 		}
 		if err := h.ResolveConfigurer(); err != nil {
 			// ID_LIKE fallback only applies to detected releases, not to a
@@ -40,11 +38,11 @@ func (p *DetectOS) Run(ctx context.Context) error {
 			if h.OSIDOverride == "" {
 				if release, osErr := h.OS(); osErr == nil && len(release.IDLike) > 0 {
 					osStr := release.String()
-					log.Debugf("%s: trying to find a fallback OS support module for %s using os-release ID_LIKE %v", h, osStr, release.IDLike)
+					h.Log().Debugf("trying to find a fallback OS support module for %s using os-release ID_LIKE %v", osStr, release.IDLike)
 					for _, id := range release.IDLike {
 						h.OSRelease = &rigos.Release{ID: id, IDLike: release.IDLike, Name: release.Name, Version: release.Version}
 						if err := h.ResolveConfigurer(); err == nil {
-							log.Warnf("%s: using '%s' as OS support fallback for %s", h, id, osStr)
+							h.Log().Warnf("using '%s' as OS support fallback for %s", id, osStr)
 							return nil
 						}
 					}
@@ -55,10 +53,10 @@ func (p *DetectOS) Run(ctx context.Context) error {
 			}
 			return err
 		}
-		log.Infof("%s: is running %s", h, h.OSRelease.String())
+		h.Log().Infof("is running %s", h.OSRelease.String())
 
 		// Needed to make configurer.K0sBinaryPath() to work inside the configurer itself as it can't call host.K0sInstallLocation().
-		log.Debugf("%s: k0s install path is %s", h, h.K0sInstallLocation())
+		h.Log().Debugf("k0s install path is %s", h.K0sInstallLocation())
 		h.Configurer.SetPath("K0sBinaryPath", h.K0sInstallLocation())
 
 		return nil

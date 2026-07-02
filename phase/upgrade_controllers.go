@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"slices"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // UpgradeControllers upgrades the controllers one-by-one
@@ -63,9 +63,9 @@ func (p *UpgradeControllers) CleanUp() {
 	for _, h := range p.hosts {
 		if len(h.Environment) > 0 {
 			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+				h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+				h.Log().Warnf("failed to clean up service environment: %s", err.Error())
 			}
 		}
 	}
@@ -74,7 +74,8 @@ func (p *UpgradeControllers) CleanUp() {
 // Run the phase
 func (p *UpgradeControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
-		log.Infof("%s: starting upgrade", h)
+		ctx := log.IntoContext(ctx, h.Log())
+		h.Log().Infof("starting upgrade")
 
 		if h.Metadata.K0sBinaryTempFile != "" && !h.FS().FileExist(h.Metadata.K0sBinaryTempFile) {
 			return fmt.Errorf("%s: k0s binary tempfile not found: %s", h, h.Metadata.K0sBinaryTempFile)
@@ -83,11 +84,11 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
 			leader := p.Config.Spec.K0sLeader()
 			err := p.Wet(leader, "apply taint to node", func() error {
-				log.Warnf("%s: add taint %s on %s", leader, t.String(), h)
+				leader.Log().Warnf("add taint %s on %s", t.String(), h)
 				if err := leader.AddTaint(h, t.String()); err != nil {
 					return fmt.Errorf("add taint: %w", err)
 				}
-				log.Debugf("%s: wait for taint to be applied", h)
+				h.Log().Debugf("wait for taint to be applied")
 				err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 					taints, err := leader.Taints(h)
 					if err != nil {
@@ -105,7 +106,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			}
 		}
 
-		log.Debugf("%s: stop service", h)
+		h.Log().Debugf("stop service")
 		svc, svcErr := h.Sudo().Service(h.K0sServiceName())
 		if svcErr != nil {
 			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
@@ -124,7 +125,7 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		}
 
 		if h.Metadata.K0sBinaryTempFile != "" {
-			log.Debugf("%s: update binary", h)
+			h.Log().Debugf("update binary")
 			err = p.Wet(h, "replace k0s binary", func() error {
 				return h.UpdateK0sBinary(h.Metadata.K0sBinaryTempFile, p.Config.Spec.K0s.Version)
 			})
@@ -133,11 +134,11 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 			}
 			h.Metadata.K0sBinaryTempFile = ""
 		} else {
-			log.Debugf("%s: binary already in-place at %s, skipping binary replacement", h, h.K0sInstallLocation())
+			h.Log().Debugf("binary already in-place at %s, skipping binary replacement", h.K0sInstallLocation())
 		}
 
 		if len(h.Environment) > 0 {
-			log.Infof("%s: updating service environment", h)
+			h.Log().Infof("updating service environment")
 			err := p.Wet(h, "update service environment", func() error {
 				return svc.SetEnvironment(ctx, h.Environment)
 			})
@@ -168,12 +169,12 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		}
 		h.Metadata.K0sInstalled = true
 
-		log.Debugf("%s: restart service", h)
+		h.Log().Debugf("restart service")
 		err = p.Wet(h, "start k0s service with the new binary", func() error {
 			if err := svc.Start(ctx); err != nil {
 				return err
 			}
-			log.Infof("%s: waiting for the k0s service to start", h)
+			h.Log().Infof("waiting for the k0s service to start")
 			if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 				return fmt.Errorf("k0s service start: %w", err)
 			}
@@ -199,14 +200,14 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
 			leader := p.Config.Spec.K0sLeader()
 			err := p.Wet(leader, "remove taint from node", func() error {
-				log.Infof("%s: remove taint %s on %s", leader, t.String(), h)
+				leader.Log().Infof("remove taint %s on %s", t.String(), h)
 				if err := leader.RemoveTaint(h, t.String()); err != nil {
 					return fmt.Errorf("remove taint: %w", err)
 				}
 				return nil
 			})
 			if err != nil {
-				log.Warnf("%s: failed to remove taint %s on %s: %s", leader, t.String(), h, err.Error())
+				leader.Log().Warnf("failed to remove taint %s on %s: %s", t.String(), h, err.Error())
 			}
 		}
 

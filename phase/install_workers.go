@@ -11,7 +11,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
-	log "github.com/sirupsen/logrus"
 )
 
 // InstallWorkers installs k0s on worker hosts and joins them to the cluster
@@ -58,7 +57,7 @@ func (p *InstallWorkers) After() error {
 	if NoWait {
 		for _, h := range p.hosts {
 			if h.Metadata.K0sTokenData.Token != "" {
-				log.Warnf("%s: --no-wait given, created join tokens will remain valid for 10 minutes", p.leader)
+				p.leader.Log().Warnf("--no-wait given, created join tokens will remain valid for 10 minutes")
 				break
 			}
 		}
@@ -70,16 +69,16 @@ func (p *InstallWorkers) After() error {
 			continue
 		}
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for worker %s", h), func() error {
-			log.Debugf("%s: invalidating join token for worker %d", p.leader, i+1)
+			p.leader.Log().Debugf("invalidating join token for worker %d", i+1)
 			return p.leader.Sudo().Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID))
 		})
 		if err != nil {
-			log.Warnf("%s: failed to invalidate worker join token: %v", p.leader, err)
+			p.leader.Log().Warnf("failed to invalidate worker join token: %v", err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
 			content := "# overwritten by k0sctl after join\n"
 			if p.Config.Spec.K0s.Version.Equal(workerTokenWorkaroundVersion) {
-				log.Debugf("%s: configured k0s version is %s, using workaround content for join token file", h, p.Config.Spec.K0s.Version)
+				h.Log().Debugf("configured k0s version is %s, using workaround content for join token file", p.Config.Spec.K0s.Version)
 				dummyToken, err := buildDummyJoinToken()
 				if err != nil {
 					return fmt.Errorf("build dummy join token: %w", err)
@@ -87,7 +86,7 @@ func (p *InstallWorkers) After() error {
 				content = dummyToken
 			}
 			if err := h.Sudo().FS().WriteFile(h.K0sJoinTokenPath(), []byte(content), 0o600); err != nil {
-				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
+				h.Log().Warnf("failed to overwrite the join token file at %s", h.K0sJoinTokenPath())
 			}
 			return nil
 		})
@@ -100,17 +99,17 @@ func (p *InstallWorkers) CleanUp() {
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
-		log.Infof("%s: cleaning up", h)
+		h.Log().Infof("cleaning up")
 		if len(h.Environment) > 0 {
 			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+				h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %v", h, err)
+				h.Log().Warnf("failed to clean up service environment: %v", err)
 			}
 		}
 		if h.Metadata.K0sInstalled && p.IsWet() {
 			if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
-				log.Warnf("%s: k0s reset failed", h)
+				h.Log().Warnf("k0s reset failed")
 			}
 		}
 		return nil
@@ -120,7 +119,7 @@ func (p *InstallWorkers) CleanUp() {
 // Run the phase
 func (p *InstallWorkers) Run(ctx context.Context) error {
 	for i, h := range p.hosts {
-		log.Infof("%s: generating a join token for worker %d", p.leader, i+1)
+		p.leader.Log().Infof("generating a join token for worker %d", i+1)
 		err := p.Wet(p.leader, fmt.Sprintf("generate a k0s join token for worker %s", h), func() error {
 			t, err := p.Config.Spec.K0s.GenerateToken(
 				ctx,
@@ -154,9 +153,9 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		tokenPath := h.K0sJoinTokenPath()
 		err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
 			if err := h.Sudo().FS().MkdirAll(h.FS().Dir(tokenPath), 0o700); err != nil {
-				log.Warnf("%s: failed to create k0s config dir %s: %v", h, h.K0sDataDir(), err)
+				h.Log().Warnf("failed to create k0s config dir %s: %v", h.K0sDataDir(), err)
 			}
-			log.Infof("%s: writing join token to %s", h, tokenPath)
+			h.Log().Infof("writing join token to %s", tokenPath)
 			return h.Sudo().FS().WriteFile(tokenPath, []byte(h.Metadata.K0sTokenData.Token), 0o600)
 		})
 		if err != nil {
@@ -164,21 +163,21 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		}
 
 		err = p.Wet(h, "validate api connection to control plane", func() error {
-			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
+			h.Log().Infof("validating api connection to %s using join token", h.Metadata.K0sTokenData.URL)
 			tempfile, err := h.FS().CreateTemp("", "")
 			if err != nil {
 				return fmt.Errorf("failed to create temp file for kubeconfig: %w", err)
 			}
-			log.Debugf("%s: temp file path: %q", h, tempfile)
+			h.Log().Debugf("temp file path: %q", tempfile)
 			tempfileHostPath := h.FS().NativePath(tempfile)
-			log.Debugf("%s: writing temp kubeconfig file %q", h, tempfileHostPath)
+			h.Log().Debugf("writing temp kubeconfig file %q", tempfileHostPath)
 			if err := h.Sudo().FS().WriteFile(tempfile, h.Metadata.K0sTokenData.Kubeconfig, 0o600); err != nil {
 				return fmt.Errorf("failed to write temp kubeconfig file: %w", err)
 			}
 
 			defer func() {
 				if err := h.Sudo().FS().Remove(tempfile); err != nil {
-					log.Warnf("%s: failed to delete temp kubeconfig file %s: %v", h, tempfileHostPath, err)
+					h.Log().Warnf("failed to delete temp kubeconfig file %s: %v", tempfileHostPath, err)
 				}
 			}()
 
@@ -204,7 +203,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		}
 		if svc.IsRunning(ctx) {
 			err := p.Wet(h, "stop existing k0s service", func() error {
-				log.Infof("%s: stopping service", h)
+				h.Log().Infof("stopping service")
 				return svc.Stop(ctx)
 			})
 			if err != nil {
@@ -222,9 +221,9 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 			}
 		}
 
-		log.Infof("%s: installing k0s worker", h)
+		h.Log().Infof("installing k0s worker")
 		if Force {
-			log.Warnf("%s: --force given, using k0s install with --force", h)
+			h.Log().Warnf("--force given, using k0s install with --force")
 			h.InstallFlags.AddOrReplace("--force=true")
 		}
 
@@ -247,7 +246,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 
 		if len(h.Environment) > 0 {
 			err := p.Wet(h, "update service environment variables", func() error {
-				log.Infof("%s: updating service environment", h)
+				h.Log().Infof("updating service environment")
 				return svc.SetEnvironment(ctx, h.Environment)
 			})
 			if err != nil {
@@ -256,17 +255,17 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 		}
 
 		if p.IsWet() {
-			log.Infof("%s: starting service", h)
+			h.Log().Infof("starting service")
 			if err := svc.Start(ctx); err != nil {
 				return err
 			}
 		}
 
 		if NoWait {
-			log.Debugf("%s: not waiting because --no-wait given", h)
+			h.Log().Debugf("not waiting because --no-wait given")
 			h.Metadata.Ready = true
 		} else {
-			log.Infof("%s: waiting for node to become ready", h)
+			h.Log().Infof("waiting for node to become ready")
 
 			if p.IsWet() {
 				if err := retry.WithDefaultTimeout(ctx, node.KubeNodeReadyFunc(h)); err != nil {

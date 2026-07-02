@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/url"
 	gos "os"
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,37 +19,28 @@ import (
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
 	"github.com/k0sproject/k0sctl/configurer"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
 	rig "github.com/k0sproject/rig/v2"
 	rigos "github.com/k0sproject/rig/v2/os"
 	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/version"
-	sloglogrus "github.com/samber/slog-logrus/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 var K0sForceFlagSince = version.MustParse("v1.27.4+k0s.0")
 
 var _ binprovider.Host = (*Host)(nil)
 
-// rigLogger bridges rig v2's slog-based logging into k0sctl's logrus output.
-// It wraps the logrus standard logger (the same singleton configured in cmd's
-// logging setup), so any level and hook changes applied there are reflected
-// automatically. rig v2 has no global logger setter; the logger is injected
-// per client via rig.WithLogger at Connect time (see Host.Connect).
-var rigLogger = slog.New(sloglogrus.Option{
-	Level:  slog.LevelDebug,
-	Logger: log.StandardLogger(),
-}.NewLogrusHandler())
-
-// Connect establishes the connection to the host, injecting k0sctl's logger so
-// that rig's internal logging is routed into k0sctl's logrus output.
+// Connect establishes the connection to the host, injecting k0sctl's base
+// logger so that rig's internal logging shares k0sctl's output. The base
+// logger is passed untagged on purpose: rig wraps it with its own host and
+// protocol attributes, using the same attribute keys k0sctl uses.
 func (h *Host) Connect(ctx context.Context) error {
 	if h.Client == nil {
 		client, err := rig.NewClient(
 			rig.WithConnectionFactory(&h.CompositeConfig),
-			rig.WithLogger(rigLogger),
+			rig.WithLogger(log.Base()),
 		)
 		if err != nil {
 			return fmt.Errorf("create rig client: %w", err)
@@ -57,8 +50,24 @@ func (h *Host) Connect(ctx context.Context) error {
 	return h.Client.Connect(ctx)
 }
 
-// String returns a human-readable description of the host, safe before Connect.
+// Log returns a logger scoped to the host. It is rebuilt on each call so the
+// host attribute always reflects the host's current display name.
+func (h *Host) Log() *log.Logger {
+	return log.With(slog.String(log.KeyHost, h.String()))
+}
+
+// String returns a human-readable name for the host. It intentionally
+// matches the name rig gives the underlying connection so that the host
+// identity in log records is the same before and after connecting.
 func (h *Host) String() string {
+	switch {
+	case h.SSH != nil:
+		return net.JoinHostPort(h.SSH.Address, strconv.Itoa(h.SSH.Port))
+	case h.WinRM != nil:
+		return net.JoinHostPort(h.WinRM.Address, strconv.Itoa(h.WinRM.Port))
+	case bool(h.Localhost):
+		return "localhost"
+	}
 	if h.Client != nil {
 		return h.Client.String()
 	}
@@ -186,11 +195,11 @@ func (h *Host) SetDefaults() {
 	_ = defaults.Set(&h.CompositeConfig)
 
 	if h.InstallFlags.Get("--single") != "" && h.InstallFlags.GetValue("--single") != "false" && h.Role != "single" {
-		log.Debugf("%s: changed role from '%s' to 'single' because of --single installFlag", h, h.Role)
+		h.Log().Debugf("changed role from '%s' to 'single' because of --single installFlag", h.Role)
 		h.Role = "single"
 	}
 	if h.InstallFlags.Get("--enable-worker") != "" && h.InstallFlags.GetValue("--enable-worker") != "false" && h.Role != "controller+worker" {
-		log.Debugf("%s: changed role from '%s' to 'controller+worker' because of --enable-worker installFlag", h, h.Role)
+		h.Log().Debugf("changed role from '%s' to 'controller+worker' because of --enable-worker installFlag", h.Role)
 		h.Role = "controller+worker"
 	}
 
@@ -200,7 +209,7 @@ func (h *Host) SetDefaults() {
 
 	if dd := h.InstallFlags.GetValue("--data-dir"); dd != "" {
 		if h.DataDir != "" {
-			log.Debugf("%s: changed dataDir from '%s' to '%s' because of --data-dir installFlag", h, h.DataDir, dd)
+			h.Log().Debugf("changed dataDir from '%s' to '%s' because of --data-dir installFlag", h.DataDir, dd)
 		}
 		h.InstallFlags.Delete("--data-dir")
 		h.DataDir = dd
@@ -208,7 +217,7 @@ func (h *Host) SetDefaults() {
 
 	if krd := h.InstallFlags.GetValue("--kubelet-root-dir"); krd != "" {
 		if h.KubeletRootDir != "" {
-			log.Debugf("%s: changed kubeletRootDir from '%s' to '%s' because of --kubelet-root-dir installFlag", h, h.DataDir, krd)
+			h.Log().Debugf("changed kubeletRootDir from '%s' to '%s' because of --kubelet-root-dir installFlag", h.DataDir, krd)
 		}
 		h.InstallFlags.Delete("--kubelet-root-dir")
 		h.KubeletRootDir = krd
@@ -549,7 +558,7 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 	}
 
 	if flags.Include("--force") && h.Metadata.K0sBinaryVersion != nil && h.Metadata.K0sBinaryVersion.LessThan(K0sForceFlagSince) {
-		log.Warnf("%s: k0s version %s does not support the --force flag, ignoring it", h, h.Metadata.K0sBinaryVersion)
+		h.Log().Warnf("k0s version %s does not support the --force flag, ignoring it", h.Metadata.K0sBinaryVersion)
 		flags.Delete("--force")
 	}
 
@@ -616,7 +625,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 	}
 
 	dir := h.k0sBinaryPathDir()
-	log.Debugf("%s: k0s binary dir: %q", h, dir)
+	h.Log().Debugf("k0s binary dir: %q", dir)
 	if err := h.Sudo().FS().MkdirAll(dir, fs.FileMode(0o755)); err != nil {
 		return fmt.Errorf("create k0s binary dir: %w", err)
 	}
@@ -630,7 +639,7 @@ func (h *Host) InstallK0sBinary(path string) error {
 
 	if h.FS().FileExist(path) {
 		if err := h.Sudo().FS().Remove(path); err != nil {
-			log.Warnf("%s: failed to delete k0s binary tempfile: %s", h, err)
+			h.Log().Warnf("failed to delete k0s binary tempfile: %s", err)
 		}
 	}
 
@@ -796,22 +805,22 @@ func (h *Host) NeedInetUtils() bool {
 func (h *Host) FileChanged(lpath, rpath string) bool {
 	lstat, err := gos.Stat(lpath)
 	if err != nil {
-		log.Debugf("%s: local stat failed: %s", h, err)
+		h.Log().Debugf("local stat failed: %s", err)
 		return true
 	}
 	rstat, err := h.Sudo().FS().Stat(rpath)
 	if err != nil {
-		log.Debugf("%s: remote stat failed: %s", h, err)
+		h.Log().Debugf("remote stat failed: %s", err)
 		return true
 	}
 
 	if lstat.Size() != rstat.Size() {
-		log.Debugf("%s: file sizes for %s differ (%d vs %d)", h, lpath, lstat.Size(), rstat.Size())
+		h.Log().Debugf("file sizes for %s differ (%d vs %d)", lpath, lstat.Size(), rstat.Size())
 		return true
 	}
 
 	if !lstat.ModTime().Equal(rstat.ModTime()) {
-		log.Debugf("%s: file modtimes for %s differ (%s vs %s)", h, lpath, lstat.ModTime(), rstat.ModTime())
+		h.Log().Debugf("file modtimes for %s differ (%s vs %s)", lpath, lstat.ModTime(), rstat.ModTime())
 		return true
 	}
 
@@ -836,7 +845,7 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 		if arch, err := h.Arch(); err == nil {
 			archToken = arch
 		} else {
-			log.Warnf("%s: failed to resolve architecture for token expansion: %v", h, err)
+			h.Log().Warnf("failed to resolve architecture for token expansion: %v", err)
 		}
 	}
 	builder := strings.Builder{}
@@ -882,13 +891,13 @@ func (h *Host) ExpandTokens(input string, k0sVersion *version.Version) string {
 func (h *Host) FlagsChanged() bool {
 	our, err := h.K0sInstallFlags()
 	if err != nil {
-		log.Warnf("%s: could not get install flags: %s", h, err)
+		h.Log().Warnf("could not get install flags: %s", err)
 		our = Flags{}
 	}
 	ex := our.GetValue("--kubelet-extra-args")
 	ourExtra, err := NewFlags(ex)
 	if err != nil {
-		log.Warnf("%s: could not parse local --kubelet-extra-args value %q: %s", h, ex, err)
+		h.Log().Warnf("could not parse local --kubelet-extra-args value %q: %s", ex, err)
 	}
 
 	var their Flags
@@ -896,11 +905,11 @@ func (h *Host) FlagsChanged() bool {
 	ex = their.GetValue("--kubelet-extra-args")
 	theirExtra, err := NewFlags(ex)
 	if err != nil {
-		log.Warnf("%s: could not parse remote --kubelet-extra-args value %q: %s", h, ex, err)
+		h.Log().Warnf("could not parse remote --kubelet-extra-args value %q: %s", ex, err)
 	}
 
 	if !ourExtra.Equals(theirExtra) {
-		log.Debugf("%s: installFlags --kubelet-extra-args seem to have changed: %+v vs %+v", h, theirExtra.Map(), ourExtra.Map())
+		h.Log().Debugf("installFlags --kubelet-extra-args seem to have changed: %+v vs %+v", theirExtra.Map(), ourExtra.Map())
 		return true
 	}
 
@@ -911,11 +920,11 @@ func (h *Host) FlagsChanged() bool {
 	}
 
 	if our.Equals(their) {
-		log.Debugf("%s: installFlags have not changed", h)
+		h.Log().Debugf("installFlags have not changed")
 		return false
 	}
 
-	log.Debugf("%s: installFlags seem to have changed. existing: %+v new: %+v", h, their.Map(), our.Map())
+	h.Log().Debugf("installFlags seem to have changed. existing: %+v new: %+v", their.Map(), our.Map())
 	return true
 }
 
@@ -937,7 +946,7 @@ func (h *Host) RunHooks(ctx context.Context, action, stage string) error {
 			return err
 		}
 
-		log.Infof("%s: running %s %s hook: %q", h, stage, action, cmd)
+		h.Log().Infof("running %s %s hook: %q", stage, action, cmd)
 		if err := h.Exec(cmd); err != nil {
 			return fmt.Errorf("failed to execute hook %q for action %q stage %q on host %s: %w", cmd, action, stage, h.Address(), err)
 		}

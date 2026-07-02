@@ -3,8 +3,8 @@ package phase
 import (
 	"context"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
-	log "github.com/sirupsen/logrus"
 )
 
 // Unlock acquires an exclusive k0sctl lock on hosts

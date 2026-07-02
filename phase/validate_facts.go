@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	log "github.com/sirupsen/logrus"
 )
 
 // ValidateFacts performs remote OS detection

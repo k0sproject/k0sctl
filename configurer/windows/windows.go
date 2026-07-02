@@ -15,8 +15,10 @@ type Windows struct {
 	configurer.BaseWindows
 }
 
-var _ configurer.Configurer = (*Windows)(nil)
-var _ configurer.HostValidator = (*Windows)(nil)
+var (
+	_ configurer.Configurer    = (*Windows)(nil)
+	_ configurer.HostValidator = (*Windows)(nil)
+)
 
 func init() {
 	configurer.RegisterOSModule(

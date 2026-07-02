@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/k0sproject/dig"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
@@ -18,7 +19,6 @@ import (
 	"github.com/k0sproject/rig/v2/sh"
 	"github.com/k0sproject/version"
 	"github.com/sergi/go-diff/diffmatchpatch"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -128,7 +128,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 		defer func() {
 			if err := h.Sudo().FS().Remove(tempConfigPath); err != nil {
-				log.Warnf("%s: failed to delete temporary file %s: %s", h, tempConfigPath, err)
+				h.Log().Warnf("failed to delete temporary file %s: %s", tempConfigPath, err)
 			}
 		}()
 
@@ -160,11 +160,11 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		if bytes.Equal(cfgAString, cfgBString) {
-			log.Debugf("%s: configuration will not change", h)
+			h.Log().Debugf("configuration will not change")
 			continue
 		}
 
-		log.Debugf("%s: configuration will change", h)
+		h.Log().Debugf("configuration will change")
 		h.Metadata.K0sNewConfig = cfgNew
 		p.hosts = append(p.hosts, h)
 	}
@@ -192,7 +192,7 @@ func (p *ConfigureK0s) DryRun() error {
 		p.DryMsgf(h, "configuration changes:\n%s", dmp.DiffPrettyText(diffs))
 
 		if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
-			p.DryMsg(h, Colorize.BrightRed("restart the k0s service").String())
+			p.DryMsg(h, "restart the k0s service")
 		}
 	}
 	return nil
@@ -204,7 +204,7 @@ func (p *ConfigureK0s) ShouldRun() bool {
 }
 
 func (p *ConfigureK0s) generateDefaultConfig() (string, error) {
-	log.Debugf("%s: generating default configuration", p.leader)
+	p.leader.Log().Debugf("generating default configuration")
 	var cmd string
 	if p.leader.Metadata.K0sBinaryVersion.GreaterThanOrEqual(configCreateSince) {
 		cmd = p.leader.Configurer.K0sCmdf("config create --data-dir=%s", p.leader.K0sDataDir())
@@ -242,7 +242,7 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 }
 
 func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, configPath string) error {
-	log.Infof("%s: validating configuration", h)
+	h.Log().Infof("validating configuration")
 
 	if h.Metadata.K0sBinaryTempFile != "" {
 		oldK0sBinaryPath := h.K0sInstallLocation()
@@ -271,11 +271,11 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 		cmd := h.Configurer.K0sCmdf(`config validate --config="%s"`, configPath)
 		if fg := h.InstallFlags.GetValue("--feature-gates"); fg != "" {
 			cmd += fmt.Sprintf(" --feature-gates=%s", sh.Quote(fg))
-			log.Debugf("%s: added --feature-gates from installFlags to config validation: %s", h, cmd)
+			h.Log().Debugf("added --feature-gates from installFlags to config validation: %s", cmd)
 		}
 		return cmd
 	}
-	log.Debugf("%s: using legacy config validation command", h)
+	h.Log().Debugf("using legacy config validation command")
 	return h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 }
 
@@ -284,14 +284,14 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	if h.FS().FileExist(path) {
 		if ok, _ := h.Sudo().FS().FileContains(path, " generated-by-k0sctl"); !ok {
 			newpath := path + ".old"
-			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
+			h.Log().Warnf("an existing config was found and will be backed up as %s", newpath)
 			if err := h.Sudo().FS().Rename(path, newpath); err != nil {
 				return err
 			}
 		}
 	}
 
-	log.Debugf("%s: writing k0s configuration", h)
+	h.Log().Debugf("writing k0s configuration")
 	tempConfigPath, err := h.FS().CreateTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
@@ -301,7 +301,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 		return err
 	}
 
-	log.Infof("%s: installing new configuration", h)
+	h.Log().Infof("installing new configuration")
 	configPath := h.K0sConfigPath()
 	configDir := gopath.Dir(configPath)
 
@@ -315,11 +315,11 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 		return fmt.Errorf("failed to install k0s configuration: %w", err)
 	}
 	if err := chmodWithMode(h, configPath, fs.FileMode(0o600)); err != nil {
-		log.Debugf("%s: failed to chmod configuration file %s: %v", h, configPath, err)
+		h.Log().Debugf("failed to chmod configuration file %s: %v", configPath, err)
 	}
 
 	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
-		log.Infof("%s: restarting k0s service", h)
+		h.Log().Infof("restarting k0s service")
 		svc, err := h.Sudo().Service(h.K0sServiceName())
 		if err != nil {
 			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
@@ -328,7 +328,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 			return err
 		}
 
-		log.Infof("%s: waiting for k0s service to start", h)
+		h.Log().Infof("waiting for k0s service to start")
 		return retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName()))
 	}
 
@@ -340,10 +340,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
 
 	if p.Config.Spec.K0s.DynamicConfig {
 		if h == p.leader && h.Metadata.K0sRunningVersion == nil {
-			log.Debugf("%s: leader will get a full config on initialize ", h)
+			h.Log().Debugf("leader will get a full config on initialize ")
 			cfg = p.newBaseConfig.Dup()
 		} else {
-			log.Debugf("%s: using a stripped down config for dynamic config", h)
+			h.Log().Debugf("using a stripped down config for dynamic config")
 			cfg = p.Config.Spec.K0s.NodeConfig()
 		}
 	} else {

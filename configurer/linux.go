@@ -150,7 +150,6 @@ func (l *Linux) PrivateAddress(h Host, iface, publicip string) (string, error) {
 	return "", fmt.Errorf("not found")
 }
 
-
 // UpdateEnvironment upserts the given key-value pairs into /etc/environment
 // (replacing any existing line for the same key) and exports them into the
 // current shell environment.
@@ -192,4 +191,3 @@ func (l *Linux) FixContainer(h Host) error {
 	}
 	return nil
 }
-

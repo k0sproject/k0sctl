@@ -13,7 +13,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/rig/v2/remotefs"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 // UploadFiles implements a phase which upload files to hosts
@@ -69,7 +69,7 @@ func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
 }
 
 func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error {
-	log.Debugf("%s: ensuring directory %s", h, dir)
+	h.Log().Debugf("ensuring directory %s", dir)
 	if !h.FS().FileExist(dir) {
 		targetPerm := perm
 		if targetPerm == "" {
@@ -105,7 +105,7 @@ func (p *UploadFiles) ensureDir(h *cluster.Host, dir, perm, owner string) error 
 }
 
 func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
-	log.Infof("%s: uploading %s", h, f)
+	h.Log().Infof("uploading %s", f)
 	numfiles := len(f.Sources)
 
 	for i, s := range f.Sources {
@@ -116,7 +116,7 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 
 		src := path.Join(f.Base, s.Path)
 		if numfiles > 1 {
-			log.Infof("%s: uploading file %s => %s (%d of %d)", h, src, dest, i+1, numfiles)
+			h.Log().Infof("uploading file %s => %s (%d of %d)", src, dest, i+1, numfiles)
 		}
 
 		owner := f.Owner()
@@ -149,7 +149,7 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 				return err
 			}
 		} else {
-			log.Infof("%s: file already exists and hasn't been changed, skipping upload", h)
+			h.Log().Infof("file already exists and hasn't been changed, skipping upload")
 		}
 
 		if stat == nil {
@@ -168,7 +168,7 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 }
 
 func (p *UploadFiles) uploadData(h *cluster.Host, f *cluster.UploadFile) error {
-	log.Infof("%s: uploading inline data", h)
+	h.Log().Infof("uploading inline data")
 	dest := f.DestinationFile
 	if dest == "" {
 		if f.DestinationDir != "" {
@@ -209,7 +209,7 @@ func (p *UploadFiles) uploadData(h *cluster.Host, f *cluster.UploadFile) error {
 }
 
 func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
-	log.Infof("%s: downloading %s to host %s", h, f, f.DestinationFile)
+	h.Log().Infof("downloading %s to host %s", f, f.DestinationFile)
 	owner := f.Owner()
 
 	if err := p.ensureDir(h, path.Dir(f.DestinationFile), f.DirPermString, owner); err != nil {
@@ -235,7 +235,7 @@ func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
 func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm string, timestamp *time.Time) error {
 	if owner != "" {
 		err := p.Wet(h, fmt.Sprintf("set owner for %s to %s", dest, owner), func() error {
-			log.Debugf("%s: setting owner %s for %s", h, owner, dest)
+			h.Log().Debugf("setting owner %s for %s", owner, dest)
 			return h.Sudo().FS().Chown(dest, owner)
 		})
 		if err != nil {
@@ -245,7 +245,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 
 	if perm != "" {
 		err := p.Wet(h, fmt.Sprintf("set permissions for %s to %s", dest, perm), func() error {
-			log.Debugf("%s: setting permissions %s for %s", h, perm, dest)
+			h.Log().Debugf("setting permissions %s for %s", perm, dest)
 			return chmodWithString(h, dest, perm)
 		})
 		if err != nil {
@@ -255,7 +255,7 @@ func (p *UploadFiles) applyFileMetadata(h *cluster.Host, dest, owner, perm strin
 
 	if timestamp != nil {
 		err := p.Wet(h, fmt.Sprintf("set timestamp for %s to %s", dest, timestamp.String()), func() error {
-			log.Debugf("%s: touching %s", h, dest)
+			h.Log().Debugf("touching %s", dest)
 			return h.Sudo().FS().Touch(dest, *timestamp)
 		})
 		if err != nil {

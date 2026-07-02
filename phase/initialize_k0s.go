@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // InitializeK0s sets up the "initial" k0s controller
@@ -58,17 +58,17 @@ func (p *InitializeK0s) ShouldRun() bool {
 func (p *InitializeK0s) CleanUp() {
 	h := p.leader
 
-	log.Infof("%s: cleaning up", h)
+	h.Log().Infof("cleaning up")
 	if len(h.Environment) > 0 {
 		if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-			log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 		} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
-			log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+			h.Log().Warnf("failed to clean up service environment: %s", err.Error())
 		}
 	}
 	if h.Metadata.K0sInstalled {
 		if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
-			log.Warnf("%s: k0s reset failed", h)
+			h.Log().Warnf("k0s reset failed")
 		}
 	}
 }
@@ -76,6 +76,7 @@ func (p *InitializeK0s) CleanUp() {
 // Run the phase
 func (p *InitializeK0s) Run(ctx context.Context) error {
 	h := p.leader
+	ctx = log.IntoContext(ctx, h.Log())
 	h.Metadata.IsK0sLeader = true
 
 	if p.Config.Spec.K0s.DynamicConfig || (h.InstallFlags.Include("--enable-dynamic-config") && h.InstallFlags.GetValue("--enable-dynamic-config") != "false") {
@@ -84,11 +85,11 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 	}
 
 	if Force {
-		log.Warnf("%s: --force given, using k0s install with --force", h)
+		h.Log().Warnf("--force given, using k0s install with --force")
 		h.InstallFlags.AddOrReplace("--force=true")
 	}
 
-	log.Infof("%s: installing k0s controller", h)
+	h.Log().Infof("installing k0s controller")
 	cmd, err := h.K0sInstallCommand()
 	if err != nil {
 		return err
@@ -108,7 +109,7 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 
 	if len(h.Environment) > 0 {
 		err = p.Wet(h, "configure k0s service environment variables", func() error {
-			log.Infof("%s: updating service environment", h)
+			h.Log().Infof("updating service environment")
 			svc, err := h.Sudo().Service(h.K0sServiceName())
 			if err != nil {
 				return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
@@ -134,12 +135,12 @@ func (p *InitializeK0s) Run(ctx context.Context) error {
 			return err
 		}
 
-		log.Infof("%s: waiting for the k0s service to start", h)
+		h.Log().Infof("waiting for the k0s service to start")
 		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}
 
-		log.Infof("%s: wait for kubernetes to reach ready state", h)
+		h.Log().Infof("wait for kubernetes to reach ready state")
 		err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 			out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz'"))
 			if out != "ok" {

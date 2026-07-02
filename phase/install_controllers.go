@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // InstallControllers installs k0s controllers and joins them to the cluster
@@ -60,17 +60,17 @@ func (p *InstallControllers) CleanUp() {
 	_ = p.hosts.Filter(func(h *cluster.Host) bool {
 		return !h.Metadata.Ready
 	}).ParallelEach(context.Background(), func(_ context.Context, h *cluster.Host) error {
-		log.Infof("%s: cleaning up", h)
+		h.Log().Infof("cleaning up")
 		if len(h.Environment) > 0 {
 			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+				h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %v", h, err)
+				h.Log().Warnf("failed to clean up service environment: %v", err)
 			}
 		}
 		if h.Metadata.K0sInstalled && p.IsWet() {
 			if err := h.Sudo().Exec(h.K0sResetCommand()); err != nil {
-				log.Warnf("%s: k0s reset failed", h)
+				h.Log().Warnf("k0s reset failed")
 			}
 		}
 		return nil
@@ -89,15 +89,15 @@ func (p *InstallControllers) After() error {
 		}
 		h.Metadata.K0sTokenData.Token = ""
 		err := p.Wet(p.leader, fmt.Sprintf("invalidate k0s join token for controller %s", h), func() error {
-			log.Debugf("%s: invalidating join token for controller %d", p.leader, i+1)
+			p.leader.Log().Debugf("invalidating join token for controller %d", i+1)
 			return p.leader.Sudo().Exec(p.leader.Configurer.K0sCmdf("token invalidate --data-dir=%s %s", p.leader.K0sDataDir(), h.Metadata.K0sTokenData.ID))
 		})
 		if err != nil {
-			log.Warnf("%s: failed to invalidate controller join token: %v", p.leader, err)
+			p.leader.Log().Warnf("failed to invalidate controller join token: %v", err)
 		}
 		_ = p.Wet(h, "overwrite k0s join token file", func() error {
 			if err := h.Sudo().FS().WriteFile(h.K0sJoinTokenPath(), []byte("# overwritten by k0sctl after join\n"), 0o600); err != nil {
-				log.Warnf("%s: failed to overwrite the join token file at %s", h, h.K0sJoinTokenPath())
+				h.Log().Warnf("failed to overwrite the join token file at %s", h.K0sJoinTokenPath())
 			}
 			return nil
 		})
@@ -109,7 +109,7 @@ func (p *InstallControllers) After() error {
 func (p *InstallControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
 		if p.IsWet() {
-			log.Infof("%s: generate join token for %s", p.leader, h)
+			p.leader.Log().Infof("generate join token for %s", h)
 			token, err := p.Config.Spec.K0s.GenerateToken(
 				ctx,
 				p.leader,
@@ -130,14 +130,14 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 			h.Metadata.K0sTokenData.URL = p.Config.Spec.KubeAPIURL()
 		}
 	}
-	err := p.parallelDo(ctx, p.hosts, func(_ context.Context, h *cluster.Host) error {
+	err := p.parallelDo(ctx, p.hosts, func(ctx context.Context, h *cluster.Host) error {
 		if p.IsWet() || !p.leader.Metadata.DryRunFakeLeader {
-			log.Infof("%s: validating api connection to %s", h, h.Metadata.K0sTokenData.URL)
+			h.Log().Infof("validating api connection to %s", h.Metadata.K0sTokenData.URL)
 			if err := retry.WithDefaultTimeout(ctx, node.HTTPStatusFunc(h, h.Metadata.K0sTokenData.URL, 200, 401, 404)); err != nil {
 				return fmt.Errorf("failed to connect from controller to kubernetes api - check networking: %w", err)
 			}
 		} else {
-			log.Warnf("%s: dry-run: skipping api connection validation to because cluster is not actually running", h)
+			h.Log().Warnf("dry-run: skipping api connection validation to because cluster is not actually running")
 		}
 		return nil
 	})
@@ -209,8 +209,9 @@ func (p *InstallControllers) Run(ctx context.Context) error {
 }
 
 func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) error {
+	ctx = log.IntoContext(ctx, h.Log())
 	tokenPath := h.K0sJoinTokenPath()
-	log.Infof("%s: writing join token to %s", h, tokenPath)
+	h.Log().Infof("writing join token to %s", tokenPath)
 	err := p.Wet(h, fmt.Sprintf("write k0s join token to %s", tokenPath), func() error {
 		return h.Sudo().FS().WriteFile(tokenPath, []byte(h.Metadata.K0sTokenData.Token), 0o600)
 	})
@@ -223,7 +224,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	}
 
 	if Force {
-		log.Warnf("%s: --force given, using k0s install with --force", h)
+		h.Log().Warnf("--force given, using k0s install with --force")
 		h.InstallFlags.AddOrReplace("--force=true")
 	}
 
@@ -231,7 +232,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 	if err != nil {
 		return err
 	}
-	log.Infof("%s: installing k0s controller", h)
+	h.Log().Infof("installing k0s controller")
 
 	err = p.Wet(h, fmt.Sprintf("install k0s controller using `%s", strings.ReplaceAll(cmd, h.K0sInstallLocation(), "k0s")), func() error {
 		var stdout, stderr bytes.Buffer
@@ -243,7 +244,7 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 			return fmt.Errorf("run k0s install: %w", err)
 		}
 		if err := waiter.Wait(); err != nil {
-			log.Errorf("%s: k0s install failed: %s %s", h, stdout.String(), stderr.String())
+			h.Log().Errorf("k0s install failed: %s %s", stdout.String(), stderr.String())
 			return fmt.Errorf("k0s install failed: %w", err)
 		}
 
@@ -262,18 +263,18 @@ func (p *InstallControllers) installK0s(ctx context.Context, h *cluster.Host) er
 		}
 
 		if len(h.Environment) > 0 {
-			log.Infof("%s: updating service environment", h)
+			h.Log().Infof("updating service environment")
 			if err := svc.SetEnvironment(ctx, h.Environment); err != nil {
 				return err
 			}
 		}
 
-		log.Infof("%s: starting service", h)
+		h.Log().Infof("starting service")
 		if err := svc.Start(ctx); err != nil {
 			return err
 		}
 
-		log.Infof("%s: waiting for the k0s service to start", h)
+		h.Log().Infof("waiting for the k0s service to start")
 		if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
 			return err
 		}

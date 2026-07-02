@@ -7,7 +7,6 @@ import (
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	log "github.com/sirupsen/logrus"
 )
 
 // ApplyManifests is a phase that applies additional manifests to the cluster
@@ -51,7 +50,7 @@ func (p *ApplyManifests) apply(ctx context.Context, name string, content []byte)
 		return nil
 	}
 
-	log.Infof("%s: apply manifest %s (%d bytes)", p.leader, name, len(content))
+	p.leader.Log().Infof("apply manifest %s (%d bytes)", name, len(content))
 	kubectlCmd := p.leader.Configurer.KubectlCmdf(p.leader, p.leader.K0sDataDir(), "apply -f -")
 	var stdout, stderr bytes.Buffer
 
@@ -66,6 +65,6 @@ func (p *ApplyManifests) apply(ctx context.Context, name string, content []byte)
 	if err := waiter.Wait(); err != nil {
 		return fmt.Errorf("kubectl apply failed for manifest %s: %w (stderr: %s)", name, err, stderr.String())
 	}
-	log.Infof("%s: kubectl apply: %s", p.leader, stdout.String())
+	p.leader.Log().Infof("kubectl apply: %s", stdout.String())
 	return nil
 }

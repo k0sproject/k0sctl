@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // ResetControllers phase removes controllers marked for reset from the kubernetes and etcd clusters
@@ -70,14 +70,15 @@ func (p *ResetControllers) DryRun() error {
 // Run the phase
 func (p *ResetControllers) Run(ctx context.Context) error {
 	for _, h := range p.hosts {
+		ctx := log.IntoContext(ctx, h.Log())
 		if t := p.Config.Spec.Options.EvictTaint; t.Enabled && t.ControllerWorkers && h.Role != "controller" {
-			log.Debugf("%s: add taint: %s", h, t.String())
+			h.Log().Debugf("add taint: %s", t.String())
 			if err := p.leader.AddTaint(h, t.String()); err != nil {
 				return fmt.Errorf("add taint: %w", err)
 			}
 		}
 		if !p.NoDrain && h.Role != "controller" {
-			log.Debugf("%s: draining node", h)
+			h.Log().Debugf("draining node")
 			if err := p.leader.DrainNode(
 				&cluster.Host{
 					Metadata: cluster.HostMetadata{
@@ -86,46 +87,46 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 				},
 				p.Config.Spec.Options.Drain,
 			); err != nil {
-				log.Warnf("%s: failed to drain node: %s", h, err.Error())
+				h.Log().Warnf("failed to drain node: %s", err.Error())
 			}
 		}
-		log.Debugf("%s: draining node completed", h)
+		h.Log().Debugf("draining node completed")
 
 		if !p.NoDelete && h.Role != "controller" {
-			log.Debugf("%s: deleting node...", h)
+			h.Log().Debugf("deleting node...")
 			if err := p.leader.DeleteNode(&cluster.Host{
 				Metadata: cluster.HostMetadata{
 					Hostname: h.KubernetesNodeName(),
 				},
 			}); err != nil {
-				log.Warnf("%s: failed to delete node: %s", h, err.Error())
+				h.Log().Warnf("failed to delete node: %s", err.Error())
 			}
 		}
 
 		if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-			log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+			h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 		} else if svc.IsRunning(ctx) {
-			log.Debugf("%s: stopping k0s...", h)
+			h.Log().Debugf("stopping k0s...")
 			if err := svc.Stop(ctx); err != nil {
-				log.Warnf("%s: failed to stop k0s: %s", h, err.Error())
+				h.Log().Warnf("failed to stop k0s: %s", err.Error())
 			}
-			log.Debugf("%s: waiting for k0s to stop", h)
+			h.Log().Debugf("waiting for k0s to stop")
 			if err := retry.WithDefaultTimeout(ctx, node.ServiceStoppedFunc(h, h.K0sServiceName())); err != nil {
-				log.Warnf("%s: failed to wait for k0s to stop: %v", h, err)
+				h.Log().Warnf("failed to wait for k0s to stop: %v", err)
 			}
-			log.Debugf("%s: stopping k0s completed", h)
+			h.Log().Debugf("stopping k0s completed")
 		}
 
 		if !p.NoLeave {
-			log.Debugf("%s: leaving etcd...", h)
+			h.Log().Debugf("leaving etcd...")
 
 			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", h.PrivateAddress, h.K0sDataDir())); err != nil {
-				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
+				h.Log().Warnf("failed to leave etcd: %s", err.Error())
 			}
-			log.Debugf("%s: leaving etcd completed", h)
+			h.Log().Debugf("leaving etcd completed")
 		}
 
-		log.Debugf("%s: resetting k0s...", h)
+		h.Log().Debugf("resetting k0s...")
 		var stdoutbuf, stderrbuf bytes.Buffer
 		proc := h.Sudo().Proc(h.K0sResetCommand())
 		proc.Stdout = &stdoutbuf
@@ -135,31 +136,31 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to run k0s reset: %w", err)
 		}
 		if err := waiter.Wait(); err != nil {
-			log.Warnf("%s: k0s reset reported failure: %s %s", h, stderrbuf.String(), stdoutbuf.String())
+			h.Log().Warnf("k0s reset reported failure: %s %s", stderrbuf.String(), stdoutbuf.String())
 		}
-		log.Debugf("%s: resetting k0s completed", h)
+		h.Log().Debugf("resetting k0s completed")
 
-		log.Debugf("%s: removing config...", h)
+		h.Log().Debugf("removing config...")
 		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sConfigPath()); dErr != nil {
-			log.Warnf("%s: failed to remove existing configuration %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
+			h.Log().Warnf("failed to remove existing configuration %s: %s", h.Configurer.K0sConfigPath(), dErr)
 		}
-		log.Debugf("%s: removing config completed", h)
+		h.Log().Debugf("removing config completed")
 
-		log.Debugf("%s: removing k0s binary...", h)
+		h.Log().Debugf("removing k0s binary...")
 		if dErr := h.Sudo().FS().Remove(h.Configurer.K0sBinaryPath()); dErr != nil {
-			log.Warnf("%s: failed to remove existing binary %s: %s", h, h.Configurer.K0sConfigPath(), dErr)
+			h.Log().Warnf("failed to remove existing binary %s: %s", h.Configurer.K0sConfigPath(), dErr)
 		}
-		log.Debugf("%s: removing binary completed", h)
+		h.Log().Debugf("removing binary completed")
 
 		if len(h.Environment) > 0 {
 			if svc, err := h.Sudo().Service(h.K0sServiceName()); err != nil {
-				log.Warnf("%s: failed to get service %s: %v", h, h.K0sServiceName(), err)
+				h.Log().Warnf("failed to get service %s: %v", h.K0sServiceName(), err)
 			} else if err := svc.SetEnvironment(ctx, map[string]string{}); err != nil {
-				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
+				h.Log().Warnf("failed to clean up service environment: %s", err.Error())
 			}
 		}
 
-		log.Infof("%s: reset", h)
+		h.Log().Infof("reset")
 	}
 	return nil
 }

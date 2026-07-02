@@ -18,7 +18,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/node"
 	ps "github.com/k0sproject/rig/v2/powershell"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 type k0sstatus struct {
@@ -117,23 +116,23 @@ func (p *GatherK0sFacts) reportUseExistingHosts() error {
 
 			if binaryDiffersRunning {
 				// Binary version differs from running version — service will be restarted.
-				log.Infof("%s: useExistingK0s=true, pre-placed k0s binary %s differs from running %s, service will be restarted", h, h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
+				h.Log().Infof("useExistingK0s=true, pre-placed k0s binary %s differs from running %s, service will be restarted", h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
 				if !p.IsWet() {
 					p.DryMsgf(h, "reuse pre-placed k0s binary %s; skip downloads/uploads; restart service (was %s)", h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
 				}
 			} else {
 				// No detected binary version mismatch; restart is due to supplemental/configuration changes.
 				if h.Metadata.K0sRunningVersion != nil {
-					log.Infof("%s: useExistingK0s=true, k0s %s will be restarted (running %s; supplemental files changed)", h, h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
+					h.Log().Infof("useExistingK0s=true, k0s %s will be restarted (running %s; supplemental files changed)", h.Metadata.K0sBinaryVersion, h.Metadata.K0sRunningVersion)
 				} else {
-					log.Infof("%s: useExistingK0s=true, k0s %s will be restarted (supplemental files changed)", h, h.Metadata.K0sBinaryVersion)
+					h.Log().Infof("useExistingK0s=true, k0s %s will be restarted (supplemental files changed)", h.Metadata.K0sBinaryVersion)
 				}
 				if !p.IsWet() {
 					p.DryMsgf(h, "reuse pre-placed k0s binary %s; skip downloads/uploads; restart service", h.Metadata.K0sBinaryVersion)
 				}
 			}
 		} else {
-			log.Infof("%s: useExistingK0s=true, reusing existing k0s %s", h, h.Metadata.K0sBinaryVersion)
+			h.Log().Infof("useExistingK0s=true, reusing existing k0s %s", h.Metadata.K0sBinaryVersion)
 			if !p.IsWet() {
 				p.DryMsgf(h, "reuse existing k0s %s; skip downloads/uploads/upgrades", h.Metadata.K0sBinaryVersion)
 			}
@@ -148,7 +147,7 @@ func (p *GatherK0sFacts) reportUseExistingHosts() error {
 			continue
 		}
 
-		log.Warnf("%s: spec.k0s.version is %s but host has k0s binary %s because useExistingK0s=true", h, desired, h.Metadata.K0sBinaryVersion)
+		h.Log().Warnf("spec.k0s.version is %s but host has k0s binary %s because useExistingK0s=true", desired, h.Metadata.K0sBinaryVersion)
 		if !p.IsWet() {
 			p.DryMsgf(h, "WARNING: host has k0s binary %s while spec.k0s.version=%s (useExistingK0s=true)", h.Metadata.K0sBinaryVersion, desired)
 		}
@@ -167,37 +166,37 @@ func (p *GatherK0sFacts) isInternalEtcd() bool {
 	}
 
 	if p.Config.Spec.K0s == nil || p.Config.Spec.K0s.Config == nil {
-		log.Debugf("%s: k0s config not found, expecting default internal etcd", p.leader)
+		p.leader.Log().Debugf("k0s config not found, expecting default internal etcd")
 		return true
 	}
 
-	log.Debugf("%s: checking storage config for etcd", p.leader)
+	p.leader.Log().Debugf("checking storage config for etcd")
 	if storageConfig, ok := p.Config.Spec.K0s.Config.Dig("spec", "storage").(dig.Mapping); ok {
 		storageType := storageConfig.DigString("type")
 		switch storageType {
 		case "etcd":
 			if _, ok := storageConfig.Dig("etcd", "externalCluster").(dig.Mapping); ok {
-				log.Debugf("%s: storage is configured with external etcd", p.leader)
+				p.leader.Log().Debugf("storage is configured with external etcd")
 				return false
 			}
-			log.Debugf("%s: storage type is etcd", p.leader)
+			p.leader.Log().Debugf("storage type is etcd")
 			return true
 		case "":
-			log.Debugf("%s: storage type is default", p.leader)
+			p.leader.Log().Debugf("storage type is default")
 			return true
 		default:
-			log.Debugf("%s: storage type is %s", p.leader, storageType)
+			p.leader.Log().Debugf("storage type is %s", storageType)
 			return false
 		}
 	}
 
-	log.Debugf("%s: storage config not found, expecting default internal etcd", p.leader)
+	p.leader.Log().Debugf("storage config not found, expecting default internal etcd")
 	return true
 }
 
 func (p *GatherK0sFacts) investigateEtcd(ctx context.Context) error {
 	if !p.isInternalEtcd() {
-		log.Debugf("%s: skipping etcd member list", p.leader)
+		p.leader.Log().Debugf("skipping etcd member list")
 		return nil
 	}
 
@@ -209,7 +208,7 @@ func (p *GatherK0sFacts) investigateEtcd(ctx context.Context) error {
 }
 
 func (p *GatherK0sFacts) listEtcdMembers(ctx context.Context, h *cluster.Host) error {
-	log.Infof("%s: listing etcd members", h)
+	h.Log().Infof("listing etcd members")
 	// etcd member-list outputs json like:
 	// {"members":{"controller0":"https://172.17.0.2:2380","controller1":"https://172.17.0.3:2380"}}
 	// on versions like ~1.21.x etcd member-list outputs to stderr with extra fields (from logrus).
@@ -265,7 +264,7 @@ func (p *GatherK0sFacts) listEtcdMembers(ctx context.Context, h *cluster.Host) e
 				if err != nil {
 					return fmt.Errorf("failed to split etcd member URL: %w", err)
 				}
-				log.Debugf("%s: detected etcd member %s", h, memberHost)
+				h.Log().Debugf("detected etcd member %s", memberHost)
 				etcdMembers = append(etcdMembers, memberHost)
 			}
 		}
@@ -278,7 +277,7 @@ func (p *GatherK0sFacts) listEtcdMembers(ctx context.Context, h *cluster.Host) e
 func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) error {
 	output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("version"))
 	if err != nil {
-		log.Debugf("%s: no 'k0s' binary in PATH", h)
+		h.Log().Debugf("no 'k0s' binary in PATH")
 		return nil
 	}
 
@@ -289,13 +288,13 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 
 	h.Metadata.K0sBinaryVersion = binVersion
 
-	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
+	h.Log().Debugf("has k0s binary version %s", h.Metadata.K0sBinaryVersion)
 
 	if h.IsController() && h.FS().FileExist(h.K0sConfigPath()) {
 		cfgData, err := h.FS().ReadFile(h.K0sConfigPath())
 		cfg := string(cfgData)
 		if cfg != "" && err == nil {
-			log.Infof("%s: found existing configuration", h)
+			h.Log().Infof("found existing configuration")
 			h.Metadata.K0sExistingConfig = cfg
 		}
 	}
@@ -325,12 +324,12 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	output, err = h.Sudo().ExecOutput(h.Configurer.K0sCmdf("status -o json"))
 	if err != nil {
 		if existingServiceScript == "" {
-			log.Debugf("%s: an existing k0s instance is not running and does not seem to have been installed as a service", h)
+			h.Log().Debugf("an existing k0s instance is not running and does not seem to have been installed as a service")
 			return nil
 		}
 
 		if Force {
-			log.Warnf("%s: an existing k0s instance is not running but has been installed as a service at %s - ignoring because --force was given", h, existingServiceScript)
+			h.Log().Warnf("an existing k0s instance is not running but has been installed as a service at %s - ignoring because --force was given", existingServiceScript)
 			return nil
 		}
 
@@ -344,12 +343,12 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	status := k0sstatus{}
 
 	if err := json.Unmarshal([]byte(output), &status); err != nil {
-		log.Warnf("%s: failed to decode k0s status output: %s", h, err.Error())
+		h.Log().Warnf("failed to decode k0s status output: %s", err.Error())
 		return nil
 	}
 
 	if status.Version == nil || status.Role == "" || status.Pid == 0 {
-		log.Debugf("%s: k0s is not running", h)
+		h.Log().Debugf("k0s is not running")
 		return nil
 	}
 
@@ -394,12 +393,12 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	}
 	h.Metadata.K0sStatusArgs = args
 
-	log.Infof("%s: is running k0s %s version %s", h, h.Role, h.Metadata.K0sRunningVersion)
+	h.Log().Infof("is running k0s %s version %s", h.Role, h.Metadata.K0sRunningVersion)
 	if h.IsController() {
 		for _, a := range h.Metadata.K0sStatusArgs {
 			if strings.HasPrefix(a, "--enable-dynamic-config") && !strings.HasSuffix(a, "false") {
 				if !p.Config.Spec.K0s.DynamicConfig {
-					log.Warnf("%s: controller has dynamic config enabled, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode", h)
+					h.Log().Warnf("controller has dynamic config enabled, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode")
 					p.Config.Spec.K0s.DynamicConfig = true
 				}
 			}
@@ -407,7 +406,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		if h.InstallFlags.Include("--enable-dynamic-config") {
 			if val := h.InstallFlags.GetValue("--enable-dynamic-config"); val != "false" {
 				if !p.Config.Spec.K0s.DynamicConfig {
-					log.Warnf("%s: controller has --enable-dynamic-config in installFlags, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode", h)
+					h.Log().Warnf("controller has --enable-dynamic-config in installFlags, but spec.k0s.dynamicConfig was not set in configuration, proceeding in dynamic config mode")
 				}
 				p.Config.Spec.K0s.DynamicConfig = true
 			}
@@ -419,17 +418,17 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 	}
 
 	if h.Role == "controller+worker" && !h.NoTaints {
-		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for node-role.kubernetes.io/master:NoSchedule unless 'noTaints: true' is set", h)
+		h.Log().Warnf("the controller+worker node will not schedule regular workloads without toleration for node-role.kubernetes.io/master:NoSchedule unless 'noTaints: true' is set")
 	}
 
 	if h.Metadata.NeedsUpgrade {
-		log.Warnf("%s: k0s will be upgraded", h)
+		h.Log().Warnf("k0s will be upgraded")
 	}
 
 	if !h.IsController() {
-		log.Infof("%s: checking if worker %s has joined", p.leader, h.KubernetesNodeName())
+		p.leader.Log().Infof("checking if worker %s has joined", h.KubernetesNodeName())
 		if err := node.KubeNodeReadyFunc(h)(ctx); err != nil {
-			log.Debugf("%s: failed to get ready status: %s", h, err.Error())
+			h.Log().Debugf("failed to get ready status: %s", err.Error())
 		} else {
 			h.Metadata.Ready = true
 		}
@@ -447,7 +446,7 @@ func (p *GatherK0sFacts) handleRoleMismatch(h *cluster.Host, detectedRole string
 		return fmt.Errorf("%s: is configured as k0s %s but is already running as %s - role change is not supported, use --force to ignore the mismatch during reset", h, h.Role, detectedRole)
 	}
 
-	log.Warnf("%s: was configured as %s but is already running as %s - proceeding with reset using the discovered role because --force was given", h, h.Role, detectedRole)
+	h.Log().Warnf("was configured as %s but is already running as %s - proceeding with reset using the discovered role because --force was given", h.Role, detectedRole)
 	h.Role = detectedRole
 	return nil
 }
@@ -458,7 +457,7 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) (bool, error) {
 	}
 	for _, f := range h.Files {
 		if f.IsURL() {
-			log.Debugf("%s: marked for upgrade because there are URL source file uploads for the host", h)
+			h.Log().Debugf("marked for upgrade because there are URL source file uploads for the host")
 			return true, nil
 		}
 		for _, s := range f.Sources {
@@ -468,7 +467,7 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) (bool, error) {
 			}
 			src := path.Join(f.Base, s.Path)
 			if h.FileChanged(src, dest) {
-				log.Debugf("%s: marked for upgrade because file was changed for upload %s", h, src)
+				h.Log().Debugf("marked for upgrade because file was changed for upload %s", src)
 				return true, nil
 			}
 		}

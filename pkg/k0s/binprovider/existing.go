@@ -3,8 +3,8 @@ package binprovider
 import (
 	"context"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/k0s"
-	log "github.com/sirupsen/logrus"
 )
 
 // existing uses a k0s binary that is already present on the host.

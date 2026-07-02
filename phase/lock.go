@@ -11,7 +11,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	log "github.com/sirupsen/logrus"
 )
 
 // Lock acquires an exclusive k0sctl lock on hosts
@@ -77,17 +76,17 @@ func (p *Lock) startTicker(ctx context.Context, h *cluster.Host) error {
 	p.m.Unlock()
 
 	go func() {
-		log.Tracef("%s: started periodic update of lock file %s timestamp", h, lfp)
+		h.Log().Tracef("started periodic update of lock file %s timestamp", lfp)
 		for {
 			select {
 			case <-ticker.C:
 				if err := h.Sudo().FS().Touch(lfp, time.Now()); err != nil {
-					log.Debugf("%s: failed to touch lock file: %s", h, err)
+					h.Log().Debugf("failed to touch lock file: %s", err)
 				}
 			case <-ctx.Done():
-				log.Tracef("%s: stopped lock cycle, removing file", h)
+				h.Log().Tracef("stopped lock cycle, removing file")
 				if err := h.Sudo().FS().Remove(lfp); err != nil {
-					log.Debugf("%s: failed to remove host lock file, k0sctl may have been previously aborted or crashed. the start of next invocation may be delayed until it expires: %s", h, err)
+					h.Log().Debugf("failed to remove host lock file, k0sctl may have been previously aborted or crashed. the start of next invocation may be delayed until it expires: %s", err)
 				}
 				p.wg.Done()
 				return

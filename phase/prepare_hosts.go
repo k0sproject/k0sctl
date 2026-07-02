@@ -12,7 +12,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 var iptablesEmbeddedSince = version.MustParse("v1.22.1+k0s.0")
@@ -51,7 +50,7 @@ func (p *PrepareHosts) updateEnvironment(ctx context.Context, h *cluster.Host) e
 	// preserved across multiple ssh sessions. We need to write the environment
 	// and then reopen the ssh session. Go's ssh client.Setenv() depends on ssh
 	// server configuration (sshd only accepts LC_* variables by default).
-	log.Infof("%s: reconnecting to apply new environment", h)
+	h.Log().Infof("reconnecting to apply new environment")
 	h.Disconnect()
 	return retry.Timeout(ctx, 10*time.Minute, func(ctx context.Context) error {
 		if err := h.Connect(ctx); err != nil {
@@ -72,7 +71,7 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 	}
 
 	if len(h.Environment) > 0 {
-		log.Infof("%s: updating environment", h)
+		h.Log().Infof("updating environment")
 		if err := p.updateEnvironment(ctx, h); err != nil {
 			return fmt.Errorf("failed to updated environment: %w", err)
 		}
@@ -95,7 +94,7 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 
 	if len(pkgs) > 0 {
 		if err := p.Wet(h, fmt.Sprintf("install packages: %s", strings.Join(pkgs, ", ")), func() error {
-			log.Infof("%s: installing packages: %s", h, strings.Join(pkgs, ", "))
+			h.Log().Infof("installing packages: %s", strings.Join(pkgs, ", "))
 			pm := h.Sudo().PackageManager()
 			if err := pm.Update(ctx); err != nil {
 				return fmt.Errorf("failed to update package lists: %w", err)
@@ -107,7 +106,7 @@ func (p *PrepareHosts) prepareHost(ctx context.Context, h *cluster.Host) error {
 	}
 
 	if isContainer, _ := h.FS().IsContainer(); isContainer {
-		log.Infof("%s: is a container, applying a fix", h)
+		h.Log().Infof("is a container, applying a fix")
 		if err := h.Configurer.FixContainer(h); err != nil {
 			return err
 		}

@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/mattn/go-isatty"
@@ -71,7 +71,7 @@ func (r Reset) Run(ctx context.Context) error {
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)
-	log.Info(phase.Colorize.Green(text).String())
+	log.Info(text)
 
 	return nil
 }

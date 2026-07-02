@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"slices"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
-	log "github.com/sirupsen/logrus"
 )
 
 // ValidateEtcdMembers checks for existing etcd members with the same IP as a new controller
@@ -34,17 +34,17 @@ func (p *ValidateEtcdMembers) Prepare(config *v1beta1.Cluster) error {
 // ShouldRun is true when there are new controllers and etcd
 func (p *ValidateEtcdMembers) ShouldRun() bool {
 	if p.Config.Spec.K0sLeader().Metadata.K0sRunningVersion == nil {
-		log.Debugf("%s: leader has no k0s running, assuming a fresh cluster", p.Config.Spec.K0sLeader())
+		p.Config.Spec.K0sLeader().Log().Debugf("leader has no k0s running, assuming a fresh cluster")
 		return false
 	}
 
 	if p.Config.Spec.K0sLeader().Role == "single" {
-		log.Debugf("%s: leader is a single node, assuming no etcd", p.Config.Spec.K0sLeader())
+		p.Config.Spec.K0sLeader().Log().Debugf("leader is a single node, assuming no etcd")
 		return false
 	}
 
 	if s := p.Config.StorageType(); s != "etcd" {
-		log.Debugf("%s: storage type is %q, not k0s managed etcd", p.Config.Spec.K0sLeader(), s)
+		p.Config.Spec.K0sLeader().Log().Debugf("storage type is %q, not k0s managed etcd", s)
 	}
 
 	return len(p.hosts) > 0
@@ -65,10 +65,10 @@ func (p *ValidateEtcdMembers) validateControllerSwap() error {
 	}
 
 	for _, h := range p.hosts {
-		log.Debugf("%s: host is new, checking if etcd members list already contains %s", h, h.PrivateAddress)
+		h.Log().Debugf("host is new, checking if etcd members list already contains %s", h.PrivateAddress)
 		if slices.Contains(p.Config.Metadata.EtcdMembers, h.PrivateAddress) {
 			if Force {
-				log.Infof("%s: force used, running 'k0s etcd leave' for the host", h)
+				h.Log().Infof("force used, running 'k0s etcd leave' for the host")
 				leader := p.Config.Spec.K0sLeader()
 				leaveCommand := leader.Configurer.K0sCmdf("etcd leave --peer-address %s", h.PrivateAddress)
 				err := p.Wet(h, fmt.Sprintf("remove host from etcd using %v", leaveCommand), func() error {
@@ -81,7 +81,7 @@ func (p *ValidateEtcdMembers) validateControllerSwap() error {
 			}
 			return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. check the host and use `k0s etcd leave --peer-address %s on a controller or re-run apply with --force", h, h.PrivateAddress)
 		}
-		log.Debugf("%s: no match, assuming its safe to install", h)
+		h.Log().Debugf("no match, assuming its safe to install")
 	}
 
 	return nil

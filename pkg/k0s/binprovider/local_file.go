@@ -3,8 +3,8 @@ package binprovider
 import (
 	"context"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/k0s"
-	log "github.com/sirupsen/logrus"
 )
 
 // localFile uploads a developer-supplied k0s binary from the local machine to the host.

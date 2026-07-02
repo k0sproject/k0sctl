@@ -10,7 +10,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 var _ Phase = &Backup{}
@@ -74,7 +73,7 @@ func (p *Backup) ShouldRun() bool {
 func (p *Backup) Run(_ context.Context) error {
 	h := p.leader
 
-	log.Infof("%s: backing up", h)
+	h.Log().Infof("backing up")
 	var backupDir string
 	err := p.Wet(h, "create a tempdir using `mktemp -d`", func() error {
 		b, err := h.FS().MkdirTemp("", "")
@@ -117,12 +116,12 @@ func (p *Backup) Run(_ context.Context) error {
 
 	defer func() {
 		if p.IsWet() {
-			log.Debugf("%s: cleaning up %s", h, remotePath)
+			h.Log().Debugf("cleaning up %s", remotePath)
 			if err := h.Sudo().FS().Remove(remotePath); err != nil {
-				log.Warnf("%s: failed to clean up backup temp file %s: %s", h, remotePath, err)
+				h.Log().Warnf("failed to clean up backup temp file %s: %s", remotePath, err)
 			}
 			if err := h.Sudo().FS().Remove(backupDir); err != nil {
-				log.Warnf("%s: failed to clean up backup temp directory %s: %s", h, backupDir, err)
+				h.Log().Warnf("failed to clean up backup temp directory %s: %s", backupDir, err)
 			}
 		} else {
 			p.DryMsg(h, "delete the tempdir")
@@ -136,7 +135,7 @@ func (p *Backup) Run(_ context.Context) error {
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				log.Warnf("%s: failed to close backup file %s: %v", h, remotePath, err)
+				h.Log().Warnf("failed to close backup file %s: %v", remotePath, err)
 			}
 		}()
 		if _, err := io.Copy(p.Out, f); err != nil {

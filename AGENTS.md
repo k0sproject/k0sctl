@@ -45,11 +45,14 @@
 - Use `Wet(host, dryMsg, funcs...)` and `DryMsg(host, msg)` (both on `GenericPhase`) so dry-run output is an accurate per-host plan.
 - If a phase needs alternate dry-run behavior, implement the dry-run interface instead of partially running mutating logic.
 
-## Logging
-- Use `log "github.com/sirupsen/logrus"` — it is the only logger in this project.
-- Per-host messages must prefix the host: `log.Infof("%s: doing thing", h)`.
+## Logging and display
+- Use `log "github.com/k0sproject/k0sctl/internal/log"` — a thin printf-style facade over `log/slog`; it is the only logger in this project.
+- Host-scoped messages go through the host's logger: `h.Log().Infof("doing thing")` — this attaches the `host` attribute so records can be routed per host. Do not prefix messages with `%s: ` manually.
+- In code that receives a `context.Context` from a per-host operation (e.g. retry helpers), use `log.FromContext(ctx)` to inherit the host scope.
 - Use `log.Debug`/`log.Debugf` for internal state, `log.Info`/`log.Infof` for user-visible progress, `log.Warn`/`log.Warnf` for recoverable problems.
-- Do not use `fmt.Print*` for diagnostic output.
+- Structured attributes use rig v2's attribute keys (`log.KeyHost`, `log.KeyError`, `log.KeyDuration`) so k0sctl and rig records stay uniform. k0sctl adds `log.KeyPhase` (phase lifecycle records emitted by phase/manager.go) and `log.KeyAttempt` (retry counters from pkg/retry).
+- The screen is rendered by `internal/display` (a slog handler): a live TTY renderer with per-host status rows and log tails, or a plain line renderer for non-TTY/CI/--debug/--dry-run. Displays route records by attributes — never parse log message text to detect state, and never embed ANSI colors in log messages.
+- Do not use `fmt.Print*` for diagnostic output. Direct writes to `Manager.Writer` are only for final reports (dry-run summary, kubeconfig) that happen while no live display is running.
 
 ## Error Wrapping
 - Wrap errors with context using `fmt.Errorf("doing X: %w", err)`.

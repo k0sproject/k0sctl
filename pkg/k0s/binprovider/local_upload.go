@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/k0s"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 // localUpload downloads a k0s binary to a local cache and uploads it to the host.

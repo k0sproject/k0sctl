@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/phase"
-	log "github.com/sirupsen/logrus"
 )
 
 type Backup struct {
@@ -40,6 +40,6 @@ func (b Backup) Run(ctx context.Context) error {
 
 	duration := time.Since(start).Truncate(time.Second)
 	text := fmt.Sprintf("==> Finished in %s", duration)
-	log.Info(phase.Colorize.Green(text).String())
+	log.Info(text)
 	return nil
 }

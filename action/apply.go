@@ -2,7 +2,6 @@ package action
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/k0sproject/k0sctl/phase"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/k0sproject/k0sctl/internal/log"
 )
 
 type ApplyOptions struct {
@@ -111,7 +110,7 @@ func (a Apply) Run(ctx context.Context) error {
 	var result error
 
 	if result = a.Manager.Run(ctx); result != nil {
-		log.Info(phase.Colorize.Red("==> Apply failed").String())
+		log.Error("==> Apply failed")
 		return result
 	}
 
@@ -122,8 +121,7 @@ func (a Apply) Run(ctx context.Context) error {
 	}
 
 	duration := time.Since(start).Truncate(time.Second)
-	text := fmt.Sprintf("==> Finished in %s", duration)
-	log.Info(phase.Colorize.Green(text).String())
+	log.Infof("==> Finished in %s", duration)
 
 	for _, host := range a.Manager.Config.Spec.Hosts {
 		if host.Reset {
@@ -159,7 +157,7 @@ func (a Apply) Run(ctx context.Context) error {
 		}
 
 		log.Info("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Info("     " + phase.Colorize.Cyan(cmd.String()).String())
+		log.Info("     " + cmd.String())
 	}
 
 	return nil

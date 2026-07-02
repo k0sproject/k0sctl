@@ -9,7 +9,6 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 // Connect connects to each of the hosts
@@ -34,7 +33,7 @@ func (p *Connect) Run(ctx context.Context) error {
 				return err
 			}
 
-			log.Infof("%s: connected", h)
+			h.Log().Infof("connected")
 
 			return nil
 		})

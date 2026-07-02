@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
-	"strings"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/k0sproject/k0sctl/configurer"
+	log "github.com/k0sproject/k0sctl/internal/log"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
-	log "github.com/sirupsen/logrus"
 )
 
 // ValidateHosts performs remote OS detection
@@ -76,7 +76,7 @@ func (p *ValidateHosts) Run(ctx context.Context) error {
 
 func (p *ValidateHosts) warnK0sBinaryPath(_ context.Context, h *cluster.Host) error {
 	if h.K0sBinaryPath != "" {
-		log.Warnf("%s: k0s binary path is set to %q, version checking for the host is disabled. The k0s version for other hosts is %s.", h, h.K0sBinaryPath, p.Config.Spec.K0s.Version)
+		h.Log().Warnf("k0s binary path is set to %q, version checking for the host is disabled. The k0s version for other hosts is %s.", h.K0sBinaryPath, p.Config.Spec.K0s.Version)
 	}
 
 	return nil
@@ -134,7 +134,7 @@ func (p *ValidateHosts) validateOS(_ context.Context, h *cluster.Host) error {
 		return fmt.Errorf("windows workers require k0s version %s", k0sWindowsWorkerSupportSince)
 	}
 
-	log.Warnf("%s: windows worker node support is experimental", h)
+	h.Log().Warnf("windows worker node support is experimental")
 	return nil
 }
 
@@ -154,20 +154,20 @@ func (p *ValidateHosts) cleanUpOldK0sTmpFiles(_ context.Context, h *cluster.Host
 		if !strings.HasPrefix(d.Name(), "k0s.tmp.") {
 			return nil
 		}
-		log.Debugf("%s: found k0s binary upload temporary file %s", h, entryPath)
+		h.Log().Debugf("found k0s binary upload temporary file %s", entryPath)
 		info, err := d.Info()
 		if err != nil {
-			log.Warnf("%s: failed to get info for %s: %v", h, entryPath, err)
+			h.Log().Warnf("failed to get info for %s: %v", entryPath, err)
 			return nil
 		}
 		if time.Since(info.ModTime()) > cleanUpOlderThan {
-			log.Warnf("%s: cleaning up old k0s binary upload temporary file %s", h, entryPath)
+			h.Log().Warnf("cleaning up old k0s binary upload temporary file %s", entryPath)
 			if err := h.Sudo().FS().Remove(entryPath); err != nil {
-				log.Warnf("%s: failed to delete %s: %v", h, entryPath, err)
+				h.Log().Warnf("failed to delete %s: %v", entryPath, err)
 			}
 			return nil
 		}
-		log.Warnf("%s: found k0s binary upload temporary file %s that is newer than %s", h, entryPath, cleanUpOlderThan)
+		h.Log().Warnf("found k0s binary upload temporary file %s that is newer than %s", entryPath, cleanUpOlderThan)
 		return nil
 	})
 	if err != nil {
@@ -210,7 +210,7 @@ func (p *ValidateHosts) validateClockSkew(ctx context.Context) error {
 	for h, skew := range skews {
 		deviation := (skew - median).Abs()
 		if deviation > maxSkew {
-			log.Errorf("%s: clock skew of %.0f seconds exceeds the maximum of %.0f seconds", h, deviation.Seconds(), maxSkew.Seconds())
+			h.Log().Errorf("clock skew of %.0f seconds exceeds the maximum of %.0f seconds", deviation.Seconds(), maxSkew.Seconds())
 			foundExceeding++
 		}
 	}
