@@ -115,6 +115,32 @@ func TestTTYModelTailKeys(t *testing.T) {
 	assert.Equal(t, -1, m.focus)
 }
 
+func TestTTYModelSpaceTogglesPeek(t *testing.T) {
+	m := testModel(t, true, nil)
+	update(t, m, eventMsg{ev: phaseStart("Upgrade")})
+	for i := range 6 {
+		ev := Event{Host: fmt.Sprintf("h%d", i), Level: slog.LevelInfo, Message: "working"}
+		update(t, m, eventMsg{ev: ev})
+		// in production Display.Handle feeds the rings before the model
+		m.t.st.rings.add(ev)
+	}
+
+	// 6 hosts: tails hidden by default
+	assert.NotContains(t, m.View(), "│")
+
+	update(t, m, tea.KeyMsg{Type: tea.KeySpace})
+	assert.True(t, m.peek)
+	assert.Contains(t, m.View(), "│", "peek shows tails for all hosts")
+
+	update(t, m, tea.KeyMsg{Type: tea.KeySpace})
+	assert.False(t, m.peek)
+
+	// esc clears peek too
+	update(t, m, tea.KeyMsg{Type: tea.KeySpace})
+	update(t, m, tea.KeyMsg{Type: tea.KeyEscape})
+	assert.False(t, m.peek)
+}
+
 func TestTTYModelCtrlCInterruptsThenForces(t *testing.T) {
 	interrupted := false
 	m := testModel(t, true, func() { interrupted = true })

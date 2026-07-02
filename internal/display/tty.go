@@ -20,6 +20,8 @@ const (
 	autoTailHosts = 4
 	// tailLines is how many recent records a host tail shows
 	tailLines = 3
+	// peekTailLines is the deeper tail shown in peek mode (space key)
+	peekTailLines = 10
 	// maxRows caps the host rows rendered in the live region
 	maxRows = 12
 )
@@ -143,7 +145,8 @@ type ttyModel struct {
 	rows  map[string]*hostRow
 
 	tailsAll   bool
-	focus      int // index into order, -1 = none
+	peek       bool // deeper tails for all hosts, toggled with space
+	focus      int  // index into order, -1 = none
 	interrupts int
 
 	styleDim    lipgloss.Style
@@ -211,9 +214,12 @@ func (m *ttyModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "l":
 		m.tailsAll = !m.tailsAll
 		m.focus = -1
+	case " ":
+		m.peek = !m.peek
 	case "esc", "0":
 		m.focus = -1
 		m.tailsAll = false
+		m.peek = false
 	default:
 		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			idx := int(key[0] - '1')
@@ -330,7 +336,14 @@ func (m *ttyModel) View() string {
 		hostWidth = max(hostWidth, len(h))
 	}
 
+	depth := tailLines
+	if m.peek {
+		depth = peekTailLines
+	}
 	showTail := func(i int) bool {
+		if m.peek {
+			return true
+		}
 		if m.focus >= 0 {
 			return m.focus == i
 		}
@@ -377,7 +390,7 @@ func (m *ttyModel) View() string {
 		b.WriteString("\n")
 
 		if showTail(i) {
-			for _, tev := range m.t.st.rings.tail(h, tailLines) {
+			for _, tev := range m.t.st.rings.tail(h, depth) {
 				b.WriteString(ansi.Truncate(m.styleDim.Render("      │ "+tev.line()), m.width, "…"))
 				b.WriteString("\n")
 			}
@@ -385,7 +398,7 @@ func (m *ttyModel) View() string {
 	}
 
 	if m.t.interactive && len(m.order) > 0 {
-		b.WriteString(m.styleDim.Render("  keys: 1-9 focus host logs · l all logs · 0 hide · ctrl-c abort"))
+		b.WriteString(m.styleDim.Render("  keys: space peek · 1-9 focus host logs · l all logs · 0 hide · ctrl-c abort"))
 		b.WriteString("\n")
 	}
 
