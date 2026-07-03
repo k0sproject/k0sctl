@@ -281,15 +281,14 @@ func warnOldCache(_ *cli.Context) error {
 func warnRigMigration(ctx *cli.Context) error {
 	var warningRows []string
 	warningRows = append(warningRows, "")
-	warningRows = append(warningRows, "▌ This release replaces k0sctl's host connection and remote execution       ")
-	warningRows = append(warningRows, "▌ layer (rig v2). This is the only difference between this and the previous ")
-	warningRows = append(warningRows, "▌ release (k0sctl v0.31.1). Behavior should be unchanged, but if you hit    ")
-	warningRows = append(warningRows, "▌ unexpected connection, sudo, OS detection or file transfer issues, please ")
-	warningRows = append(warningRows, "▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back  ")
-	warningRows = append(warningRows, "▌ to v0.31.1 until the issue is resolved.                                   ")
+	warningRows = append(warningRows, " ▌ This release replaces k0sctl's host connection and remote execution")
+	warningRows = append(warningRows, " ▌ layer (rig v2). Behavior should be unchanged, but if you hit")
+	warningRows = append(warningRows, " ▌ unexpected connection, sudo, OS detection or file transfer issues, please")
+	warningRows = append(warningRows, " ▌ report them at https://github.com/k0sproject/k0sctl/issues and roll back")
+	warningRows = append(warningRows, " ▌ to v0.31.1 until the issue is resolved.")
 	warningRows = append(warningRows, "")
 	for _, row := range warningRows {
-		fmt.Fprintln(ctx.App.ErrWriter, Colorize.BgBlue(Colorize.BrightYellow(row)))
+		fmt.Fprintln(ctx.App.ErrWriter, row)
 	}
 	return nil
 }
