@@ -11,6 +11,18 @@ import (
 // Flags is a slice of strings with added functions to ease manipulating lists of command-line flags
 type Flags []string
 
+// isQuoted reports whether s is wrapped in a matching pair of single or double
+// quotes. Only such values are safe to pass to shellescape.Unquote; a bare
+// value must be left untouched so that literal backslashes (Windows paths) are
+// not consumed as escape sequences.
+func isQuoted(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	c := s[0]
+	return (c == '\'' || c == '"') && s[len(s)-1] == c
+}
+
 // Add adds a flag regardless if it exists already or not
 func (f *Flags) Add(s string) {
 	if ns, err := shellescape.Unquote(s); err == nil {
@@ -35,7 +47,10 @@ func (f *Flags) AddUnlessExist(s string) {
 	if f.Include(s) {
 		return
 	}
-	f.Add(s)
+	// s has already been unquoted above; append it directly rather than going
+	// through Add, which would unquote a second time and mangle values that
+	// contain backslashes (e.g. Windows paths like C:\var\lib\k0s).
+	*f = append(*f, s)
 }
 
 // AddOrReplace replaces a flag with the same prefix or adds a new one if one does not exist
@@ -48,7 +63,10 @@ func (f *Flags) AddOrReplace(s string) {
 		(*f)[idx] = s
 		return
 	}
-	f.Add(s)
+	// s has already been unquoted above; append it directly rather than going
+	// through Add, which would unquote a second time and mangle values that
+	// contain backslashes (e.g. Windows paths like C:\var\lib\k0s).
+	*f = append(*f, s)
 }
 
 // Include returns true if a flag with a matching prefix can be found
@@ -176,8 +194,14 @@ func (f Flags) Each(fn func(string, string)) {
 			fn(flag, "")
 		} else {
 			key, value := flag[:sepidx], flag[sepidx+1:]
-			if unq, err := shellescape.Unquote(value); err == nil {
-				value = unq
+			// Only unquote a value that is actually wrapped in matching quotes.
+			// A bare value (e.g. a Windows path like C:\var\lib\k0s) must be
+			// left intact, since shellescape.Unquote would consume its
+			// backslashes.
+			if isQuoted(value) {
+				if unq, err := shellescape.Unquote(value); err == nil {
+					value = unq
+				}
 			}
 			fn(key, value)
 		}
