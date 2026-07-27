@@ -40,8 +40,6 @@ spec:
     kubeProxy:
       disabled: false
       mode: iptables
-  podSecurityPolicy:
-    defaultPolicy: 00-k0s-privileged
   telemetry:
     enabled: true
   installConfig:
