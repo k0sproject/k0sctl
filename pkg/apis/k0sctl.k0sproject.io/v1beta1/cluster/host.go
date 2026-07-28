@@ -544,7 +544,12 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 			extra.AddOrReplace("--hostname-override=" + h.HostnameOverride)
 		}
 		if extra != nil {
-			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", quote(h.FS(), extra.Join(h.FS()))))
+			// extra.Join already quotes each value with the host quoter; the
+			// final flags.Join in K0sInstallCommand quotes the whole
+			// --kubelet-extra-args value once more. Quoting here as well would
+			// double-quote it (on Windows SingleQuote wraps every value),
+			// producing a mangled, backtick-escaped result.
+			flags.AddOrReplace(fmt.Sprintf("--kubelet-extra-args=%s", extra.Join(h.FS())))
 		}
 	}
 
