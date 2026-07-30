@@ -60,6 +60,7 @@ func NewK0sctl(in io.Reader, out, errOut io.Writer) *cli.App {
 					configStatusCommand,
 				},
 			},
+			execCommand,
 			completionCommand,
 		},
 		EnableBashCompletion: true,
