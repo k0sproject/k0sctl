@@ -113,23 +113,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		if err != nil {
 			return fmt.Errorf("failed to build k0s config for %s: %w", c, err)
 		}
-		tempConfigPath, err := c.FS().CreateTemp("", "")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for config: %w", err)
-		}
-		defer func() {
-			if err := c.Sudo().FS().Remove(tempConfigPath); err != nil {
-				log.Warnf("%s: failed to delete temporary file %s: %s", c, tempConfigPath, err)
-			}
-		}()
-
-		if err := c.Sudo().FS().WriteFile(tempConfigPath, []byte(cfgNew), 0o600); err != nil {
-			return err
-		}
-
-		// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
-		// TODO: thread a real ctx if the Prepare interface ever takes a context.
-		if err := p.validateConfig(context.Background(), c, tempConfigPath); err != nil {
+		if err := p.validateConfigWithTempFile(c, cfgNew); err != nil {
 			return err
 		}
 
@@ -244,6 +228,28 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 		return true
 	}
 	return false
+}
+
+// validateConfigWithTempFile writes cfg to a temporary file on the host,
+// runs k0s config validation against it and removes the file afterwards.
+func (p *ConfigureK0s) validateConfigWithTempFile(c *cluster.Host, cfg string) error {
+	tempConfigPath, err := c.FS().CreateTemp("", "")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for config: %w", err)
+	}
+	defer func() {
+		if err := c.Sudo().FS().Remove(tempConfigPath); err != nil {
+			log.Warnf("%s: failed to delete temporary file %s: %s", c, tempConfigPath, err)
+		}
+	}()
+
+	if err := c.Sudo().FS().WriteFile(tempConfigPath, []byte(cfg), 0o600); err != nil {
+		return err
+	}
+
+	// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
+	// TODO: thread a real ctx if the Prepare interface ever takes a context.
+	return p.validateConfig(context.Background(), c, tempConfigPath)
 }
 
 func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, configPath string) error {
