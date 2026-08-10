@@ -95,50 +95,25 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		// do nothing - base k0s config does not contain any existing SANs
 	}
 
-	// populate SANs with all controller addresses
 	for i, c := range p.Config.Spec.Hosts.Controllers() {
 		if c.Reset {
 			continue
 		}
-		if !slices.Contains(sans, c.Address()) {
-			sans = append(sans, c.Address())
-			log.Debugf("added controller %d address %s to spec.api.sans", i+1, c.Address())
-		}
-		if c.PrivateAddress != "" && !slices.Contains(sans, c.PrivateAddress) {
-			sans = append(sans, c.PrivateAddress)
-			log.Debugf("added controller %d private address %s to spec.api.sans", i+1, c.PrivateAddress)
-		}
-	}
 
-	// assign populated sans to the base config
-	p.newBaseConfig.DigMapping("spec", "api")["sans"] = sans
+		// keep dedicated SANs list per controller,
+		// to avoid k0s config regeneration and k0scontroller restarts
+		// when adding new CP node to the cluster
+		log.Debugf("building spec.api.sans for controller %d (%s)", i+1, c.Address())
 
-	for _, h := range p.Config.Spec.Hosts.Controllers() {
-		if h.Reset {
-			continue
-		}
+		// store sans to config
+		controllerBaseConfig := p.newBaseConfig.Dup()
+		controllerBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans(sans, c)
 
-		cfgNew, err := p.configFor(h)
+		cfgNew, err := p.configFor(c, controllerBaseConfig)
 		if err != nil {
-			return fmt.Errorf("failed to build k0s config for %s: %w", h, err)
+			return fmt.Errorf("failed to build k0s config for %s: %w", c, err)
 		}
-		tempConfigPath, err := h.FS().CreateTemp("", "")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary file for config: %w", err)
-		}
-		defer func() {
-			if err := h.Sudo().FS().Remove(tempConfigPath); err != nil {
-				log.Warnf("%s: failed to delete temporary file %s: %s", h, tempConfigPath, err)
-			}
-		}()
-
-		if err := h.Sudo().FS().WriteFile(tempConfigPath, []byte(cfgNew), 0o600); err != nil {
-			return err
-		}
-
-		// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
-		// TODO: thread a real ctx if the Prepare interface ever takes a context.
-		if err := p.validateConfig(context.Background(), h, tempConfigPath); err != nil {
+		if err := p.validateConfigWithTempFile(c, cfgNew); err != nil {
 			return err
 		}
 
@@ -147,7 +122,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		if err := yaml.Unmarshal([]byte(cfgNew), &cfgA); err != nil {
 			return fmt.Errorf("failed to unmarshal new config: %w", err)
 		}
-		if err := yaml.Unmarshal([]byte(h.Metadata.K0sExistingConfig), &cfgB); err != nil {
+		if err := yaml.Unmarshal([]byte(c.Metadata.K0sExistingConfig), &cfgB); err != nil {
 			return fmt.Errorf("failed to unmarshal existing config: %w", err)
 		}
 		cfgAString, err := yaml.Marshal(cfgA)
@@ -160,13 +135,13 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 
 		if bytes.Equal(cfgAString, cfgBString) {
-			log.Debugf("%s: configuration will not change", h)
+			log.Debugf("%s: configuration will not change", c)
 			continue
 		}
 
-		log.Debugf("%s: configuration will change", h)
-		h.Metadata.K0sNewConfig = cfgNew
-		p.hosts = append(p.hosts, h)
+		log.Debugf("%s: configuration will change", c)
+		c.Metadata.K0sNewConfig = cfgNew
+		p.hosts = append(p.hosts, c)
 	}
 
 	return nil
@@ -228,6 +203,20 @@ func (p *ConfigureK0s) Run(ctx context.Context) error {
 	return p.parallelDo(ctx, controllers, p.configureK0s)
 }
 
+// hostsSans returns a dedicated copy of the base sans extended with the
+// host's own addresses.
+func hostsSans(sans []string, host *cluster.Host) []string {
+	out := make([]string, len(sans))
+	copy(out, sans)
+	if !slices.Contains(out, host.Address()) {
+		out = append(out, host.Address())
+	}
+	if host.PrivateAddress != "" && !slices.Contains(out, host.PrivateAddress) {
+		out = append(out, host.PrivateAddress)
+	}
+	return out
+}
+
 func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 	if cfg == nil {
 		return false
@@ -239,6 +228,28 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 		return true
 	}
 	return false
+}
+
+// validateConfigWithTempFile writes cfg to a temporary file on the host,
+// runs k0s config validation against it and removes the file afterwards.
+func (p *ConfigureK0s) validateConfigWithTempFile(c *cluster.Host, cfg string) error {
+	tempConfigPath, err := c.FS().CreateTemp("", "")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for config: %w", err)
+	}
+	defer func() {
+		if err := c.Sudo().FS().Remove(tempConfigPath); err != nil {
+			log.Warnf("%s: failed to delete temporary file %s: %s", c, tempConfigPath, err)
+		}
+	}()
+
+	if err := c.Sudo().FS().WriteFile(tempConfigPath, []byte(cfg), 0o600); err != nil {
+		return err
+	}
+
+	// Prepare has no ctx; the Prepare interface takes only *v1beta1.Cluster.
+	// TODO: thread a real ctx if the Prepare interface ever takes a context.
+	return p.validateConfig(context.Background(), c, tempConfigPath)
 }
 
 func (p *ConfigureK0s) validateConfig(ctx context.Context, h *cluster.Host, configPath string) error {
@@ -335,19 +346,19 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	return nil
 }
 
-func (p *ConfigureK0s) configFor(h *cluster.Host) (string, error) {
+func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (string, error) {
 	var cfg dig.Mapping
 
 	if p.Config.Spec.K0s.DynamicConfig {
 		if h == p.leader && h.Metadata.K0sRunningVersion == nil {
 			log.Debugf("%s: leader will get a full config on initialize ", h)
-			cfg = p.newBaseConfig.Dup()
+			cfg = hostBaseConfig
 		} else {
 			log.Debugf("%s: using a stripped down config for dynamic config", h)
 			cfg = p.Config.Spec.K0s.NodeConfig()
 		}
 	} else {
-		cfg = p.newBaseConfig.Dup()
+		cfg = hostBaseConfig
 	}
 
 	var addr string
