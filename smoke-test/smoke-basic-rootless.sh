@@ -29,6 +29,19 @@ echo "* Starting apply"
 ../k0sctl apply --config "${K0SCTL_CONFIG}" --kubeconfig-out applykubeconfig --debug
 echo "* Apply OK"
 
+echo "* Re-applying to verify a non-root apply is idempotent"
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug > reapply.log 2>&1 || { cat reapply.log; exit 1; }
+echo "* Re-apply OK"
+
+echo "* Verify the existing k0s config was readable as ${SSH_USER}"
+grep -q "found existing configuration" reapply.log
+
+echo "* Verify k0s was not reconfigured and restarted for no reason"
+if grep -q "restarting k0s service" reapply.log; then
+  echo "FAIL: k0s was restarted even though nothing changed"
+  exit 1
+fi
+
 echo "* Verify hooks were executed on the host"
 bootloose ssh root@manager0 -- grep -q hello "~${SSH_USER}/apply.hook"
 

@@ -291,10 +291,16 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 
 	log.Debugf("%s: has k0s binary version %s", h, h.Metadata.K0sBinaryVersion)
 
-	if h.IsController() && h.FS().FileExist(h.K0sConfigPath()) {
-		cfgData, err := h.FS().ReadFile(h.K0sConfigPath())
-		cfg := string(cfgData)
-		if cfg != "" && err == nil {
+	// The k0s config is written as root:root 0600 into a 0750 directory, so both
+	// the existence check and the read require elevation. Without it the config
+	// looks missing to any non-root connection, which makes every apply believe
+	// the configuration changed.
+	if h.IsController() && h.Sudo().FS().FileExist(h.K0sConfigPath()) {
+		cfgData, err := h.Sudo().FS().ReadFile(h.K0sConfigPath())
+		if err != nil {
+			return fmt.Errorf("failed to read existing k0s configuration %s: %w", h.K0sConfigPath(), err)
+		}
+		if cfg := string(cfgData); cfg != "" {
 			log.Infof("%s: found existing configuration", h)
 			h.Metadata.K0sExistingConfig = cfg
 		}
