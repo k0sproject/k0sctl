@@ -3,11 +3,13 @@ package phase
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	gopath "path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/k0sproject/dig"
@@ -200,7 +202,65 @@ func (p *ConfigureK0s) Run(ctx context.Context) error {
 	controllers := p.Config.Spec.Hosts.Controllers().Filter(func(h *cluster.Host) bool {
 		return !h.Reset && len(h.Metadata.K0sNewConfig) > 0
 	})
-	return p.parallelDo(ctx, controllers, p.configureK0s)
+
+	return p.configureControllers(ctx, controllers, p.installConfig, p.restartK0s)
+}
+
+// configureControllers installs the new configuration on every controller and
+// then restarts the ones that need it. The install and restart functions are
+// parameters so that the ordering guarantees below can be tested without a
+// remote host.
+func (p *ConfigureK0s) configureControllers(ctx context.Context, controllers cluster.Hosts, install, restart func(context.Context, *cluster.Host) error) error {
+	var mu sync.Mutex
+	installed := make(map[*cluster.Host]struct{}, len(controllers))
+
+	// Installing the configuration file does not disrupt a running controller,
+	// so it can happen on every host at once.
+	installErr := p.parallelDo(ctx, controllers, func(ctx context.Context, h *cluster.Host) error {
+		if err := install(ctx, h); err != nil {
+			return err
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		installed[h] = struct{}{}
+		return nil
+	})
+
+	// A host that received the new configuration but was never restarted keeps
+	// running the old one, and the next apply reads the file back as the
+	// existing config and considers the host unchanged, so it would never
+	// restart. Restart what did get installed even when another host failed,
+	// and report the installation failure afterwards.
+	pending := controllers.Filter(func(h *cluster.Host) bool {
+		_, ok := installed[h]
+		return ok
+	})
+
+	// Restarting is disruptive. With embedded etcd, restarting every controller
+	// at once loses quorum, so restart them one at a time and wait for each to
+	// report ready before touching the next, the same way UpgradeControllers
+	// does it.
+	//
+	// Hosts.Each returns the callback error as-is, unlike the parallel helpers
+	// which prefix it with the host, so name the host here.
+	restartErr := controllersNeedingRestart(pending).Each(ctx, func(ctx context.Context, h *cluster.Host) error {
+		if err := restart(ctx, h); err != nil {
+			return fmt.Errorf("%s: %w", h, err)
+		}
+		return nil
+	})
+
+	return errors.Join(installErr, restartErr)
+}
+
+// controllersNeedingRestart returns the hosts that must be restarted for a new
+// configuration to take effect. Hosts that are not running k0s yet get started
+// by a later phase, and hosts pending an upgrade are restarted by
+// UpgradeControllers, which already serializes and gates on readiness.
+func controllersNeedingRestart(controllers cluster.Hosts) cluster.Hosts {
+	return controllers.Filter(func(h *cluster.Host) bool {
+		return h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade
+	})
 }
 
 // hostsSans returns a dedicated copy of the base sans extended with the
@@ -290,7 +350,7 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 	return h.Configurer.K0sCmdf(`validate config --config "%s"`, configPath)
 }
 
-func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error {
+func (p *ConfigureK0s) installConfig(_ context.Context, h *cluster.Host) error {
 	path := h.K0sConfigPath()
 	if h.Sudo().FS().FileExist(path) {
 		if ok, _ := h.Sudo().FS().FileContains(path, " generated-by-k0sctl"); !ok {
@@ -329,18 +389,39 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 		log.Debugf("%s: failed to chmod configuration file %s: %v", h, configPath, err)
 	}
 
-	if h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade {
-		log.Infof("%s: restarting k0s service", h)
-		svc, err := h.Sudo().Service(h.K0sServiceName())
-		if err != nil {
-			return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
-		}
-		if err := svc.Restart(ctx); err != nil {
-			return err
-		}
+	return nil
+}
 
-		log.Infof("%s: waiting for k0s service to start", h)
-		return retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName()))
+// restartK0s restarts a single controller and waits until it serves traffic
+// again. Callers must invoke this one host at a time to keep etcd quorum.
+func (p *ConfigureK0s) restartK0s(ctx context.Context, h *cluster.Host) error {
+	log.Infof("%s: restarting k0s service", h)
+	svc, err := h.Sudo().Service(h.K0sServiceName())
+	if err != nil {
+		return fmt.Errorf("get service %s: %w", h.K0sServiceName(), err)
+	}
+	if err := svc.Restart(ctx); err != nil {
+		return err
+	}
+
+	log.Infof("%s: waiting for k0s service to start", h)
+	if err := retry.WithDefaultTimeout(ctx, node.ServiceRunningFunc(h, h.K0sServiceName())); err != nil {
+		return fmt.Errorf("wait for k0s service start: %w", err)
+	}
+
+	// A running service is not the same as a ready controller. Moving on while
+	// the api server is still coming up would stack another restart on top of a
+	// cluster that has not recovered from the previous one yet.
+	log.Infof("%s: waiting for the controller to become ready", h)
+	err = retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
+		out, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get --raw='/readyz?verbose=true'"))
+		if err != nil {
+			return fmt.Errorf("readiness endpoint reports %q: %w", out, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("controller did not reach ready state: %w", err)
 	}
 
 	return nil
