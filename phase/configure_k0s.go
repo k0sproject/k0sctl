@@ -292,7 +292,7 @@ func (p *ConfigureK0s) buildConfigValidateCommand(h *cluster.Host, configPath st
 
 func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error {
 	path := h.K0sConfigPath()
-	if h.FS().FileExist(path) {
+	if h.Sudo().FS().FileExist(path) {
 		if ok, _ := h.Sudo().FS().FileContains(path, " generated-by-k0sctl"); !ok {
 			newpath := path + ".old"
 			log.Warnf("%s: an existing config was found and will be backed up as %s", h, newpath)
@@ -316,7 +316,7 @@ func (p *ConfigureK0s) configureK0s(ctx context.Context, h *cluster.Host) error 
 	configPath := h.K0sConfigPath()
 	configDir := gopath.Dir(configPath)
 
-	if !h.FS().FileExist(configDir) {
+	if !h.Sudo().FS().FileExist(configDir) {
 		if err := h.Sudo().FS().MkdirAll(configDir, 0o750); err != nil {
 			return fmt.Errorf("failed to create k0s configuration directory: %w", err)
 		}
