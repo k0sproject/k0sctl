@@ -4,3 +4,4 @@ k0sctl_040
 *.tar.gz
 *.iid
 *.log
+kubectl
