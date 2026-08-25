@@ -36,14 +36,21 @@ jobs:
 
   smoke-basic:
     strategy:
+      fail-fast: false
       matrix:
+        # Latest and previous release of each distro family that bootloose
+        # ships images for. See the "Choosing the OS image to run" section of
+        # https://github.com/k0sproject/bootloose for the current image list.
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
-          - quay.io/k0sproject/bootloose-amazonlinux2023
-          - quay.io/k0sproject/bootloose-debian12
-          - quay.io/k0sproject/bootloose-fedora42
-          - quay.io/k0sproject/bootloose-rockylinux9
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
+          - quay.io/k0sproject/bootloose-alpine3.22:latest
+          - quay.io/k0sproject/bootloose-amazonlinux2023:latest
+          - quay.io/k0sproject/bootloose-debian13:latest
+          - quay.io/k0sproject/bootloose-debian12:latest
+          - quay.io/k0sproject/bootloose-fedora42:latest
+          - quay.io/k0sproject/bootloose-rockylinux9:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
+          - quay.io/k0sproject/bootloose-ubuntu24.04:latest
     name: Basic 1+1 smoke
     needs: build
     runs-on: ubuntu-24.04
@@ -60,8 +67,8 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-debian12
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-debian13:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
     name: Basic 1+1 smoke (regular user login)
     needs: build
     runs-on: ubuntu-24.04
@@ -96,7 +103,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
     name: Basic 1+1 smoke using openssh client
     needs: build
     runs-on: ubuntu-24.04
@@ -113,7 +120,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
     name: Basic 1+1 smoke using multidoc yamls
     needs: build
     runs-on: ubuntu-24.04
@@ -129,9 +136,11 @@ jobs:
   smoke-files:
     strategy:
       matrix:
+        # Debian family only: smoke-files.sh installs `tree` with apt-get and
+        # creates its test user with useradd, neither of which Alpine has.
         image:
-          - quay.io/k0sproject/bootloose-ubuntu24.04
-          - quay.io/k0sproject/bootloose-alpine3.22
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
+          - quay.io/k0sproject/bootloose-debian13:latest
     name: Basic file upload smoke
     needs: build
     runs-on: ubuntu-24.04
@@ -140,13 +149,15 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
+        env:
+          LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-files
 
   smoke-dynamic:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
     name: Basic dynamic config smoke
     needs: build
     runs-on: ubuntu-24.04
@@ -155,6 +166,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/smoke-test-cache
       - name: Run smoke tests
+        env:
+          LINUX_IMAGE: ${{ matrix.image }}
         run: make smoke-dynamic
 
   smoke-os-override:
@@ -183,10 +196,10 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
-          - quay.io/k0sproject/bootloose-amazonlinux2023
-          - quay.io/k0sproject/bootloose-rockylinux9
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
+          - quay.io/k0sproject/bootloose-amazonlinux2023:latest
+          - quay.io/k0sproject/bootloose-rockylinux9:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
         k0s_from:
           - v1.21.6+k0s.0
     name: Upgrade
@@ -206,8 +219,8 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
         k0s_from:
           - v1.21.6+k0s.0
     name: Dry run
@@ -227,8 +240,8 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-rockylinux9
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-rockylinux9:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
 
     name: Apply + reset
     needs: build
@@ -246,9 +259,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
-          - quay.io/k0sproject/bootloose-rockylinux9
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
+          - quay.io/k0sproject/bootloose-rockylinux9:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
 
     name: Apply + backup + reset + restore
     needs: build
@@ -279,7 +292,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
 
     name: Controller swap
     needs: build
@@ -297,8 +310,8 @@ jobs:
     strategy:
       matrix:
         image:
-          - quay.io/k0sproject/bootloose-alpine3.22
-          - quay.io/k0sproject/bootloose-ubuntu24.04
+          - quay.io/k0sproject/bootloose-alpine3.23:latest
+          - quay.io/k0sproject/bootloose-ubuntu26.04:latest
 
     name: Reinstall (modify install flags)
     needs: build

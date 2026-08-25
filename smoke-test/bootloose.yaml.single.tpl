@@ -5,7 +5,7 @@ machines:
 - count: 1
   backend: docker
   spec:
-    image: quay.io/k0sproject/bootloose-ubuntu22.04
+    image: quay.io/k0sproject/bootloose-ubuntu26.04:latest
     name: manager%d
     privileged: true
     volumes:
