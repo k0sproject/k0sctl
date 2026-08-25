@@ -125,4 +125,31 @@ remoteFileContent root@manager0 /root/url_destdir/releases | grep -q html_url
 printf %s "[content] "
 echo "OK"
 
+echo "* Re-applying to verify the uploads are idempotent"
+../k0sctl apply --config k0sctl.yaml --debug > reapply.log 2>&1 || { cat reapply.log; exit 1; }
+
+# Host.FileChanged compares the local and remote size and mtime and logs which of
+# the two differed, so a re-upload of an unchanged file always leaves a trace in
+# the debug log. URL sources are not compared at all - UploadFiles sends them
+# through uploadURL - so these only cover the local file and directory sources.
+printf %s "  - No unchanged file is considered changed .. "
+if grep -qE "file (sizes|modtimes) for .* differ|(local|remote) stat failed" reapply.log; then
+  echo "FAIL"
+  grep -E "file (sizes|modtimes) for .* differ|(local|remote) stat failed" reapply.log
+  exit 1
+fi
+echo "OK"
+
+printf %s "  - Unchanged files are skipped on re-apply .. "
+if ! grep -q "hasn.t been changed, skipping upload" reapply.log; then
+  echo "FAIL"
+  grep -i "upload" reapply.log
+  exit 1
+fi
+echo "OK"
+
+# Not asserted here: "k0s will be upgraded". GatherK0sFacts.needsUpgrade returns
+# true for any host with a URL file source without comparing anything, and this
+# config has two, so the re-apply restarts k0s no matter what the uploads did.
+
 echo "* Done"
