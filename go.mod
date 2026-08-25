@@ -38,7 +38,7 @@ require (
 	github.com/samber/slog-logrus/v2 v2.5.4
 	github.com/sergi/go-diff v1.4.0
 	k8s.io/apimachinery v0.36.4
-	k8s.io/client-go v0.36.3
+	k8s.io/client-go v0.36.4
 )
 
 require (
