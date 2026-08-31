@@ -58,9 +58,9 @@ func (p *InstallBinaries) ShouldRun() bool {
 }
 
 // DryRun reports what would happen if Run is called.
-func (p *InstallBinaries) DryRun() error {
+func (p *InstallBinaries) DryRun(ctx context.Context) error {
 	return p.parallelDo(
-		context.Background(),
+		ctx,
 		p.Config.Spec.Hosts.Filter(func(h *cluster.Host) bool { return h.Metadata.K0sBinaryTempFile != "" }),
 		func(_ context.Context, h *cluster.Host) error {
 			p.DryMsgf(h, "install k0s %s binary from %s to %s", p.Config.Spec.K0s.Version, h.Metadata.K0sBinaryTempFile, h.K0sInstallLocation())
