@@ -5,3 +5,5 @@ k0sctl_040
 *.iid
 *.log
 kubectl
+upload/
+upload_chmod/
