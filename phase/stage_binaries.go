@@ -60,8 +60,8 @@ func (p *StageBinaries) ShouldRun() bool {
 // not a permanent cluster change — on success, the temp file is removed by
 // Disconnect (including its DryRun behavior), while CleanUp is only invoked on
 // failure paths. CleanUp is also called here on error as an extra safety net.
-func (p *StageBinaries) DryRun() error {
-	if err := p.Run(context.Background()); err != nil {
+func (p *StageBinaries) DryRun(ctx context.Context) error {
+	if err := p.Run(ctx); err != nil {
 		p.CleanUp()
 		return err
 	}
