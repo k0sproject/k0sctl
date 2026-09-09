@@ -19,7 +19,7 @@ require (
 	github.com/masterzen/winrm v0.0.0-20260407182533-5570be7f80cf // indirect
 	github.com/mattn/go-isatty v0.0.24
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
-	github.com/sirupsen/logrus v1.10.1
+	github.com/sirupsen/logrus v1.10.2
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/crypto v0.54.0 // indirect
