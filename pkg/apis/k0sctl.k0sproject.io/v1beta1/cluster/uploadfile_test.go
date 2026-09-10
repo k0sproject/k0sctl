@@ -3,6 +3,7 @@ package cluster
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -154,4 +155,46 @@ func TestUploadFileResolveRelativeSingleFile(t *testing.T) {
 	require.Equal(t, tmp, u.Base)
 	require.Len(t, u.Sources, 1)
 	require.Equal(t, "a.txt", u.Sources[0].Path)
+}
+
+func TestUploadFileValidateSha256(t *testing.T) {
+	const sum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+	t.Run("hex sum", func(t *testing.T) {
+		u := UploadFile{Source: "https://example.com/a.tar", DestinationFile: "/tmp/a.tar", Sha256: sum}
+		require.NoError(t, u.Validate())
+	})
+
+	t.Run("uppercase hex sum", func(t *testing.T) {
+		u := UploadFile{Source: "https://example.com/a.tar", DestinationFile: "/tmp/a.tar", Sha256: strings.ToUpper(sum)}
+		require.NoError(t, u.Validate())
+	})
+
+	t.Run("too short", func(t *testing.T) {
+		u := UploadFile{Source: "https://example.com/a.tar", DestinationFile: "/tmp/a.tar", Sha256: sum[:63]}
+		require.ErrorContains(t, u.Validate(), "must be a hex encoded sha256 sum")
+	})
+
+	t.Run("not hex", func(t *testing.T) {
+		u := UploadFile{Source: "https://example.com/a.tar", DestinationFile: "/tmp/a.tar", Sha256: strings.Repeat("z", 64)}
+		require.ErrorContains(t, u.Validate(), "must be a hex encoded sha256 sum")
+	})
+
+	t.Run("with inline data", func(t *testing.T) {
+		u := UploadFile{Data: "hello", DestinationFile: "/tmp/a.txt", Sha256: sum}
+		require.ErrorContains(t, u.Validate(), "sha256 can not be used with inline data")
+	})
+}
+
+func TestUploadFileResolveGlobRejectsSha256(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.yaml"), []byte("a"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.yaml"), []byte("b"), 0o644))
+
+	u := &UploadFile{
+		Source:         "*.yaml",
+		DestinationDir: "/tmp",
+		Sha256:         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	}
+	require.ErrorContains(t, u.ResolveRelativeTo(filepath.ToSlash(dir)), "can only describe a single file")
 }

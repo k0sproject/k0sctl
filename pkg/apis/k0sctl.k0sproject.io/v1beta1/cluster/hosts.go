@@ -15,20 +15,26 @@ func (hosts Hosts) Validate() error {
 		return fmt.Errorf("at least one host required")
 	}
 
-	if len(hosts) > 1 {
-		hostmap := make(map[string]struct{}, len(hosts))
-		for idx, h := range hosts {
-			if err := h.Validate(); err != nil {
-				return fmt.Errorf("host #%d: %v", idx+1, err)
-			}
-			if h.Role == "single" {
-				return fmt.Errorf("%d hosts defined but includes a host with role 'single': %s", len(hosts), h)
-			}
-			if _, ok := hostmap[h.String()]; ok {
-				return fmt.Errorf("%s: is not unique", h)
-			}
-			hostmap[h.String()] = struct{}{}
+	// Every host is validated, however many there are: a one host cluster is a
+	// perfectly ordinary configuration and its host has the same way of being
+	// wrong as any other. Only the two rules that are about hosts sharing a
+	// cluster - the 'single' role and uniqueness - need more than one host to
+	// mean anything.
+	hostmap := make(map[string]struct{}, len(hosts))
+	for idx, h := range hosts {
+		if err := h.Validate(); err != nil {
+			return fmt.Errorf("host #%d: %v", idx+1, err)
 		}
+		if len(hosts) == 1 {
+			continue
+		}
+		if h.Role == "single" {
+			return fmt.Errorf("%d hosts defined but includes a host with role 'single': %s", len(hosts), h)
+		}
+		if _, ok := hostmap[h.String()]; ok {
+			return fmt.Errorf("%s: is not unique", h)
+		}
+		hostmap[h.String()] = struct{}{}
 	}
 
 	if len(hosts.Controllers()) < 1 {

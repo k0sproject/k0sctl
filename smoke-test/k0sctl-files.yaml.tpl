@@ -45,6 +45,24 @@ spec:
         - name: url-destdir
           src: https://api.github.com/repos/k0sproject/k0s/releases
           dstDir: /root/url_destdir
+        # Served by the filesrv machine, which lets the test control the
+        # response headers k0sctl compares between applies.
+        - name: srv-etag
+          src: http://$FILESRV/files/plain.bin
+          dst: /root/srv/plain.bin
+        - name: srv-noetag
+          src: http://$FILESRV/noetag/plain.bin
+          dst: /root/srv/noetag.bin
+        - name: srv-checksum
+          src: http://$FILESRV/files/bundle.bin
+          dst: /root/srv/bundle.bin
+          sha256: $BUNDLE_SHA256
+        # Already on the host before k0sctl ever runs, which is how an airgap
+        # bundle often gets there. The sum is what lets it be accepted as is.
+        - name: srv-adopted
+          src: http://$FILESRV/files/adopt.bin
+          dst: /root/srv/adopt.bin
+          sha256: $ADOPT_SHA256
     - role: worker
       uploadBinary: true
       ssh:

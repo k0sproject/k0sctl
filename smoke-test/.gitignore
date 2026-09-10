@@ -7,3 +7,4 @@ k0sctl_040
 kubectl
 upload/
 upload_chmod/
+k0sctl-badsum.yaml

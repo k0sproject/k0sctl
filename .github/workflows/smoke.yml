@@ -138,6 +138,7 @@ jobs:
 
   smoke-files:
     strategy:
+      fail-fast: false
       matrix:
         # Debian family only: smoke-files.sh installs `tree` with apt-get and
         # creates its test user with useradd, neither of which Alpine has.

@@ -413,6 +413,16 @@ Example:
   perm: 0600
 ```
 
+Remote source with a checksum:
+
+```yaml
+- name: airgap-bundle
+  src: https://example.com/k0s/k0s-airgap-bundle-%v-linux-%p.tar
+  dstDir: /var/lib/k0s/images/
+  sha256: 0c1f2e5b0a5ea1f0ff5b6ca0b7f6c2a1e5b0a5ea1f0ff5b6ca0b7f6c2a1e5b0a
+  perm: 0600
+```
+
 Inline data example:
 
 ```yaml
@@ -426,12 +436,41 @@ Inline data example:
 * `name`: name of the file "bundle", used only for logging purposes (optional)
 * `src`: File path, an URL or [Glob pattern](https://golang.org/pkg/path/filepath/#Match) to match files to be uploaded. URL sources will be directly downloaded using the target host. If the value is a URL, '%'-prefixed tokens can be used, see [tokens](#tokens). (required when `data` is not set)
 * `data`: Inline file data to write to the destination. Use together with `dst` or `dst` + `dstDir`. (required when `src` is not set)
+* `sha256`: Expected hex encoded sha256 sum of the file. Every source is verified against it: a URL source after the download, a local source before it is uploaded. For an `http` or `https` source it additionally allows a transfer that dies part way through to be continued instead of restarted, up to a few attempts within the same apply; nothing is left on the host between applies, as a download that never finishes is discarded and the next apply starts it over. Can not be used with `data` or with a `src` that matches multiple files. (optional)
 * `dstDir`: Destination directory for the file(s). `k0sctl` will create full directory structure if it does not already exist on the host (default: user home)
 * `dst`: Destination filename for the file. Only usable for single file uploads (default: basename of file)
 * `perm`: File permission mode for uploaded file(s) (default: same as local)
 * `dirPerm`: Directory permission mode for created directories (default: 0755)
 * `user`: User name of file/directory owner, must exist on the host (optional)
 * `group`: Group name of file/directory owner, must exist on the host (optional)
+
+URL sources are not re-downloaded on every apply. After a download, `k0sctl`
+records what an HTTP `HEAD` request from the host reported for the URL, together
+with the size and modification time of the file it wrote, under
+`k0sctl/downloads` in the connecting user's cache directory on the host. A later
+apply skips the download while the file on the host is still the one that was
+written and a fresh `HEAD` still agrees with the record. The record identifies
+the URL by a digest rather than storing it, since a download URL can carry its
+own authorization.
+
+Agreement means a strong `ETag` that has not changed, or an unchanged
+`Last-Modified` (with `Content-Length`, when the server sends one, corroborating
+it). A weak `ETag` promises only that two responses mean the same thing rather
+than that they are the same bytes, and a `Content-Length` on its own cannot tell
+different content of the same length apart, so neither is enough on its own: a
+server that offers nothing better has its file downloaded on every apply, as it
+did before.
+
+A configured `sha256` answers the question instead of the `HEAD` request: a
+destination that was verified against it and has not been written to since is
+left alone, and one that has no record yet is checksummed on the host rather
+than downloaded again. That first checksum is recorded, so a file that was put
+in place by other means is read in full once rather than on every apply.
+
+The `HEAD` comparison and the resuming both need `http` or `https`. A `src` with
+any other scheme is still accepted and still handed to the host's `curl` or
+`wget` as before, and a `sha256` still verifies it and still spares it a
+download, but without one such a source is fetched on every apply.
 
 ###### `spec.hosts[*].hooks` &lt;mapping&gt; (optional)
 

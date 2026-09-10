@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,6 +24,7 @@ type UploadFile struct {
 	Name            string       `yaml:"name,omitempty"`
 	Source          string       `yaml:"src,omitempty"`
 	Data            string       `yaml:"data,omitempty"`
+	Sha256          string       `yaml:"sha256,omitempty"`
 	DestinationDir  string       `yaml:"dstDir,omitempty"`
 	DestinationFile string       `yaml:"dst,omitempty"`
 	PermMode        any          `yaml:"perm,omitempty"`
@@ -35,8 +37,15 @@ type UploadFile struct {
 	Base            string       `yaml:"-"`
 }
 
+// sha256Pattern matches a hex encoded sha256 sum in either case.
+var sha256Pattern = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
 func (u UploadFile) Validate() error {
 	return validation.ValidateStruct(&u,
+		validation.Field(&u.Sha256,
+			validation.Empty.When(u.HasData()).Error("sha256 can not be used with inline data"),
+			validation.Match(sha256Pattern).Error("must be a hex encoded sha256 sum"),
+		),
 		validation.Field(&u.Name, validation.Required.When(u.HasData() && u.DestinationFile == "").Error("name or dst required for data")),
 		validation.Field(&u.Source, validation.Required.When(!u.HasData()).Error("src or data required")),
 		validation.Field(&u.Data, validation.Required.When(u.Source == "").Error("src or data required")),
@@ -226,6 +235,10 @@ func (u *UploadFile) glob(src string) error {
 
 	if u.DestinationFile != "" && len(u.Sources) > 1 {
 		return fmt.Errorf("found multiple files for %s but single file dst %s defined", u, u.DestinationFile)
+	}
+
+	if u.Sha256 != "" && len(u.Sources) > 1 {
+		return fmt.Errorf("found multiple files for %s but a sha256 sum can only describe a single file", u)
 	}
 
 	return nil
