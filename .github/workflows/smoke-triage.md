@@ -54,14 +54,14 @@ tools:
   github:
     read-only: true
     toolsets: [actions, repos, pull_requests]
-  # No shell at all. The toolsets above already read and search the repository,
-  # and at any ref, which is more than a checkout offers — so a shell would only
-  # widen the surface while the agent reads attacker-controlled text. Both keys
-  # are needed: omitting `bash` hands the agent `--allow-all-tools`, and the
-  # compiler requires `cli-proxy: false` alongside it because CLI-mounted MCP
-  # servers can only be reached from a shell.
-  bash: false
-  cli-proxy: false
+  # A read-only shell, and it is not optional: gh-aw mounts MCP servers as CLI
+  # commands, so the shell is how the agent reaches both `github` above and the
+  # safe outputs below. `bash: false` compiles and looks tighter, but it leaves
+  # the agent with no way to call any tool — it cannot read the run, and it
+  # cannot post. Omitting the key entirely is the other trap: that hands out
+  # `--allow-all-tools`. Deliberately absent from the list: anything that
+  # writes, any interpreter, compiler or make, and any network client.
+  bash: ["cat", "head", "tail", "grep", "find", "ls", "wc", "awk", "sort", "uniq", "cut"]
 
 safe-outputs:
   add-comment:
@@ -201,7 +201,9 @@ than the whole thing, and pull more only when the tail does not reach the first
 failure. Smoke scripts run under `set -e`, so the last lines are usually
 teardown noise: find the *first* real failure, not the final error. The markers
 worth searching for are `level=error`, `level=fatal`, `Error:`, `panic:`,
-`make: ***`, `##[error]`, and the usual suspects — `connection refused`,
+`make: ***`, the runner's own error lines (`##` followed by `[error]` — do not
+write that marker out verbatim, the log parser turns it into an annotation), and
+the usual suspects — `connection refused`,
 `context deadline exceeded`, `no such file or directory`, `permission denied`,
 `command not found`, `timed out`.
 
@@ -219,10 +221,11 @@ re-run is very unlikely to be infrastructure noise.
 **Trace it into the code.** The failing make target maps to a script in
 `smoke-test/`; read that to see which command failed and with what arguments.
 From there follow it into the source — the phase in `phase/`, the config
-handling in `pkg/`, or whichever path the command exercises. Read files and
-list directories through the repository tools; read anything the change touched
-at the commit under test, and read the merge target too when you need to know
-what changed between them. Code search covers the default branch rather than an
+handling in `pkg/`, or whichever path the command exercises. You have a
+checkout of the base repository at the merge target, and the repository tools
+read and list at any ref: read anything the change touched at the commit under
+test, and compare it against the merge target when you need to know what
+changed between them. Code search covers the default branch rather than an
 arbitrary commit, so use it to locate a symbol or an error string and then read
 the file itself at the commit under test to see what it actually says there.
 
