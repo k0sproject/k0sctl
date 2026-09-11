@@ -201,7 +201,9 @@ than the whole thing, and pull more only when the tail does not reach the first
 failure. Smoke scripts run under `set -e`, so the last lines are usually
 teardown noise: find the *first* real failure, not the final error. The markers
 worth searching for are `level=error`, `level=fatal`, `Error:`, `panic:`,
-`make: ***`, `##[error]`, and the usual suspects — `connection refused`,
+`make: ***`, the runner's own error lines (`##` followed by `[error]` — do not
+write that marker out verbatim, the log parser turns it into an annotation), and
+the usual suspects — `connection refused`,
 `context deadline exceeded`, `no such file or directory`, `permission denied`,
 `command not found`, `timed out`.
 
