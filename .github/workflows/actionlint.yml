@@ -4,6 +4,11 @@ on:
     paths:
       - .github/**
 
+permissions:
+  contents: read
+  # reviewdog's default reporter is github-pr-check, which posts a check run
+  checks: write
+
 jobs:
   actionlint:
     runs-on: ubuntu-latest

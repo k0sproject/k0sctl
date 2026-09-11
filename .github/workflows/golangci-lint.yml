@@ -4,6 +4,9 @@ on:
     paths:
       - '**.go'
 
+permissions:
+  contents: read
+
 jobs:
   golangci-lint:
     name: Run golangci-lint

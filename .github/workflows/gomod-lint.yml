@@ -5,6 +5,9 @@ on:
       - 'go.mod'
       - 'go.sum'
 
+permissions:
+  contents: read
+
 jobs:
   gomod-lint:
     name: Validate go module file consistency
