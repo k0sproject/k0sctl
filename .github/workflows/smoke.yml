@@ -10,6 +10,9 @@ on:
       - .github/workflows/smoke.yml
       - smoke-test/**
 
+permissions:
+  contents: read
+
 jobs:
 
   build:

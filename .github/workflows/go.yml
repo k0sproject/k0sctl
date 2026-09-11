@@ -8,6 +8,9 @@ on:
       - go.sum
       - Makefile
 
+permissions:
+  contents: read
+
 jobs:
   unit-test:
     strategy:
