@@ -281,6 +281,11 @@ the first line and the detail only if they want it.
 Write these five, each as short as it can be while still standing up:
 
 **Verdict** — one sentence: the category, and high / medium / low confidence.
+Name exactly one category, spelled as it is spelled above. The categories
+prescribe opposite actions, so a hybrid like "infrastructure/timing" decides
+nothing: infrastructure noise earns a re-run, a timing race must not get one. If
+two look plausible, pick the one the evidence supports best and say in the same
+sentence what would have distinguished them.
 
 **What failed** — the failing legs grouped by shared cause, with the failure
 count over the eight runs you examined. One or two sentences.
@@ -306,8 +311,10 @@ describing which tools you called or how you searched, no explaining what you
 could not do, no apologising for uncertainty — state confidence once, in the
 verdict, and move on. Prose, not nested bullets.
 
-Then, and only if the failure is infrastructure noise, call the
-`rerun-failed-legs` tool with a one-line reason. Re-runs are capped, so a wrong
-call burns a maintainer's attempt at the cost of hiding a real defect: when in
-doubt, do not call it. For every other category, say in one clause that a re-run
-is not the answer and why — not a paragraph.
+Then call the `rerun-failed-legs` tool with a one-line reason **if, and only
+if, the single category you named in the verdict is Infrastructure noise**. That
+is the decision — not your general sense that the failure looked transient. A
+race, a short wait and a wrong ordering assumption are all intermittent too, and
+re-running them hides a real defect while burning a capped attempt. For every
+other category, say in one clause that a re-run is not the answer and why — not
+a paragraph.
