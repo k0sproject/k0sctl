@@ -2,15 +2,21 @@ package phase
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/k0sctl/pkg/download"
 	"github.com/k0sproject/rig/v2/remotefs"
 
 	log "github.com/sirupsen/logrus"
@@ -21,6 +27,7 @@ type UploadFiles struct {
 	GenericPhase
 
 	hosts cluster.Hosts
+	sums  sumCache
 }
 
 // Title for the phase
@@ -49,13 +56,17 @@ func (p *UploadFiles) Run(ctx context.Context) error {
 }
 
 func (p *UploadFiles) uploadFiles(ctx context.Context, h *cluster.Host) error {
+	var tracker *download.Tracker
 	for _, f := range h.Files {
 		if ctx.Err() != nil {
 			return fmt.Errorf("upload canceled: %w", ctx.Err())
 		}
 		var err error
 		if f.IsURL() {
-			err = p.uploadURL(h, f)
+			if tracker == nil {
+				tracker = hostTracker(h)
+			}
+			err = p.uploadURL(ctx, h, tracker, f)
 		} else if len(f.Sources) > 0 {
 			err = p.uploadFile(h, f)
 		} else if f.HasData() {
@@ -120,6 +131,16 @@ func (p *UploadFiles) uploadFile(h *cluster.Host, f *cluster.UploadFile) error {
 		}
 
 		owner := f.Owner()
+
+		if f.Sha256 != "" {
+			// Checked whether or not this host is about to receive the file, so
+			// that a wrong artifact is reported on every apply rather than only
+			// on the one that happens to upload it. rig's upload compares the
+			// two ends afterwards, which covers the transfer itself.
+			if err := p.sums.verify(src, f.Sha256); err != nil {
+				return err
+			}
+		}
 
 		if err := p.ensureDir(h, path.Dir(dest), f.DirPermString, owner); err != nil {
 			return err
@@ -208,20 +229,47 @@ func (p *UploadFiles) uploadData(h *cluster.Host, f *cluster.UploadFile) error {
 	return p.applyFileMetadata(h, dest, owner, "", nil)
 }
 
-func (p *UploadFiles) uploadURL(h *cluster.Host, f *cluster.UploadFile) error {
-	log.Infof("%s: downloading %s to host %s", h, f, f.DestinationFile)
+func (p *UploadFiles) uploadURL(ctx context.Context, h *cluster.Host, tracker *download.Tracker, f *cluster.UploadFile) error {
 	owner := f.Owner()
+	expandedURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
 
+	// The destination directory has to exist before the download can be told
+	// whether it is already there, and it is created even for a skipped download
+	// so that its ownership and permissions still follow the configuration.
 	if err := p.ensureDir(h, path.Dir(f.DestinationFile), f.DirPermString, owner); err != nil {
 		return err
 	}
 
-	expandedURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
-	err := p.Wet(h, fmt.Sprintf("download file %s => %s", expandedURL, f.DestinationFile), func() error {
-		return h.DownloadURL(expandedURL, f.DestinationFile)
-	})
-	if err != nil {
-		return err
+	verdict := tracker.Needed(ctx, expandedURL, f.DestinationFile, f.Sha256)
+	if verdict.Download {
+		log.Infof("%s: downloading %s to host %s (%s)", h, f, f.DestinationFile, verdict.Reason)
+		// GatherK0sFacts asked the same question earlier and set NeedsUpgrade
+		// from the answer. If the answer has changed since, because the content
+		// behind the url was replaced between the two, the host is about to
+		// receive a new file and the upgrade phases still have to hear about it.
+		//
+		// Only for a host that is already running k0s: on one that is not, the
+		// flag would divert the pending install into the upgrade phases, which
+		// have no k0s to upgrade.
+		if !h.Reset && !h.Metadata.NeedsUpgrade && h.Metadata.K0sRunningVersion != nil {
+			log.Debugf("%s: marking for upgrade because %s is being downloaded to %s", h, expandedURL, f.DestinationFile)
+			h.Metadata.NeedsUpgrade = true
+		}
+		err := p.Wet(h, fmt.Sprintf("download file %s => %s", expandedURL, f.DestinationFile), func() error {
+			return tracker.Fetch(ctx, expandedURL, f.DestinationFile, f.Sha256)
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Infof("%s: %s is already downloaded to %s (%s)", h, f, f.DestinationFile, verdict.Reason)
+		if verdict.Adopt && p.IsWet() {
+			// The destination was accepted by reading the whole file, which is
+			// what every later apply would have to do again without a record of
+			// it. Writing one is a change to the host, so it waits for a run
+			// that is allowed to make changes.
+			tracker.Remember(ctx, expandedURL, f.DestinationFile, f.Sha256)
+		}
 	}
 
 	perm := ""
@@ -275,4 +323,54 @@ func chmodWithString(h *cluster.Host, path, perm string) error {
 
 func chmodWithMode(h *cluster.Host, path string, mode fs.FileMode) error {
 	return h.Sudo().FS().Chmod(path, mode)
+}
+
+// sumCache remembers the local files that have been checked against a configured
+// sha256 during this run, so that an artifact is read once instead of once per
+// host that wants it. Hosts are uploaded to in parallel, hence the lock, which
+// is held across the read: two hosts waiting for one checksum beats both of them
+// computing it.
+type sumCache struct {
+	mu     sync.Mutex
+	result map[string]error
+}
+
+// verify checks a local file against want, at most once per file and sum.
+func (c *sumCache) verify(name, want string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	key := name + "\x00" + want
+	if err, ok := c.result[key]; ok {
+		return err
+	}
+	err := verifyLocalSum(name, want)
+	if c.result == nil {
+		c.result = make(map[string]error)
+	}
+	c.result[key] = err
+	return err
+}
+
+// verifyLocalSum reports whether a local file has the sha256 sum the
+// configuration says it should have.
+func verifyLocalSum(name, want string) error {
+	f, err := os.Open(name)
+	if err != nil {
+		return fmt.Errorf("failed to open %s for checksumming: %w", name, err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Debugf("failed to close %s: %s", name, err)
+		}
+	}()
+
+	digest := sha256.New()
+	if _, err := io.Copy(digest, f); err != nil {
+		return fmt.Errorf("failed to checksum %s: %w", name, err)
+	}
+	if sum := hex.EncodeToString(digest.Sum(nil)); !strings.EqualFold(sum, want) {
+		return fmt.Errorf("%w: %s: expected sha256 %s, got %s", download.ErrChecksumMismatch, name, want, sum)
+	}
+	return nil
 }

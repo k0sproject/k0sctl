@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"testing"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
@@ -27,20 +28,22 @@ func TestNeedsUpgrade(t *testing.T) {
 
 	p := GatherK0sFacts{GenericPhase: GenericPhase{Config: cfg}}
 
-	result, err := p.needsUpgrade(h)
+	ctx := context.Background()
+
+	result, err := p.needsUpgrade(ctx, h)
 	require.NoError(t, err)
 	require.False(t, result)
 	h.Metadata.K0sRunningVersion = version.MustParse("1.23.3+k0s.2")
-	result, err = p.needsUpgrade(h)
+	result, err = p.needsUpgrade(ctx, h)
 	require.NoError(t, err)
 	require.True(t, result)
 	h.Metadata.K0sRunningVersion = version.MustParse("1.23.3+k0s.0")
-	result, err = p.needsUpgrade(h)
+	result, err = p.needsUpgrade(ctx, h)
 	require.NoError(t, err)
 	require.True(t, result)
 
 	// UseExistingK0s on a fresh host: binary is unknown so NeedsUpgrade returns false.
-	result, err = p.needsUpgrade(&cluster.Host{UseExistingK0s: true})
+	result, err = p.needsUpgrade(ctx, &cluster.Host{UseExistingK0s: true})
 	require.NoError(t, err)
 	require.False(t, result)
 }

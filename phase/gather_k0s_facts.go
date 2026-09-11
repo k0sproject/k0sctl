@@ -385,7 +385,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		p.Config.Spec.K0s.Version = status.Version
 	}
 
-	needsUpgrade, err := p.needsUpgrade(h)
+	needsUpgrade, err := p.needsUpgrade(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -458,14 +458,18 @@ func (p *GatherK0sFacts) handleRoleMismatch(h *cluster.Host, detectedRole string
 	return nil
 }
 
-func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) (bool, error) {
+func (p *GatherK0sFacts) needsUpgrade(ctx context.Context, h *cluster.Host) (bool, error) {
 	if h.Reset {
 		return false, nil
 	}
+	var urlFiles []*cluster.UploadFile
 	for _, f := range h.Files {
 		if f.IsURL() {
-			log.Debugf("%s: marked for upgrade because there are URL source file uploads for the host", h)
-			return true, nil
+			// Held back until the local comparisons are done, since asking
+			// whether a URL source is still current talks to the host and to the
+			// server, and a local file that changed has already answered this.
+			urlFiles = append(urlFiles, f)
+			continue
 		}
 		for _, s := range f.Sources {
 			dest := f.DestinationFile
@@ -475,6 +479,18 @@ func (p *GatherK0sFacts) needsUpgrade(h *cluster.Host) (bool, error) {
 			src := path.Join(f.Base, s.Path)
 			if h.FileChanged(src, dest) {
 				log.Debugf("%s: marked for upgrade because file was changed for upload %s", h, src)
+				return true, nil
+			}
+		}
+	}
+	if len(urlFiles) > 0 {
+		// Asking the same question the upload phase will ask keeps a re-apply
+		// from restarting k0s for a download that is not going to happen.
+		tracker := hostTracker(h)
+		for _, f := range urlFiles {
+			dlURL := h.ExpandTokens(f.Source, p.Config.Spec.K0s.Version)
+			if verdict := tracker.Needed(ctx, dlURL, f.DestinationFile, f.Sha256); verdict.Download {
+				log.Debugf("%s: marked for upgrade because %s will be downloaded (%s)", h, f.DestinationFile, verdict.Reason)
 				return true, nil
 			}
 		}
