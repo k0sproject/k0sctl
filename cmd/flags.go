@@ -396,20 +396,23 @@ func initManager(ctx *cli.Context) error {
 
 // initLogging initializes the logger
 func initLogging(ctx *cli.Context) error {
-	log.SetLevel(log.TraceLevel)
-	log.SetOutput(io.Discard)
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.InfoLevel))
-	cmd.DisableRedact = ctx.Bool("no-redact")
-	return initFileLogger(ctx)
+	return initLoggingWithDefaultLevel(ctx, log.InfoLevel)
 }
 
-// initSilentLogging initializes the logger in silent mode
-// TODO too similar to initLogging
+// initSilentLogging initializes the logger in silent mode, i.e. only
+// logging to the screen at the fatal level by default.
 func initSilentLogging(ctx *cli.Context) error {
+	return initLoggingWithDefaultLevel(ctx, log.FatalLevel)
+}
+
+// initLoggingWithDefaultLevel sets up the logger shared by initLogging and
+// initSilentLogging. defaultLevel is the screen log level used when neither
+// --debug nor --trace is set.
+func initLoggingWithDefaultLevel(ctx *cli.Context, defaultLevel log.Level) error {
 	log.SetLevel(log.TraceLevel)
 	log.SetOutput(io.Discard)
+	initScreenLogger(ctx, logLevelFromCtx(ctx, defaultLevel))
 	cmd.DisableRedact = ctx.Bool("no-redact")
-	initScreenLogger(ctx, logLevelFromCtx(ctx, log.FatalLevel))
 	return initFileLogger(ctx)
 }
 
