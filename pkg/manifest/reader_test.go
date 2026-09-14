@@ -151,6 +151,22 @@ metadata:
 	assert.Len(t, services, 1, "Expected 1 Service to be returned")
 }
 
+func TestReader_GetResources_NotFound(t *testing.T) {
+	input := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+`
+	r := &manifest.Reader{}
+	require.NoError(t, r.Parse(strings.NewReader(input)))
+
+	services, err := r.GetResources("v1", "Service")
+	require.Error(t, err, "GetResources should return an error when nothing matches")
+	assert.Nil(t, services)
+	assert.Contains(t, err.Error(), "apiVersion=v1, kind=Service")
+}
+
 func TestReader_ParseHandlesLargeManifest(t *testing.T) {
 	largeData := strings.Repeat("x", 70*1024)
 	manifestStr := fmt.Sprintf(`apiVersion: v1
