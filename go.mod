@@ -10,7 +10,7 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/carlmjohnson/versioninfo v0.22.5
-	github.com/creasty/defaults v1.9.0
+	github.com/creasty/defaults v1.10.0
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/dig v0.4.0
 	github.com/k0sproject/rig/v2 v2.2.0
