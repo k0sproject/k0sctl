@@ -165,7 +165,7 @@ func (p *InstallWorkers) Run(ctx context.Context) error {
 
 		err = p.Wet(h, "validate api connection to control plane", func() error {
 			log.Infof("%s: validating api connection to %s using join token", h, h.Metadata.K0sTokenData.URL)
-			tempfile, err := h.FS().CreateTemp("", "")
+			tempfile, err := h.Sudo().FS().CreateTemp("", "")
 			if err != nil {
 				return fmt.Errorf("failed to create temp file for kubeconfig: %w", err)
 			}
