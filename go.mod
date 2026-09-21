@@ -13,7 +13,7 @@ require (
 	github.com/creasty/defaults v1.11.0
 	github.com/jellydator/validation v1.2.0
 	github.com/k0sproject/dig v0.4.0
-	github.com/k0sproject/rig/v2 v2.2.0
+	github.com/k0sproject/rig/v2 v2.2.1
 	github.com/k0sproject/version v0.8.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-isatty v0.0.24
