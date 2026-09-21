@@ -293,7 +293,7 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 // validateConfigWithTempFile writes cfg to a temporary file on the host,
 // runs k0s config validation against it and removes the file afterwards.
 func (p *ConfigureK0s) validateConfigWithTempFile(c *cluster.Host, cfg string) error {
-	tempConfigPath, err := c.FS().CreateTemp("", "")
+	tempConfigPath, err := c.Sudo().FS().CreateTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
@@ -363,7 +363,7 @@ func (p *ConfigureK0s) installConfig(_ context.Context, h *cluster.Host) error {
 	}
 
 	log.Debugf("%s: writing k0s configuration", h)
-	tempConfigPath, err := h.FS().CreateTemp("", "")
+	tempConfigPath, err := h.Sudo().FS().CreateTemp("", "")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary file for config: %w", err)
 	}
