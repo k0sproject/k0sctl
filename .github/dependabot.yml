@@ -5,8 +5,16 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
+    # Dependabot applies a 3 day cooldown to version updates by default. Spell
+    # out a shorter one and let rig through immediately, as rig releases are
+    # usually cut with a k0sctl bump already in mind.
+    cooldown:
+      default-days: 2
+      exclude:
+        - "github.com/k0sproject/rig/v2"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: daily
-      
+    cooldown:
+      default-days: 2
