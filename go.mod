@@ -8,7 +8,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/a8m/envsubst v1.4.3
 	github.com/adrg/xdg v0.5.3
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.1
 	github.com/carlmjohnson/versioninfo v0.22.5
 	github.com/creasty/defaults v1.11.0
 	github.com/jellydator/validation v1.2.0
