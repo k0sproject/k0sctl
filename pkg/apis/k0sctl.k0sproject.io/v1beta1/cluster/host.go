@@ -45,9 +45,14 @@ var rigLogger = slog.New(sloglogrus.Option{
 // that rig's internal logging is routed into k0sctl's logrus output.
 func (h *Host) Connect(ctx context.Context) error {
 	if h.Client == nil {
+		// The phases wrap Connect in their own retry loops and decide which
+		// errors are worth another attempt. With rig's retry on as well, a
+		// single call would retry until the context ends and those loops would
+		// only see the last error.
 		client, err := rig.NewClient(
 			rig.WithConnectionFactory(&h.CompositeConfig),
 			rig.WithLogger(rigLogger),
+			rig.WithRetry(false),
 		)
 		if err != nil {
 			return fmt.Errorf("create rig client: %w", err)
