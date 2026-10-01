@@ -1,12 +1,23 @@
 package cluster
 
 import (
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"net"
+	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
+	rig "github.com/k0sproject/rig/v2"
+	"github.com/k0sproject/rig/v2/protocol/ssh"
 	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 )
@@ -130,3 +141,46 @@ func TestExpandTokens(t *testing.T) {
 	require.Equal(t, "test%20expand/k0s-v1.0.0%2Bk0s.0-amd64", h.ExpandTokens("test%20expand/k0s-%v-%p%x", ver))
 }
 
+
+// TestHost_ConnectLeavesRetryingToCaller verifies that Host.Connect makes a
+// single attempt, so the retry loops around it see every failure. The rig
+// client otherwise retries on its own for as long as the context allows.
+func TestHost_ConnectLeavesRetryingToCaller(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("SSH_AUTH_SOCK", "")
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	var accepted atomic.Int32
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			accepted.Add(1)
+			_ = conn.Close()
+		}
+	}()
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	require.NoError(t, err)
+	keyPath := filepath.Join(t.TempDir(), "id_ed25519")
+	require.NoError(t, os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600))
+
+	h := &Host{CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{
+		Address:         "127.0.0.1",
+		Port:            ln.Addr().(*net.TCPAddr).Port,
+		User:            "test",
+		KeyPath:         &keyPath,
+		IgnoreSSHConfig: true,
+	}}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	require.Error(t, h.Connect(ctx))
+	require.Equal(t, int32(1), accepted.Load())
+}
