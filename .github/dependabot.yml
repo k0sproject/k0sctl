@@ -18,3 +18,9 @@ updates:
       interval: daily
     cooldown:
       default-days: 2
+    # The codeql-action sub-actions (init, autobuild, analyze) must be on the
+    # same version, so bump them together in a single PR.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
