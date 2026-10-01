@@ -97,6 +97,7 @@ remoteCommand "${FILESRV_HOST}" "head -c 2097152 </dev/urandom > /srv/files/bund
 remoteCommand "${FILESRV_HOST}" "head -c 8192 </dev/urandom > /srv/files/badsum.bin"
 remoteCommand "${FILESRV_HOST}" "head -c 524288 </dev/urandom > /srv/files/adopt.bin"
 remoteCommand "${FILESRV_HOST}" "echo ok > /srv/files/health"
+remoteCommand "${FILESRV_HOST}" "echo '[{\"html_url\":\"https://example.com/releases/v0.0.0\"}]' > /srv/files/releases"
 remoteCommand "${FILESRV_HOST}" "setsid python3 /srv/filesrv.py > /srv/filesrv.out 2>&1 < /dev/null &"
 
 FILESRV="$(remoteCommand "${FILESRV_HOST}" hostname -i | awk '{print $1}' | tr -d '\r'):8080"
@@ -256,6 +257,7 @@ plain_gets=$(serverRequests GET /files/plain.bin)
 noetag_gets=$(serverRequests GET /noetag/plain.bin)
 bundle_gets=$(serverRequests GET /files/bundle.bin)
 adopt_gets=$(serverRequests GET /files/adopt.bin)
+weak_gets=$(serverRequests GET /weak/releases)
 
 ../k0sctl apply --config k0sctl.yaml --debug > reapply.log 2>&1 || { cat reapply.log; exit 1; }
 
@@ -292,11 +294,22 @@ fi
 printf %s "[skipped] "
 echo "OK"
 
-# Only the file server sources are expected to be left alone here. The github API
-# sources in this config answer with a weak etag and no last-modified, which is
-# precisely the case k0sctl refuses to draw a conclusion from, so they are
-# downloaded on every apply and do mark the host for upgrade - by design. Real
+# A weak etag with no last-modified can't confirm that the file is unchanged, so
+# the url and url-destdir sources are downloaded on every apply - by design. Real
 # release assets, which is what this feature is for, send a strong etag.
+printf %s "  - URL sources with only a weak etag are downloaded again .. "
+# Both entries use this source, so each apply requests it twice.
+weak_now=$(serverRequests GET /weak/releases)
+if [ "${weak_now}" -ne "$((weak_gets + 2))" ]; then
+  echo "FAIL"
+  echo "  GET /weak/releases was requested ${weak_now} times, expected $((weak_gets + 2))"
+  serverLog
+  exit 1
+fi
+echo "OK"
+
+# Only the /root/srv sources are expected to be left alone here. The weak etag
+# sources above do mark the host for upgrade.
 printf %s "  - A skipped URL source does not mark the host for upgrade .. "
 if grep -q "marked for upgrade because /root/srv/" reapply.log; then
   echo "FAIL"

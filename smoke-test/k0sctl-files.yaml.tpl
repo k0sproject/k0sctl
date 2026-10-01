@@ -39,11 +39,13 @@ spec:
           src: ./upload/**/*.txt
           dstDir: /root/glob
           dirPerm: 0700
+        # Served by the filesrv machine with a weak etag and no last-modified,
+        # like the GitHub API. A public API would rate limit the shared runner IP.
         - name: url
-          src: https://api.github.com/repos/k0sproject/k0s/releases
+          src: http://$FILESRV/weak/releases
           dst: /root/url/releases.json
         - name: url-destdir
-          src: https://api.github.com/repos/k0sproject/k0s/releases
+          src: http://$FILESRV/weak/releases
           dstDir: /root/url_destdir
         # Served by the filesrv machine, which lets the test control the
         # response headers k0sctl compares between applies.
