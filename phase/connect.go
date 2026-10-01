@@ -51,6 +51,7 @@ func (p *Connect) Run(ctx context.Context) error {
 			if rejections >= authRejectionLimit {
 				return errors.Join(retry.ErrAbort, fmt.Errorf("credentials rejected %d times in a row: %w", rejections, err))
 			}
+			log.Warnf("%s: credentials rejected (%d/%d), retrying: %v", h, rejections, authRejectionLimit, err)
 			return err
 		})
 	})
