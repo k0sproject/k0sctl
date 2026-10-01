@@ -24,3 +24,9 @@ updates:
       codeql-action:
         patterns:
           - "github/codeql-action*"
+    # The gh-aw setup action is pinned in compiled .lock.yml files and must stay
+    # on the version of the compiler that produced them. Bumping only the pin
+    # pairs old compiled steps with newer setup scripts, so upgrade with
+    # `gh extension upgrade aw && gh aw compile` instead.
+    ignore:
+      - dependency-name: "github/gh-aw-actions/*"
