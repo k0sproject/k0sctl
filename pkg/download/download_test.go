@@ -3,10 +3,12 @@ package download
 import (
 	"encoding/json"
 	"io/fs"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/k0sproject/rig/v2/remotefs"
+	"github.com/k0sproject/rig/v2/rigtest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -307,4 +309,16 @@ func TestRecordKeepsNoURL(t *testing.T) {
 	require.NotContains(t, string(data), "example.com")
 	require.Equal(t, urlDigest(secret), rec.URLDigest)
 	require.NotEqual(t, urlDigest(secret), urlDigest(secret+"x"))
+}
+
+func TestRecordName(t *testing.T) {
+	fsys := remotefs.NewPosixFS(rigtest.NewMockRunner())
+
+	name := recordName(fsys, "https://example.com/k0s", "/usr/local/bin/k0s")
+	require.True(t, strings.HasPrefix(name, "k0s-"))
+	require.True(t, strings.HasSuffix(name, ".json"))
+
+	require.Equal(t, name, recordName(fsys, "https://example.com/k0s", "/usr/local/bin/k0s"))
+	require.NotEqual(t, name, recordName(fsys, "https://example.com/k0s-v2", "/usr/local/bin/k0s"))
+	require.NotEqual(t, name, recordName(fsys, "https://example.com/k0s", "/opt/bin/k0s"))
 }
