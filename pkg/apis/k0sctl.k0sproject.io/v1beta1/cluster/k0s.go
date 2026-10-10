@@ -1,11 +1,14 @@
 package cluster
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -179,6 +182,88 @@ type TokenData struct {
 	URL        string
 	Token      string
 	Kubeconfig []byte
+}
+
+// WithJoinHost returns a copy of the token data with the embedded kubeconfig's
+// cluster server host replaced by host (scheme and port are preserved) and the
+// token re-encoded. Because an actual controller/worker join reads the server
+// URL from the token file, rewriting the host here redirects the join itself,
+// not just k0sctl's preflight validation.
+//
+// This is used to make joins target a known-reachable address (the freshly
+// initialized leader) when the token-embedded address derived from
+// spec.api.externalAddress is not reachable during bootstrap, e.g. an
+// externally managed keepalived VIP that is not currently assigned to the
+// leader.
+//
+// Note: the leader's serving certificate must include host in its SANs or the
+// join's TLS verification will fail.
+func (d TokenData) WithJoinHost(host string) (TokenData, error) {
+	if len(d.Kubeconfig) == 0 {
+		return d, fmt.Errorf("token has no kubeconfig data to rewrite")
+	}
+
+	cfg := dig.Mapping{}
+	if err := yaml.Unmarshal(d.Kubeconfig, &cfg); err != nil {
+		return d, fmt.Errorf("failed to unmarshal token: %w", err)
+	}
+
+	clusters, ok := cfg.Dig("clusters").([]any)
+	if !ok || len(clusters) < 1 {
+		return d, fmt.Errorf("failed to find clusters in token")
+	}
+	cluster, ok := clusters[0].(dig.Mapping)
+	if !ok {
+		return d, fmt.Errorf("failed to find cluster in token")
+	}
+	clusterData, ok := cluster.Dig("cluster").(dig.Mapping)
+	if !ok {
+		return d, fmt.Errorf("failed to find cluster data in token")
+	}
+	server, ok := clusterData["server"].(string)
+	if !ok || server == "" {
+		return d, fmt.Errorf("failed to find cluster url in token")
+	}
+
+	u, err := url.Parse(server)
+	if err != nil {
+		return d, fmt.Errorf("failed to parse cluster url %q: %w", server, err)
+	}
+	if port := u.Port(); port != "" {
+		u.Host = net.JoinHostPort(host, port)
+	} else {
+		u.Host = host
+	}
+	clusterData["server"] = u.String()
+
+	kubeconfig, err := yaml.Marshal(cfg)
+	if err != nil {
+		return d, fmt.Errorf("failed to marshal token: %w", err)
+	}
+	token, err := encodeToken(kubeconfig)
+	if err != nil {
+		return d, err
+	}
+
+	return TokenData{ID: d.ID, URL: u.String(), Token: token, Kubeconfig: kubeconfig}, nil
+}
+
+// encodeToken encodes a kubeconfig into a k0s join token (gzip + base64), the
+// inverse of the decoding performed by ParseToken.
+func encodeToken(kubeconfig []byte) (string, error) {
+	var buf bytes.Buffer
+	b64 := base64.NewEncoder(base64.StdEncoding, &buf)
+	gz := gzip.NewWriter(b64)
+	if _, err := gz.Write(kubeconfig); err != nil {
+		return "", fmt.Errorf("failed to compress token: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return "", fmt.Errorf("failed to compress token: %w", err)
+	}
+	if err := b64.Close(); err != nil {
+		return "", fmt.Errorf("failed to encode token: %w", err)
+	}
+	return buf.String(), nil
 }
 
 // ParseToken returns TokenData for a token string
