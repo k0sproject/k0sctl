@@ -95,7 +95,7 @@ type withmanager interface {
 }
 
 type withDryRun interface {
-	DryRun() error
+	DryRun(context.Context) error
 }
 
 // In-phase hooks for phases to run logic immediately before/after Run().
@@ -260,7 +260,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 		if dp, ok := p.(withDryRun); ok && m.DryRun {
 			ran = append(ran, p)
-			if err := dp.DryRun(); err != nil {
+			if err := dp.DryRun(ctx); err != nil {
 				result = err
 				return result
 			}

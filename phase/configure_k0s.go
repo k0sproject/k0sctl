@@ -150,7 +150,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 }
 
 // DryRun prints the actions that would be taken
-func (p *ConfigureK0s) DryRun() error {
+func (p *ConfigureK0s) DryRun(_ context.Context) error {
 	for _, h := range p.hosts {
 		p.DryMsgf(h, "write k0s configuration to %s", h.Configurer.K0sConfigPath())
 		switch p.configSource {

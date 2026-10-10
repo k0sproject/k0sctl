@@ -40,7 +40,7 @@ func (p *ResetLeader) Prepare(config *v1beta1.Cluster) error {
 }
 
 // DryRun reports that the host will be reset
-func (p *ResetLeader) DryRun() error {
+func (p *ResetLeader) DryRun(_ context.Context) error {
 	p.DryMsg(p.leader, "reset node")
 	return nil
 }
