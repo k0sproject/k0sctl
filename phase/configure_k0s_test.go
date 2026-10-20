@@ -149,6 +149,63 @@ func TestConfigForUsesPerHostSans(t *testing.T) {
 	require.Equal(t, []string{"lb.example.com"}, newBaseConfig.Dig("spec", "api", "sans"))
 }
 
+// applySans computes the per-controller sans the way Prepare does and stores
+// them as each controller's existing config, like a completed apply would.
+func applySans(t *testing.T, p *ConfigureK0s, base []string, controllers []*cluster.Host) map[*cluster.Host][]string {
+	t.Helper()
+	got := make(map[*cluster.Host][]string, len(controllers))
+	for _, h := range controllers {
+		got[h] = p.controllerSans(base, h)
+	}
+	for _, h := range controllers {
+		out, err := yaml.Marshal(dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"sans": got[h]}}})
+		require.NoError(t, err)
+		h.Metadata.K0sExistingConfig = string(out)
+	}
+	return got
+}
+
+func TestControllerSansStableAcrossAppliesWithoutProvidedConfig(t *testing.T) {
+	leader := testController("leader.example.com", "10.0.0.1")
+	other := testController("10.0.0.2", "")
+	controllers := []*cluster.Host{leader, other}
+
+	// first apply: generated default config, which already has the leader's
+	// interface address but not its ssh dns name
+	p := &ConfigureK0s{leader: leader, configSource: configSourceDefault}
+	first := applySans(t, p, []string{"10.0.0.1"}, controllers)
+	require.Equal(t, []string{"10.0.0.1", "leader.example.com"}, first[leader])
+	require.Equal(t, []string{"10.0.0.1", "10.0.0.2"}, first[other])
+
+	// later applies: the leader's existing config is the base
+	for i := range 2 {
+		p = &ConfigureK0s{leader: leader, configSource: configSourceExisting}
+		got := applySans(t, p, existingSans(leader), controllers)
+		require.Equal(t, first, got, "apply %d", i+2)
+	}
+}
+
+func TestControllerSansKeepsLeaderAddressesAlreadyOnController(t *testing.T) {
+	leader := testController("leader.example.com", "10.0.0.1")
+	other := testController("10.0.0.2", "")
+	// configs written before sans were per host list every controller
+	other.Metadata.K0sExistingConfig = "spec:\n  api:\n    sans: [leader.example.com, 10.0.0.1, 10.0.0.2]\n"
+
+	p := &ConfigureK0s{leader: leader, configSource: configSourceExisting}
+	base := []string{"leader.example.com", "10.0.0.1", "10.0.0.2"}
+	require.Equal(t, base, p.controllerSans(base, other))
+}
+
+func TestControllerSansNewControllerDoesNotGetLeaderAddresses(t *testing.T) {
+	leader := testController("leader.example.com", "10.0.0.1")
+	added := testController("10.0.0.3", "")
+
+	p := &ConfigureK0s{leader: leader, configSource: configSourceExisting}
+	base := []string{"lb.example.com", "leader.example.com", "10.0.0.1"}
+	require.Equal(t, []string{"lb.example.com", "10.0.0.3"}, p.controllerSans(base, added))
+	require.Equal(t, base, p.controllerSans(base, leader))
+}
+
 type apiSpec struct {
 	Spec struct {
 		API struct {
