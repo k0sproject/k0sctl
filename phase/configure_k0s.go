@@ -80,23 +80,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 		}
 	}
 
-	// convert sans from unmarshaled config into []string
-	var sans []string
-	oldsans := p.newBaseConfig.Dig("spec", "api", "sans")
-	switch oldsans := oldsans.(type) {
-	case []any:
-		for _, v := range oldsans {
-			if s, ok := v.(string); ok {
-				sans = append(sans, s)
-			}
-		}
-		log.Tracef("converted sans from %T to []string", oldsans)
-	case []string:
-		sans = append(sans, oldsans...)
-		log.Tracef("sans was readily %T", oldsans)
-	default:
-		// do nothing - base k0s config does not contain any existing SANs
-	}
+	sans := sansFrom(p.newBaseConfig)
 
 	for i, c := range p.Config.Spec.Hosts.Controllers() {
 		if c.Reset {
@@ -110,7 +94,7 @@ func (p *ConfigureK0s) Prepare(config *v1beta1.Cluster) error {
 
 		// store sans to config
 		controllerBaseConfig := p.newBaseConfig.Dup()
-		controllerBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans(sans, c)
+		controllerBaseConfig.DigMapping("spec", "api")["sans"] = p.controllerSans(sans, c)
 
 		cfgNew, err := p.configFor(c, controllerBaseConfig)
 		if err != nil {
@@ -262,6 +246,61 @@ func controllersNeedingRestart(controllers cluster.Hosts) cluster.Hosts {
 	return controllers.Filter(func(h *cluster.Host) bool {
 		return h.Metadata.K0sRunningVersion != nil && !h.Metadata.NeedsUpgrade
 	})
+}
+
+// sansFrom returns spec.api.sans of the given config as a []string.
+func sansFrom(cfg dig.Mapping) []string {
+	var sans []string
+	switch oldsans := cfg.Dig("spec", "api", "sans").(type) {
+	case []any:
+		for _, v := range oldsans {
+			if s, ok := v.(string); ok {
+				sans = append(sans, s)
+			}
+		}
+		log.Tracef("converted sans from %T to []string", oldsans)
+	case []string:
+		sans = append(sans, oldsans...)
+		log.Tracef("sans was readily %T", oldsans)
+	default:
+		// do nothing - config does not contain any existing SANs
+	}
+	return sans
+}
+
+// controllerSans returns the spec.api.sans for a controller.
+//
+// When the base config is the leader's existing config, the base sans include
+// the addresses that were added only for the leader. Passing those on would
+// change the config of every other controller on the next apply and restart
+// them, so they are only kept for controllers that already have them.
+func (p *ConfigureK0s) controllerSans(base []string, h *cluster.Host) []string {
+	if p.configSource != configSourceExisting || h == p.leader {
+		return hostsSans(base, h)
+	}
+
+	leaderAddrs := []string{p.leader.Address()}
+	if p.leader.PrivateAddress != "" {
+		leaderAddrs = append(leaderAddrs, p.leader.PrivateAddress)
+	}
+	existing := existingSans(h)
+	base = slices.DeleteFunc(slices.Clone(base), func(s string) bool {
+		return slices.Contains(leaderAddrs, s) && !slices.Contains(existing, s)
+	})
+	return hostsSans(base, h)
+}
+
+// existingSans returns spec.api.sans from the host's existing k0s config.
+func existingSans(h *cluster.Host) []string {
+	if h.Metadata.K0sExistingConfig == "" {
+		return nil
+	}
+	cfg := make(dig.Mapping)
+	if err := yaml.Unmarshal([]byte(h.Metadata.K0sExistingConfig), &cfg); err != nil {
+		log.Debugf("%s: failed to parse existing k0s config for sans: %v", h, err)
+		return nil
+	}
+	return sansFrom(cfg)
 }
 
 // hostsSans returns a dedicated copy of the base sans extended with the
