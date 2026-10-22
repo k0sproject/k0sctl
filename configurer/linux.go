@@ -261,8 +261,11 @@ func (l *Linux) UpsertFile(h os.Host, path, content string) error {
 	if err != nil {
 		return err
 	}
-	if err := h.Execf(`cat > "%s"`, tmpf, exec.Stdin(content), exec.Sudo(h)); err != nil {
-		return err
+	// The temp file belongs to the connecting user, so write it as that user.
+	// With fs.protected_regular=2 (Ubuntu default) root is not allowed to open
+	// another user's file in a sticky directory like /tmp for writing.
+	if err := h.Execf(`cat > "%s"`, tmpf, exec.Stdin(content)); err != nil {
+		return fmt.Errorf("write temp file: %w", err)
 	}
 
 	defer func() {

@@ -107,10 +107,11 @@ func (p *Lock) startLock(ctx context.Context, h *cluster.Host) error {
 func (p *Lock) tryLock(h *cluster.Host) error {
 	lfp := h.Configurer.K0sctlLockFilePath(h)
 
-	if err := h.Configurer.UpsertFile(h, lfp, p.instanceID); err != nil {
+	if upsertErr := h.Configurer.UpsertFile(h, lfp, p.instanceID); upsertErr != nil {
 		stat, err := h.Configurer.Stat(h, lfp, exec.Sudo(h), exec.HideCommand())
 		if err != nil {
-			return fmt.Errorf("lock file disappeared: %w", err)
+			// the lock file was not created, report why
+			return fmt.Errorf("failed to create lock file %s: %w", lfp, upsertErr)
 		}
 		content, err := h.Configurer.ReadFile(h, lfp)
 		if err != nil {
