@@ -97,6 +97,7 @@ remoteCommand "${FILESRV_HOST}" "head -c 2097152 </dev/urandom > /srv/files/bund
 remoteCommand "${FILESRV_HOST}" "head -c 8192 </dev/urandom > /srv/files/badsum.bin"
 remoteCommand "${FILESRV_HOST}" "head -c 524288 </dev/urandom > /srv/files/adopt.bin"
 remoteCommand "${FILESRV_HOST}" "echo ok > /srv/files/health"
+remoteCommand "${FILESRV_HOST}" "echo '[{\"html_url\":\"https://example.com/releases/v0.0.0\"}]' > /srv/files/releases"
 remoteCommand "${FILESRV_HOST}" "setsid python3 /srv/filesrv.py > /srv/filesrv.out 2>&1 < /dev/null &"
 
 FILESRV="$(remoteCommand "${FILESRV_HOST}" hostname -i | awk '{print $1}' | tr -d '\r'):8080"
