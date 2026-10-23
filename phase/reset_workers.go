@@ -59,7 +59,7 @@ func (p *ResetWorkers) ShouldRun() bool {
 }
 
 // DryRun reports the nodes will be reset
-func (p *ResetWorkers) DryRun() error {
+func (p *ResetWorkers) DryRun(_ context.Context) error {
 	for _, h := range p.hosts {
 		p.DryMsg(h, "node would be reset")
 	}
