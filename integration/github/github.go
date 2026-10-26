@@ -84,7 +84,7 @@ func fetchLatestRelease() (Release, error) {
 	return release, nil
 }
 
-func unmarshalURLBody(url string, o any) error {
+func unmarshalURLBody(url string, o any) (err error) {
 	client := &http.Client{
 		Timeout: timeOut,
 	}
@@ -93,10 +93,11 @@ func unmarshalURLBody(url string, o any) error {
 	if err != nil {
 		return err
 	}
-
-	if resp.Body == nil {
-		return fmt.Errorf("nil body")
-	}
+	defer func() {
+		if closeErr := resp.Body.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("backend returned http %d for %s", resp.StatusCode, url)
@@ -104,10 +105,6 @@ func unmarshalURLBody(url string, o any) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
-	}
-
-	if err := resp.Body.Close(); err != nil {
 		return err
 	}
 
