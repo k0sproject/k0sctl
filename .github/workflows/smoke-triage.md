@@ -23,6 +23,13 @@ on:
 #
 # `timed_out` alongside `failure`: a leg that runs out its job timeout is
 # reported under its own conclusion and is exactly as worth triaging.
+#
+# This filter is also what keeps the agent off unapproved code. A fork pull
+# request's run waits for a maintainer's approval before any job starts, and if
+# none comes it concludes `action_required`. Only a run whose jobs actually ran
+# can fail, so every run this reacts to was either started by a maintainer or
+# approved by one. Never add `action_required`, `cancelled` or `startup_failure`
+# here.
 if: contains(fromJSON('["failure","timed_out"]'), github.event.workflow_run.conclusion)
 
 # One triage slot per smoke run. The compiler's default group keys on
@@ -39,6 +46,12 @@ permissions:
   actions: read
   pull-requests: read
   copilot-requests: write
+
+# Strict mode requires a positive `branches` filter on workflow_run, and pull
+# request head branches cannot be enumerated: any filter would either drop
+# most pull requests or be a wildcard, which strict mode rejects too. The
+# compiler still injects the repository and fork guard either way.
+strict: false
 
 engine: copilot
 
@@ -74,7 +87,7 @@ safe-outputs:
         is pure infrastructure noise that a re-run would plausibly clear with
         nothing else changing.
       runs-on: ubuntu-24.04
-      # Two gates, both of them declarative.
+      # Two gates: threat detection here, and the attempt cap in the step.
       #
       # detection_success rather than the detection job's result: the agent
       # asking for a re-run is not authority to get one, since its inputs
@@ -82,14 +95,7 @@ safe-outputs:
       # runs under continue-on-error, so a flagged injection still leaves that
       # job green; the built-in outputs get away with a liveness check because
       # they re-read the conclusion at run time, which a custom job never sees.
-      #
-      # run_attempt: rerun-failed-jobs increments the smoke run's own attempt
-      # counter server-side, so the bound is already in the event payload and
-      # needs no bookkeeping of ours. Attempt 3 is left alone for a human, so a
-      # genuinely broken leg cannot loop.
-      if: >-
-        needs.detection.outputs.detection_success == 'true' &&
-        github.event.workflow_run.run_attempt < 3
+      if: needs.detection.outputs.detection_success == 'true'
       permissions:
         actions: write
       output: "Re-ran the failed smoke legs."
@@ -116,7 +122,22 @@ safe-outputs:
                 >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            echo "Re-running failed legs of run $RUN_ID (attempt $ATTEMPT): $reason"
+            # Three attempts that actually ran, in total; whatever still fails
+            # on the third is left to a human, so a genuinely broken leg cannot
+            # loop. run_attempt alone over-counts: an external contributor's
+            # attempt that sat waiting for approval and was superseded by a
+            # maintainer's re-run concluded `action_required` without running
+            # anything, yet still took a number.
+            ran=0
+            for a in $(seq 1 "$ATTEMPT"); do
+              conclusion=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/attempts/$a" --jq .conclusion)
+              [ "$conclusion" = action_required ] || ran=$((ran + 1))
+            done
+            if [ "$ran" -ge 3 ]; then
+              echo "Run $RUN_ID already ran $ran times, not re-running." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Re-running failed legs of run $RUN_ID (attempt $ATTEMPT, $ran ran): $reason"
             gh api -X POST "/repos/$REPO/actions/runs/$RUN_ID/rerun-failed-jobs"
 ---
 
@@ -214,9 +235,10 @@ branch and commit of every run you look at: that provenance is the whole point,
 since without it a count cannot tell "already broken" from "this change, pushed
 three times". Match on repository *and* branch, never the branch name alone — it
 is not unique across forks, and two contributors both working on `main` or `fix`
-would otherwise look like one branch. Weigh this run's own attempt counter too: read it off the run, and if this is
-not the first attempt, weigh it heavily — a failure that already survived a
-re-run is very unlikely to be infrastructure noise.
+would otherwise look like one branch. Weigh this run's own earlier attempts too: list its jobs across all attempts,
+and ignore any attempt with no jobs — that one sat waiting for approval and
+never ran. If an earlier attempt did run, weigh it heavily — a failure that
+already survived a re-run is very unlikely to be infrastructure noise.
 
 **Trace it into the code.** The failing make target maps to a script in
 `smoke-test/`; read that to see which command failed and with what arguments.

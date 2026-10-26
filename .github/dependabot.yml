@@ -24,3 +24,10 @@ updates:
       codeql-action:
         patterns:
           - "github/codeql-action*"
+    # gh-aw lock files are generated, and the gh-aw runtime they pin has to
+    # match the compiler that generated them: bumping github/gh-aw-actions/setup
+    # past v0.91.10 without recompiling broke every comment with "Missing or
+    # invalid safe-output execution provenance". Update them by recompiling
+    # with a newer gh-aw (`gh aw compile`), never by bumping actions in place.
+    exclude-paths:
+      - .github/workflows/*.lock.yml
