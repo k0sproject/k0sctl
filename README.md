@@ -171,6 +171,8 @@ k0sctl apply --config path/to/k0sctl.yaml
 
 If the configuration cluster version `spec.k0s.version` is greater than the version detected on the cluster, a cluster upgrade will be performed. If the configuration lists hosts that are not part of the cluster, they will be configured to run k0s and will be joined to the cluster.
 
+Upgrades follow the [Kubernetes version skew policy](https://kubernetes.io/releases/version-skew-policy/): controllers can only be upgraded one minor version at a time, so upgrading from v1.30 to v1.32 requires an apply with v1.31 first. Use `--disable-version-skew-check` to skip this check.
+
 ### `k0sctl init`
 
 Generate a configuration template. Use `--k0s` to include an example `spec.k0s.config` k0s configuration block. You can also supply a list of host addresses via arguments or stdin.
