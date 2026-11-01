@@ -5,14 +5,20 @@ import (
 	"fmt"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
 // ValidateFacts performs remote OS detection
 type ValidateFacts struct {
 	GenericPhase
-	SkipDowngradeCheck bool
+	SkipDowngradeCheck   bool
+	SkipVersionSkewCheck bool
 }
+
+// maxKubeletSkew is the number of minor versions a kubelet may be older than
+// the kube-apiserver according to the Kubernetes version skew policy.
+const maxKubeletSkew = 3
 
 // Title for the phase
 func (p *ValidateFacts) Title() string {
@@ -26,6 +32,10 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 	}
 
 	if err := p.validateDefaultVersion(); err != nil {
+		return err
+	}
+
+	if err := p.validateVersionSkew(); err != nil {
 		return err
 	}
 
@@ -50,6 +60,54 @@ func (p *ValidateFacts) validateDowngrade() error {
 	}
 
 	return nil
+}
+
+// validateVersionSkew enforces the Kubernetes version skew policy for upgrades:
+// the control plane can only be upgraded one minor version at a time, and a
+// kubelet may not be more than three minor versions older than the control plane.
+// See https://kubernetes.io/releases/version-skew-policy/
+func (p *ValidateFacts) validateVersionSkew() error {
+	if p.SkipVersionSkewCheck {
+		return nil
+	}
+
+	target := p.Config.Spec.K0s.Version
+	if target == nil {
+		return nil
+	}
+
+	for _, h := range p.Config.Spec.Hosts {
+		running := h.Metadata.K0sRunningVersion
+		if h.Reset || running == nil {
+			continue
+		}
+
+		skew, ok := minorVersionSkew(running, target)
+		if !ok || skew <= 0 {
+			continue
+		}
+
+		if h.IsController() && skew > 1 {
+			return fmt.Errorf("%s: can't upgrade the controller from %s to %s: the kubernetes control plane can only be upgraded one minor version at a time, upgrade to v%d.%d first or use --disable-version-skew-check to skip this check", h, running, target, running.Segments()[0], running.Segments()[1]+1)
+		}
+
+		// Workers are upgraded in the same apply, except when k0sctl uses the existing k0s binary.
+		if !h.IsController() && h.UseExistingK0s && skew > maxKubeletSkew {
+			log.Warnf("%s: the worker runs %s and will not be upgraded because useExistingK0s is set, which is more than %d minor versions older than %s and not supported by the kubernetes version skew policy", h, running, maxKubeletSkew, target)
+		}
+	}
+
+	return nil
+}
+
+// minorVersionSkew returns how many minor versions target is ahead of running.
+// It returns false when the major versions differ.
+func minorVersionSkew(running, target *version.Version) (int, bool) {
+	r, t := running.Segments(), target.Segments()
+	if r[0] != t[0] {
+		return 0, false
+	}
+	return t[1] - r[1], true
 }
 
 func (p *ValidateFacts) validateDefaultVersion() error {
