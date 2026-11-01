@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -92,6 +93,8 @@ type Host struct {
 	OSIDOverride           string            `yaml:"os,omitempty"`
 	HostnameOverride       string            `yaml:"hostname,omitempty"`
 	NoTaints               bool              `yaml:"noTaints,omitempty"`
+	NodeLabels             NodeLabels        `yaml:"labels,omitempty"`
+	NodeTaints             NodeTaints        `yaml:"taints,omitempty"`
 	Hooks                  Hooks             `yaml:"hooks,omitempty"`
 
 	Metadata   HostMetadata          `yaml:"-"`
@@ -261,6 +264,8 @@ func (h *Host) Validate() error {
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
+		validation.Field(&h.NodeLabels, validation.When(h.Role == "controller", validation.By(mustBeEmpty("labels")))),
+		validation.Field(&h.NodeTaints, validation.When(h.Role == "controller", validation.By(mustBeEmpty("taints")))),
 		validation.Field(&h.InstallFlags, validation.Each(validation.By(validateBalancedQuotes))),
 	); err != nil {
 		return err
@@ -283,6 +288,17 @@ func (h *Host) Validate() error {
 	}
 
 	return nil
+}
+
+// mustBeEmpty returns a rule that rejects node labels or taints on hosts that
+// don't run a kubelet and so have no Kubernetes node.
+func mustBeEmpty(field string) validation.RuleFunc {
+	return func(value any) error {
+		if v, ok := value.(interface{ IsEmpty() bool }); ok && !v.IsEmpty() {
+			return fmt.Errorf("%s can not be set for the controller role, which has no kubernetes node", field)
+		}
+		return nil
+	}
 }
 
 // ResolveUploadFiles resolves host file sources relative to baseDir.
@@ -745,6 +761,45 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 		return nil
 	}
 	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
+}
+
+// NodeLabelValues returns the labels of the node.
+func (h *Host) NodeLabelValues(node *Host) (map[string]string, error) {
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{.metadata.labels}'`, quote(h.FS(), node.KubernetesNodeName())))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get node labels: %w", err)
+	}
+	labels := map[string]string{}
+	if output = strings.TrimSpace(output); output == "" {
+		return labels, nil
+	}
+	if err := json.Unmarshal([]byte(output), &labels); err != nil {
+		return nil, fmt.Errorf("failed to decode node labels: %w", err)
+	}
+	return labels, nil
+}
+
+// LabelNode sets the given key=value labels on the node and removes the labels with the given keys.
+func (h *Host) LabelNode(node *Host, apply []string, del []string) error {
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "label nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
+}
+
+// TaintNode sets the given taints on the node and removes the taints given in key or key:Effect form.
+func (h *Host) TaintNode(node *Host, apply []string, del []string) error {
+	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
+}
+
+// kubectlChanges builds the quoted arguments for kubectl label and kubectl
+// taint, where a trailing "-" removes an entry.
+func kubectlChanges(h *Host, apply []string, del []string) string {
+	args := make([]string, 0, len(apply)+len(del))
+	for _, a := range apply {
+		args = append(args, quote(h.FS(), a))
+	}
+	for _, d := range del {
+		args = append(args, quote(h.FS(), d+"-"))
+	}
+	return strings.Join(args, " ")
 }
 
 // CheckHTTPStatus performs a web request to the url and returns an error if the
