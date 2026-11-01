@@ -82,6 +82,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.Reinstall{},
 			&phase.ResetWorkers{NoDrain: opts.NoDrain},
 			&phase.ResetControllers{NoDrain: opts.NoDrain},
+			&phase.ApplyNodeLabelsAndTaints{},
 			&phase.RunHooks{Stage: "after", Action: "apply"},
 			&phase.ApplyManifests{},
 			// unlockPhase,
