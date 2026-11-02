@@ -265,7 +265,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, p.Config.Spec.K0s.Version)); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, postApplyVersion(h, p.Config.Spec.K0s.Version))); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}
