@@ -49,7 +49,8 @@ func TestConfigForSetsAPIAddressWhenIPv6NodeLocalLBEnabled(t *testing.T) {
 		"spec": dig.Mapping{
 			"api": dig.Mapping{},
 			"network": dig.Mapping{
-				"dualStack":              dig.Mapping{"primaryAddressFamily": "IPv6"},
+				"dualStack":              dig.Mapping{"enabled": true},
+				"primaryAddressFamily":   "IPv6",
 				"nodeLocalLoadBalancing": dig.Mapping{"enabled": true},
 			},
 		},
@@ -69,7 +70,8 @@ func TestConfigForLeavesAPIAddressWhenIPv6NodeLocalLBDisabled(t *testing.T) {
 		"spec": dig.Mapping{
 			"api": dig.Mapping{},
 			"network": dig.Mapping{
-				"dualStack":              dig.Mapping{"primaryAddressFamily": "IPv6"},
+				"dualStack":              dig.Mapping{"enabled": true},
+				"primaryAddressFamily":   "IPv6",
 				"nodeLocalLoadBalancing": dig.Mapping{"enabled": false},
 			},
 		},
@@ -78,6 +80,26 @@ func TestConfigForLeavesAPIAddressWhenIPv6NodeLocalLBDisabled(t *testing.T) {
 	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{}}}
 	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
 	h := &cluster.Host{PrivateAddress: "fc00::102"}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	require.Empty(t, apiAddressFromConfig(t, config))
+}
+
+func TestConfigForLeavesAPIAddressWhenIPv4NodeLocalLBEnabled(t *testing.T) {
+	base := dig.Mapping{
+		"spec": dig.Mapping{
+			"api": dig.Mapping{},
+			"network": dig.Mapping{
+				"primaryAddressFamily":   "IPv4",
+				"nodeLocalLoadBalancing": dig.Mapping{"enabled": true},
+			},
+		},
+	}
+
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+	h := &cluster.Host{PrivateAddress: "10.0.0.103"}
 
 	config, err := p.configFor(h, base.Dup())
 	require.NoError(t, err)

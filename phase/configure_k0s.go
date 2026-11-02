@@ -320,7 +320,7 @@ func requiresIPv6NodeLocalAPIAddress(cfg dig.Mapping) bool {
 	if cfg == nil {
 		return false
 	}
-	if !strings.EqualFold(cfg.DigString("spec", "network", "dualStack", "primaryAddressFamily"), "ipv6") {
+	if !strings.EqualFold(cfg.DigString("spec", "network", "primaryAddressFamily"), "ipv6") {
 		return false
 	}
 	if enabled, ok := cfg.Dig("spec", "network", "nodeLocalLoadBalancing", "enabled").(bool); ok && enabled {
