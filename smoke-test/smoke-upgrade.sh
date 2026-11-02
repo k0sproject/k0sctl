@@ -26,7 +26,18 @@ remoteCommand "root@manager0" "k0s version | grep -q ${K0S_FROM}"
 
 K0S_VERSION=$(curl -s "https://docs.k0sproject.io/stable.txt")
 
+# The upgrade skips minor versions, so the version skew check must block it before anything changes
+echo "Upgrading to k0s ${K0S_VERSION} without --disable-version-skew-check, expecting a failure"
+if ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug > smoke-upgrade-skew.log 2>&1; then
+  cat smoke-upgrade-skew.log
+  echo "Expected the version skew check to fail the apply"
+  exit 1
+fi
+cat smoke-upgrade-skew.log
+grep -q "one minor version at a time" smoke-upgrade-skew.log
+remoteCommand "root@manager0" "k0s version | grep -q ${K0S_FROM}"
+
 # Create config with latest version and apply as upgrade
 echo "Upgrading to k0s ${K0S_VERSION}"
-../k0sctl apply --config "${K0SCTL_CONFIG}" --debug
+../k0sctl apply --config "${K0SCTL_CONFIG}" --debug --disable-version-skew-check
 remoteCommand "root@manager0" "k0s version | grep -q ${K0S_VERSION}"
