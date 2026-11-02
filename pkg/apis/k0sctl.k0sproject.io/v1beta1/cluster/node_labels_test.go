@@ -41,6 +41,7 @@ func TestNodeLabels_Validate(t *testing.T) {
 	require.ErrorContains(t, NodeLabels{Apply: []string{"zone=a b"}}.Validate(), "invalid value")
 	require.ErrorContains(t, NodeLabels{Delete: []string{"bad key"}}.Validate(), "invalid label key")
 	require.ErrorContains(t, NodeLabels{Apply: []string{"zone=a"}, Delete: []string{"zone"}}.Validate(), "both applied and deleted")
+	require.ErrorContains(t, NodeLabels{Apply: []string{"zone=a", "zone=b"}}.Validate(), `label "zone" is applied more than once`)
 }
 
 func TestNodeLabels_Changes(t *testing.T) {
@@ -84,6 +85,13 @@ func TestNodeTaints_Validate(t *testing.T) {
 	require.NoError(t, NodeTaints{
 		Apply:  []string{"dedicated=gpu:NoSchedule"},
 		Delete: []string{"dedicated:NoExecute"},
+	}.Validate())
+	require.ErrorContains(t, NodeTaints{
+		Apply: []string{"dedicated=a:NoSchedule", "dedicated=b:NoSchedule"},
+	}.Validate(), `taint "dedicated:NoSchedule" is applied more than once`)
+	// The same key with different effects is two taints.
+	require.NoError(t, NodeTaints{
+		Apply: []string{"dedicated=gpu:NoSchedule", "dedicated=gpu:NoExecute"},
 	}.Validate())
 }
 
