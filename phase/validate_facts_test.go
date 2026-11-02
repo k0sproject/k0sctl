@@ -94,6 +94,29 @@ func TestValidateVersionSkew(t *testing.T) {
 		require.NoError(t, p.validateVersionSkew())
 	})
 
+	t.Run("uses the installed binary of a controller with useExistingK0s", func(t *testing.T) {
+		// The configured version is one minor ahead, but the controller restarts on the installed v1.32 binary.
+		h := running("controller", "v1.30.5+k0s.0")
+		h.UseExistingK0s = true
+		h.Metadata.K0sBinaryVersion = version.MustParse("v1.32.0+k0s.0")
+		err := newPhase("v1.31.1+k0s.0", h).validateVersionSkew()
+		require.ErrorContains(t, err, "from v1.30.5+k0s.0 to v1.32.0+k0s.0")
+
+		// An installed binary one minor ahead is fine, even if the configured version is further ahead.
+		h.Metadata.K0sBinaryVersion = version.MustParse("v1.31.1+k0s.0")
+		require.NoError(t, newPhase("v1.32.0+k0s.0", h).validateVersionSkew())
+	})
+
+	t.Run("checks a worker with useExistingK0s against its installed binary", func(t *testing.T) {
+		// The worker runs an old version, but its installed binary is within the supported skew, so there is
+		// nothing to warn about; the check only warns and never fails for workers.
+		h := running("worker", "v1.27.5+k0s.0")
+		h.UseExistingK0s = true
+		h.Metadata.K0sBinaryVersion = version.MustParse("v1.31.0+k0s.0")
+		require.NoError(t, newPhase("v1.32.0+k0s.0", running("controller", "v1.31.5+k0s.0"), h).validateVersionSkew())
+		require.True(t, postApplyVersion(h, h.Metadata.K0sRunningVersion).Equal(version.MustParse("v1.31.0+k0s.0")))
+	})
+
 	t.Run("can be skipped", func(t *testing.T) {
 		p := newPhase("v1.32.0+k0s.0", running("controller", "v1.30.5+k0s.0"))
 		p.SkipVersionSkewCheck = true
