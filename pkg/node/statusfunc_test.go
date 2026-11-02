@@ -13,6 +13,7 @@ import (
 	"github.com/k0sproject/rig/v2/protocol"
 	"github.com/k0sproject/rig/v2/remotefs"
 	"github.com/k0sproject/rig/v2/rigtest"
+	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,5 +103,35 @@ func TestK0sDynamicConfigReadyFunc(t *testing.T) {
 		h := newTestHost(t, func(_ *rigtest.MockRunner) {})
 		err := K0sDynamicConfigReadyFunc(h)(context.Background())
 		require.ErrorContains(t, err, "failed to get k0s config status events")
+	})
+}
+
+func TestKubeNodeVersionReadyFunc(t *testing.T) {
+	v := version.MustParse("v1.36.5+k0s.0")
+	nodeStatus := func(ready, kubeletVersion string) string {
+		return `{"status":{"conditions":[{"type":"Ready","status":"` + ready + `"}],"nodeInfo":{"kubeletVersion":"` + kubeletVersion + `"}}}`
+	}
+
+	t.Run("ready on the expected version", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("kubectl"), nodeStatus("True", "v1.36.5+k0s"))
+		})
+		require.NoError(t, KubeNodeVersionReadyFunc(h, v)(context.Background()))
+	})
+
+	t.Run("still ready on the previous version", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("kubectl"), nodeStatus("True", "v1.35.9+k0s"))
+		})
+		err := KubeNodeVersionReadyFunc(h, v)(context.Background())
+		require.ErrorContains(t, err, `kubelet version is "v1.35.9+k0s", waiting for v1.36.5`)
+	})
+
+	t.Run("not ready on the expected version", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("kubectl"), nodeStatus("False", "v1.36.5+k0s"))
+		})
+		err := KubeNodeVersionReadyFunc(h, v)(context.Background())
+		require.ErrorContains(t, err, "not ready")
 	})
 }

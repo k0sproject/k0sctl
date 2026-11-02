@@ -20,6 +20,8 @@ type ApplyOptions struct {
 	Manager *phase.Manager
 	// DisableDowngradeCheck skips the downgrade check
 	DisableDowngradeCheck bool
+	// DisableVersionSkewCheck allows upgrading controllers by more than one minor version
+	DisableVersionSkewCheck bool
 	// NoWait skips waiting for the cluster to be ready
 	NoWait bool
 	// NoDrain skips draining worker nodes
@@ -62,7 +64,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.GatherFacts{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
-			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck},
+			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck, SkipVersionSkewCheck: opts.DisableVersionSkewCheck},
 			&phase.ValidateEtcdMembers{},
 			&phase.EnsureJoinTokenWorkaround{},
 			&phase.StageBinaries{},
