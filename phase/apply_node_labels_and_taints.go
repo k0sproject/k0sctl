@@ -65,17 +65,26 @@ func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Hos
 		return err
 	}
 
+	nodeKnown := true
 	if !p.IsWet() {
-		// A node that is not in the cluster yet gets all of its labels and taints.
-		if err := readNode(ctx); err != nil {
-			labels, taints = map[string]string{}, nil
-		}
+		// A node that is not in the cluster yet can't be compared with its current state.
+		nodeKnown = readNode(ctx) == nil
 	} else if err := retry.WithDefaultTimeout(ctx, readNode); err != nil {
 		// The node may still be registering when the apply was run with --no-wait.
 		return err
 	}
 
-	applyLabels, deleteLabels := h.NodeLabels.Changes(labels)
+	var applyLabels, deleteLabels, applyTaints, deleteTaints []string
+	if nodeKnown {
+		applyLabels, deleteLabels = h.NodeLabels.Changes(labels)
+		applyTaints, deleteTaints = h.NodeTaints.Changes(taints)
+	} else {
+		// Without the current state, report every configured operation. Filtering against an empty state would
+		// hide deletions that a real apply makes, e.g. of the taints k0s sets on a new controller+worker node.
+		applyLabels, deleteLabels = h.NodeLabels.Apply, h.NodeLabels.Delete
+		applyTaints, deleteTaints = h.NodeTaints.Apply, h.NodeTaints.Delete
+	}
+
 	if len(applyLabels) > 0 || len(deleteLabels) > 0 {
 		msg := describeNodeChanges("labels", applyLabels, deleteLabels)
 		if err := p.Wet(h, msg, func() error {
@@ -86,7 +95,6 @@ func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Hos
 		}
 	}
 
-	applyTaints, deleteTaints := h.NodeTaints.Changes(taints)
 	if len(applyTaints) > 0 || len(deleteTaints) > 0 {
 		msg := describeNodeChanges("taints", applyTaints, deleteTaints)
 		if err := p.Wet(h, msg, func() error {

@@ -38,6 +38,11 @@ func (l NodeLabels) Validate() error {
 			errs = append(errs, err)
 			continue
 		}
+		// A node holds one value per key, so two values would make every apply switch between them.
+		if _, ok := applied[key]; ok {
+			errs = append(errs, fmt.Errorf("label %q is applied more than once", key))
+			continue
+		}
 		applied[key] = struct{}{}
 	}
 	for _, key := range l.Delete {
@@ -117,7 +122,13 @@ func (t NodeTaints) Validate() error {
 			errs = append(errs, err)
 			continue
 		}
-		applied[taint.key+":"+taint.effect] = struct{}{}
+		// A node holds one value per key and effect, so two values would make every apply switch between them.
+		keyEffect := taint.key + ":" + taint.effect
+		if _, ok := applied[keyEffect]; ok {
+			errs = append(errs, fmt.Errorf("taint %q is applied more than once", keyEffect))
+			continue
+		}
+		applied[keyEffect] = struct{}{}
 	}
 	for _, s := range t.Delete {
 		taint, err := parseNodeTaintSelector(s)
