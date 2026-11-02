@@ -258,6 +258,12 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 
 	log.Debugf("%s: restart service", h)
 	err = p.Wet(h, "restart k0s service", func() error {
+		// The kubelet runs the version of the k0s binary on the host, which can differ from spec.k0s.version
+		// with useExistingK0s or a custom k0sBinaryPath.
+		binaryVersion, err := h.K0sBinaryVersion()
+		if err != nil {
+			return fmt.Errorf("get k0s binary version: %w", err)
+		}
 		if err := svc.Start(ctx); err != nil {
 			return err
 		}
@@ -265,7 +271,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, postApplyVersion(h, p.Config.Spec.K0s.Version))); err != nil {
+			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, binaryVersion)); err != nil {
 				return fmt.Errorf("node did not become ready: %w", err)
 			}
 		}
