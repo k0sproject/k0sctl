@@ -59,6 +59,9 @@ func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 // KubeNodeVersionReadyFunc returns a function that returns an error unless the node is ready and its kubelet reports
 // the version v. Right after a restart, the node can still be ready on the status the previous kubelet reported, so
 // the version tells whether the restarted kubelet has registered.
+//
+// The kubelet does not report the k0s version (v1.36.5+k0s.1) but its Kubernetes build version (v1.36.5+k0s), so only
+// the part before "+" is compared. An upgrade that only changes the k0s build number can't be told apart this way.
 func KubeNodeVersionReadyFunc(h *cluster.Host, v *version.Version) retryFunc {
 	return func(_ context.Context) error {
 		status, err := kubeNodeReady(h)
