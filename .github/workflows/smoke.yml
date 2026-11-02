@@ -204,8 +204,6 @@ jobs:
           - quay.io/k0sproject/bootloose-amazonlinux2023:latest
           - quay.io/k0sproject/bootloose-rockylinux9:latest
           - quay.io/k0sproject/bootloose-ubuntu26.04:latest
-        k0s_from:
-          - v1.21.6+k0s.0
     name: Upgrade
     needs: build
     runs-on: ubuntu-24.04
@@ -216,7 +214,6 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-          K0S_FROM:  ${{ matrix.k0s_from }}
         run: make smoke-upgrade
   
   smoke-dryrun:
