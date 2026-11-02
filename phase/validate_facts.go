@@ -91,11 +91,11 @@ func (p *ValidateFacts) validateVersionSkew() error {
 		}
 
 		// Workers are upgraded to the configured version in the same apply, except when k0sctl uses the
-		// existing k0s binary, which then keeps the version the worker runs after the apply.
+		// existing k0s binary, which then decides the version the worker runs after the apply.
 		if !h.UseExistingK0s {
 			continue
 		}
-		next := postApplyVersion(h, running)
+		next := postApplyVersion(h, target)
 		if skew, ok := minorVersionSkew(next, target); ok && skew > maxKubeletSkew {
 			log.Warnf("%s: the worker will run %s because useExistingK0s is set, which is more than %d minor versions older than %s and not supported by the kubernetes version skew policy", h, next, maxKubeletSkew, target)
 		}
@@ -104,14 +104,17 @@ func (p *ValidateFacts) validateVersionSkew() error {
 	return nil
 }
 
-// postApplyVersion returns the k0s version the host runs after the apply. With useExistingK0s, k0sctl restarts
-// the k0s binary that is already installed, so that is the installed binary's version when it is known.
-// Otherwise it is fallback.
-func postApplyVersion(h *cluster.Host, fallback *version.Version) *version.Version {
-	if h.UseExistingK0s && h.Metadata.K0sBinaryVersion != nil {
+// postApplyVersion returns the k0s version the host runs after the apply. Without useExistingK0s, that is
+// target. With useExistingK0s, k0sctl only restarts a host that is marked for upgrade, and then it restarts
+// on the installed binary; any other host keeps running its current version.
+func postApplyVersion(h *cluster.Host, target *version.Version) *version.Version {
+	if !h.UseExistingK0s {
+		return target
+	}
+	if h.Metadata.NeedsUpgrade && h.Metadata.K0sBinaryVersion != nil {
 		return h.Metadata.K0sBinaryVersion
 	}
-	return fallback
+	return h.Metadata.K0sRunningVersion
 }
 
 // minorVersionSkew returns how many minor versions target is ahead of running.
