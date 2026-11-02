@@ -82,22 +82,36 @@ func (p *ValidateFacts) validateVersionSkew() error {
 			continue
 		}
 
-		skew, ok := minorVersionSkew(running, target)
-		if !ok || skew <= 0 {
+		if h.IsController() {
+			next := postApplyVersion(h, target)
+			if skew, ok := minorVersionSkew(running, next); ok && skew > 1 {
+				return fmt.Errorf("%s: can't upgrade the controller from %s to %s: the kubernetes control plane can only be upgraded one minor version at a time, upgrade to v%d.%d first or use --disable-version-skew-check to skip this check", h, running, next, running.Segments()[0], running.Segments()[1]+1)
+			}
 			continue
 		}
 
-		if h.IsController() && skew > 1 {
-			return fmt.Errorf("%s: can't upgrade the controller from %s to %s: the kubernetes control plane can only be upgraded one minor version at a time, upgrade to v%d.%d first or use --disable-version-skew-check to skip this check", h, running, target, running.Segments()[0], running.Segments()[1]+1)
+		// Workers are upgraded to the configured version in the same apply, except when k0sctl uses the
+		// existing k0s binary, which then keeps the version the worker runs after the apply.
+		if !h.UseExistingK0s {
+			continue
 		}
-
-		// Workers are upgraded in the same apply, except when k0sctl uses the existing k0s binary.
-		if !h.IsController() && h.UseExistingK0s && skew > maxKubeletSkew {
-			log.Warnf("%s: the worker runs %s and will not be upgraded because useExistingK0s is set, which is more than %d minor versions older than %s and not supported by the kubernetes version skew policy", h, running, maxKubeletSkew, target)
+		next := postApplyVersion(h, running)
+		if skew, ok := minorVersionSkew(next, target); ok && skew > maxKubeletSkew {
+			log.Warnf("%s: the worker will run %s because useExistingK0s is set, which is more than %d minor versions older than %s and not supported by the kubernetes version skew policy", h, next, maxKubeletSkew, target)
 		}
 	}
 
 	return nil
+}
+
+// postApplyVersion returns the k0s version the host runs after the apply. With useExistingK0s, k0sctl restarts
+// the k0s binary that is already installed, so that is the installed binary's version when it is known.
+// Otherwise it is fallback.
+func postApplyVersion(h *cluster.Host, fallback *version.Version) *version.Version {
+	if h.UseExistingK0s && h.Metadata.K0sBinaryVersion != nil {
+		return h.Metadata.K0sBinaryVersion
+	}
+	return fallback
 }
 
 // minorVersionSkew returns how many minor versions target is ahead of running.
