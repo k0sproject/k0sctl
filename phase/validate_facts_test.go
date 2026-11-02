@@ -1,6 +1,7 @@
 package phase
 
 import (
+	"context"
 	"testing"
 
 	"github.com/k0sproject/dig"
@@ -98,6 +99,7 @@ func TestValidateVersionSkew(t *testing.T) {
 		// The configured version is one minor ahead, but the controller restarts on the installed v1.32 binary.
 		h := running("controller", "v1.30.5+k0s.0")
 		h.UseExistingK0s = true
+		h.Metadata.NeedsUpgrade = true
 		h.Metadata.K0sBinaryVersion = version.MustParse("v1.32.0+k0s.0")
 		err := newPhase("v1.31.1+k0s.0", h).validateVersionSkew()
 		require.ErrorContains(t, err, "from v1.30.5+k0s.0 to v1.32.0+k0s.0")
@@ -112,14 +114,48 @@ func TestValidateVersionSkew(t *testing.T) {
 		// nothing to warn about; the check only warns and never fails for workers.
 		h := running("worker", "v1.27.5+k0s.0")
 		h.UseExistingK0s = true
+		h.Metadata.NeedsUpgrade = true
 		h.Metadata.K0sBinaryVersion = version.MustParse("v1.31.0+k0s.0")
-		require.NoError(t, newPhase("v1.32.0+k0s.0", running("controller", "v1.31.5+k0s.0"), h).validateVersionSkew())
-		require.True(t, postApplyVersion(h, h.Metadata.K0sRunningVersion).Equal(version.MustParse("v1.31.0+k0s.0")))
+		target := version.MustParse("v1.32.0+k0s.0")
+		require.NoError(t, newPhase(target.String(), running("controller", "v1.31.5+k0s.0"), h).validateVersionSkew())
+		require.True(t, postApplyVersion(h, target).Equal(version.MustParse("v1.31.0+k0s.0")))
+	})
+
+	t.Run("ignores the installed binary of a host with useExistingK0s that is not restarted", func(t *testing.T) {
+		h := running("controller", "v1.30.5+k0s.0")
+		h.UseExistingK0s = true
+		h.Metadata.K0sBinaryVersion = version.MustParse("v1.32.0+k0s.0")
+		require.NoError(t, newPhase("v1.30.5+k0s.0", h).validateVersionSkew())
 	})
 
 	t.Run("can be skipped", func(t *testing.T) {
 		p := newPhase("v1.32.0+k0s.0", running("controller", "v1.30.5+k0s.0"))
 		p.SkipVersionSkewCheck = true
 		require.NoError(t, p.validateVersionSkew())
+	})
+}
+
+func TestValidateFactsRun_VersionSkewWithUseExistingK0s(t *testing.T) {
+	newPhase := func(defaulted bool) *ValidateFacts {
+		h := &cluster.Host{Role: "controller", UseExistingK0s: true, Metadata: cluster.HostMetadata{
+			K0sRunningVersion: version.MustParse("v1.30.5+k0s.0"),
+			K0sBinaryVersion:  version.MustParse("v1.32.0+k0s.0"),
+			NeedsUpgrade:      true,
+		}}
+		k0s := &cluster.K0s{Version: version.MustParse("v1.33.0+k0s.0")}
+		k0s.Metadata.VersionDefaulted = defaulted
+		return &ValidateFacts{GenericPhase: GenericPhase{Config: &v1beta1.Cluster{
+			Spec: &cluster.Spec{Hosts: cluster.Hosts{h}, K0s: k0s},
+		}}}
+	}
+
+	t.Run("blocks a restart on an installed binary that skips a minor version", func(t *testing.T) {
+		require.ErrorContains(t, newPhase(false).Run(context.Background()), "from v1.30.5+k0s.0 to v1.32.0+k0s.0")
+	})
+
+	t.Run("allows a defaulted version that keeps the host on its running version", func(t *testing.T) {
+		// The defaulted version is reset to the running version and the host is no longer upgraded,
+		// so it is not restarted on the installed binary.
+		require.NoError(t, newPhase(true).Run(context.Background()))
 	})
 }
