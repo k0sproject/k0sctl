@@ -64,7 +64,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.GatherFacts{},
 			&phase.ValidateHosts{},
 			&phase.GatherK0sFacts{},
-			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck, SkipVersionSkewCheck: opts.DisableVersionSkewCheck},
+			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck, SkipVersionSkewCheck: opts.DisableVersionSkewCheck, RestoreFrom: opts.RestoreFrom},
 			&phase.ValidateEtcdMembers{},
 			&phase.EnsureJoinTokenWorkaround{},
 			&phase.StageBinaries{},
