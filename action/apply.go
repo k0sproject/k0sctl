@@ -151,8 +151,11 @@ func (a Apply) Run(ctx context.Context) error {
 		cmd.WriteString(executable)
 		cmd.WriteString(" kubeconfig")
 
-		if len(a.ConfigPaths) > 0 && (len(a.ConfigPaths) != 1 && a.ConfigPaths[0] != "-" && a.ConfigPaths[0] != "k0sctl.yaml") {
+		if !(len(a.ConfigPaths) == 1 && a.ConfigPaths[0] == "k0sctl.yaml") {
 			for _, path := range a.ConfigPaths {
+				if path == "-" {
+					continue
+				}
 				cmd.WriteString(" --config ")
 				cmd.WriteString(path)
 			}
