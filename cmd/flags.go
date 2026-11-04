@@ -284,7 +284,7 @@ func warnRigMigration(ctx *cli.Context) error {
 	warningRows = append(warningRows, " ▌ k0sctl's host connection and remote execution functionality has been")
 	warningRows = append(warningRows, " ▌ updated. Behavior should be unchanged, but if you encounter any")
 	warningRows = append(warningRows, " ▌ issues, please report them at:")
-	warningRows = append(warningRows, " ▌ hem at https://github.com/k0sproject/k0sctl/issues")
+	warningRows = append(warningRows, " ▌ https://github.com/k0sproject/k0sctl/issues")
 	warningRows = append(warningRows, " ▌ and roll back to v0.31.1 until the issue is resolved.")
 	warningRows = append(warningRows, "")
 	for _, row := range warningRows {
