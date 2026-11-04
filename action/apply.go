@@ -135,32 +135,42 @@ func (a Apply) Run(ctx context.Context) error {
 	if !a.Manager.DryRun {
 		log.Infof("k0s cluster version %s is now installed", a.Manager.Config.Spec.K0s.Version)
 	}
+        if a.KubeconfigOut == nil {
+                fromStdin := false
+                for _, path := range a.ConfigPaths {
+                        if path == "-" {
+                                fromStdin = true
+                                break
+                        }
+                }
+  
+                if !fromStdin {
+                        cmd := &strings.Builder{}
+                        executable, err := os.Executable()
+                        if err != nil {
+                                executable = "k0sctl"
+                        } else {
+                                // check if the basename of executable is in the PATH, if so, just use the basename
+                                if _, err := exec.LookPath(filepath.Base(executable)); err == nil {
+                                        executable = filepath.Base(executable)
+                                }
+                        }
 
-	if a.KubeconfigOut == nil {
-		cmd := &strings.Builder{}
-		executable, err := os.Executable()
-		if err != nil {
-			executable = "k0sctl"
-		} else {
-			// check if the basename of executable is in the PATH, if so, just use the basename
-			if _, err := exec.LookPath(filepath.Base(executable)); err == nil {
-				executable = filepath.Base(executable)
-			}
-		}
+                        cmd.WriteString(executable)
+                        cmd.WriteString(" kubeconfig")
 
-		cmd.WriteString(executable)
-		cmd.WriteString(" kubeconfig")
+                        // The default config path needs no flag
+                        if len(a.ConfigPaths) != 1 || a.ConfigPaths[0] != "k0sctl.yaml" {
+                                for _, path := range a.ConfigPaths {
+                                        cmd.WriteString(" --config ")
+                                        cmd.WriteString(path)
+                                }
+                        }
 
-		if len(a.ConfigPaths) > 0 && (len(a.ConfigPaths) != 1 && a.ConfigPaths[0] != "-" && a.ConfigPaths[0] != "k0sctl.yaml") {
-			for _, path := range a.ConfigPaths {
-				cmd.WriteString(" --config ")
-				cmd.WriteString(path)
-			}
-		}
+                        log.Info("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
+                        log.Info("     " + phase.Colorize.Cyan(cmd.String()).String())
+                }
+        }
 
-		log.Info("Tip: To access the cluster you can now fetch the admin kubeconfig using:")
-		log.Info("     " + phase.Colorize.Cyan(cmd.String()).String())
-	}
-
-	return nil
+        return nil
 }
