@@ -33,6 +33,8 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 		return err
 	}
 
+	p.warnMultipleControllersWithoutLoadBalancer()
+
 	return nil
 }
 
@@ -88,9 +90,42 @@ func (p *ValidateFacts) validateNodeLocalLoadBalancing() error {
 		return nil
 	}
 
-	if enabled, ok := p.Config.Spec.K0s.Config.Dig("network", "nodeLocalLoadBalancing", "enabled").(bool); ok && enabled {
+	if nodeLocalLoadBalancingEnabled(p.Config.Spec.K0s) {
 		return fmt.Errorf("spec.k0s.config.network.nodeLocalLoadBalancing.enabled cannot be true when %s has role 'single'", single)
 	}
 
 	return nil
+}
+
+func nodeLocalLoadBalancingEnabled(k0s *cluster.K0s) bool {
+	enabled, ok := k0s.Config.Dig("spec", "network", "nodeLocalLoadBalancing", "enabled").(bool)
+	return ok && enabled
+}
+
+// warnMultipleControllersWithoutLoadBalancer warns when there is more than one
+// controller but nothing in the configuration points at a load balancer in front
+// of them. Without one, the kubeconfig and the workers use the address of a single
+// controller, so the cluster is not highly available.
+func (p *ValidateFacts) warnMultipleControllersWithoutLoadBalancer() {
+	if p.Config == nil || p.Config.Spec == nil || p.Config.Spec.K0s == nil {
+		return
+	}
+
+	controllers := p.Config.Spec.Hosts.Controllers()
+	if len(controllers) < 2 {
+		return
+	}
+
+	if p.Config.Spec.K0s.Config.DigString("spec", "api", "externalAddress") != "" {
+		return
+	}
+	if nodeLocalLoadBalancingEnabled(p.Config.Spec.K0s) {
+		return
+	}
+	if len(p.Config.Spec.CPLBVIPs()) > 0 {
+		return
+	}
+
+	log.Warnf("the configuration has %d controllers but no load balancer: spec.k0s.config.spec.api.externalAddress is not set and neither node-local nor control plane load balancing is enabled", len(controllers))
+	log.Warnf("the kubeconfig and the workers will use the address of a single controller, so the cluster will not be highly available")
 }
