@@ -352,6 +352,43 @@ One of:
 
 When `true` and used in conjuction with the `controller+worker` role, the default taints are disabled making regular workloads schedulable on the node. By default, k0s sets a node-role.kubernetes.io/master:NoSchedule taint on controller+worker nodes and only workloads with toleration for it will be scheduled.
 
+###### `spec.hosts[*].labels` &lt;mapping&gt; (optional)
+
+Labels to set on or remove from the host's Kubernetes node. k0sctl sets them through the Kubernetes API once the node has joined the cluster, and checks them again on every `apply`, so it also works for existing nodes and for labels that a kubelet is not allowed to set on itself, such as `node-role.kubernetes.io/*`. Not available for the `controller` role, which has no Kubernetes node.
+
+- `apply` &lt;sequence&gt; - labels in `key=value` form to set on the node. Use `key=` for a label with an empty value.
+- `delete` &lt;sequence&gt; - keys of labels to remove from the node.
+
+Labels that are not listed are left untouched. To stop managing a label, move it from `apply` to `delete`, or remove it from the configuration to leave it on the node as it is.
+
+Example:
+
+```yaml
+labels:
+  apply:
+    - node-role.kubernetes.io/control-plane=
+    - topology.kubernetes.io/zone=zone-a
+  delete:
+    - node-role.kubernetes.io/master
+```
+
+###### `spec.hosts[*].taints` &lt;mapping&gt; (optional)
+
+Taints to set on or remove from the host's Kubernetes node. They are managed the same way as `labels`.
+
+- `apply` &lt;sequence&gt; - taints in `key=value:Effect` or `key:Effect` form. The effect is one of `NoSchedule`, `PreferNoSchedule` or `NoExecute`.
+- `delete` &lt;sequence&gt; - taints to remove, as `key:Effect`, or as `key` to remove the taint with every effect.
+
+Example:
+
+```yaml
+taints:
+  apply:
+    - nvidia.com/gpu=present:NoSchedule
+  delete:
+    - node-role.kubernetes.io/master
+```
+
 ###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
 
 When `true`, the k0s binaries for target host will be downloaded and cached on the local host and uploaded to the target.
