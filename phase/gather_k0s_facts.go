@@ -335,12 +335,7 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 			return nil
 		}
 
-		if Force {
-			log.Warnf("%s: an existing k0s instance is not running but has been installed as a service at %s - ignoring because --force was given", h, existingServiceScript)
-			return nil
-		}
-
-		return fmt.Errorf("k0s doesn't appear to be running but has been installed as a service at %s - please remove it or start the service", existingServiceScript)
+		return p.handleStoppedService(ctx, h, existingServiceScript)
 	}
 
 	if existingServiceScript == "" {
@@ -455,6 +450,34 @@ func (p *GatherK0sFacts) handleRoleMismatch(h *cluster.Host, detectedRole string
 
 	log.Warnf("%s: was configured as %s but is already running as %s - proceeding with reset using the discovered role because --force was given", h, h.Role, detectedRole)
 	h.Role = detectedRole
+	return nil
+}
+
+// handleStoppedService deals with a host where k0s has been installed as a
+// service but is not running. Without --force this is an error. With --force,
+// a worker is marked for upgrade when its installed binary differs from the
+// target version, so that it goes through UpgradeWorkers instead of being
+// treated as a fresh join by InstallWorkers.
+func (p *GatherK0sFacts) handleStoppedService(ctx context.Context, h *cluster.Host, serviceScript string) error {
+	if !Force {
+		return fmt.Errorf("k0s doesn't appear to be running but has been installed as a service at %s - please remove it, start the service or use --force to proceed anyway", serviceScript)
+	}
+
+	log.Warnf("%s: an existing k0s instance is not running but has been installed as a service at %s - ignoring because --force was given", h, serviceScript)
+
+	if h.IsController() {
+		return nil
+	}
+
+	needsUpgrade, err := p.needsUpgrade(ctx, h)
+	if err != nil {
+		return err
+	}
+	h.Metadata.NeedsUpgrade = needsUpgrade
+	if needsUpgrade {
+		log.Infof("%s: installed k0s binary %s differs from the target version, the stopped worker will be upgraded", h, h.Metadata.K0sBinaryVersion)
+	}
+
 	return nil
 }
 
