@@ -60,7 +60,7 @@ func (p *ResetControllers) ShouldRun() bool {
 }
 
 // DryRun reports nodes that would get reset
-func (p *ResetControllers) DryRun() error {
+func (p *ResetControllers) DryRun(_ context.Context) error {
 	for _, h := range p.hosts {
 		p.DryMsg(h, "reset node")
 	}
