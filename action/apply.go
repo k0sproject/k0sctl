@@ -67,7 +67,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.ValidateFacts{SkipDowngradeCheck: opts.DisableDowngradeCheck, SkipVersionSkewCheck: opts.DisableVersionSkewCheck},
 			&phase.ValidateEtcdMembers{},
 			&phase.EnsureJoinTokenWorkaround{},
-			&phase.StageBinaries{SkipVersionSkewCheck: opts.DisableVersionSkewCheck},
+			&phase.StageBinaries{},
 			&phase.UploadFiles{},
 			&phase.InstallBinaries{},
 			&phase.PrepareArm{},

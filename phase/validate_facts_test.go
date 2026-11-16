@@ -85,6 +85,12 @@ func TestValidateVersionSkew(t *testing.T) {
 		}
 	})
 
+	t.Run("does not block a controller with a custom k0sBinaryPath", func(t *testing.T) {
+		h := running("controller", "v1.30.5+k0s.0")
+		h.K0sBinaryPath = "/local/path/to/k0s"
+		require.NoError(t, newPhase("v1.32.0+k0s.0", h).validateVersionSkew())
+	})
+
 	t.Run("allows workers to skip minor versions", func(t *testing.T) {
 		p := newPhase("v1.32.0+k0s.0", running("controller", "v1.31.5+k0s.0"), running("worker", "v1.29.5+k0s.0"))
 		require.NoError(t, p.validateVersionSkew())

@@ -7,17 +7,12 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
-	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
 // StageBinaries stages k0s binaries on hosts that need them using the host's configured BinaryProvider.
 type StageBinaries struct {
 	GenericPhase
-
-	// SkipVersionSkewCheck allows upgrading controllers by more than one minor version
-	SkipVersionSkewCheck bool
-
 	hosts cluster.Hosts
 }
 
@@ -99,42 +94,7 @@ func (p *StageBinaries) Run(ctx context.Context) error {
 	if err := p.parallelDo(ctx, otherHosts, p.stageForHost); err != nil {
 		return err
 	}
-	if err := p.parallelDoUpload(ctx, uploadHosts, p.stageForHost); err != nil {
-		return err
-	}
-	return p.validateStagedBinaries()
-}
-
-// validateStagedBinaries checks the version skew of the controllers that get a binary from a custom k0sBinaryPath.
-// The version of such a binary is not known before it is staged and can differ from the configured version, which
-// is what the version skew check in the "Validate facts" phase had to assume. Nothing but the staged temporary
-// files has changed on the hosts at this point.
-func (p *StageBinaries) validateStagedBinaries() error {
-	if p.SkipVersionSkewCheck {
-		return nil
-	}
-	for _, h := range p.hosts {
-		running := h.Metadata.K0sRunningVersion
-		if !h.IsController() || h.K0sBinaryPath == "" || h.Metadata.K0sBinaryTempFile == "" || running == nil {
-			continue
-		}
-		staged, err := stagedK0sBinaryVersion(h)
-		if err != nil {
-			return fmt.Errorf("%s: get the version of the staged k0s binary: %w", h, err)
-		}
-		if skew, ok := minorVersionSkew(running, staged); ok && skew > 1 {
-			return controllerVersionSkewError(h, running, staged)
-		}
-	}
-	return nil
-}
-
-// stagedK0sBinaryVersion returns the version the staged k0s binary of the host reports.
-func stagedK0sBinaryVersion(h *cluster.Host) (*version.Version, error) {
-	installed := h.K0sInstallLocation()
-	h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
-	defer h.Configurer.SetPath("K0sBinaryPath", installed)
-	return h.K0sBinaryVersion()
+	return p.parallelDoUpload(ctx, uploadHosts, p.stageForHost)
 }
 
 // stageForHost stages the k0s binary on the host even in dry-run mode, so that

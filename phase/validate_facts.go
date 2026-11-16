@@ -87,7 +87,9 @@ func (p *ValidateFacts) validateVersionSkew() error {
 		if next == nil {
 			continue
 		}
-		if running := h.Metadata.K0sRunningVersion; running != nil {
+		// A custom k0sBinaryPath is a special case: the version of the supplied binary is not known here and the
+		// user is expected to know what they are doing, so the upgrade is always attempted.
+		if running := h.Metadata.K0sRunningVersion; running != nil && h.K0sBinaryPath == "" {
 			if skew, ok := minorVersionSkew(running, next); ok && skew > 1 {
 				return controllerVersionSkewError(h, running, next)
 			}
