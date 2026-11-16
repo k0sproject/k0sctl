@@ -24,9 +24,11 @@ func TestValidateNodeLocalLoadBalancing(t *testing.T) {
 	p := &ValidateFacts{GenericPhase: GenericPhase{Config: baseConfig}}
 
 	t.Run("fails when enabled on single", func(t *testing.T) {
-		baseConfig.Spec.K0s.Config["network"] = dig.Mapping{
-			"nodeLocalLoadBalancing": dig.Mapping{
-				"enabled": true,
+		baseConfig.Spec.K0s.Config["spec"] = dig.Mapping{
+			"network": dig.Mapping{
+				"nodeLocalLoadBalancing": dig.Mapping{
+					"enabled": true,
+				},
 			},
 		}
 		err := p.validateNodeLocalLoadBalancing()
@@ -34,9 +36,11 @@ func TestValidateNodeLocalLoadBalancing(t *testing.T) {
 	})
 
 	t.Run("passes when disabled on single", func(t *testing.T) {
-		baseConfig.Spec.K0s.Config["network"] = dig.Mapping{
-			"nodeLocalLoadBalancing": dig.Mapping{
-				"enabled": false,
+		baseConfig.Spec.K0s.Config["spec"] = dig.Mapping{
+			"network": dig.Mapping{
+				"nodeLocalLoadBalancing": dig.Mapping{
+					"enabled": false,
+				},
 			},
 		}
 		require.NoError(t, p.validateNodeLocalLoadBalancing())
@@ -44,9 +48,11 @@ func TestValidateNodeLocalLoadBalancing(t *testing.T) {
 
 	t.Run("passes when not single", func(t *testing.T) {
 		baseConfig.Spec.Hosts[0].Role = "controller"
-		baseConfig.Spec.K0s.Config["network"] = dig.Mapping{
-			"nodeLocalLoadBalancing": dig.Mapping{
-				"enabled": true,
+		baseConfig.Spec.K0s.Config["spec"] = dig.Mapping{
+			"network": dig.Mapping{
+				"nodeLocalLoadBalancing": dig.Mapping{
+					"enabled": true,
+				},
 			},
 		}
 		require.NoError(t, p.validateNodeLocalLoadBalancing())
@@ -220,5 +226,83 @@ func TestValidateRestore(t *testing.T) {
 
 	t.Run("no restore", func(t *testing.T) {
 		require.NoError(t, newPhase("", running("controller")).validateRestore())
+	})
+}
+
+func TestWarnMultipleControllersWithoutLoadBalancer(t *testing.T) {
+	controllers := func(n int) cluster.Hosts {
+		var hosts cluster.Hosts
+		for range n {
+			hosts = append(hosts, &cluster.Host{Role: "controller"})
+		}
+		return append(hosts, &cluster.Host{Role: "worker"})
+	}
+	warnings := func(hosts cluster.Hosts, k0sConfig dig.Mapping) int {
+		hook := logtest.NewLocal(log.StandardLogger())
+		defer hook.Reset()
+		p := &ValidateFacts{GenericPhase: GenericPhase{Config: &v1beta1.Cluster{Spec: &cluster.Spec{Hosts: hosts, K0s: &cluster.K0s{Config: k0sConfig}}}}}
+		p.warnMultipleControllersWithoutLoadBalancer()
+		n := 0
+		for _, e := range hook.AllEntries() {
+			if e.Level == log.WarnLevel {
+				n++
+			}
+		}
+		return n
+	}
+
+	t.Run("one controller", func(t *testing.T) {
+		require.Zero(t, warnings(controllers(1), dig.Mapping{}))
+	})
+
+	t.Run("multiple controllers without a load balancer", func(t *testing.T) {
+		require.NotZero(t, warnings(controllers(3), dig.Mapping{}))
+	})
+
+	t.Run("external address", func(t *testing.T) {
+		cfg := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"externalAddress": "lb.example.com"}}}
+		require.Zero(t, warnings(controllers(3), cfg))
+	})
+
+	t.Run("node-local load balancing", func(t *testing.T) {
+		cfg := dig.Mapping{"spec": dig.Mapping{"network": dig.Mapping{"nodeLocalLoadBalancing": dig.Mapping{"enabled": true}}}}
+		require.Zero(t, warnings(controllers(3), cfg))
+	})
+
+	t.Run("control plane load balancing", func(t *testing.T) {
+		cfg := dig.Mapping{"spec": dig.Mapping{"network": dig.Mapping{"controlPlaneLoadBalancing": dig.Mapping{
+			"enabled": true,
+			"type":    "Keepalived",
+			"keepalived": dig.Mapping{
+				"vrrpInstances": []any{dig.Mapping{"virtualIPs": []any{"10.0.0.100/24"}}},
+			},
+		}}}}
+		require.Zero(t, warnings(controllers(3), cfg))
+	})
+
+	// When spec.k0s.config is left out, the configuration that is already on the leader is kept
+	t.Run("existing configuration", func(t *testing.T) {
+		withExisting := func(existing string) cluster.Hosts {
+			hosts := controllers(3)
+			hosts[0].Metadata.K0sExistingConfig = existing
+			return hosts
+		}
+
+		t.Run("with a load balancer", func(t *testing.T) {
+			require.Zero(t, warnings(withExisting("spec:\n  api:\n    externalAddress: lb.example.com\n"), nil))
+		})
+
+		t.Run("without a load balancer", func(t *testing.T) {
+			require.NotZero(t, warnings(withExisting("spec:\n  api:\n    address: 10.0.0.1\n"), nil))
+		})
+
+		t.Run("replaced by a provided configuration", func(t *testing.T) {
+			cfg := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}
+			require.NotZero(t, warnings(withExisting("spec:\n  api:\n    externalAddress: lb.example.com\n"), cfg))
+		})
+
+		t.Run("unreadable", func(t *testing.T) {
+			require.Zero(t, warnings(withExisting("spec: ["), nil))
+		})
 	})
 }
