@@ -33,7 +33,7 @@ var backupCommand = &cli.Command{
 		retryIntervalFlag,
 		retryTimeoutFlag,
 	},
-	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright, warnRigMigration),
+	Before: actions(initLogging, initConfig, initManager, displayLogo, displayCopyright),
 	After:  actions(cancelTimeout),
 	Action: func(ctx *cli.Context) error {
 		var resultErr error
