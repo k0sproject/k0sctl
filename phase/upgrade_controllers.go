@@ -9,16 +9,12 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
-	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
 // UpgradeControllers upgrades the controllers one-by-one
 type UpgradeControllers struct {
 	GenericPhase
-
-	// SkipVersionSkewCheck allows upgrading controllers by more than one minor version
-	SkipVersionSkewCheck bool
 
 	hosts cluster.Hosts
 }
@@ -75,44 +71,8 @@ func (p *UpgradeControllers) CleanUp() {
 	}
 }
 
-// validateStagedBinaries checks the version skew of the controllers that are upgraded with a binary from a custom
-// k0sBinaryPath. The version of such a binary is not known before it is staged and can differ from the configured
-// version, which is what the version skew check in the "Validate facts" phase had to assume.
-func (p *UpgradeControllers) validateStagedBinaries() error {
-	if p.SkipVersionSkewCheck {
-		return nil
-	}
-	for _, h := range p.hosts {
-		running := h.Metadata.K0sRunningVersion
-		if h.K0sBinaryPath == "" || h.Metadata.K0sBinaryTempFile == "" || running == nil {
-			continue
-		}
-		staged, err := stagedK0sBinaryVersion(h)
-		if err != nil {
-			return fmt.Errorf("%s: get the version of the staged k0s binary: %w", h, err)
-		}
-		if skew, ok := minorVersionSkew(running, staged); ok && skew > 1 {
-			return controllerVersionSkewError(h, running, staged)
-		}
-	}
-	return nil
-}
-
-// stagedK0sBinaryVersion returns the version the staged k0s binary of the host reports.
-func stagedK0sBinaryVersion(h *cluster.Host) (*version.Version, error) {
-	installed := h.K0sInstallLocation()
-	h.Configurer.SetPath("K0sBinaryPath", h.Metadata.K0sBinaryTempFile)
-	defer h.Configurer.SetPath("K0sBinaryPath", installed)
-	return h.K0sBinaryVersion()
-}
-
 // Run the phase
 func (p *UpgradeControllers) Run(ctx context.Context) error {
-	// Before any controller is touched, so that a failure does not leave the control plane partially upgraded
-	if err := p.validateStagedBinaries(); err != nil {
-		return err
-	}
-
 	for _, h := range p.hosts {
 		log.Infof("%s: starting upgrade", h)
 
