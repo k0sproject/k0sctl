@@ -14,7 +14,9 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
 	rig "github.com/k0sproject/rig/v2"
+	rigcmd "github.com/k0sproject/rig/v2/cmd"
 	rigos "github.com/k0sproject/rig/v2/os"
+	"github.com/k0sproject/rig/v2/sudo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +44,15 @@ func TestLocalBinaryProviderCreatesParentDir(t *testing.T) {
 		},
 		K0sInstallPath: dest,
 	}}
+	// Use a client without sudo detection.
+	client, err := rig.NewClient(
+		rig.WithConnectionFactory(&h.CompositeConfig),
+		rig.WithSudoProvider(func(r rigcmd.Runner) (rigcmd.Runner, error) {
+			return rigcmd.NewExecutor(r, sudo.Noop), nil
+		}),
+	)
+	require.NoError(t, err)
+	h.Client = client
 	require.NoError(t, h.Connect(context.Background()))
 	require.NoError(t, h.ResolveConfigurer())
 
