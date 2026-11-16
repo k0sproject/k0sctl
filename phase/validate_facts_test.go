@@ -268,4 +268,41 @@ func TestWarnMultipleControllersWithoutLoadBalancer(t *testing.T) {
 		cfg := dig.Mapping{"spec": dig.Mapping{"network": dig.Mapping{"nodeLocalLoadBalancing": dig.Mapping{"enabled": true}}}}
 		require.Zero(t, warnings(controllers(3), cfg))
 	})
+
+	t.Run("control plane load balancing", func(t *testing.T) {
+		cfg := dig.Mapping{"spec": dig.Mapping{"network": dig.Mapping{"controlPlaneLoadBalancing": dig.Mapping{
+			"enabled": true,
+			"type":    "Keepalived",
+			"keepalived": dig.Mapping{
+				"vrrpInstances": []any{dig.Mapping{"virtualIPs": []any{"10.0.0.100/24"}}},
+			},
+		}}}}
+		require.Zero(t, warnings(controllers(3), cfg))
+	})
+
+	// When spec.k0s.config is left out, the configuration that is already on the leader is kept
+	t.Run("existing configuration", func(t *testing.T) {
+		withExisting := func(existing string) cluster.Hosts {
+			hosts := controllers(3)
+			hosts[0].Metadata.K0sExistingConfig = existing
+			return hosts
+		}
+
+		t.Run("with a load balancer", func(t *testing.T) {
+			require.Zero(t, warnings(withExisting("spec:\n  api:\n    externalAddress: lb.example.com\n"), nil))
+		})
+
+		t.Run("without a load balancer", func(t *testing.T) {
+			require.NotZero(t, warnings(withExisting("spec:\n  api:\n    address: 10.0.0.1\n"), nil))
+		})
+
+		t.Run("replaced by a provided configuration", func(t *testing.T) {
+			cfg := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}
+			require.NotZero(t, warnings(withExisting("spec:\n  api:\n    externalAddress: lb.example.com\n"), cfg))
+		})
+
+		t.Run("unreadable", func(t *testing.T) {
+			require.Zero(t, warnings(withExisting("spec: ["), nil))
+		})
+	})
 }

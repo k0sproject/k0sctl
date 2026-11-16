@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 // ValidateFacts performs remote OS detection
@@ -206,16 +208,37 @@ func (p *ValidateFacts) validateNodeLocalLoadBalancing() error {
 		return nil
 	}
 
-	if nodeLocalLoadBalancingEnabled(p.Config.Spec.K0s) {
+	if nodeLocalLoadBalancingEnabled(p.Config.Spec.K0s.Config) {
 		return fmt.Errorf("spec.k0s.config.network.nodeLocalLoadBalancing.enabled cannot be true when %s has role 'single'", single)
 	}
 
 	return nil
 }
 
-func nodeLocalLoadBalancingEnabled(k0s *cluster.K0s) bool {
-	enabled, ok := k0s.Config.Dig("spec", "network", "nodeLocalLoadBalancing", "enabled").(bool)
+func nodeLocalLoadBalancingEnabled(k0sConfig dig.Mapping) bool {
+	enabled, ok := k0sConfig.Dig("spec", "network", "nodeLocalLoadBalancing", "enabled").(bool)
 	return ok && enabled
+}
+
+// effectiveK0sConfig returns the k0s configuration the controllers end up with. It is chosen the
+// same way as in ConfigureK0s: when spec.k0s.config is left out, the configuration that is already
+// on the leader is kept.
+func (p *ValidateFacts) effectiveK0sConfig() (dig.Mapping, error) {
+	if len(p.Config.Spec.K0s.Config) > 0 {
+		return p.Config.Spec.K0s.Config, nil
+	}
+
+	leader := p.Config.Spec.K0sLeader()
+	if leader == nil || leader.Metadata.K0sExistingConfig == "" {
+		return p.Config.Spec.K0s.Config, nil
+	}
+
+	existing := make(dig.Mapping)
+	if err := yaml.Unmarshal([]byte(leader.Metadata.K0sExistingConfig), &existing); err != nil {
+		return nil, fmt.Errorf("unmarshal existing k0s config: %w", err)
+	}
+
+	return existing, nil
 }
 
 // warnMultipleControllersWithoutLoadBalancer warns when there is more than one
@@ -232,13 +255,19 @@ func (p *ValidateFacts) warnMultipleControllersWithoutLoadBalancer() {
 		return
 	}
 
-	if p.Config.Spec.K0s.Config.DigString("spec", "api", "externalAddress") != "" {
+	k0sConfig, err := p.effectiveK0sConfig()
+	if err != nil {
+		log.Debugf("skipping the load balancer check: %v", err)
 		return
 	}
-	if nodeLocalLoadBalancingEnabled(p.Config.Spec.K0s) {
+
+	if k0sConfig.DigString("spec", "api", "externalAddress") != "" {
 		return
 	}
-	if len(p.Config.Spec.CPLBVIPs()) > 0 {
+	if nodeLocalLoadBalancingEnabled(k0sConfig) {
+		return
+	}
+	if len((&cluster.Spec{K0s: &cluster.K0s{Config: k0sConfig}}).CPLBVIPs()) > 0 {
 		return
 	}
 
