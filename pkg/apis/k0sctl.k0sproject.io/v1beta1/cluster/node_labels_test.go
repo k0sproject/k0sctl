@@ -137,3 +137,20 @@ func TestValidation_NodeLabelsAndTaints(t *testing.T) {
 	}
 	require.NoError(t, h.Validate())
 }
+
+func TestNodeTaints_ChangesOverlappingDeletes(t *testing.T) {
+	current := []string{"dedicated=gpu:NoSchedule"}
+
+	_, del := NodeTaints{Delete: []string{"dedicated", "dedicated:NoSchedule"}}.Changes(current)
+	require.Equal(t, []string{"dedicated"}, del)
+
+	_, del = NodeTaints{Delete: []string{"dedicated:NoSchedule", "dedicated"}}.Changes(current)
+	require.Equal(t, []string{"dedicated:NoSchedule"}, del)
+
+	_, del = NodeTaints{Delete: []string{"dedicated", "dedicated"}}.Changes(current)
+	require.Equal(t, []string{"dedicated"}, del)
+
+	// A broader selector after a narrower one is still needed when it matches another effect.
+	_, del = NodeTaints{Delete: []string{"dedicated:NoSchedule", "dedicated"}}.Changes(append(current, "dedicated=:NoExecute"))
+	require.Equal(t, []string{"dedicated:NoSchedule", "dedicated"}, del)
+}

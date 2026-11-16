@@ -738,7 +738,13 @@ func (h *Host) DeleteNode(node *Host) error {
 
 // Taints returns all taints added to the node.
 func (h *Host) Taints(node *Host) ([]string, error) {
-	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.FS(), node.KubernetesNodeName())))
+	return h.TaintsContext(context.Background(), node)
+}
+
+// TaintsContext returns the taints of the node in key=value:Effect form. The
+// kubectl call is bound to the given context.
+func (h *Host) TaintsContext(ctx context.Context, node *Host) ([]string, error) {
+	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
 	}
@@ -764,8 +770,8 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 }
 
 // NodeLabelValues returns the labels of the node.
-func (h *Host) NodeLabelValues(node *Host) (map[string]string, error) {
-	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{.metadata.labels}'`, quote(h.FS(), node.KubernetesNodeName())))
+func (h *Host) NodeLabelValues(ctx context.Context, node *Host) (map[string]string, error) {
+	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{.metadata.labels}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node labels: %w", err)
 	}
@@ -780,13 +786,13 @@ func (h *Host) NodeLabelValues(node *Host) (map[string]string, error) {
 }
 
 // LabelNode sets the given key=value labels on the node and removes the labels with the given keys.
-func (h *Host) LabelNode(node *Host, apply []string, del []string) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "label nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
+func (h *Host) LabelNode(ctx context.Context, node *Host, apply []string, del []string) error {
+	return h.Sudo().ExecContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "label nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
 }
 
 // TaintNode sets the given taints on the node and removes the taints given in key or key:Effect form.
-func (h *Host) TaintNode(node *Host, apply []string, del []string) error {
-	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
+func (h *Host) TaintNode(ctx context.Context, node *Host, apply []string, del []string) error {
+	return h.Sudo().ExecContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes --overwrite %s %s", quote(h.FS(), node.KubernetesNodeName()), kubectlChanges(h, apply, del)))
 }
 
 // kubectlChanges builds the quoted arguments for kubectl label and kubectl

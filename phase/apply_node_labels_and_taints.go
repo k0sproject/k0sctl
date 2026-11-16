@@ -42,13 +42,12 @@ func (p *ApplyNodeLabelsAndTaints) ShouldRun() bool {
 
 // Run the phase
 func (p *ApplyNodeLabelsAndTaints) Run(ctx context.Context) error {
-	for _, h := range p.hosts {
+	return p.parallelDo(ctx, p.hosts, func(ctx context.Context, h *cluster.Host) error {
 		if err := p.configure(ctx, h); err != nil {
 			return fmt.Errorf("%s: apply node labels and taints: %w", h, err)
 		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Host) error {
@@ -56,12 +55,12 @@ func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Hos
 		labels map[string]string
 		taints []string
 	)
-	readNode := func(_ context.Context) error {
+	readNode := func(ctx context.Context) error {
 		var err error
-		if labels, err = p.leader.NodeLabelValues(h); err != nil {
+		if labels, err = p.leader.NodeLabelValues(ctx, h); err != nil {
 			return err
 		}
-		taints, err = p.leader.Taints(h)
+		taints, err = p.leader.TaintsContext(ctx, h)
 		return err
 	}
 
@@ -89,7 +88,7 @@ func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Hos
 		msg := describeNodeChanges("labels", applyLabels, deleteLabels)
 		if err := p.Wet(h, msg, func() error {
 			log.Infof("%s: %s", h, msg)
-			return p.leader.LabelNode(h, applyLabels, deleteLabels)
+			return p.leader.LabelNode(ctx, h, applyLabels, deleteLabels)
 		}); err != nil {
 			return err
 		}
@@ -99,7 +98,7 @@ func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Hos
 		msg := describeNodeChanges("taints", applyTaints, deleteTaints)
 		if err := p.Wet(h, msg, func() error {
 			log.Infof("%s: %s", h, msg)
-			return p.leader.TaintNode(h, applyTaints, deleteTaints)
+			return p.leader.TaintNode(ctx, h, applyTaints, deleteTaints)
 		}); err != nil {
 			return err
 		}

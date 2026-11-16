@@ -170,16 +170,24 @@ func (t NodeTaints) Changes(current []string) (apply []string, del []string) {
 		}
 	}
 
+	// kubectl fails when a removal matches no taint, so overlapping selectors
+	// like "dedicated" and "dedicated:NoSchedule" must not pick the same taint twice.
+	removed := make(map[string]struct{}, len(existing))
 	for _, s := range t.Delete {
 		selector, err := parseNodeTaintSelector(s)
 		if err != nil {
 			continue
 		}
+		selected := false
 		for keyEffect := range existing {
-			if selector.matches(keyEffect) {
-				del = append(del, s)
-				break
+			if _, ok := removed[keyEffect]; ok || !selector.matches(keyEffect) {
+				continue
 			}
+			removed[keyEffect] = struct{}{}
+			selected = true
+		}
+		if selected {
+			del = append(del, s)
 		}
 	}
 	return apply, del
