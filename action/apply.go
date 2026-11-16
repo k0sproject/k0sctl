@@ -7,10 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/phase"
+	"github.com/k0sproject/rig/v2/sh/shellescape"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -138,7 +140,8 @@ func (a Apply) Run(ctx context.Context) error {
 		log.Infof("k0s cluster version %s is now installed", a.Manager.Config.Spec.K0s.Version)
 	}
 
-	if a.KubeconfigOut == nil {
+	if a.KubeconfigOut == nil && !slices.Contains(a.ConfigPaths, "-") {
+		// the tip is skipped when the config came from stdin, the command can't reproduce that
 		cmd := &strings.Builder{}
 		executable, err := os.Executable()
 		if err != nil {
@@ -150,13 +153,14 @@ func (a Apply) Run(ctx context.Context) error {
 			}
 		}
 
-		cmd.WriteString(executable)
+		cmd.WriteString(shellescape.Quote(executable))
 		cmd.WriteString(" kubeconfig")
 
-		if len(a.ConfigPaths) > 0 && (len(a.ConfigPaths) != 1 && a.ConfigPaths[0] != "-" && a.ConfigPaths[0] != "k0sctl.yaml") {
+		// The default config path needs no flag
+		if len(a.ConfigPaths) != 1 || a.ConfigPaths[0] != "k0sctl.yaml" {
 			for _, path := range a.ConfigPaths {
 				cmd.WriteString(" --config ")
-				cmd.WriteString(path)
+				cmd.WriteString(shellescape.Quote(path))
 			}
 		}
 
