@@ -2,7 +2,6 @@
 
 # Default values for environment variables
 K0SCTL_CONFIG=${K0SCTL_CONFIG:-"k0sctl-dryrun.yaml"}
-K0S_FROM=${K0S_FROM:-"v1.21.6+k0s.0"}
 K0S_TO=${K0S_TO:-"$(curl -s "https://docs.k0sproject.io/stable.txt")"}
 
 log="smoke-dryrun.log"
@@ -10,6 +9,13 @@ log="smoke-dryrun.log"
 # Source common functions
 . ./smoke.common.sh
 trap cleanup EXIT
+
+# Start two minor versions back: far enough for the version skew check to block the upgrade, close enough
+# for the upgrade to work when the check is disabled.
+K0S_FROM=${K0S_FROM:-"$(k0sVersionBefore "${K0S_TO}" 2)"}
+if [ -z "${K0S_FROM}" ]; then
+  exit 1
+fi
 
 # Define functions
 remoteCommand() {
@@ -91,6 +97,11 @@ expectNoK0s() {
 
 applyConfig() {
   ../k0sctl apply --config "${K0SCTL_CONFIG}" --debug "$@" | tee "${log}"
+  # Without this, tee's exit status hides a failed apply
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    colorEcho 1 "k0sctl apply failed"
+    exit 1
+  fi
 }
 
 expectVersionSkewFailure() {

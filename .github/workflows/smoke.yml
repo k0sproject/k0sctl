@@ -222,8 +222,6 @@ jobs:
         image:
           - quay.io/k0sproject/bootloose-alpine3.23:latest
           - quay.io/k0sproject/bootloose-ubuntu26.04:latest
-        k0s_from:
-          - v1.21.6+k0s.0
     name: Dry run
     needs: build
     runs-on: ubuntu-24.04
@@ -234,7 +232,6 @@ jobs:
       - name: Run smoke tests
         env:
           LINUX_IMAGE: ${{ matrix.image }}
-          K0S_FROM:  ${{ matrix.k0s_from }}
         run: make smoke-dryrun
 
   smoke-reset:
