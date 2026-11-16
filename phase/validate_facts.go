@@ -76,32 +76,48 @@ func (p *ValidateFacts) validateVersionSkew() error {
 		return nil
 	}
 
+	// The newest version a controller runs after the apply, which is what the kubelets are compared against.
+	// It is not always the configured version: a controller with useExistingK0s restarts on its installed binary.
+	var controlPlane *version.Version
 	for _, h := range p.Config.Spec.Hosts {
-		running := h.Metadata.K0sRunningVersion
-		if h.Reset || running == nil {
-			continue
-		}
-
-		if h.IsController() {
-			next := postApplyVersion(h, target)
-			if skew, ok := minorVersionSkew(running, next); ok && skew > 1 {
-				return fmt.Errorf("%s: can't upgrade the controller from %s to %s: the kubernetes control plane can only be upgraded one minor version at a time, upgrade to v%d.%d first or use --disable-version-skew-check to skip this check", h, running, next, running.Segments()[0], running.Segments()[1]+1)
-			}
-			continue
-		}
-
-		// Workers are upgraded to the configured version in the same apply, except when k0sctl uses the
-		// existing k0s binary, which then decides the version the worker runs after the apply.
-		if !h.UseExistingK0s {
+		if h.Reset || !h.IsController() {
 			continue
 		}
 		next := postApplyVersion(h, target)
-		if skew, ok := minorVersionSkew(next, target); ok && skew > maxKubeletSkew {
-			log.Warnf("%s: the worker will run %s because useExistingK0s is set, which is more than %d minor versions older than %s and not supported by the kubernetes version skew policy", h, next, maxKubeletSkew, target)
+		if next == nil {
+			continue
+		}
+		if running := h.Metadata.K0sRunningVersion; running != nil {
+			if skew, ok := minorVersionSkew(running, next); ok && skew > 1 {
+				return controllerVersionSkewError(h, running, next)
+			}
+		}
+		if controlPlane == nil || next.GreaterThan(controlPlane) {
+			controlPlane = next
+		}
+	}
+	if controlPlane == nil {
+		controlPlane = target
+	}
+
+	for _, h := range p.Config.Spec.Hosts {
+		// Workers are upgraded to the configured version in the same apply, except when k0sctl uses the
+		// existing k0s binary, which then decides the version the worker runs after the apply.
+		if h.Reset || h.IsController() || !h.UseExistingK0s || h.Metadata.K0sRunningVersion == nil {
+			continue
+		}
+		next := postApplyVersion(h, target)
+		if skew, ok := minorVersionSkew(next, controlPlane); ok && skew > maxKubeletSkew {
+			log.Warnf("%s: the worker will run %s because useExistingK0s is set, which is more than %d minor versions older than the control plane version %s and not supported by the kubernetes version skew policy", h, next, maxKubeletSkew, controlPlane)
 		}
 	}
 
 	return nil
+}
+
+// controllerVersionSkewError is the error for a controller upgrade from running to next that skips a minor version.
+func controllerVersionSkewError(h *cluster.Host, running, next *version.Version) error {
+	return fmt.Errorf("%s: can't upgrade the controller from %s to %s: the kubernetes control plane can only be upgraded one minor version at a time, upgrade to v%d.%d first or use --disable-version-skew-check to skip this check", h, running, next, running.Segments()[0], running.Segments()[1]+1)
 }
 
 // postApplyVersion returns the k0s version the host runs after the apply. Without useExistingK0s, that is

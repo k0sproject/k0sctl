@@ -8,6 +8,8 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/version"
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,6 +121,30 @@ func TestValidateVersionSkew(t *testing.T) {
 		target := version.MustParse("v1.32.0+k0s.0")
 		require.NoError(t, newPhase(target.String(), running("controller", "v1.31.5+k0s.0"), h).validateVersionSkew())
 		require.True(t, postApplyVersion(h, target).Equal(version.MustParse("v1.31.0+k0s.0")))
+	})
+
+	t.Run("warns about a useExistingK0s worker too far behind a controller that restarts on its installed binary", func(t *testing.T) {
+		hook := logtest.NewGlobal()
+		t.Cleanup(func() { log.StandardLogger().ReplaceHooks(make(log.LevelHooks)) })
+
+		// The configured version stays at v1.34, but the controller restarts on its installed v1.35 binary,
+		// which leaves the v1.31 worker four minor versions behind.
+		c := running("controller", "v1.34.5+k0s.0")
+		c.UseExistingK0s = true
+		c.Metadata.NeedsUpgrade = true
+		c.Metadata.K0sBinaryVersion = version.MustParse("v1.35.0+k0s.0")
+		w := running("worker", "v1.31.5+k0s.0")
+		w.UseExistingK0s = true
+		require.NoError(t, newPhase("v1.34.5+k0s.0", c, w).validateVersionSkew())
+		require.Len(t, hook.AllEntries(), 1)
+		require.Equal(t, log.WarnLevel, hook.LastEntry().Level)
+		require.Contains(t, hook.LastEntry().Message, "older than the control plane version v1.35.0+k0s.0")
+
+		// Three minor versions behind is within the policy
+		hook.Reset()
+		w.Metadata.K0sRunningVersion = version.MustParse("v1.32.5+k0s.0")
+		require.NoError(t, newPhase("v1.34.5+k0s.0", c, w).validateVersionSkew())
+		require.Empty(t, hook.AllEntries())
 	})
 
 	t.Run("ignores the installed binary of a host with useExistingK0s that is not restarted", func(t *testing.T) {
