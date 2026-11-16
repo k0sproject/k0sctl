@@ -35,7 +35,7 @@ var readKubeconfig = func(h *cluster.Host) (string, error) {
 	return output, nil
 }
 
-func (p *GetKubeconfig) DryRun() error {
+func (p *GetKubeconfig) DryRun(_ context.Context) error {
 	p.DryMsg(p.Config.Spec.Hosts.Controllers()[0], "get admin kubeconfig")
 	return nil
 }
