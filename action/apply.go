@@ -79,7 +79,7 @@ func NewApply(opts ApplyOptions) *Apply {
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
-			&phase.UpgradeControllers{},
+			&phase.UpgradeControllers{SkipVersionSkewCheck: opts.DisableVersionSkewCheck},
 			&phase.UpgradeWorkers{NoDrain: opts.NoDrain},
 			&phase.Reinstall{},
 			&phase.ResetWorkers{NoDrain: opts.NoDrain},
