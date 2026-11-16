@@ -14,6 +14,8 @@ type ValidateFacts struct {
 	GenericPhase
 	SkipDowngradeCheck   bool
 	SkipVersionSkewCheck bool
+	// RestoreFrom is the path to the backup the cluster is restored from, if any.
+	RestoreFrom string
 }
 
 // maxKubeletSkew is the number of minor versions a kubelet may be older than
@@ -27,6 +29,10 @@ func (p *ValidateFacts) Title() string {
 
 // Run the phase
 func (p *ValidateFacts) Run(_ context.Context) error {
+	if err := p.validateRestore(); err != nil {
+		return err
+	}
+
 	if err := p.validateDowngrade(); err != nil {
 		return err
 	}
@@ -41,6 +47,23 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 
 	if err := p.validateNodeLocalLoadBalancing(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// validateRestore refuses to restore a backup onto a cluster that is already running. Restoring is for
+// recreating a cluster from scratch, and it is skipped when k0s is running, which would leave the
+// running cluster as it is.
+func (p *ValidateFacts) validateRestore() error {
+	if p.RestoreFrom == "" {
+		return nil
+	}
+
+	for _, h := range p.Config.Spec.Hosts.Controllers() {
+		if h.Metadata.K0sRunningVersion != nil {
+			return fmt.Errorf("%s: k0s is already running, a backup can only be restored to a new cluster: reset the cluster first or apply without --restore-from", h)
+		}
 	}
 
 	return nil

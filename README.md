@@ -208,7 +208,7 @@ Restoring the cluster state is a full restoration of the cluster control plane s
 - Certificates
 - Keys
 
-In general restore is intended to be used as a disaster recovery mechanism and thus it expects that no k0s components actually exist on the controllers.
+In general restore is intended to be used as a disaster recovery mechanism and thus it expects that no k0s components actually exist on the controllers. If k0s is already running on any of the controllers, `k0sctl apply --restore-from` fails before uploading any binaries, files or configuration to the hosts and before changing anything in the cluster. Host preparation, such as installing required packages and setting up the environment, has already been done at that point.
 
 Known limitations in the current restore process:
 - The control plane address (`externalAddress`) needs to remain the same between backup and restore. This is caused by the fact that all worker node components connect to this address and cannot currently be re-configured.
