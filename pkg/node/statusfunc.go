@@ -11,6 +11,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
 	"github.com/k0sproject/rig/v2/protocol"
+	"github.com/k0sproject/version"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -27,6 +28,9 @@ type kubeNodeStatus struct {
 			Status string `json:"status"`
 			Type   string `json:"type"`
 		} `json:"conditions"`
+		NodeInfo struct {
+			KubeletVersion string `json:"kubeletVersion"`
+		} `json:"nodeInfo"`
 	} `json:"status"`
 }
 
@@ -46,28 +50,70 @@ type statusEvents struct {
 // connection loss simply retries. Only a genuinely non-retryable failure (auth, host key mismatch, ...) aborts the loop.
 func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {
-		nodeName := h.KubernetesNodeName()
-		output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(nodeName)), cmd.HideOutput())
-		if err != nil {
-			if errors.Is(err, protocol.ErrNonRetryable) {
-				return errors.Join(retry.ErrAbort, fmt.Errorf("failed to get node status: %w", err))
-			}
-			return fmt.Errorf("failed to get node status: %w", err)
-		}
-		status := &kubeNodeStatus{}
-		if err := json.Unmarshal([]byte(output), status); err != nil {
-			return fmt.Errorf("failed to decode kubectl get node status output: %w", err)
-		}
-		for _, c := range status.Status.Conditions {
-			if c.Type == "Ready" {
-				if c.Status == "True" {
-					return nil
-				}
-				return fmt.Errorf("node %s is not ready", nodeName)
-			}
-		}
-		return fmt.Errorf("node %s 'Ready' condition not found", nodeName)
+		_, err := kubeNodeReady(h)
+		return err
 	}
+}
+
+// KubeNodeVersionReadyFunc returns a function that returns an error unless the node is ready and its kubelet reports
+// the version v. Right after a restart, the node can still be ready on the status the previous kubelet reported, so
+// the version tells whether the restarted kubelet has registered.
+//
+// The kubelet does not report the k0s version (v1.36.5+k0s.1) but its Kubernetes build version (v1.36.5+k0s), and
+// the pre-release part of a k0s version (v1.36.5-rc.0+k0s.0, or v1.36.5-dev+k0s of a development build) is not
+// necessarily a part of it. Only the numeric major.minor.patch parts are compared, so an upgrade that changes
+// nothing else can't be told apart this way.
+func KubeNodeVersionReadyFunc(h *cluster.Host, v *version.Version) retryFunc {
+	return func(_ context.Context) error {
+		status, err := kubeNodeReady(h)
+		if err != nil {
+			return err
+		}
+		kubeletVersion := status.Status.NodeInfo.KubeletVersion
+		if !sameNumericVersion(kubeletVersion, v) {
+			return fmt.Errorf("node %s kubelet version is %q, waiting for %s", h.KubernetesNodeName(), kubeletVersion, numericVersion(v))
+		}
+		return nil
+	}
+}
+
+// numericVersion returns the major.minor.patch part of v, such as v1.36.5.
+func numericVersion(v *version.Version) string {
+	s := v.Segments()
+	return fmt.Sprintf("v%d.%d.%d", s[0], s[1], s[2])
+}
+
+// sameNumericVersion returns true when the kubelet version has the same major.minor.patch as v.
+func sameNumericVersion(kubeletVersion string, v *version.Version) bool {
+	kv, err := version.NewVersion(kubeletVersion)
+	if err != nil {
+		return false
+	}
+	return numericVersion(kv) == numericVersion(v)
+}
+
+func kubeNodeReady(h *cluster.Host) (*kubeNodeStatus, error) {
+	nodeName := h.KubernetesNodeName()
+	output, err := h.Sudo().ExecOutput(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "get node %s -o json", h.FS().ShellQuote(nodeName)), cmd.HideOutput())
+	if err != nil {
+		if errors.Is(err, protocol.ErrNonRetryable) {
+			return nil, errors.Join(retry.ErrAbort, fmt.Errorf("failed to get node status: %w", err))
+		}
+		return nil, fmt.Errorf("failed to get node status: %w", err)
+	}
+	status := &kubeNodeStatus{}
+	if err := json.Unmarshal([]byte(output), status); err != nil {
+		return nil, fmt.Errorf("failed to decode kubectl get node status output: %w", err)
+	}
+	for _, c := range status.Status.Conditions {
+		if c.Type == "Ready" {
+			if c.Status == "True" {
+				return status, nil
+			}
+			return nil, fmt.Errorf("node %s is not ready", nodeName)
+		}
+	}
+	return nil, fmt.Errorf("node %s 'Ready' condition not found", nodeName)
 }
 
 // K0sDynamicConfigReadyFunc returns a function that returns an error unless the k0s dynamic config has been reconciled

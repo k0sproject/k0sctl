@@ -48,6 +48,36 @@ cleanup() {
     fi
 }
 
+# latestPatch prints the latest non-prerelease k0s version of a minor version, such as v1.36.
+# Tags are listed with git instead of the GitHub API to stay clear of API rate limits.
+latestPatch() {
+  git ls-remote --tags --refs https://github.com/k0sproject/k0s "refs/tags/$1.*" \
+    | sed 's|.*refs/tags/||' \
+    | grep -E "^$(echo "$1" | sed 's/\./\\./g')\.[0-9]+\+k0s\.[0-9]+$" \
+    | sort -V \
+    | tail -n 1
+}
+
+# k0sVersionBefore prints the latest non-prerelease k0s version that is the given number of minor
+# versions older than the given k0s version.
+#
+# This file is also sourced by scripts that run under plain sh, so no bashisms here.
+k0sVersionBefore() {
+  major=$(echo "$1" | sed -n 's/^v\([0-9][0-9]*\)\.[0-9][0-9]*\..*/\1/p')
+  minor=$(echo "$1" | sed -n 's/^v[0-9][0-9]*\.\([0-9][0-9]*\)\..*/\1/p')
+  if [ -z "${major}" ] || [ -z "${minor}" ]; then
+    echo "Can't parse the k0s version $1" >&2
+    return 1
+  fi
+  wanted="v${major}.$((minor - $2))"
+  found=$(latestPatch "${wanted}")
+  if [ -z "${found}" ]; then
+    echo "Can't find a k0s ${wanted} release" >&2
+    return 1
+  fi
+  echo "${found}"
+}
+
 downloadKubectl() {
     OS=$(uname | tr '[:upper:]' '[:lower:]')
     ARCH="amd64"

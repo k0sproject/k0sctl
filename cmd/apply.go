@@ -59,6 +59,10 @@ var applyCommand = &cli.Command{
 			Usage:  "Skip downgrade check",
 			Hidden: true,
 		},
+		&cli.BoolFlag{
+			Name:  "disable-version-skew-check",
+			Usage: "Allow upgrading controllers by more than one kubernetes minor version at a time",
+		},
 		&cli.StringFlag{
 			Name:  "evict-taint",
 			Usage: "Taint to be applied to nodes before draining and removed after uncordoning in the format of <key=value>:<effect> (default: from spec.options.evictTaint)",
@@ -108,16 +112,17 @@ var applyCommand = &cli.Command{
 		}
 
 		applyOpts := action.ApplyOptions{
-			Manager:               manager,
-			KubeconfigOut:         kubeconfigOut,
-			KubeconfigAPIAddress:  ctx.String("kubeconfig-api-address"),
-			KubeconfigUser:        ctx.String("kubeconfig-user"),
-			KubeconfigCluster:     ctx.String("kubeconfig-cluster"),
-			NoWait:                ctx.Bool("no-wait") || !manager.Config.Spec.Options.Wait.EnabledValue(),
-			NoDrain:               getNoDrainFlagOrConfig(ctx, manager.Config.Spec.Options.Drain),
-			DisableDowngradeCheck: ctx.Bool("disable-downgrade-check"),
-			RestoreFrom:           ctx.String("restore-from"),
-			ConfigPaths:           ctx.StringSlice("config"),
+			Manager:                 manager,
+			KubeconfigOut:           kubeconfigOut,
+			KubeconfigAPIAddress:    ctx.String("kubeconfig-api-address"),
+			KubeconfigUser:          ctx.String("kubeconfig-user"),
+			KubeconfigCluster:       ctx.String("kubeconfig-cluster"),
+			NoWait:                  ctx.Bool("no-wait") || !manager.Config.Spec.Options.Wait.EnabledValue(),
+			NoDrain:                 getNoDrainFlagOrConfig(ctx, manager.Config.Spec.Options.Drain),
+			DisableDowngradeCheck:   ctx.Bool("disable-downgrade-check"),
+			DisableVersionSkewCheck: ctx.Bool("disable-version-skew-check"),
+			RestoreFrom:             ctx.String("restore-from"),
+			ConfigPaths:             ctx.StringSlice("config"),
 		}
 
 		applyAction := action.NewApply(applyOpts)
