@@ -127,6 +127,16 @@ func TestKubeNodeVersionReadyFunc(t *testing.T) {
 		require.ErrorContains(t, err, `kubelet version is "v1.35.9+k0s", waiting for v1.36.5`)
 	})
 
+	t.Run("ready on a pre-release or development build of the expected version", func(t *testing.T) {
+		// The kubelet reports the Kubernetes version, which does not carry the pre-release part of the k0s version
+		for _, k0sVersion := range []string{"v1.36.5-rc.0+k0s.0", "v1.36.5-dev+k0s"} {
+			h := newTestHost(t, func(mr *rigtest.MockRunner) {
+				mr.AddCommandOutput(rigtest.Contains("kubectl"), nodeStatus("True", "v1.36.5+k0s"))
+			})
+			require.NoError(t, KubeNodeVersionReadyFunc(h, version.MustParse(k0sVersion))(context.Background()), k0sVersion)
+		}
+	})
+
 	t.Run("not ready on the expected version", func(t *testing.T) {
 		h := newTestHost(t, func(mr *rigtest.MockRunner) {
 			mr.AddCommandOutput(rigtest.Contains("kubectl"), nodeStatus("False", "v1.36.5+k0s"))

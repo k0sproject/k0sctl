@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -60,8 +59,10 @@ func KubeNodeReadyFunc(h *cluster.Host) retryFunc {
 // the version v. Right after a restart, the node can still be ready on the status the previous kubelet reported, so
 // the version tells whether the restarted kubelet has registered.
 //
-// The kubelet does not report the k0s version (v1.36.5+k0s.1) but its Kubernetes build version (v1.36.5+k0s), so only
-// the part before "+" is compared. An upgrade that only changes the k0s build number can't be told apart this way.
+// The kubelet does not report the k0s version (v1.36.5+k0s.1) but its Kubernetes build version (v1.36.5+k0s), and
+// the pre-release part of a k0s version (v1.36.5-rc.0+k0s.0, or v1.36.5-dev+k0s of a development build) is not
+// necessarily a part of it. Only the numeric major.minor.patch parts are compared, so an upgrade that changes
+// nothing else can't be told apart this way.
 func KubeNodeVersionReadyFunc(h *cluster.Host, v *version.Version) retryFunc {
 	return func(_ context.Context) error {
 		status, err := kubeNodeReady(h)
@@ -69,11 +70,26 @@ func KubeNodeVersionReadyFunc(h *cluster.Host, v *version.Version) retryFunc {
 			return err
 		}
 		kubeletVersion := status.Status.NodeInfo.KubeletVersion
-		if strings.SplitN(kubeletVersion, "+", 2)[0] != v.Base() {
-			return fmt.Errorf("node %s kubelet version is %q, waiting for %s", h.KubernetesNodeName(), kubeletVersion, v.Base())
+		if !sameNumericVersion(kubeletVersion, v) {
+			return fmt.Errorf("node %s kubelet version is %q, waiting for %s", h.KubernetesNodeName(), kubeletVersion, numericVersion(v))
 		}
 		return nil
 	}
+}
+
+// numericVersion returns the major.minor.patch part of v, such as v1.36.5.
+func numericVersion(v *version.Version) string {
+	s := v.Segments()
+	return fmt.Sprintf("v%d.%d.%d", s[0], s[1], s[2])
+}
+
+// sameNumericVersion returns true when the kubelet version has the same major.minor.patch as v.
+func sameNumericVersion(kubeletVersion string, v *version.Version) bool {
+	kv, err := version.NewVersion(kubeletVersion)
+	if err != nil {
+		return false
+	}
+	return numericVersion(kv) == numericVersion(v)
 }
 
 func kubeNodeReady(h *cluster.Host) (*kubeNodeStatus, error) {
