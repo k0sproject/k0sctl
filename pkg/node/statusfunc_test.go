@@ -145,3 +145,38 @@ func TestKubeNodeVersionReadyFunc(t *testing.T) {
 		require.ErrorContains(t, err, "not ready")
 	})
 }
+
+func TestK0sPID(t *testing.T) {
+	t.Run("running", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("status -o json"), `{"Version":"v1.36.6+k0s.0","Pid":1234,"Role":"worker"}`)
+		})
+		pid, err := K0sPID(context.Background(), h)
+		require.NoError(t, err)
+		require.Equal(t, 1234, pid)
+	})
+
+	t.Run("not running", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandFailure(rigtest.Contains("status -o json"), errors.New("dial unix /run/k0s/status.sock: connect: no such file or directory"))
+		})
+		_, err := K0sPID(context.Background(), h)
+		require.ErrorContains(t, err, "k0s is not running")
+	})
+
+	t.Run("no pid", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("status -o json"), `{"Version":"v1.36.6+k0s.0","Role":"worker"}`)
+		})
+		_, err := K0sPID(context.Background(), h)
+		require.ErrorContains(t, err, "did not report a process id")
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandOutput(rigtest.Contains("status -o json"), `not json`)
+		})
+		_, err := K0sPID(context.Background(), h)
+		require.ErrorContains(t, err, "failed to decode")
+	})
+}

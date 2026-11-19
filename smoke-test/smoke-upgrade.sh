@@ -6,7 +6,14 @@ K0S_TO=${K0S_TO:-"$(curl -s "https://docs.k0sproject.io/stable.txt")"}
 set -e
 
 . ./smoke.common.sh
-trap cleanup EXIT
+onExit() {
+  rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    dumpK0sLogs manager0 worker0
+  fi
+  cleanup
+}
+trap onExit EXIT
 
 remoteCommand() {
   local userhost="$1"
