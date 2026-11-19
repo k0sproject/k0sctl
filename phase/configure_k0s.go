@@ -475,7 +475,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 			cfg = hostBaseConfig
 		} else {
 			log.Debugf("%s: using a stripped down config for dynamic config", h)
-			cfg = p.Config.Spec.K0s.NodeConfig()
+			// NodeConfig shares its mappings with spec.k0s.config, so copy it
+			// before changing it for this host.
+			nodeConfig := p.Config.Spec.K0s.NodeConfig()
+			cfg = nodeConfig.Dup()
 		}
 	} else {
 		cfg = hostBaseConfig

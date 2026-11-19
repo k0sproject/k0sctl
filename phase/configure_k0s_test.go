@@ -361,3 +361,29 @@ func TestConfigureControllersNamesTheHostThatFailedToRestart(t *testing.T) {
 	require.ErrorContains(t, err, "wait for k0s service start")
 	require.ErrorContains(t, err, "10.0.0.1", "the error should identify the controller that failed")
 }
+
+func TestConfigForDynamicConfigKeepsClusterConfigUntouched(t *testing.T) {
+	clusterK0s := &cluster.K0s{
+		DynamicConfig: true,
+		Config: dig.Mapping{
+			"spec": dig.Mapping{
+				"api": dig.Mapping{"onlyBindToAddress": true},
+			},
+		},
+	}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: clusterK0s}}
+
+	leader := testController("203.0.113.1", "10.0.0.1")
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, leader: leader, newBaseConfig: clusterK0s.Config}
+
+	// Neither of these is the leader, so both get the stripped down node config.
+	for _, h := range []*cluster.Host{
+		testController("203.0.113.2", "10.0.0.2"),
+		testController("203.0.113.3", "10.0.0.3"),
+	} {
+		config, err := p.configFor(h, clusterK0s.Config.Dup())
+		require.NoError(t, err)
+		require.Equal(t, h.PrivateAddress, apiAddressFromConfig(t, config))
+	}
+	require.Empty(t, clusterK0s.Config.DigString("spec", "api", "address"), "the cluster config must stay untouched")
+}
