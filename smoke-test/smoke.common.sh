@@ -53,11 +53,15 @@ cleanup() {
 # Tags are listed with git instead of the GitHub API to stay clear of API rate limits. A tag
 # can exist long before its release is published, and the binaries of a draft release can't
 # be downloaded, so the tags are tried from the newest until one has a binary.
+# k0s_sort sorts the versions, because sort -V does not order k0s versions correctly.
 latestPatch() {
+  k0s_sort=$(command -v k0s_sort || echo "$(go env GOPATH)/bin/k0s_sort")
   for candidate in $(git ls-remote --tags --refs https://github.com/k0sproject/k0s "refs/tags/$1.*" \
     | sed 's|.*refs/tags/||' \
     | grep -E "^$(echo "$1" | sed 's/\./\\./g')\.[0-9]+\+k0s\.[0-9]+$" \
-    | sort -rV); do
+    | "${k0s_sort}" \
+    | sed 's/^v*/v/' \
+    | awk '{ v[NR] = $0 } END { for (i = NR; i > 0; i--) print v[i] }'); do
     if k0sBinaryAvailable "${candidate}"; then
       echo "${candidate}"
       return 0
