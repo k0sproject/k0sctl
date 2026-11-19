@@ -4,6 +4,11 @@ ifeq ($(bootloose),)
 bootloose := $(shell go env GOPATH)/bin/bootloose
 endif
 
+k0s_sort := $(shell which k0s_sort)
+ifeq ($(k0s_sort),)
+k0s_sort := $(shell go env GOPATH)/bin/k0s_sort
+endif
+
 envsubst := $(shell which envsubst)
 ifeq ($(envsubst),)
 $(error 'envsubst' NOT found in path, please install it and re-run)
@@ -15,6 +20,9 @@ k0sctl:
 
 $(bootloose):
 	go install github.com/k0sproject/bootloose@latest
+
+$(k0s_sort):
+	go install github.com/k0sproject/version/cmd/k0s_sort@latest
 
 id_rsa_k0s:
 	ssh-keygen -t rsa -f ./id_rsa_k0s -N ""
@@ -43,10 +51,10 @@ smoke-files: $(bootloose) id_rsa_k0s k0sctl
 smoke-init: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-init.sh
 
-smoke-upgrade: $(bootloose) id_rsa_k0s k0sctl
+smoke-upgrade: $(bootloose) $(k0s_sort) id_rsa_k0s k0sctl
 	./smoke-upgrade.sh
 
-smoke-dryrun: $(bootloose) id_rsa_k0s k0sctl
+smoke-dryrun: $(bootloose) $(k0s_sort) id_rsa_k0s k0sctl
 	./smoke-dryrun.sh
 
 smoke-reset: $(bootloose) id_rsa_k0s k0sctl
