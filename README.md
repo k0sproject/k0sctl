@@ -363,6 +363,8 @@ Labels to set on or remove from the host's Kubernetes node. k0sctl sets them thr
 
 Labels that are not listed are left untouched. To stop managing a label, move it from `apply` to `delete`, or remove it from the configuration to leave it on the node as it is.
 
+Labels the kubelet sets on its own node (`kubernetes.io/hostname`, `kubernetes.io/os`, `kubernetes.io/arch` and their `beta.kubernetes.io/` variants) are restored by the kubelet when it restarts, so k0sctl warns when they are listed.
+
 Example:
 
 ```yaml
@@ -380,6 +382,8 @@ Taints to set on or remove from the host's Kubernetes node. They are managed the
 
 - `apply` &lt;sequence&gt; - taints in `key=value:Effect` or `key:Effect` form. The effect is one of `NoSchedule`, `PreferNoSchedule` or `NoExecute`.
 - `delete` &lt;sequence&gt; - taints to remove, as `key:Effect`, or as `key` to remove the taint with every effect.
+
+On a `controller+worker` host, listing `node-role.kubernetes.io/master` in `delete` removes the taint k0s sets on the node, which also works for nodes that were installed without `noTaints`. Applying that taint while `noTaints` is `true` is rejected.
 
 Example:
 

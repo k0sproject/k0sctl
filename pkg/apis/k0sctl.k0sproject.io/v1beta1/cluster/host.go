@@ -265,7 +265,10 @@ func (h *Host) Validate() error {
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
 		validation.Field(&h.NodeLabels, validation.When(h.Role == "controller", validation.By(mustBeEmpty("labels")))),
-		validation.Field(&h.NodeTaints, validation.When(h.Role == "controller", validation.By(mustBeEmpty("taints")))),
+		validation.Field(&h.NodeTaints,
+			validation.When(h.Role == "controller", validation.By(mustBeEmpty("taints"))),
+			validation.When(h.NoTaints, validation.By(mustNotApplyControllerWorkerTaint)),
+		),
 		validation.Field(&h.InstallFlags, validation.Each(validation.By(validateBalancedQuotes))),
 	); err != nil {
 		return err
@@ -299,6 +302,15 @@ func mustBeEmpty(field string) validation.RuleFunc {
 		}
 		return nil
 	}
+}
+
+// mustNotApplyControllerWorkerTaint rejects applying the k0s controller+worker
+// taint on a host where noTaints keeps k0s from setting it.
+func mustNotApplyControllerWorkerTaint(value any) error {
+	if t, ok := value.(NodeTaints); ok && t.AppliesKey(ControllerWorkerTaintKey) {
+		return fmt.Errorf("taint %s can not be applied when noTaints is true", ControllerWorkerTaintKey)
+	}
+	return nil
 }
 
 // ResolveUploadFiles resolves host file sources relative to baseDir.
@@ -736,14 +748,8 @@ func (h *Host) DeleteNode(node *Host) error {
 	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "delete node %s", quote(h.FS(), node.KubernetesNodeName())))
 }
 
-// Taints returns all taints added to the node.
-func (h *Host) Taints(node *Host) ([]string, error) {
-	return h.TaintsContext(context.Background(), node)
-}
-
-// TaintsContext returns the taints of the node in key=value:Effect form. The
-// kubectl call is bound to the given context.
-func (h *Host) TaintsContext(ctx context.Context, node *Host) ([]string, error) {
+// Taints returns the taints of the node in key=value:Effect form.
+func (h *Host) Taints(ctx context.Context, node *Host) ([]string, error) {
 	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{range .spec.taints[*]}{.key}={.value}:{.effect}{"\n"}{end}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node taints: %w", err)
@@ -758,7 +764,7 @@ func (h *Host) AddTaint(node *Host, taint string) error {
 
 // RemoveTaint removes a taint from the node.
 func (h *Host) RemoveTaint(node *Host, taint string) error {
-	tainted, err := h.Taints(node)
+	tainted, err := h.Taints(context.Background(), node)
 	if err != nil {
 		return err
 	}
@@ -769,8 +775,8 @@ func (h *Host) RemoveTaint(node *Host, taint string) error {
 	return h.Sudo().Exec(h.Configurer.KubectlCmdf(h, h.K0sDataDir(), "taint nodes %s %s-", quote(h.FS(), node.KubernetesNodeName()), quote(h.FS(), taint)))
 }
 
-// NodeLabelValues returns the labels of the node.
-func (h *Host) NodeLabelValues(ctx context.Context, node *Host) (map[string]string, error) {
+// Labels returns the labels of the node.
+func (h *Host) Labels(ctx context.Context, node *Host) (map[string]string, error) {
 	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.KubectlCmdf(h, h.K0sDataDir(), `get node %s -o jsonpath='{.metadata.labels}'`, quote(h.FS(), node.KubernetesNodeName())))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node labels: %w", err)

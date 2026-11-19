@@ -424,8 +424,8 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 	}
 
-	if h.Role == "controller+worker" && !h.NoTaints {
-		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for node-role.kubernetes.io/master:NoSchedule unless 'noTaints: true' is set", h)
+	if h.Role == "controller+worker" && !h.NoTaints && !h.NodeTaints.Deletes(cluster.ControllerWorkerTaintKey, "NoSchedule") {
+		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for %s:NoSchedule unless 'noTaints: true' is set or the taint is listed in 'taints.delete'", h, cluster.ControllerWorkerTaintKey)
 	}
 
 	if h.Metadata.NeedsUpgrade {

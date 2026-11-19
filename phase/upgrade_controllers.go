@@ -88,8 +88,8 @@ func (p *UpgradeControllers) Run(ctx context.Context) error {
 					return fmt.Errorf("add taint: %w", err)
 				}
 				log.Debugf("%s: wait for taint to be applied", h)
-				err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
-					taints, err := leader.Taints(h)
+				err := retry.WithDefaultTimeout(ctx, func(ctx context.Context) error {
+					taints, err := leader.Taints(ctx, h)
 					if err != nil {
 						return fmt.Errorf("get taints: %w", err)
 					}

@@ -12,6 +12,20 @@ import (
 // taintEffects are the taint effects accepted by Kubernetes.
 var taintEffects = []string{"NoSchedule", "PreferNoSchedule", "NoExecute"}
 
+// ControllerWorkerTaintKey is the key of the NoSchedule taint k0s sets on
+// controller+worker nodes unless noTaints is set.
+const ControllerWorkerTaintKey = "node-role.kubernetes.io/master"
+
+// kubeletManagedLabels are the labels the kubelet sets on its own node and
+// restores when it restarts.
+var kubeletManagedLabels = []string{
+	"kubernetes.io/hostname",
+	"kubernetes.io/os",
+	"kubernetes.io/arch",
+	"beta.kubernetes.io/os",
+	"beta.kubernetes.io/arch",
+}
+
 // NodeLabels lists the labels k0sctl manages on the host's Kubernetes node.
 // Unlike labels given through installFlags, they are set through the
 // Kubernetes API, so they can include labels that a kubelet is not allowed to
@@ -55,6 +69,24 @@ func (l NodeLabels) Validate() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// KubeletManaged returns the keys of the applied or deleted labels that the
+// kubelet manages on its own node. The kubelet restores them when it restarts.
+func (l NodeLabels) KubeletManaged() []string {
+	var keys []string
+	for _, label := range l.Apply {
+		key, _, _ := strings.Cut(label, "=")
+		if slices.Contains(kubeletManagedLabels, key) {
+			keys = append(keys, key)
+		}
+	}
+	for _, key := range l.Delete {
+		if slices.Contains(kubeletManagedLabels, key) {
+			keys = append(keys, key)
+		}
+	}
+	return keys
 }
 
 // Changes compares the labels with the current labels of the node and returns
@@ -144,6 +176,26 @@ func (t NodeTaints) Validate() error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// AppliesKey reports whether a taint with the given key is applied, with any effect.
+func (t NodeTaints) AppliesKey(key string) bool {
+	for _, s := range t.Apply {
+		if taint, err := parseNodeTaint(s); err == nil && taint.key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// Deletes reports whether the taint with the given key and effect is removed.
+func (t NodeTaints) Deletes(key, effect string) bool {
+	for _, s := range t.Delete {
+		if selector, err := parseNodeTaintSelector(s); err == nil && selector.matches(key+":"+effect) {
+			return true
+		}
+	}
+	return false
 }
 
 // Changes compares the taints with the current taints of the node and returns

@@ -154,3 +154,31 @@ func TestNodeTaints_ChangesOverlappingDeletes(t *testing.T) {
 	_, del = NodeTaints{Delete: []string{"dedicated:NoSchedule", "dedicated"}}.Changes(append(current, "dedicated=:NoExecute"))
 	require.Equal(t, []string{"dedicated:NoSchedule", "dedicated"}, del)
 }
+
+func TestNodeLabels_KubeletManaged(t *testing.T) {
+	labels := NodeLabels{
+		Apply:  []string{"kubernetes.io/os=linux", "zone=a", "kubernetes.io/hostnamex=b"},
+		Delete: []string{"beta.kubernetes.io/arch", "tier"},
+	}
+	require.Equal(t, []string{"kubernetes.io/os", "beta.kubernetes.io/arch"}, labels.KubeletManaged())
+	require.Empty(t, NodeLabels{Apply: []string{"zone=a"}}.KubeletManaged())
+}
+
+func TestNodeTaints_Deletes(t *testing.T) {
+	require.True(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
+	require.True(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey + ":NoSchedule"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
+	require.False(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey + ":NoExecute"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
+	require.False(t, NodeTaints{Delete: []string{"other"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
+}
+
+func TestValidation_NoTaintsConflictsWithAppliedControllerWorkerTaint(t *testing.T) {
+	h := Host{
+		Role:       "controller+worker",
+		NoTaints:   true,
+		NodeTaints: NodeTaints{Apply: []string{ControllerWorkerTaintKey + ":NoSchedule"}},
+	}
+	require.ErrorContains(t, h.Validate(), "can not be applied when noTaints is true")
+
+	h.NodeTaints = NodeTaints{Apply: []string{"dedicated=gpu:NoSchedule"}, Delete: []string{ControllerWorkerTaintKey}}
+	require.NoError(t, h.Validate())
+}

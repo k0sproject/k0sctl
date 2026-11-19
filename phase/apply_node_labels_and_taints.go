@@ -51,16 +51,20 @@ func (p *ApplyNodeLabelsAndTaints) Run(ctx context.Context) error {
 }
 
 func (p *ApplyNodeLabelsAndTaints) configure(ctx context.Context, h *cluster.Host) error {
+	for _, key := range h.NodeLabels.KubeletManaged() {
+		log.Warnf("%s: label %s is managed by the kubelet, which restores it when it restarts", h, key)
+	}
+
 	var (
 		labels map[string]string
 		taints []string
 	)
 	readNode := func(ctx context.Context) error {
 		var err error
-		if labels, err = p.leader.NodeLabelValues(ctx, h); err != nil {
+		if labels, err = p.leader.Labels(ctx, h); err != nil {
 			return err
 		}
-		taints, err = p.leader.TaintsContext(ctx, h)
+		taints, err = p.leader.Taints(ctx, h)
 		return err
 	}
 
