@@ -1,10 +1,12 @@
 package cluster
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/creasty/defaults"
 	"github.com/k0sproject/dig"
+	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/version"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -71,4 +73,27 @@ func TestNodeConfigUsesLowercaseMetadataKey(t *testing.T) {
 	require.Contains(t, nodeConfig, "metadata")
 	require.NotContains(t, nodeConfig, "Metadata")
 	require.Equal(t, "k0s", nodeConfig.DigString("metadata", "name"))
+}
+
+func TestTokenCreateError_AbortsWhenK0sRefuses(t *testing.T) {
+	for _, msg := range []string{
+		"refusing to create token: cannot join into a single node cluster",
+		"refusing to create token: cannot join controller into current storage",
+	} {
+		t.Run(msg, func(t *testing.T) {
+			cause := errors.New("process finished with error: exit status 1 (Error: " + msg + ")")
+			err := tokenCreateError(cause)
+			require.ErrorIs(t, err, retry.ErrAbort)
+			require.ErrorIs(t, err, cause)
+			require.ErrorContains(t, err, msg)
+		})
+	}
+}
+
+func TestTokenCreateError_RetriesOtherFailures(t *testing.T) {
+	cause := errors.New("process finished with error: exit status 1 (Error: failed to get k0s status: dial unix /run/k0s/status.sock: connect: no such file or directory)")
+	err := tokenCreateError(cause)
+	require.NotErrorIs(t, err, retry.ErrAbort)
+	require.ErrorIs(t, err, cause)
+	require.ErrorContains(t, err, "create token")
 }

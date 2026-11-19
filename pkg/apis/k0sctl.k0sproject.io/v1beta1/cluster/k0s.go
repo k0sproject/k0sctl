@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -160,12 +161,26 @@ func (k *K0s) GenerateToken(ctx context.Context, h *Host, role string, expiry ti
 	err := retry.WithDefaultTimeout(ctx, func(_ context.Context) error {
 		output, err := h.Sudo().ExecOutput(h.Configurer.K0sCmdf("token create %s", k0sFlags.Join(h.FS())), cmd.HideOutput())
 		if err != nil {
-			return fmt.Errorf("create token: %w", err)
+			return tokenCreateError(err)
 		}
 		token = output
 		return nil
 	})
 	return token, err
+}
+
+// k0s prints this when it won't create a join token at all, e.g. for a single
+// node cluster, or for a controller when the storage can't be joined. Retrying
+// doesn't change that, it only makes k0sctl look like it's hanging.
+const k0sTokenRefusedMsg = "refusing to create token"
+
+// tokenCreateError wraps an error from "k0s token create" and marks it as not
+// worth retrying if k0s refused to create the token.
+func tokenCreateError(err error) error {
+	if strings.Contains(cmd.StderrOf(err), k0sTokenRefusedMsg) || strings.Contains(err.Error(), k0sTokenRefusedMsg) {
+		return errors.Join(retry.ErrAbort, fmt.Errorf("k0s refused to create a join token: %w", err))
+	}
+	return fmt.Errorf("create token: %w", err)
 }
 
 // GetClusterID uses kubectl to fetch the kube-system namespace uid
