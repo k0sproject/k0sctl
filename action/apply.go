@@ -78,6 +78,7 @@ func NewApply(opts ApplyOptions) *Apply {
 				RestoreFrom: opts.RestoreFrom,
 			},
 			&phase.RunHooks{Stage: "before", Action: "apply"},
+			&phase.AirgapBundles{},
 			&phase.InitializeK0s{},
 			&phase.InstallControllers{},
 			&phase.InstallWorkers{},
