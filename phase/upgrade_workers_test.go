@@ -1,14 +1,17 @@
 package phase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/k0sproject/k0sctl/configurer/linux"
+	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	rig "github.com/k0sproject/rig/v2"
@@ -136,4 +139,70 @@ func TestUpgradeWorkersCleanUp_KeepsUnhealthyWorkersCordoned(t *testing.T) {
 
 	require.Len(t, uncordoned, 1)
 	require.Contains(t, uncordoned[0], "uncordon healthy")
+}
+
+func TestUpgradeWorkersStep_SkipsRemainingStepsAfterFailure(t *testing.T) {
+	failing := newMockHost(t, "failing", func(_ *rigtest.MockRunner) {})
+	healthy := newMockHost(t, "healthy", func(_ *rigtest.MockRunner) {})
+	p := &UpgradeWorkers{}
+
+	var mu sync.Mutex
+	ran := map[string][]string{}
+	record := func(name string, fail bool) func(context.Context, *cluster.Host) error {
+		return func(_ context.Context, h *cluster.Host) error {
+			mu.Lock()
+			ran[h.Metadata.Hostname] = append(ran[h.Metadata.Hostname], name)
+			mu.Unlock()
+			if fail && h == failing {
+				return errors.New("k0s is not running after the node became ready")
+			}
+			return nil
+		}
+	}
+
+	err := cluster.Hosts{failing, healthy}.ParallelEach(t.Context(),
+		p.step(record("drain", false)),
+		p.step(record("upgrade", true)),
+		p.step(record("uncordon", false)),
+		p.step(record("finish", false)),
+	)
+	require.ErrorContains(t, err, "k0s is not running")
+	require.Equal(t, []string{"drain", "upgrade"}, ran["failing"])
+	require.Equal(t, []string{"drain", "upgrade", "uncordon", "finish"}, ran["healthy"])
+}
+
+func TestUpgradeWorkersRun_FailedDrainSkipsUpgradeAndUncordon(t *testing.T) {
+	var mu sync.Mutex
+	var commands []string
+	leader := newMockHost(t, "controller0", func(mr *rigtest.MockRunner) {
+		mr.AddCommand(rigtest.Contains("kubectl"), func(a *rigtest.A) error {
+			mu.Lock()
+			commands = append(commands, a.Command)
+			mu.Unlock()
+			if strings.Contains(a.Command, "drain") {
+				return errors.New("cannot evict pod as it would violate the pod's disruption budget")
+			}
+			return nil
+		})
+	})
+	worker := newMockHost(t, "worker0", func(_ *rigtest.MockRunner) {})
+
+	p := &UpgradeWorkers{leader: leader, hosts: cluster.Hosts{worker}}
+	p.SetManager(&Manager{})
+	p.Config = &v1beta1.Cluster{Spec: &cluster.Spec{Options: cluster.Options{
+		Concurrency: cluster.ConcurrencyOption{Limit: 30, WorkerDisruptionPercent: 10},
+	}}}
+
+	err := p.Run(t.Context())
+	require.ErrorContains(t, err, "drain node")
+	// Reaching the upgrade step would have failed on the service lookup with another error.
+	require.NotContains(t, err.Error(), "get service")
+
+	var uncordons int
+	for _, c := range commands {
+		if strings.Contains(c, "uncordon") {
+			uncordons++
+		}
+	}
+	require.Zero(t, uncordons, "the worker was uncordoned during Run: %v", commands)
 }

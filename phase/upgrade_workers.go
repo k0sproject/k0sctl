@@ -29,6 +29,11 @@ type UpgradeWorkers struct {
 	// that no workloads are scheduled on them while their node can still
 	// look ready.
 	keepCordoned sync.Map
+
+	// failed holds the hosts on which a step of the upgrade failed. The
+	// steps run one at a time for a batch of hosts and continue after
+	// errors, so the remaining steps are skipped for these hosts.
+	failed sync.Map
 }
 
 // Title for the phase
@@ -113,13 +118,30 @@ func (p *UpgradeWorkers) Run(ctx context.Context) error {
 
 	log.Infof("Upgrading max %d workers in parallel", concurrentUpgrades)
 	return p.hosts.BatchedParallelEach(ctx, concurrentUpgrades,
-		p.start,
-		p.cordonWorker,
-		p.drainWorker,
-		p.upgradeWorker,
-		p.uncordonWorker,
-		p.finish,
+		p.step(p.start),
+		p.step(p.cordonWorker),
+		p.step(p.drainWorker),
+		p.step(p.upgradeWorker),
+		p.step(p.uncordonWorker),
+		p.step(p.finish),
 	)
+}
+
+// step wraps an upgrade step so that it is skipped for hosts on which an
+// earlier step failed. Without it, a worker that failed to drain would still
+// be upgraded, and one that failed to upgrade would be uncordoned and
+// reported as upgraded.
+func (p *UpgradeWorkers) step(fn func(context.Context, *cluster.Host) error) func(context.Context, *cluster.Host) error {
+	return func(ctx context.Context, h *cluster.Host) error {
+		if _, failed := p.failed.Load(h); failed {
+			return nil
+		}
+		if err := fn(ctx, h); err != nil {
+			p.failed.Store(h, struct{}{})
+			return err
+		}
+		return nil
+	}
 }
 
 func (p *UpgradeWorkers) cordonWorker(_ context.Context, h *cluster.Host) error {
