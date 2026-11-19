@@ -48,14 +48,28 @@ cleanup() {
     fi
 }
 
-# latestPatch prints the latest non-prerelease k0s version of a minor version, such as v1.36.
-# Tags are listed with git instead of the GitHub API to stay clear of API rate limits.
+# latestPatch prints the latest non-prerelease k0s version of a minor version, such as v1.36,
+# that has a downloadable binary.
+# Tags are listed with git instead of the GitHub API to stay clear of API rate limits. A tag
+# can exist long before its release is published, and the binaries of a draft release can't
+# be downloaded, so the tags are tried from the newest until one has a binary.
 latestPatch() {
-  git ls-remote --tags --refs https://github.com/k0sproject/k0s "refs/tags/$1.*" \
+  for candidate in $(git ls-remote --tags --refs https://github.com/k0sproject/k0s "refs/tags/$1.*" \
     | sed 's|.*refs/tags/||' \
     | grep -E "^$(echo "$1" | sed 's/\./\\./g')\.[0-9]+\+k0s\.[0-9]+$" \
-    | sort -V \
-    | tail -n 1
+    | sort -rV); do
+    if k0sBinaryAvailable "${candidate}"; then
+      echo "${candidate}"
+      return 0
+    fi
+    echo "Skipping k0s ${candidate}, its binary is not downloadable" >&2
+  done
+}
+
+# k0sBinaryAvailable succeeds when the linux amd64 binary of the given k0s version can be downloaded.
+k0sBinaryAvailable() {
+  url="https://github.com/k0sproject/k0s/releases/download/$(echo "$1" | sed 's/+/%2B/')/k0s-$1-amd64"
+  curl -sfIL -o /dev/null "${url}"
 }
 
 # k0sVersionBefore prints the latest non-prerelease k0s version that is the given number of minor
