@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/creasty/defaults"
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -28,8 +30,10 @@ func newMockHost(t *testing.T, hostname string, setup func(mr *rigtest.MockRunne
 	t.Helper()
 	mr := rigtest.NewMockRunner()
 	mr.ErrDefault = errors.New("no such file")
-	mr.AddCommand(rigtest.Match("sudo.*true"), func(_ *rigtest.A) error { return nil })
+	// The test's own commands go first, so that the sudo probe matcher below
+	// can't take over a command that happens to contain "true".
 	setup(mr)
+	mr.AddCommand(rigtest.Match("sudo.*true"), func(_ *rigtest.A) error { return nil })
 	posixFS := remotefs.NewPosixFS(mr)
 	client, err := rig.NewClient(
 		rig.WithConnection(mr.MockConnection),
@@ -134,6 +138,7 @@ func TestUpgradeWorkersCleanUp_KeepsUnhealthyWorkersCordoned(t *testing.T) {
 
 	p := &UpgradeWorkers{leader: leader, hosts: cluster.Hosts{healthy, unhealthy}}
 	p.SetManager(&Manager{})
+	p.Config = &v1beta1.Cluster{Spec: &cluster.Spec{}}
 	p.keepCordoned.Store(unhealthy, struct{}{})
 	p.CleanUp()
 
@@ -205,4 +210,51 @@ func TestUpgradeWorkersRun_FailedDrainSkipsUpgradeAndUncordon(t *testing.T) {
 		}
 	}
 	require.Zero(t, uncordons, "the worker was uncordoned during Run: %v", commands)
+}
+
+func TestUpgradeWorkers_FailedDrainWithEvictTaintIsRestoredByCleanUp(t *testing.T) {
+	const evictTaint = "k0sctl.k0sproject.io/evict=true:NoExecute"
+	var mu sync.Mutex
+	var commands []string
+	leader := newMockHost(t, "controller0", func(mr *rigtest.MockRunner) {
+		mr.AddCommand(rigtest.Contains("kubectl"), func(a *rigtest.A) error {
+			mu.Lock()
+			commands = append(commands, a.Command)
+			mu.Unlock()
+			switch {
+			case strings.Contains(a.Command, " drain "):
+				return errors.New("cannot evict pod as it would violate the pod's disruption budget")
+			case strings.Contains(a.Command, "get node"):
+				_, err := io.WriteString(a.Stdout, evictTaint+"\n")
+				return err
+			}
+			return nil
+		})
+	})
+	drained := newMockHost(t, "drained", func(_ *rigtest.MockRunner) {})
+	unhealthy := newMockHost(t, "unhealthy", func(_ *rigtest.MockRunner) {})
+
+	opts := cluster.Options{Concurrency: cluster.ConcurrencyOption{Limit: 30, WorkerDisruptionPercent: 10}}
+	require.NoError(t, defaults.Set(&opts.EvictTaint))
+	opts.EvictTaint.Enabled = true
+	p := &UpgradeWorkers{leader: leader, hosts: cluster.Hosts{drained}}
+	p.SetManager(&Manager{})
+	p.Config = &v1beta1.Cluster{Spec: &cluster.Spec{Options: opts}}
+
+	require.ErrorContains(t, p.Run(t.Context()), "drain node")
+	require.True(t, slices.ContainsFunc(commands, func(c string) bool {
+		return strings.Contains(c, "taint nodes --overwrite drained") && strings.Contains(c, evictTaint)
+	}), "the eviction taint was not added: %v", commands)
+
+	// A worker that did not come back healthy keeps its cordon and eviction taint.
+	p.hosts = append(p.hosts, unhealthy)
+	p.keepCordoned.Store(unhealthy, struct{}{})
+	commands = nil
+	p.CleanUp()
+
+	require.True(t, slices.ContainsFunc(commands, func(c string) bool { return strings.Contains(c, "uncordon drained") }), "drained worker was not uncordoned: %v", commands)
+	require.True(t, slices.ContainsFunc(commands, func(c string) bool {
+		return strings.Contains(c, "taint nodes drained") && strings.Contains(c, evictTaint+"-")
+	}), "the eviction taint was not removed from the drained worker: %v", commands)
+	require.False(t, slices.ContainsFunc(commands, func(c string) bool { return strings.Contains(c, "unhealthy") }), "the unhealthy worker was touched: %v", commands)
 }

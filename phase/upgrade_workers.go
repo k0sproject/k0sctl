@@ -103,6 +103,12 @@ func (p *UpgradeWorkers) CleanUp() {
 			return nil
 		}
 		_ = p.leader.UncordonNode(h)
+		// A worker that failed before uncordonWorker still has the eviction taint added by drainWorker.
+		if t := p.Config.Spec.Options.EvictTaint; t.Enabled {
+			if err := p.leader.RemoveTaint(h, t.String()); err != nil {
+				log.Warnf("%s: failed to remove taint %s: %s", h, t.String(), err.Error())
+			}
+		}
 		return nil
 	})
 }
