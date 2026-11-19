@@ -18,7 +18,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mattn/go-isatty v0.0.24
 	github.com/samber/slog-logrus/v2 v2.5.4
-	github.com/sergi/go-diff v1.4.3
+	github.com/sergi/go-diff v1.4.5
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
 	github.com/sirupsen/logrus v1.10.2
 	github.com/stretchr/testify v1.12.1
