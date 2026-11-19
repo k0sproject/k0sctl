@@ -100,7 +100,7 @@ clean:
 clean-images:
 	docker rmi ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-amd64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm64 ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-arm ghcr.io/k0sproject/k0sctl:$(TAG_NAME)-riscv64
 
-smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl smoke-controller-swap smoke-reinstall smoke-multidoc
+smoketests := smoke-basic smoke-basic-rootless smoke-files smoke-upgrade smoke-reset smoke-os-override smoke-init smoke-backup-restore smoke-dynamic smoke-basic-openssh smoke-dryrun smoke-downloadurl smoke-controller-swap smoke-reinstall smoke-multidoc smoke-nodelabels
 .PHONY: $(smoketests)
 $(smoketests): k0sctl
 	$(MAKE) -C smoke-test $@
