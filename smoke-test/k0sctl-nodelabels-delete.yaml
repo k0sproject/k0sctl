@@ -1,0 +1,36 @@
+apiVersion: k0sctl.k0sproject.io/v1beta1
+kind: cluster
+spec:
+  hosts:
+    - role: controller+worker
+      uploadBinary: true
+      ssh:
+        address: "127.0.0.1"
+        port: 9022
+        keyPath: ./id_rsa_k0s
+      labels:
+        apply:
+          - node-role.kubernetes.io/smoke=
+      taints:
+        delete:
+          - node-role.kubernetes.io/master
+    - role: worker
+      uploadBinary: true
+      ssh:
+        address: "127.0.0.1"
+        port: 9023
+        keyPath: ./id_rsa_k0s
+      labels:
+        apply:
+          - smoke.k0sctl.io/zone=b
+        delete:
+          - smoke.k0sctl.io/tier
+      taints:
+        delete:
+          - smoke.k0sctl.io/dedicated
+  k0s:
+    version: "${K0S_VERSION}"
+    config:
+      spec:
+        telemetry:
+          enabled: false
