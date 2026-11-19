@@ -395,6 +395,34 @@ taints:
     - node-role.kubernetes.io/control-plane
 ```
 
+###### `spec.hosts[*].k0s` &lt;mapping&gt; (optional)
+
+k0s settings for this host only.
+
+- `config` &lt;mapping&gt; - merged over [`spec.k0s.config`](#speck0sconfig-mapping-optional-default-auto-generated) when the k0s config for this host is generated. Keys set here replace the cluster values, everything else comes from the cluster config. Only valid for hosts with a controller role, since workers don't get a k0s config file.
+
+This lets each controller use its own address, for example the private one of a VPN, while the cluster config points at a load balancer:
+
+```yaml
+spec:
+  hosts:
+    - role: controller
+      ssh:
+        address: 203.0.113.1
+      k0s:
+        config:
+          spec:
+            api:
+              address: 10.0.0.1
+  k0s:
+    config:
+      spec:
+        api:
+          externalAddress: k8s.example.com
+```
+
+With `spec.k0s.dynamicConfig` enabled, the host config is merged over the node specific part of the config that k0sctl writes to the host.
+
 ###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)
 
 When `true`, the k0s binaries for target host will be downloaded and cached on the local host and uploaded to the target.

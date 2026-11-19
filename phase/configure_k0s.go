@@ -484,6 +484,11 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 		cfg = hostBaseConfig
 	}
 
+	if h.K0s != nil && len(h.K0s.Config) > 0 {
+		log.Debugf("%s: merging host k0s config over the cluster k0s config", h)
+		cfg.Merge(h.K0s.Config, dig.WithOverwrite())
+	}
+
 	var addr string
 
 	if h.PrivateAddress != "" {

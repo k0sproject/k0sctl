@@ -362,6 +362,36 @@ func TestConfigureControllersNamesTheHostThatFailedToRestart(t *testing.T) {
 	require.ErrorContains(t, err, "10.0.0.1", "the error should identify the controller that failed")
 }
 
+func TestConfigForMergesHostK0sConfig(t *testing.T) {
+	base := dig.Mapping{
+		"spec": dig.Mapping{
+			"api": dig.Mapping{
+				"address": "k8s.example.com",
+				"port":    6443,
+			},
+		},
+	}
+
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.1", apiAddressFromConfig(t, config))
+	require.Contains(t, config, "port: 6443", "keys the host config doesn't set come from the cluster config")
+	require.Equal(t, "k8s.example.com", base.DigString("spec", "api", "address"), "the cluster config must stay untouched")
+
+	other := testController("203.0.113.2", "10.0.0.2")
+	config, err = p.configFor(other, base.Dup())
+	require.NoError(t, err)
+	require.Equal(t, "k8s.example.com", apiAddressFromConfig(t, config), "hosts without a k0s config use the cluster one")
+}
+
 func TestConfigForDynamicConfigKeepsClusterConfigUntouched(t *testing.T) {
 	clusterK0s := &cluster.K0s{
 		DynamicConfig: true,
