@@ -31,6 +31,9 @@ smoke-basic-openssh: $(bootloose) id_rsa_k0s k0sctl
 smoke-dynamic: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-dynamic.sh
 
+smoke-nodelabels: $(bootloose) id_rsa_k0s k0sctl
+	./smoke-nodelabels.sh
+
 smoke-reinstall: $(bootloose) id_rsa_k0s k0sctl
 	./smoke-reinstall.sh
 
