@@ -12,9 +12,15 @@ import (
 // taintEffects are the taint effects accepted by Kubernetes.
 var taintEffects = []string{"NoSchedule", "PreferNoSchedule", "NoExecute"}
 
-// ControllerWorkerTaintKey is the key of the NoSchedule taint k0s sets on
-// controller+worker nodes unless noTaints is set.
-const ControllerWorkerTaintKey = "node-role.kubernetes.io/master"
+const (
+	// ControllerWorkerTaintKey is the key of the NoSchedule taint k0s sets on
+	// controller+worker nodes unless noTaints is set.
+	ControllerWorkerTaintKey = "node-role.kubernetes.io/control-plane"
+	// LegacyControllerWorkerTaintKey is the key of the NoSchedule taint k0s
+	// set on controller+worker nodes before v1.33.1. Nodes that registered
+	// with an older version keep it after an upgrade.
+	LegacyControllerWorkerTaintKey = "node-role.kubernetes.io/master"
+)
 
 // kubeletManagedLabels are the labels the kubelet sets on its own node and
 // restores when it restarts.
@@ -196,6 +202,18 @@ func (t NodeTaints) Deletes(key, effect string) bool {
 		}
 	}
 	return false
+}
+
+// AppliesControllerWorkerTaint reports whether a taint with the key of the
+// k0s controller+worker taint, current or legacy, is applied.
+func (t NodeTaints) AppliesControllerWorkerTaint() bool {
+	return t.AppliesKey(ControllerWorkerTaintKey) || t.AppliesKey(LegacyControllerWorkerTaintKey)
+}
+
+// DeletesControllerWorkerTaint reports whether the k0s controller+worker
+// NoSchedule taint, current or legacy, is removed.
+func (t NodeTaints) DeletesControllerWorkerTaint() bool {
+	return t.Deletes(ControllerWorkerTaintKey, "NoSchedule") || t.Deletes(LegacyControllerWorkerTaintKey, "NoSchedule")
 }
 
 // Changes compares the taints with the current taints of the node and returns

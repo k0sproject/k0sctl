@@ -307,8 +307,8 @@ func mustBeEmpty(field string) validation.RuleFunc {
 // mustNotApplyControllerWorkerTaint rejects applying the k0s controller+worker
 // taint on a host where noTaints keeps k0s from setting it.
 func mustNotApplyControllerWorkerTaint(value any) error {
-	if t, ok := value.(NodeTaints); ok && t.AppliesKey(ControllerWorkerTaintKey) {
-		return fmt.Errorf("taint %s can not be applied when noTaints is true", ControllerWorkerTaintKey)
+	if t, ok := value.(NodeTaints); ok && t.AppliesControllerWorkerTaint() {
+		return fmt.Errorf("taints %s and %s can not be applied when noTaints is true", ControllerWorkerTaintKey, LegacyControllerWorkerTaintKey)
 	}
 	return nil
 }

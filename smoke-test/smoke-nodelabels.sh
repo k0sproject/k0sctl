@@ -35,7 +35,11 @@ apply k0sctl-nodelabels.yaml apply.log
 echo "* Verifying labels and taints on manager0"
 bootloose ssh root@manager0 -- k0s kubectl get nodes --show-labels
 hasLabel manager0 "node-role.kubernetes.io/smoke="
-if nodeTaints manager0 | grep -q "node-role.kubernetes.io/master"; then
+if ! grep -q "127.0.0.1:9022: remove taints node-role.kubernetes.io/control-plane" apply.log; then
+  echo "the controller+worker taint was not removed from manager0"
+  exit 1
+fi
+if nodeTaints manager0 | grep -q "node-role.kubernetes.io/control-plane"; then
   echo "manager0 still has the controller+worker taint"
   exit 1
 fi

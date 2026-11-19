@@ -165,20 +165,33 @@ func TestNodeLabels_KubeletManaged(t *testing.T) {
 }
 
 func TestNodeTaints_Deletes(t *testing.T) {
-	require.True(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
-	require.True(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey + ":NoSchedule"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
-	require.False(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey + ":NoExecute"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
-	require.False(t, NodeTaints{Delete: []string{"other"}}.Deletes(ControllerWorkerTaintKey, "NoSchedule"))
+	require.True(t, NodeTaints{Delete: []string{"dedicated"}}.Deletes("dedicated", "NoSchedule"))
+	require.True(t, NodeTaints{Delete: []string{"dedicated:NoSchedule"}}.Deletes("dedicated", "NoSchedule"))
+	require.False(t, NodeTaints{Delete: []string{"dedicated:NoExecute"}}.Deletes("dedicated", "NoSchedule"))
+	require.False(t, NodeTaints{Delete: []string{"other"}}.Deletes("dedicated", "NoSchedule"))
+}
+
+func TestNodeTaints_DeletesControllerWorkerTaint(t *testing.T) {
+	require.True(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey}}.DeletesControllerWorkerTaint())
+	require.True(t, NodeTaints{Delete: []string{LegacyControllerWorkerTaintKey + ":NoSchedule"}}.DeletesControllerWorkerTaint())
+	require.False(t, NodeTaints{Delete: []string{ControllerWorkerTaintKey + ":NoExecute"}}.DeletesControllerWorkerTaint())
+	require.False(t, NodeTaints{Delete: []string{"other"}}.DeletesControllerWorkerTaint())
 }
 
 func TestValidation_NoTaintsConflictsWithAppliedControllerWorkerTaint(t *testing.T) {
+	for _, key := range []string{ControllerWorkerTaintKey, LegacyControllerWorkerTaintKey} {
+		h := Host{
+			Role:       "controller+worker",
+			NoTaints:   true,
+			NodeTaints: NodeTaints{Apply: []string{key + ":NoSchedule"}},
+		}
+		require.ErrorContains(t, h.Validate(), "can not be applied when noTaints is true")
+	}
+
 	h := Host{
 		Role:       "controller+worker",
 		NoTaints:   true,
-		NodeTaints: NodeTaints{Apply: []string{ControllerWorkerTaintKey + ":NoSchedule"}},
+		NodeTaints: NodeTaints{Apply: []string{"dedicated=gpu:NoSchedule"}, Delete: []string{ControllerWorkerTaintKey}},
 	}
-	require.ErrorContains(t, h.Validate(), "can not be applied when noTaints is true")
-
-	h.NodeTaints = NodeTaints{Apply: []string{"dedicated=gpu:NoSchedule"}, Delete: []string{ControllerWorkerTaintKey}}
 	require.NoError(t, h.Validate())
 }

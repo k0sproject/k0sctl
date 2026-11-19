@@ -352,7 +352,7 @@ One of:
 
 ###### `spec.hosts[*].noTaints` &lt;boolean&gt; (optional) (default: `false`)
 
-When `true` and used in conjuction with the `controller+worker` role, the default taints are disabled making regular workloads schedulable on the node. By default, k0s sets a node-role.kubernetes.io/master:NoSchedule taint on controller+worker nodes and only workloads with toleration for it will be scheduled.
+When `true` and used in conjuction with the `controller+worker` role, the default taints are disabled making regular workloads schedulable on the node. By default, k0s sets a `node-role.kubernetes.io/control-plane:NoSchedule` taint (`node-role.kubernetes.io/master:NoSchedule` before k0s v1.33.1) on controller+worker nodes and only workloads with toleration for it will be scheduled.
 
 ###### `spec.hosts[*].labels` &lt;mapping&gt; (optional)
 
@@ -383,7 +383,7 @@ Taints to set on or remove from the host's Kubernetes node. They are managed the
 - `apply` &lt;sequence&gt; - taints in `key=value:Effect` or `key:Effect` form. The effect is one of `NoSchedule`, `PreferNoSchedule` or `NoExecute`.
 - `delete` &lt;sequence&gt; - taints to remove, as `key:Effect`, or as `key` to remove the taint with every effect.
 
-On a `controller+worker` host, listing `node-role.kubernetes.io/master` in `delete` removes the taint k0s sets on the node, which also works for nodes that were installed without `noTaints`. Applying that taint while `noTaints` is `true` is rejected.
+On a `controller+worker` host, listing `node-role.kubernetes.io/control-plane` in `delete` removes the taint k0s sets on the node, which also works for nodes that were installed without `noTaints`. k0s versions before v1.33.1 used `node-role.kubernetes.io/master` instead, and nodes that registered with such a version keep that taint after an upgrade. Applying either taint while `noTaints` is `true` is rejected.
 
 Example:
 
@@ -392,7 +392,7 @@ taints:
   apply:
     - nvidia.com/gpu=present:NoSchedule
   delete:
-    - node-role.kubernetes.io/master
+    - node-role.kubernetes.io/control-plane
 ```
 
 ###### `spec.hosts[*].uploadBinary` &lt;boolean&gt; (optional) (default: `false`)

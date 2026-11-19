@@ -13,7 +13,7 @@ spec:
           - node-role.kubernetes.io/smoke=
       taints:
         delete:
-          - node-role.kubernetes.io/master
+          - node-role.kubernetes.io/control-plane
     - role: worker
       uploadBinary: true
       ssh:

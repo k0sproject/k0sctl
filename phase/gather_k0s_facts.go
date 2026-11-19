@@ -21,6 +21,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// controlPlaneTaintSince is the k0s version that taints controller+worker nodes
+// with node-role.kubernetes.io/control-plane instead of node-role.kubernetes.io/master.
+var controlPlaneTaintSince = version.MustParse("v1.33.1+k0s.0")
+
 type k0sstatus struct {
 	Version       *version.Version `json:"Version"`
 	Pid           int              `json:"Pid"`
@@ -424,8 +428,12 @@ func (p *GatherK0sFacts) investigateK0s(ctx context.Context, h *cluster.Host) er
 		}
 	}
 
-	if h.Role == "controller+worker" && !h.NoTaints && !h.NodeTaints.Deletes(cluster.ControllerWorkerTaintKey, "NoSchedule") {
-		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for %s:NoSchedule unless 'noTaints: true' is set or the taint is listed in 'taints.delete'", h, cluster.ControllerWorkerTaintKey)
+	if h.Role == "controller+worker" && !h.NoTaints && !h.NodeTaints.DeletesControllerWorkerTaint() {
+		taintKey := cluster.ControllerWorkerTaintKey
+		if v := p.Config.Spec.K0s.Version; v != nil && v.LessThan(controlPlaneTaintSince) {
+			taintKey = cluster.LegacyControllerWorkerTaintKey
+		}
+		log.Warnf("%s: the controller+worker node will not schedule regular workloads without toleration for %s:NoSchedule unless 'noTaints: true' is set or the taint is listed in 'taints.delete'", h, taintKey)
 	}
 
 	if h.Metadata.NeedsUpgrade {
