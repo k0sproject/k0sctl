@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -22,6 +23,12 @@ type UpgradeWorkers struct {
 
 	hosts  cluster.Hosts
 	leader *cluster.Host
+
+	// keepCordoned holds the hosts that did not come back with k0s running
+	// and the node ready after the upgrade. CleanUp leaves them cordoned so
+	// that no workloads are scheduled on them while their node can still
+	// look ready.
+	keepCordoned sync.Map
 }
 
 // Title for the phase
@@ -85,6 +92,10 @@ func (p *UpgradeWorkers) CleanUp() {
 			} else if err := svc.SetEnvironment(context.Background(), map[string]string{}); err != nil {
 				log.Warnf("%s: failed to clean up service environment: %s", h, err.Error())
 			}
+		}
+		if _, ok := p.keepCordoned.Load(h); ok {
+			log.Warnf("%s: leaving the node cordoned because it did not come back healthy after the upgrade", h)
+			return nil
 		}
 		_ = p.leader.UncordonNode(h)
 		return nil
@@ -273,6 +284,7 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
 			if err := waitUpgradedWorker(ctx, h, binaryVersion); err != nil {
+				p.keepCordoned.Store(h, struct{}{})
 				return err
 			}
 		}
@@ -286,8 +298,8 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 	return nil
 }
 
-// maxK0sRestarts is how many times k0s may restart on an upgraded worker
-// before waiting for the node to become ready gives up.
+// maxK0sRestarts is how many times k0s may restart on an upgraded worker while
+// waiting for the node to become ready. The wait fails on the next restart.
 const maxK0sRestarts = 3
 
 // waitUpgradedWorker waits until k0s is running on the restarted worker and its
@@ -313,7 +325,8 @@ func waitUpgradedWorker(ctx context.Context, h *cluster.Host, v *version.Version
 		return fmt.Errorf("k0s did not start: %w", err)
 	}
 
-	for restarts := 0; ; restarts++ {
+	restarts := 0
+	for {
 		if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, v)); err != nil {
 			return fmt.Errorf("node did not become ready: %w", err)
 		}
@@ -324,8 +337,9 @@ func waitUpgradedWorker(ctx context.Context, h *cluster.Host, v *version.Version
 		if current == pid {
 			return nil
 		}
-		if restarts == maxK0sRestarts {
-			return fmt.Errorf("k0s keeps restarting after the upgrade (restarted %d times)", restarts+1)
+		restarts++
+		if restarts > maxK0sRestarts {
+			return fmt.Errorf("k0s keeps restarting after the upgrade (restarted %d times)", restarts)
 		}
 		log.Warnf("%s: k0s restarted while waiting for the node to become ready (pid %d, previously %d)", h, current, pid)
 		pid = current
