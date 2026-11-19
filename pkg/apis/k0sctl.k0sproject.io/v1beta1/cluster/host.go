@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
 	"github.com/jellydator/validation/is"
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/configurer"
 	k0s "github.com/k0sproject/k0sctl/pkg/k0s"
 	"github.com/k0sproject/k0sctl/pkg/k0s/binprovider"
@@ -95,6 +97,7 @@ type Host struct {
 	NoTaints               bool              `yaml:"noTaints,omitempty"`
 	NodeLabels             NodeLabels        `yaml:"labels,omitempty"`
 	NodeTaints             NodeTaints        `yaml:"taints,omitempty"`
+	K0s                    *HostK0s          `yaml:"k0s,omitempty"`
 	Hooks                  Hooks             `yaml:"hooks,omitempty"`
 
 	Metadata   HostMetadata          `yaml:"-"`
@@ -270,6 +273,7 @@ func (h *Host) Validate() error {
 			validation.When(h.NoTaints, validation.By(mustNotApplyControllerWorkerTaint)),
 		),
 		validation.Field(&h.InstallFlags, validation.Each(validation.By(validateBalancedQuotes))),
+		validation.Field(&h.K0s, validation.When(h.Role == "worker", validation.By(hostK0sConfigMustBeEmpty))),
 	); err != nil {
 		return err
 	}
@@ -1018,6 +1022,22 @@ func (h *Host) RunHooks(ctx context.Context, action, stage string) error {
 		if err := h.Exec(cmd); err != nil {
 			return fmt.Errorf("failed to execute hook %q for action %q stage %q on host %s: %w", cmd, action, stage, h.Address(), err)
 		}
+	}
+	return nil
+}
+
+// HostK0s holds k0s settings that only apply to a single host.
+type HostK0s struct {
+	// Config is merged over spec.k0s.config for this host, e.g. to give each
+	// controller its own spec.api.address.
+	Config dig.Mapping `yaml:"config,omitempty"`
+}
+
+// hostK0sConfigMustBeEmpty rejects a host k0s config on workers, which don't
+// get a k0s config file.
+func hostK0sConfigMustBeEmpty(value any) error {
+	if k, ok := value.(*HostK0s); ok && k != nil && len(k.Config) > 0 {
+		return errors.New("k0s.config can only be set for hosts with a controller role")
 	}
 	return nil
 }

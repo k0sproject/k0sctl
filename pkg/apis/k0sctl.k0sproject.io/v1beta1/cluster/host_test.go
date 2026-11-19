@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/k0sproject/dig"
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	rig "github.com/k0sproject/rig/v2"
@@ -183,4 +184,19 @@ func TestHost_ConnectLeavesRetryingToCaller(t *testing.T) {
 	defer cancel()
 	require.Error(t, h.Connect(ctx))
 	require.Equal(t, int32(1), accepted.Load())
+}
+
+func TestHostK0sConfigOnlyForControllers(t *testing.T) {
+	k0sConfig := &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}}
+
+	for _, role := range []string{"controller", "controller+worker", "single"} {
+		h := Host{Role: role, K0s: k0sConfig}
+		require.NoError(t, h.Validate(), role)
+	}
+
+	h := Host{Role: "worker", K0s: k0sConfig}
+	require.ErrorContains(t, h.Validate(), "k0s.config can only be set for hosts with a controller role")
+
+	h = Host{Role: "worker", K0s: &HostK0s{}}
+	require.NoError(t, h.Validate(), "an empty k0s mapping is fine on workers")
 }
