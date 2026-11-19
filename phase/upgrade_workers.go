@@ -10,6 +10,7 @@ import (
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	"github.com/k0sproject/rig/v2/cmd"
+	"github.com/k0sproject/version"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -271,8 +272,8 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 			log.Debugf("%s: not waiting because --no-wait given", h)
 		} else {
 			log.Infof("%s: waiting for node to become ready again", h)
-			if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, binaryVersion)); err != nil {
-				return fmt.Errorf("node did not become ready: %w", err)
+			if err := waitUpgradedWorker(ctx, h, binaryVersion); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -283,4 +284,50 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) err
 
 	h.Metadata.Ready = true
 	return nil
+}
+
+// maxK0sRestarts is how many times k0s may restart on an upgraded worker
+// before waiting for the node to become ready gives up.
+const maxK0sRestarts = 3
+
+// waitUpgradedWorker waits until k0s is running on the restarted worker and its
+// node is ready on the kubelet version v.
+//
+// A ready node does not mean that k0s is running: the service manager leaves
+// the kubelet running when k0s exits and restarts k0s only after a delay. So
+// k0s is checked again once the node is ready, and if it has restarted in the
+// meantime, the wait starts over.
+func waitUpgradedWorker(ctx context.Context, h *cluster.Host, v *version.Version) error {
+	waitK0s := func() (int, error) {
+		var pid int
+		err := retry.WithDefaultTimeout(ctx, func(ctx context.Context) error {
+			var err error
+			pid, err = node.K0sPID(ctx, h)
+			return err
+		})
+		return pid, err
+	}
+
+	pid, err := waitK0s()
+	if err != nil {
+		return fmt.Errorf("k0s did not start: %w", err)
+	}
+
+	for restarts := 0; ; restarts++ {
+		if err := retry.WithDefaultTimeout(ctx, node.KubeNodeVersionReadyFunc(h, v)); err != nil {
+			return fmt.Errorf("node did not become ready: %w", err)
+		}
+		current, err := waitK0s()
+		if err != nil {
+			return fmt.Errorf("k0s is not running after the node became ready: %w", err)
+		}
+		if current == pid {
+			return nil
+		}
+		if restarts == maxK0sRestarts {
+			return fmt.Errorf("k0s keeps restarting after the upgrade (restarted %d times)", restarts+1)
+		}
+		log.Warnf("%s: k0s restarted while waiting for the node to become ready (pid %d, previously %d)", h, current, pid)
+		pid = current
+	}
 }
