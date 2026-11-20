@@ -230,6 +230,23 @@ NAME      STATUS     ROLES    AGE   VERSION
 worker0   NotReady   <none>   10s   v1.20.2-k0s1
 ```
 
+### `k0sctl logs`
+
+Shows the latest lines of the k0s service log (`k0scontroller` or `k0sworker`) of the hosts listed in the configuration. With more than one host, each line is prefixed with the host address.
+
+```sh
+# the last 100 lines from every host
+k0sctl logs --config path/to/k0sctl.yaml
+
+# the last 20 lines from the controllers
+k0sctl logs --role controller --lines 20
+
+# keep streaming new lines from one host until interrupted
+k0sctl logs --address 10.0.0.2 --follow
+```
+
+The logs are read through the host's init system, so this works on the hosts where k0sctl can manage the k0s service.
+
 ## Configuration file
 
 The configuration file is in YAML format and loosely resembles the syntax used in Kubernetes. YAML anchors and aliases can be used.
