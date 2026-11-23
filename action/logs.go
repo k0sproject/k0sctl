@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -31,9 +33,8 @@ type Logs struct {
 	// Follow keeps streaming new log lines until the context is cancelled.
 	Follow bool
 	Writer io.Writer
-	// ErrWriter receives the per-host failures while following, because
-	// the final error is only shown after the user interrupts. Defaults to
-	// os.Stderr.
+	// ErrWriter receives the per-host failures while following. Defaults
+	// to os.Stderr.
 	ErrWriter io.Writer
 
 	// These are replaced in tests, by default they use the host's
@@ -74,17 +75,34 @@ func (l Logs) Run(ctx context.Context) error {
 	if len(connected) == 0 {
 		return errors.Join(errs...)
 	}
+
+	// Per-host failures are shown on ErrWriter while following, because
+	// the final error is only shown after the user interrupts. Without
+	// --follow the failures are only returned, so they aren't shown twice.
+	errWriter := l.ErrWriter
+	if errWriter == nil {
+		errWriter = os.Stderr
+	}
+	errOut := &syncWriter{w: errWriter}
+	report := func(err error) {
+		if l.Follow {
+			_, _ = fmt.Fprintf(errOut, "k0sctl: %v\n", err)
+		}
+	}
 	for _, err := range errs {
-		l.report(err)
+		report(err)
 	}
 
 	out := &syncWriter{w: l.Writer}
-	prefix := len(hosts) > 1
+	var labels map[*cluster.Host]string
+	if len(hosts) > 1 {
+		labels = logLabels(hosts)
+	}
 
 	if l.Lines > 0 {
-		if err := l.printRecent(ctx, connected, out, prefix, fetch); err != nil {
+		if err := l.printRecent(ctx, connected, out, labels, fetch); err != nil {
 			// Streaming may still work where reading the history didn't.
-			l.report(fmt.Errorf("reading the latest logs failed: %w", err))
+			report(fmt.Errorf("reading the latest logs failed: %w", err))
 			errs = append(errs, err)
 		}
 	}
@@ -94,26 +112,51 @@ func (l Logs) Run(ctx context.Context) error {
 	}
 
 	err = connected.ParallelEach(ctx, func(ctx context.Context, h *cluster.Host) error {
-		if !prefix {
-			return stream(ctx, h, out)
+		var err error
+		if labels == nil {
+			err = stream(ctx, h, out)
+		} else {
+			pw := &prefixWriter{w: out, prefix: labels[h] + ": "}
+			err = errors.Join(stream(ctx, h, pw), pw.Flush())
 		}
-		pw := &prefixWriter{w: out, prefix: h.Address() + ": "}
-		return errors.Join(stream(ctx, h, pw), pw.Flush())
+		// The other hosts may keep streaming, so tell the user now that
+		// this one stopped. An interrupt stops all of them, no need to
+		// report that.
+		if err != nil && ctx.Err() == nil {
+			report(fmt.Errorf("%s: streaming logs failed: %w", h, err))
+		}
+		return err
 	})
 	return errors.Join(append(errs, err)...)
 }
 
-// report shows a per-host failure on ErrWriter while following. Without
-// --follow the failure is only returned, so that it isn't shown twice.
-func (l Logs) report(err error) {
-	if !l.Follow {
-		return
+// logLabels returns the label to prefix the log lines of each host with. The
+// label is the address, or the address and port when hosts share an address.
+func logLabels(hosts cluster.Hosts) map[*cluster.Host]string {
+	count := make(map[string]int, len(hosts))
+	for _, h := range hosts {
+		count[h.Address()]++
 	}
-	w := l.ErrWriter
-	if w == nil {
-		w = os.Stderr
+	labels := make(map[*cluster.Host]string, len(hosts))
+	for _, h := range hosts {
+		labels[h] = h.Address()
+		if count[h.Address()] > 1 {
+			labels[h] = hostPort(h)
+		}
 	}
-	_, _ = fmt.Fprintf(w, "k0sctl: %v\n", err)
+	return labels
+}
+
+func hostPort(h *cluster.Host) string {
+	switch {
+	case h.SSH != nil:
+		return net.JoinHostPort(h.SSH.Address, strconv.Itoa(h.SSH.Port))
+	case h.WinRM != nil:
+		return net.JoinHostPort(h.WinRM.Address, strconv.Itoa(h.WinRM.Port))
+	case h.OpenSSH != nil && h.OpenSSH.Port != nil:
+		return net.JoinHostPort(h.OpenSSH.Address, strconv.Itoa(*h.OpenSSH.Port))
+	}
+	return h.Address()
 }
 
 // connectLogHosts connects to the hosts in parallel. It returns the hosts
@@ -146,7 +189,7 @@ func connectLogHosts(ctx context.Context, hosts cluster.Hosts, connect func(cont
 
 // printRecent fetches the latest lines from every host in parallel and prints
 // them one host after the other, so the lines of a host stay together.
-func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Writer, prefix bool, fetch func(context.Context, *cluster.Host, int) ([]string, error)) error {
+func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Writer, labels map[*cluster.Host]string, fetch func(context.Context, *cluster.Host, int) ([]string, error)) error {
 	results := make([][]string, len(hosts))
 	errs := make([]error, len(hosts))
 	var wg sync.WaitGroup
@@ -166,8 +209,8 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 			continue
 		}
 		for _, line := range trimTrailingEmpty(results[i]) {
-			if prefix {
-				line = h.Address() + ": " + line
+			if labels != nil {
+				line = labels[h] + ": " + line
 			}
 			if _, err := fmt.Fprintln(out, line); err != nil {
 				return fmt.Errorf("write logs: %w", err)
@@ -178,8 +221,9 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 }
 
 // selectLogHosts returns the hosts matching the given addresses and role. An
-// address that isn't in the config is an error, so that a typo doesn't
-// silently show nothing.
+// address matches every host with that address, because hosts can share an
+// address and use different ports. An address that isn't in the config is an
+// error, so that a typo doesn't silently show nothing.
 func selectLogHosts(hosts cluster.Hosts, addresses []string, role string) (cluster.Hosts, error) {
 	switch role {
 	case "":
@@ -196,18 +240,20 @@ func selectLogHosts(hosts cluster.Hosts, addresses []string, role string) (clust
 	if len(addresses) > 0 {
 		var missing []string
 		selected := make(cluster.Hosts, 0, len(addresses))
-		seen := make(map[string]struct{}, len(addresses))
+		seen := make(map[*cluster.Host]struct{}, len(addresses))
 		for _, a := range addresses {
-			if _, ok := seen[a]; ok {
-				continue
-			}
-			seen[a] = struct{}{}
-			h := hosts.Find(func(h *cluster.Host) bool { return h.Address() == a })
-			if h == nil {
+			matches := hosts.Filter(func(h *cluster.Host) bool { return h.Address() == a })
+			if len(matches) == 0 {
 				missing = append(missing, a)
 				continue
 			}
-			selected = append(selected, h)
+			for _, h := range matches {
+				if _, ok := seen[h]; ok {
+					continue
+				}
+				seen[h] = struct{}{}
+				selected = append(selected, h)
+			}
 		}
 		if len(missing) > 0 {
 			return nil, fmt.Errorf("no matching host with address %s", strings.Join(missing, ", "))

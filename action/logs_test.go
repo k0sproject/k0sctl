@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -20,6 +21,12 @@ func logTestHost(address, role string) *cluster.Host {
 		Role:            role,
 		CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: address}},
 	}
+}
+
+func logTestHostPort(address string, port int, role string) *cluster.Host {
+	h := logTestHost(address, role)
+	h.SSH.Port = port
+	return h
 }
 
 func logTestCluster(hosts ...*cluster.Host) *v1beta1.Cluster {
@@ -60,6 +67,16 @@ func TestSelectLogHosts_FiltersByRoleAndAddress(t *testing.T) {
 	got, err = selectLogHosts(hosts, []string{"10.0.0.1", "10.0.0.1"}, "")
 	require.NoError(t, err)
 	require.Equal(t, []string{"10.0.0.1"}, addresses(got))
+}
+
+func TestSelectLogHosts_AddressMatchesAllPorts(t *testing.T) {
+	a := logTestHostPort("127.0.0.1", 9022, "controller")
+	b := logTestHostPort("127.0.0.1", 9023, "worker")
+	hosts := cluster.Hosts{a, b, logTestHost("10.0.0.3", "worker")}
+
+	got, err := selectLogHosts(hosts, []string{"127.0.0.1", "127.0.0.1"}, "")
+	require.NoError(t, err)
+	require.Equal(t, cluster.Hosts{a, b}, got)
 }
 
 func TestSelectLogHosts_RejectsUnknownAddressAndRole(t *testing.T) {
@@ -207,3 +224,46 @@ func TestLogs_WriteFailureIsReturned(t *testing.T) {
 
 	require.ErrorContains(t, l.Run(context.Background()), "disk full")
 }
+
+func TestLogs_HostsSharingAnAddressArePrefixedWithPort(t *testing.T) {
+	var out bytes.Buffer
+	cfg := logTestCluster(logTestHostPort("127.0.0.1", 9022, "controller"), logTestHostPort("127.0.0.1", 9023, "worker"))
+	l := fakeLogs(cfg, &out, nil, nil)
+	l.fetch = func(_ context.Context, h *cluster.Host, _ int) ([]string, error) {
+		return []string{strconv.Itoa(h.SSH.Port)}, nil
+	}
+
+	require.NoError(t, l.Run(context.Background()))
+	require.Equal(t, "127.0.0.1:9022: 9022\n127.0.0.1:9023: 9023\n", out.String())
+}
+
+func TestLogs_FollowReportsStreamFailureWhileOthersStream(t *testing.T) {
+	var out, errOut bytes.Buffer
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"), logTestHost("10.0.0.3", "worker"))
+	l := fakeLogs(cfg, &out, map[string][]string{"10.0.0.1": {}, "10.0.0.3": {}}, nil)
+	l.Follow = true
+
+	reported := make(chan struct{})
+	l.stream = func(_ context.Context, h *cluster.Host, _ io.Writer) error {
+		if h.Address() == "10.0.0.1" {
+			return errors.New("connection lost")
+		}
+		// Keep streaming until the failure of the other host is reported.
+		<-reported
+		return nil
+	}
+	l.ErrWriter = writerFunc(func(p []byte) (int, error) {
+		n, err := errOut.Write(p)
+		close(reported)
+		return n, err
+	})
+
+	err := l.Run(context.Background())
+	require.ErrorContains(t, err, "connection lost")
+	require.Contains(t, errOut.String(), "10.0.0.1")
+	require.Contains(t, errOut.String(), "connection lost")
+}
+
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
