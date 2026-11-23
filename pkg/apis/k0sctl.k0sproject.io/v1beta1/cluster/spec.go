@@ -133,7 +133,8 @@ type k0sCPLBConfig struct {
 
 // cplbConfig parses the keepalived control plane load balancing configuration
 // from the k0s config. The second return value is false if the config can't be
-// parsed or CPLB is not enabled with the Keepalived type.
+// parsed or CPLB is not enabled with the Keepalived type. Like in k0s, a type
+// that is not set counts as Keepalived.
 func (s *Spec) cplbConfig() (*k0sCPLBConfig, bool) {
 	if s.K0s == nil {
 		return nil, false
@@ -150,7 +151,7 @@ func (s *Spec) cplbConfig() (*k0sCPLBConfig, bool) {
 	}
 
 	cplb := k0scfg.Spec.Network.ControlPlaneLoadBalancing
-	if !cplb.Enabled || cplb.Type != "Keepalived" {
+	if !cplb.Enabled || (cplb.Type != "" && cplb.Type != "Keepalived") {
 		return nil, false
 	}
 
@@ -161,7 +162,9 @@ func (s *Spec) cplbConfig() (*k0sCPLBConfig, bool) {
 // (keepalived virtualServers and vrrpInstances virtualIPs) declared in the k0s
 // config. VRRP virtual IPs are included both in their raw configured form and,
 // when configured in CIDR notation, as the bare IP address so that either form
-// matches. Returns an empty set if CPLB is not enabled or not using Keepalived.
+// matches. Returns an empty set if CPLB is not enabled or its type is something
+// other than Keepalived. Like in k0s, a type that is not set counts as
+// Keepalived.
 func (s *Spec) CPLBVIPs() map[string]struct{} {
 	vips := make(map[string]struct{})
 

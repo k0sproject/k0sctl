@@ -28,7 +28,7 @@ func (m *privateAddressMock) PrivateAddress(_ cfg.Host, _, _ string) (string, er
 }
 
 // makeCPLBConfig builds a dig.Mapping representing a k0s config with CPLB settings.
-func makeCPLBConfig(enabled bool, cplbType string, vrrpVIPs []string, virtualServerIPs []string) dig.Mapping {
+func makeCPLBConfig(enabled bool, cplbType **string, vrrpVIPs []string, virtualServerIPs []string) dig.Mapping {
 	vsEntries := make([]any, len(virtualServerIPs))
 	for i, ip := range virtualServerIPs {
 		vsEntries[i] = dig.Mapping{"ipAddress": ip}
@@ -37,17 +37,23 @@ func makeCPLBConfig(enabled bool, cplbType string, vrrpVIPs []string, virtualSer
 	for i, ip := range vrrpVIPs {
 		vrrpEntries[i] = ip
 	}
+
+	cplb := dig.Mapping{
+		"enabled": enabled,
+		"keepalived": dig.Mapping{
+			"vrrpInstances":  []any{dig.Mapping{"virtualIPs": vrrpEntries}},
+			"virtualServers": vsEntries,
+		},
+	}
+
+	if cplbType != nil {
+		cplb["type"] = *cplbType
+	}
+
 	return dig.Mapping{
 		"spec": dig.Mapping{
 			"network": dig.Mapping{
-				"controlPlaneLoadBalancing": dig.Mapping{
-					"enabled": enabled,
-					"type":    cplbType,
-					"keepalived": dig.Mapping{
-						"vrrpInstances":  []any{dig.Mapping{"virtualIPs": vrrpEntries}},
-						"virtualServers": vsEntries,
-					},
-				},
+				"controlPlaneLoadBalancing": cplb,
 			},
 		},
 	}
@@ -83,7 +89,7 @@ func TestInvestigateHostPrivateAddress(t *testing.T) {
 
 	const cplbVIP = "10.0.0.1"
 	const normalIP = "192.168.1.5"
-	cplbCfg := makeCPLBConfig(true, "Keepalived", nil, []string{cplbVIP})
+	cplbCfg := makeCPLBConfig(true, new(new("Keepalived")), nil, []string{cplbVIP})
 
 	tests := []struct {
 		name        string
@@ -96,6 +102,24 @@ func TestInvestigateHostPrivateAddress(t *testing.T) {
 			phase:       makePhase(cplbCfg),
 			host:        makeHost(cplbVIP, nil),
 			wantPrivate: "",
+		},
+		{
+			name:        "CPLB IP returned if type absent: private address not set",
+			phase:       makePhase(makeCPLBConfig(true, nil, nil, []string{cplbVIP})),
+			host:        makeHost(cplbVIP, nil),
+			wantPrivate: "",
+		},
+		{
+			name:        "CPLB IP returned if type null: private address not set",
+			phase:       makePhase(makeCPLBConfig(true, new(*string), nil, []string{cplbVIP})),
+			host:        makeHost(cplbVIP, nil),
+			wantPrivate: "",
+		},
+		{
+			name:        "CPLB IP returned if type not Keepalived: private address set",
+			phase:       makePhase(makeCPLBConfig(true, new(new("FooBar")), nil, []string{cplbVIP})),
+			host:        makeHost(cplbVIP, nil),
+			wantPrivate: cplbVIP,
 		},
 		{
 			name:        "non-CPLB IP returned: private address set",
@@ -117,7 +141,7 @@ func TestInvestigateHostPrivateAddress(t *testing.T) {
 		},
 		{
 			name:        "CPLB disabled: configured VIP not treated as CPLB, address set",
-			phase:       makePhase(makeCPLBConfig(false, "Keepalived", nil, []string{cplbVIP})),
+			phase:       makePhase(makeCPLBConfig(false, new(new("Keepalived")), nil, []string{cplbVIP})),
 			host:        makeHost(cplbVIP, nil),
 			wantPrivate: cplbVIP,
 		},
