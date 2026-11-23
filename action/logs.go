@@ -100,10 +100,15 @@ func (l Logs) Run(ctx context.Context) error {
 	}
 
 	if l.Lines > 0 {
-		if err := l.printRecent(ctx, connected, out, labels, fetch); err != nil {
+		fetchErr, writeErr := l.printRecent(ctx, connected, out, labels, fetch)
+		if writeErr != nil {
+			// Nothing more can be shown when the output fails.
+			return errors.Join(append(errs, fetchErr, writeErr)...)
+		}
+		if fetchErr != nil {
 			// Streaming may still work where reading the history didn't.
-			report(fmt.Errorf("reading the latest logs failed: %w", err))
-			errs = append(errs, err)
+			report(fmt.Errorf("reading the latest logs failed: %w", fetchErr))
+			errs = append(errs, fetchErr)
 		}
 	}
 
@@ -188,8 +193,10 @@ func connectLogHosts(ctx context.Context, hosts cluster.Hosts, connect func(cont
 }
 
 // printRecent fetches the latest lines from every host in parallel and prints
-// them one host after the other, so the lines of a host stay together.
-func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Writer, labels map[*cluster.Host]string, fetch func(context.Context, *cluster.Host, int) ([]string, error)) error {
+// them one host after the other, so the lines of a host stay together. It
+// returns the per-host fetch failures and the output write error separately,
+// because only the fetch failures can be recovered from.
+func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Writer, labels map[*cluster.Host]string, fetch func(context.Context, *cluster.Host, int) ([]string, error)) (fetchErr, writeErr error) {
 	results := make([][]string, len(hosts))
 	errs := make([]error, len(hosts))
 	var wg sync.WaitGroup
@@ -213,11 +220,11 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 				line = labels[h] + ": " + line
 			}
 			if _, err := fmt.Fprintln(out, line); err != nil {
-				return fmt.Errorf("write logs: %w", err)
+				return errors.Join(failed...), fmt.Errorf("write logs: %w", err)
 			}
 		}
 	}
-	return errors.Join(failed...)
+	return errors.Join(failed...), nil
 }
 
 // selectLogHosts returns the hosts matching the given addresses and role. An

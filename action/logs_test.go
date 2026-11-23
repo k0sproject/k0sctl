@@ -267,3 +267,18 @@ func TestLogs_FollowReportsStreamFailureWhileOthersStream(t *testing.T) {
 type writerFunc func([]byte) (int, error)
 
 func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+func TestLogs_FollowStopsOnHistoryWriteFailure(t *testing.T) {
+	var errOut bytes.Buffer
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"))
+	l := fakeLogs(cfg, failingWriter{}, map[string][]string{"10.0.0.1": {"one"}}, nil)
+	l.Follow = true
+	l.ErrWriter = &errOut
+	l.stream = func(context.Context, *cluster.Host, io.Writer) error {
+		t.Error("streaming started after the output failed")
+		return nil
+	}
+
+	require.ErrorContains(t, l.Run(context.Background()), "disk full")
+	require.Empty(t, errOut.String())
+}
