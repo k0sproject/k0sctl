@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -30,6 +31,10 @@ type Logs struct {
 	// Follow keeps streaming new log lines until the context is cancelled.
 	Follow bool
 	Writer io.Writer
+	// ErrWriter receives the per-host failures while following, because
+	// the final error is only shown after the user interrupts. Defaults to
+	// os.Stderr.
+	ErrWriter io.Writer
 
 	// These are replaced in tests, by default they use the host's
 	// connection and init system.
@@ -56,11 +61,6 @@ func (l Logs) Run(ctx context.Context) error {
 		stream = streamServiceLogs
 	}
 
-	if err := hosts.ParallelEach(ctx, func(ctx context.Context, h *cluster.Host) error {
-		return connect(ctx, h)
-	}); err != nil {
-		return err
-	}
 	defer func() {
 		for _, h := range hosts {
 			if h.Client != nil {
@@ -69,32 +69,79 @@ func (l Logs) Run(ctx context.Context) error {
 		}
 	}()
 
+	// Show the logs of the hosts that connected, and report the others.
+	connected, errs := connectLogHosts(ctx, hosts, connect)
+	if len(connected) == 0 {
+		return errors.Join(errs...)
+	}
+	for _, err := range errs {
+		l.report(err)
+	}
+
 	out := &syncWriter{w: l.Writer}
 	prefix := len(hosts) > 1
 
 	if l.Lines > 0 {
-		if err := l.printRecent(ctx, hosts, out, prefix, fetch); err != nil {
-			if !l.Follow {
-				return err
-			}
+		if err := l.printRecent(ctx, connected, out, prefix, fetch); err != nil {
 			// Streaming may still work where reading the history didn't.
-			log.Warnf("reading the latest logs failed: %v", err)
+			l.report(fmt.Errorf("reading the latest logs failed: %w", err))
+			errs = append(errs, err)
 		}
 	}
 
 	if !l.Follow {
-		return nil
+		return errors.Join(errs...)
 	}
 
-	return hosts.ParallelEach(ctx, func(ctx context.Context, h *cluster.Host) error {
-		w := io.Writer(out)
-		if prefix {
-			pw := &prefixWriter{w: out, prefix: h.Address() + ": "}
-			defer pw.Flush()
-			w = pw
+	err = connected.ParallelEach(ctx, func(ctx context.Context, h *cluster.Host) error {
+		if !prefix {
+			return stream(ctx, h, out)
 		}
-		return stream(ctx, h, w)
+		pw := &prefixWriter{w: out, prefix: h.Address() + ": "}
+		return errors.Join(stream(ctx, h, pw), pw.Flush())
 	})
+	return errors.Join(append(errs, err)...)
+}
+
+// report shows a per-host failure on ErrWriter while following. Without
+// --follow the failure is only returned, so that it isn't shown twice.
+func (l Logs) report(err error) {
+	if !l.Follow {
+		return
+	}
+	w := l.ErrWriter
+	if w == nil {
+		w = os.Stderr
+	}
+	_, _ = fmt.Fprintf(w, "k0sctl: %v\n", err)
+}
+
+// connectLogHosts connects to the hosts in parallel. It returns the hosts
+// that connected and an error for each host that didn't.
+func connectLogHosts(ctx context.Context, hosts cluster.Hosts, connect func(context.Context, *cluster.Host) error) (cluster.Hosts, []error) {
+	errs := make([]error, len(hosts))
+	var wg sync.WaitGroup
+	for i, h := range hosts {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := connect(ctx, h); err != nil {
+				errs[i] = fmt.Errorf("%s: %w", h, err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	connected := make(cluster.Hosts, 0, len(hosts))
+	var failed []error
+	for i, h := range hosts {
+		if errs[i] != nil {
+			failed = append(failed, errs[i])
+			continue
+		}
+		connected = append(connected, h)
+	}
+	return connected, failed
 }
 
 // printRecent fetches the latest lines from every host in parallel and prints
@@ -120,9 +167,10 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 		}
 		for _, line := range trimTrailingEmpty(results[i]) {
 			if prefix {
-				fmt.Fprintf(out, "%s: %s\n", h.Address(), line)
-			} else {
-				fmt.Fprintln(out, line)
+				line = h.Address() + ": " + line
+			}
+			if _, err := fmt.Fprintln(out, line); err != nil {
+				return fmt.Errorf("write logs: %w", err)
 			}
 		}
 	}
@@ -148,7 +196,12 @@ func selectLogHosts(hosts cluster.Hosts, addresses []string, role string) (clust
 	if len(addresses) > 0 {
 		var missing []string
 		selected := make(cluster.Hosts, 0, len(addresses))
+		seen := make(map[string]struct{}, len(addresses))
 		for _, a := range addresses {
+			if _, ok := seen[a]; ok {
+				continue
+			}
+			seen[a] = struct{}{}
 			h := hosts.Find(func(h *cluster.Host) bool { return h.Address() == a })
 			if h == nil {
 				missing = append(missing, a)
@@ -238,10 +291,11 @@ func (p *prefixWriter) Write(b []byte) (int, error) {
 }
 
 // Flush writes out a last line that didn't end with a newline.
-func (p *prefixWriter) Flush() {
+func (p *prefixWriter) Flush() error {
 	if len(p.buf) == 0 {
-		return
+		return nil
 	}
-	_, _ = p.w.Write([]byte(p.prefix + string(p.buf) + "\n"))
+	_, err := p.w.Write([]byte(p.prefix + string(p.buf) + "\n"))
 	p.buf = nil
+	return err
 }

@@ -56,6 +56,7 @@ var logsCommand = &cli.Command{
 			Lines:     ctx.Int("lines"),
 			Follow:    ctx.Bool("follow"),
 			Writer:    ctx.App.Writer,
+			ErrWriter: ctx.App.ErrWriter,
 		}
 
 		return logsAction.Run(ctx.Context)

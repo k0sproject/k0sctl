@@ -56,6 +56,10 @@ func TestSelectLogHosts_FiltersByRoleAndAddress(t *testing.T) {
 	got, err = selectLogHosts(hosts, []string{"10.0.0.3", "10.0.0.1"}, "")
 	require.NoError(t, err)
 	require.Equal(t, []string{"10.0.0.3", "10.0.0.1"}, addresses(got))
+
+	got, err = selectLogHosts(hosts, []string{"10.0.0.1", "10.0.0.1"}, "")
+	require.NoError(t, err)
+	require.Equal(t, []string{"10.0.0.1"}, addresses(got))
 }
 
 func TestSelectLogHosts_RejectsUnknownAddressAndRole(t *testing.T) {
@@ -161,4 +165,45 @@ func TestLogs_FollowWithoutHistory(t *testing.T) {
 
 	require.NoError(t, l.Run(context.Background()))
 	require.Equal(t, "new\n", out.String())
+}
+
+func TestLogs_FailedConnectionDoesNotHideTheOthers(t *testing.T) {
+	var out bytes.Buffer
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"), logTestHost("10.0.0.3", "worker"))
+	l := fakeLogs(cfg, &out, map[string][]string{"10.0.0.1": {"c1"}, "10.0.0.3": {"w1"}}, nil)
+	l.connect = func(_ context.Context, h *cluster.Host) error {
+		if h.Address() == "10.0.0.1" {
+			return errors.New("unreachable")
+		}
+		return nil
+	}
+
+	err := l.Run(context.Background())
+	require.ErrorContains(t, err, "unreachable")
+	require.Equal(t, "10.0.0.3: w1\n", out.String())
+}
+
+func TestLogs_FollowReportsHistoryFailure(t *testing.T) {
+	var out, errOut bytes.Buffer
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"))
+	l := fakeLogs(cfg, &out, nil, map[string]string{"10.0.0.1": "new\n"})
+	l.Follow = true
+	l.ErrWriter = &errOut
+
+	err := l.Run(context.Background())
+	require.ErrorContains(t, err, "no journal")
+	require.Contains(t, errOut.String(), "10.0.0.1")
+	require.Contains(t, errOut.String(), "no journal")
+	require.Equal(t, "new\n", out.String())
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("disk full") }
+
+func TestLogs_WriteFailureIsReturned(t *testing.T) {
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"))
+	l := fakeLogs(cfg, failingWriter{}, map[string][]string{"10.0.0.1": {"one"}}, nil)
+
+	require.ErrorContains(t, l.Run(context.Background()), "disk full")
 }
