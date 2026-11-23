@@ -33,6 +33,7 @@ var logsCommand = &cli.Command{
 			Usage:   "Keep streaming new log lines until interrupted",
 			Aliases: []string{"f"},
 		},
+		concurrencyFlag,
 		debugFlag,
 		traceFlag,
 		redactFlag,
@@ -57,6 +58,11 @@ var logsCommand = &cli.Command{
 			Follow:    ctx.Bool("follow"),
 			Writer:    ctx.App.Writer,
 			ErrWriter: ctx.App.ErrWriter,
+		}
+		if ctx.IsSet("concurrency") {
+			logsAction.Concurrency = ctx.Int("concurrency")
+		} else {
+			logsAction.Concurrency = cfg.Spec.Options.Concurrency.Limit
 		}
 
 		return logsAction.Run(ctx.Context)

@@ -36,6 +36,9 @@ type Logs struct {
 	// ErrWriter receives the per-host failures while following. Defaults
 	// to os.Stderr.
 	ErrWriter io.Writer
+	// Concurrency limits how many hosts are connected to and read from at
+	// once. 0 is unlimited. Following streams from all hosts at once.
+	Concurrency int
 
 	// These are replaced in tests, by default they use the host's
 	// connection and init system.
@@ -71,7 +74,7 @@ func (l Logs) Run(ctx context.Context) error {
 	}()
 
 	// Show the logs of the hosts that connected, and report the others.
-	connected, errs := connectLogHosts(ctx, hosts, connect)
+	connected, errs := connectLogHosts(ctx, hosts, l.Concurrency, connect)
 	if len(connected) == 0 {
 		return errors.Join(errs...)
 	}
@@ -116,7 +119,13 @@ func (l Logs) Run(ctx context.Context) error {
 		return errors.Join(errs...)
 	}
 
-	err = connected.ParallelEach(ctx, func(ctx context.Context, h *cluster.Host) error {
+	// When the output fails, stop all streams. Otherwise quiet hosts keep
+	// the command waiting although nothing can be shown anymore.
+	streamCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	out.fail = func(err error) { cancel(fmt.Errorf("write logs: %w", err)) }
+
+	err = connected.ParallelEach(streamCtx, func(ctx context.Context, h *cluster.Host) error {
 		var err error
 		if labels == nil {
 			err = stream(ctx, h, out)
@@ -132,7 +141,34 @@ func (l Logs) Run(ctx context.Context) error {
 		}
 		return err
 	})
+	if ctx.Err() == nil && streamCtx.Err() != nil {
+		// The output failed. The errors from the stopped streams only
+		// repeat that.
+		err = context.Cause(streamCtx)
+	}
 	return errors.Join(append(errs, err)...)
+}
+
+// forEachLimited calls fn for 0..n-1 in parallel, with at most limit calls
+// running at once. A limit of 0 or less is unlimited.
+func forEachLimited(n, limit int, fn func(i int)) {
+	if limit <= 0 || limit > n {
+		limit = n
+	}
+	sem := make(chan struct{}, limit)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+			fn(i)
+		}()
+	}
+	wg.Wait()
 }
 
 // logLabels returns the label to prefix the log lines of each host with. The
@@ -164,21 +200,15 @@ func hostPort(h *cluster.Host) string {
 	return h.Address()
 }
 
-// connectLogHosts connects to the hosts in parallel. It returns the hosts
-// that connected and an error for each host that didn't.
-func connectLogHosts(ctx context.Context, hosts cluster.Hosts, connect func(context.Context, *cluster.Host) error) (cluster.Hosts, []error) {
+// connectLogHosts connects to the hosts in parallel, at most limit at once.
+// It returns the hosts that connected and an error for each host that didn't.
+func connectLogHosts(ctx context.Context, hosts cluster.Hosts, limit int, connect func(context.Context, *cluster.Host) error) (cluster.Hosts, []error) {
 	errs := make([]error, len(hosts))
-	var wg sync.WaitGroup
-	for i, h := range hosts {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := connect(ctx, h); err != nil {
-				errs[i] = fmt.Errorf("%s: %w", h, err)
-			}
-		}()
-	}
-	wg.Wait()
+	forEachLimited(len(hosts), limit, func(i int) {
+		if err := connect(ctx, hosts[i]); err != nil {
+			errs[i] = fmt.Errorf("%s: %w", hosts[i], err)
+		}
+	})
 
 	connected := make(cluster.Hosts, 0, len(hosts))
 	var failed []error
@@ -192,22 +222,16 @@ func connectLogHosts(ctx context.Context, hosts cluster.Hosts, connect func(cont
 	return connected, failed
 }
 
-// printRecent fetches the latest lines from every host in parallel and prints
-// them one host after the other, so the lines of a host stay together. It
-// returns the per-host fetch failures and the output write error separately,
+// printRecent fetches the latest lines from the hosts in parallel, at most
+// l.Concurrency at once. It prints them one host after the other, so the
+// lines of a host stay together. It returns the per-host fetch failures and the output write error separately,
 // because only the fetch failures can be recovered from.
 func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Writer, labels map[*cluster.Host]string, fetch func(context.Context, *cluster.Host, int) ([]string, error)) (fetchErr, writeErr error) {
 	results := make([][]string, len(hosts))
 	errs := make([]error, len(hosts))
-	var wg sync.WaitGroup
-	for i, h := range hosts {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			results[i], errs[i] = fetch(ctx, h, l.Lines)
-		}()
-	}
-	wg.Wait()
+	forEachLimited(len(hosts), l.Concurrency, func(i int) {
+		results[i], errs[i] = fetch(ctx, hosts[i], l.Lines)
+	})
 
 	var failed []error
 	for i, h := range hosts {
@@ -309,12 +333,18 @@ func trimTrailingEmpty(lines []string) []string {
 type syncWriter struct {
 	mu sync.Mutex
 	w  io.Writer
+	// fail is called when a write fails, if set.
+	fail func(error)
 }
 
 func (s *syncWriter) Write(p []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.w.Write(p)
+	n, err := s.w.Write(p)
+	if err != nil && s.fail != nil {
+		s.fail(err)
+	}
+	return n, err
 }
 
 // prefixWriter prefixes every complete line with prefix and writes it as one

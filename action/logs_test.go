@@ -7,7 +7,9 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
@@ -281,4 +283,62 @@ func TestLogs_FollowStopsOnHistoryWriteFailure(t *testing.T) {
 
 	require.ErrorContains(t, l.Run(context.Background()), "disk full")
 	require.Empty(t, errOut.String())
+}
+
+func TestLogs_FollowStopsAllStreamsOnOutputFailure(t *testing.T) {
+	var errOut bytes.Buffer
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"), logTestHost("10.0.0.3", "worker"))
+	l := fakeLogs(cfg, failingWriter{}, nil, nil)
+	l.Lines = 0
+	l.Follow = true
+	l.ErrWriter = &errOut
+	l.stream = func(ctx context.Context, h *cluster.Host, w io.Writer) error {
+		if h.Address() == "10.0.0.1" {
+			_, err := w.Write([]byte("line\n"))
+			return err
+		}
+		// A quiet host that only stops when it is cancelled.
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	err := l.Run(context.Background())
+	require.ErrorContains(t, err, "disk full")
+	require.NotContains(t, err.Error(), "context canceled")
+	require.Empty(t, errOut.String())
+}
+
+func TestLogs_ConcurrencyLimitsConnectAndFetch(t *testing.T) {
+	cfg := logTestCluster(
+		logTestHost("10.0.0.1", "controller"),
+		logTestHost("10.0.0.2", "controller"),
+		logTestHost("10.0.0.3", "worker"),
+		logTestHost("10.0.0.4", "worker"),
+	)
+	l := fakeLogs(cfg, io.Discard, nil, nil)
+	l.Concurrency = 2
+
+	var running, peak atomic.Int32
+	track := func() func() {
+		n := running.Add(1)
+		for {
+			p := peak.Load()
+			if n <= p || peak.CompareAndSwap(p, n) {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		return func() { running.Add(-1) }
+	}
+	l.connect = func(context.Context, *cluster.Host) error {
+		defer track()()
+		return nil
+	}
+	l.fetch = func(context.Context, *cluster.Host, int) ([]string, error) {
+		defer track()()
+		return nil, nil
+	}
+
+	require.NoError(t, l.Run(context.Background()))
+	require.Equal(t, int32(2), peak.Load())
 }
