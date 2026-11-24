@@ -116,6 +116,29 @@ func kubeNodeReady(h *cluster.Host) (*kubeNodeStatus, error) {
 	return nil, fmt.Errorf("node %s 'Ready' condition not found", nodeName)
 }
 
+// K0sPID returns the process ID of the k0s instance running on the host, as
+// reported by "k0s status". It fails when k0s is not running, for example while
+// the service manager waits to restart a k0s that exited.
+func K0sPID(ctx context.Context, h *cluster.Host) (int, error) {
+	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.K0sCmdf("status -o json"), cmd.HideOutput())
+	if err != nil {
+		if errors.Is(err, protocol.ErrNonRetryable) {
+			return 0, errors.Join(retry.ErrAbort, fmt.Errorf("k0s is not running: %w", err))
+		}
+		return 0, fmt.Errorf("k0s is not running: %w", err)
+	}
+	status := struct {
+		Pid int `json:"Pid"`
+	}{}
+	if err := json.Unmarshal([]byte(output), &status); err != nil {
+		return 0, fmt.Errorf("failed to decode k0s status output: %w", err)
+	}
+	if status.Pid == 0 {
+		return 0, errors.New("k0s status did not report a process id")
+	}
+	return status.Pid, nil
+}
+
 // K0sDynamicConfigReadyFunc returns a function that returns an error unless the k0s dynamic config has been reconciled
 func K0sDynamicConfigReadyFunc(h *cluster.Host) retryFunc {
 	return func(_ context.Context) error {

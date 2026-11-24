@@ -40,6 +40,19 @@ deleteCluster() {
 }
 
 
+# dumpK0sLogs prints the recent k0s service logs from the given machines, to
+# show why k0s was not running when a smoke test fails. It covers systemd and
+# the OpenRC log files.
+dumpK0sLogs() {
+  for machine in "$@"; do
+    echo "* k0s service logs on ${machine}"
+    bootloose ssh "root@${machine}" -- 'for s in k0scontroller k0sworker; do
+      if command -v journalctl > /dev/null; then journalctl -u "$s" --no-pager -n 300 2> /dev/null; fi
+      for f in "/var/log/$s.log" "/var/log/$s.err"; do if [ -f "$f" ]; then echo "--- $f"; tail -n 300 "$f"; fi; done
+    done' || true
+  done
+}
+
 cleanup() {
     echo "Cleaning up..."
 
