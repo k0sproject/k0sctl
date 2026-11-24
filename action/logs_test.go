@@ -227,6 +227,16 @@ func TestLogs_WriteFailureIsReturned(t *testing.T) {
 	require.ErrorContains(t, l.Run(context.Background()), "disk full")
 }
 
+func TestLogs_WriteFailureKeepsLaterFetchFailures(t *testing.T) {
+	cfg := logTestCluster(logTestHost("10.0.0.1", "controller"), logTestHost("10.0.0.3", "worker"))
+	l := fakeLogs(cfg, failingWriter{}, map[string][]string{"10.0.0.1": {"one"}}, nil)
+
+	err := l.Run(context.Background())
+	require.ErrorContains(t, err, "disk full")
+	require.ErrorContains(t, err, "10.0.0.3")
+	require.ErrorContains(t, err, "no journal")
+}
+
 func TestLogs_HostsSharingAnAddressArePrefixedWithPort(t *testing.T) {
 	var out bytes.Buffer
 	cfg := logTestCluster(logTestHostPort("127.0.0.1", 9022, "controller"), logTestHostPort("127.0.0.1", 9023, "worker"))

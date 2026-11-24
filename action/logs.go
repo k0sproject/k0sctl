@@ -233,10 +233,18 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 		results[i], errs[i] = fetch(ctx, hosts[i], l.Lines)
 	})
 
+	// Collect the fetch failures first, so that a write failure doesn't drop
+	// the failures of the hosts after it.
 	var failed []error
 	for i, h := range hosts {
 		if errs[i] != nil {
 			failed = append(failed, fmt.Errorf("%s: %w", h, errs[i]))
+		}
+	}
+	fetchErr = errors.Join(failed...)
+
+	for i, h := range hosts {
+		if errs[i] != nil {
 			continue
 		}
 		for _, line := range trimTrailingEmpty(results[i]) {
@@ -244,11 +252,11 @@ func (l Logs) printRecent(ctx context.Context, hosts cluster.Hosts, out io.Write
 				line = labels[h] + ": " + line
 			}
 			if _, err := fmt.Fprintln(out, line); err != nil {
-				return errors.Join(failed...), fmt.Errorf("write logs: %w", err)
+				return fetchErr, fmt.Errorf("write logs: %w", err)
 			}
 		}
 	}
-	return errors.Join(failed...), nil
+	return fetchErr, nil
 }
 
 // selectLogHosts returns the hosts matching the given addresses and role. An
