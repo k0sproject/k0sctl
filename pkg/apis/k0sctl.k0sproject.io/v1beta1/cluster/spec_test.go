@@ -74,6 +74,61 @@ k0s:
 	})
 }
 
+func TestCPLBType(t *testing.T) {
+	const (
+		vip        = "192.168.0.10"
+		leaderAddr = "192.168.0.1"
+	)
+
+	tests := []struct {
+		name     string
+		typeLine string
+		wantCPLB bool
+	}{
+		{"type absent", "", true},
+		{"type null", "type: null", true},
+		{"type empty", `type: ""`, true},
+		{"type Keepalived", "type: Keepalived", true},
+		{"type other", "type: Other", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			specYaml := []byte(`
+hosts:
+  - role: controller
+    ssh:
+      address: ` + leaderAddr + `
+k0s:
+  config:
+    spec:
+      network:
+        controlPlaneLoadBalancing:
+          enabled: true
+          ` + tc.typeLine + `
+          keepalived:
+            vrrpInstances:
+            - virtualIPs: ["` + vip + `/24"]
+              authPass: CPLB
+            virtualServers:
+            - ipAddress: ` + vip)
+
+			spec := &Spec{}
+			require.NoError(t, yaml.Unmarshal(specYaml, spec))
+
+			vips := spec.CPLBVIPs()
+			if tc.wantCPLB {
+				require.Contains(t, vips, vip)
+				require.Contains(t, vips, vip+"/24")
+				require.Equal(t, "https://"+vip+":6443", spec.KubeAPIURL())
+			} else {
+				require.Empty(t, vips)
+				require.Equal(t, "https://"+leaderAddr+":6443", spec.KubeAPIURL())
+			}
+		})
+	}
+}
+
 // cplbSpec builds a Spec with a k0s config containing the given CPLB settings.
 func cplbSpec(enabled bool, cplbType string, vrrpVIPs []string, virtualServerIPs []string) *Spec {
 	vsEntries := make([]any, len(virtualServerIPs))

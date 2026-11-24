@@ -280,6 +280,17 @@ func TestWarnMultipleControllersWithoutLoadBalancer(t *testing.T) {
 		require.Zero(t, warnings(controllers(3), cfg))
 	})
 
+	// k0s defaults an unset controlPlaneLoadBalancing type to Keepalived
+	t.Run("control plane load balancing without a type", func(t *testing.T) {
+		cfg := dig.Mapping{"spec": dig.Mapping{"network": dig.Mapping{"controlPlaneLoadBalancing": dig.Mapping{
+			"enabled": true,
+			"keepalived": dig.Mapping{
+				"vrrpInstances": []any{dig.Mapping{"virtualIPs": []any{"10.0.0.100/24"}}},
+			},
+		}}}}
+		require.Zero(t, warnings(controllers(3), cfg))
+	})
+
 	// When spec.k0s.config is left out, the configuration that is already on the leader is kept
 	t.Run("existing configuration", func(t *testing.T) {
 		withExisting := func(existing string) cluster.Hosts {
