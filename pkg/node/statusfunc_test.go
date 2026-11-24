@@ -164,6 +164,14 @@ func TestK0sPID(t *testing.T) {
 		require.ErrorContains(t, err, "k0s is not running")
 	})
 
+	t.Run("non-retryable connection error", func(t *testing.T) {
+		h := newTestHost(t, func(mr *rigtest.MockRunner) {
+			mr.AddCommandFailure(rigtest.Contains("status -o json"), protocol.ErrNonRetryable)
+		})
+		_, err := K0sPID(context.Background(), h)
+		require.ErrorIs(t, err, retry.ErrAbort)
+	})
+
 	t.Run("no pid", func(t *testing.T) {
 		h := newTestHost(t, func(mr *rigtest.MockRunner) {
 			mr.AddCommandOutput(rigtest.Contains("status -o json"), `{"Version":"v1.36.6+k0s.0","Role":"worker"}`)

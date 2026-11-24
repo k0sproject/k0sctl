@@ -122,6 +122,9 @@ func kubeNodeReady(h *cluster.Host) (*kubeNodeStatus, error) {
 func K0sPID(ctx context.Context, h *cluster.Host) (int, error) {
 	output, err := h.Sudo().ExecOutputContext(ctx, h.Configurer.K0sCmdf("status -o json"), cmd.HideOutput())
 	if err != nil {
+		if errors.Is(err, protocol.ErrNonRetryable) {
+			return 0, errors.Join(retry.ErrAbort, fmt.Errorf("k0s is not running: %w", err))
+		}
 		return 0, fmt.Errorf("k0s is not running: %w", err)
 	}
 	status := struct {

@@ -2,6 +2,7 @@ package phase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -377,7 +378,11 @@ func waitUpgradedWorker(ctx context.Context, h *cluster.Host, v *version.Version
 		var restartErr error
 		err := retry.WithDefaultTimeout(ctx, func(ctx context.Context) error {
 			// k0s not running is not an error here. It is checked once the node is ready.
-			if current, err := node.K0sPID(ctx, h); err == nil && current != pid {
+			current, err := node.K0sPID(ctx, h)
+			if errors.Is(err, retry.ErrAbort) {
+				return err
+			}
+			if err == nil && current != pid {
 				if restartErr = restarted(current); restartErr != nil {
 					return retry.ErrAbort
 				}
