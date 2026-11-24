@@ -112,6 +112,37 @@ func TestWaitUpgradedWorker_FailsWhenK0sKeepsRestarting(t *testing.T) {
 	require.ErrorContains(t, err, "k0s keeps restarting")
 }
 
+func TestWaitUpgradedWorker_CountsEachRestartWhileNodeNotReady(t *testing.T) {
+	fastRetry(t)
+	// k0s restarts between each node status query until the node is ready.
+	// Checking k0s only after the node is ready would see one restart.
+	const notReady = maxK0sRestarts + 1
+	var mu sync.Mutex
+	nodeQueries := 0
+	h := newMockHost(t, "worker0", func(mr *rigtest.MockRunner) {
+		mr.AddCommand(rigtest.Contains("status -o json"), func(a *rigtest.A) error {
+			mu.Lock()
+			pid := 100 + 100*min(nodeQueries, notReady)
+			mu.Unlock()
+			_, err := fmt.Fprintf(a.Stdout, `{"Version":"v1.36.6+k0s.0","Pid":%d,"Role":"worker"}`, pid)
+			return err
+		})
+		mr.AddCommand(rigtest.Contains("kubectl"), func(a *rigtest.A) error {
+			mu.Lock()
+			ready := "True"
+			if nodeQueries < notReady {
+				ready = "False"
+			}
+			nodeQueries++
+			mu.Unlock()
+			_, err := fmt.Fprintf(a.Stdout, `{"status":{"conditions":[{"type":"Ready","status":"%s"}],"nodeInfo":{"kubeletVersion":"v1.36.6+k0s"}}}`, ready)
+			return err
+		})
+	})
+	err := waitUpgradedWorker(t.Context(), h, version.MustParse("v1.36.6+k0s.0"))
+	require.ErrorContains(t, err, "k0s keeps restarting")
+}
+
 func TestWaitUpgradedWorker_AllowsMaxK0sRestarts(t *testing.T) {
 	fastRetry(t)
 	pids := []int{100}
