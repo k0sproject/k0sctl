@@ -247,6 +247,8 @@ k0sctl logs --address 10.0.0.2 --follow
 
 The logs are read through the host's init system, so this works on the hosts where k0sctl can manage the k0s service.
 
+On Windows workers, only the service start, stop and crash events from the Windows event log are shown, and `--follow` is not supported.
+
 ## Configuration file
 
 The configuration file is in YAML format and loosely resembles the syntax used in Kubernetes. YAML anchors and aliases can be used.
