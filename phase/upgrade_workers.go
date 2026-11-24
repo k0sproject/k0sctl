@@ -25,9 +25,9 @@ type UpgradeWorkers struct {
 	hosts  cluster.Hosts
 	leader *cluster.Host
 
-	// keepCordoned holds the hosts on which the upgrade failed after k0s was
-	// stopped, including those that did not come back with k0s running and
-	// the node ready. CleanUp leaves them cordoned so that no workloads are
+	// keepCordoned holds the hosts on which the upgrade failed from the k0s
+	// stop on, including those that did not come back with k0s running and the
+	// node ready. CleanUp leaves them cordoned so that no workloads are
 	// scheduled on them while their node can still look ready.
 	keepCordoned sync.Map
 
@@ -232,6 +232,15 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) (er
 		return fmt.Errorf("get service %s: %w", h.K0sServiceName(), svcErr)
 	}
 
+	// From the stop attempt on, a failure can leave k0s stopped. The stop can
+	// succeed even if the wait for the stopped state fails. The node then
+	// stays cordoned.
+	defer func() {
+		if err != nil {
+			p.keepCordoned.Store(h, struct{}{})
+		}
+	}()
+
 	log.Debugf("%s: stop service", h)
 	err = p.Wet(h, "stop k0s service", func() error {
 		if err := svc.Stop(ctx); err != nil {
@@ -247,14 +256,6 @@ func (p *UpgradeWorkers) upgradeWorker(ctx context.Context, h *cluster.Host) (er
 	if err != nil {
 		return err
 	}
-
-	// k0s is stopped from here on. If a later step fails, the node must stay
-	// cordoned, because k0s may not be running on it.
-	defer func() {
-		if err != nil {
-			p.keepCordoned.Store(h, struct{}{})
-		}
-	}()
 
 	if h.Metadata.K0sBinaryTempFile != "" {
 		log.Debugf("%s: update binary", h)

@@ -177,6 +177,36 @@ func TestUpgradeWorkersCleanUp_KeepsUnhealthyWorkersCordoned(t *testing.T) {
 	require.Contains(t, uncordoned[0], "uncordon healthy")
 }
 
+func TestUpgradeWorker_KeepsCordonedWhenStoppedStateWaitFails(t *testing.T) {
+	fastRetry(t)
+	h := newMockHost(t, "worker0", func(mr *rigtest.MockRunner) {
+		mr.AddCommand(rigtest.Contains("stat /run/systemd/system"), func(_ *rigtest.A) error { return nil })
+		mr.AddCommand(rigtest.Contains("systemctl stop"), func(_ *rigtest.A) error { return nil })
+		// The service keeps reporting as running after the stop.
+		mr.AddCommand(rigtest.Contains("systemctl status"), func(_ *rigtest.A) error { return nil })
+	})
+	p := &UpgradeWorkers{}
+	p.SetManager(&Manager{})
+
+	// The stop waits for the stopped state until the context expires.
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	require.Error(t, p.upgradeWorker(ctx, h))
+	_, kept := p.keepCordoned.Load(h)
+	require.True(t, kept, "the worker is not kept cordoned")
+}
+
+func TestUpgradeWorker_ServiceLookupFailureDoesNotKeepCordoned(t *testing.T) {
+	// No init system is detected, so the upgrade fails before k0s is stopped.
+	h := newMockHost(t, "worker0", func(_ *rigtest.MockRunner) {})
+	p := &UpgradeWorkers{}
+	p.SetManager(&Manager{})
+
+	require.ErrorContains(t, p.upgradeWorker(t.Context(), h), "get service")
+	_, kept := p.keepCordoned.Load(h)
+	require.False(t, kept, "the worker is kept cordoned")
+}
+
 func TestUpgradeWorkersStep_SkipsRemainingStepsAfterFailure(t *testing.T) {
 	failing := newMockHost(t, "failing", func(_ *rigtest.MockRunner) {})
 	healthy := newMockHost(t, "healthy", func(_ *rigtest.MockRunner) {})
