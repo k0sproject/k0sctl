@@ -119,7 +119,7 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		if !p.NoLeave {
 			log.Debugf("%s: leaving etcd...", h)
 
-			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", h.PrivateAddress, h.K0sDataDir())); err != nil {
+			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", h.EtcdPeerAddress(), h.K0sDataDir())); err != nil {
 				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
 			}
 			log.Debugf("%s: leaving etcd completed", h)

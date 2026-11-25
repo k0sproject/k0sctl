@@ -200,3 +200,14 @@ func TestHostK0sConfigOnlyForControllers(t *testing.T) {
 	h = Host{Role: "worker", K0s: &HostK0s{}}
 	require.NoError(t, h.Validate(), "an empty k0s mapping is fine on workers")
 }
+
+func TestHostEtcdPeerAddress(t *testing.T) {
+	h := Host{PrivateAddress: "10.0.0.1"}
+	require.Equal(t, "10.0.0.1", h.EtcdPeerAddress())
+
+	h.K0s = &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}}
+	require.Equal(t, "10.0.0.1", h.EtcdPeerAddress(), "falls back to the private address without a peerAddress override")
+
+	h.K0s.Config["spec"].(dig.Mapping)["storage"] = dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}
+	require.Equal(t, "172.16.0.1", h.EtcdPeerAddress())
+}

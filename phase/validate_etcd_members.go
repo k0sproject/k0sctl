@@ -65,21 +65,22 @@ func (p *ValidateEtcdMembers) validateControllerSwap() error {
 	}
 
 	for _, h := range p.hosts {
-		log.Debugf("%s: host is new, checking if etcd members list already contains %s", h, h.PrivateAddress)
-		if slices.Contains(p.Config.Metadata.EtcdMembers, h.PrivateAddress) {
+		peerAddress := h.EtcdPeerAddress()
+		log.Debugf("%s: host is new, checking if etcd members list already contains %s", h, peerAddress)
+		if slices.Contains(p.Config.Metadata.EtcdMembers, peerAddress) {
 			if Force {
 				log.Infof("%s: force used, running 'k0s etcd leave' for the host", h)
 				leader := p.Config.Spec.K0sLeader()
-				leaveCommand := leader.Configurer.K0sCmdf("etcd leave --peer-address %s", h.PrivateAddress)
+				leaveCommand := leader.Configurer.K0sCmdf("etcd leave --peer-address %s", peerAddress)
 				err := p.Wet(h, fmt.Sprintf("remove host from etcd using %v", leaveCommand), func() error {
 					return leader.Exec(leaveCommand)
 				})
 				if err != nil {
-					return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. attempted etcd leave for the address %s but it failed: %w", h, h.PrivateAddress, err)
+					return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. attempted etcd leave for the address %s but it failed: %w", h, peerAddress, err)
 				}
 				continue
 			}
-			return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. check the host and use `k0s etcd leave --peer-address %s on a controller or re-run apply with --force", h, h.PrivateAddress)
+			return fmt.Errorf("controller %s is listed as an existing etcd member but k0s is not found installed on it, the host may have been replaced. check the host and use `k0s etcd leave --peer-address %s on a controller or re-run apply with --force", h, peerAddress)
 		}
 		log.Debugf("%s: no match, assuming its safe to install", h)
 	}

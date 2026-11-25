@@ -1033,6 +1033,18 @@ type HostK0s struct {
 	Config dig.Mapping `yaml:"config,omitempty"`
 }
 
+// EtcdPeerAddress returns the address the host uses as its etcd peer
+// address. A spec.storage.etcd.peerAddress in the host k0s config takes
+// precedence over the private address.
+func (h *Host) EtcdPeerAddress() string {
+	if h.K0s != nil {
+		if addr := h.K0s.Config.DigString("spec", "storage", "etcd", "peerAddress"); addr != "" {
+			return addr
+		}
+	}
+	return h.PrivateAddress
+}
+
 // hostK0sConfigMustBeEmpty rejects a host k0s config on workers, which don't
 // get a k0s config file.
 func hostK0sConfigMustBeEmpty(value any) error {
