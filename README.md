@@ -399,7 +399,7 @@ taints:
 
 k0s settings for this host only.
 
-- `config` &lt;mapping&gt; - merged over [`spec.k0s.config`](#speck0sconfig-mapping-optional-default-auto-generated) when the k0s config for this host is generated. Keys set here replace the cluster values, everything else comes from the cluster config. Only valid for hosts with a controller role, since workers don't get a k0s config file.
+- `config` &lt;mapping&gt; - merged over [`spec.k0s.config`](#speck0sconfig-mapping-optional-default-auto-generated) when the k0s config for this host is generated. Keys set here replace the cluster values, everything else comes from the cluster config. Set a key to `null` to remove the cluster value for this host. A `spec.storage.etcd.peerAddress` set here is used as is. Only valid for hosts with a controller role, since workers don't get a k0s config file. Requires `spec.k0s.config` to be set, because k0sctl can't separate the shared config from the host overrides in a config read back from the cluster.
 
 This lets each controller use its own address, for example the private one of a VPN, while the cluster config points at a load balancer:
 

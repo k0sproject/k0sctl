@@ -288,3 +288,24 @@ func TestCPLBVIPs(t *testing.T) {
 		})
 	}
 }
+
+// Without spec.k0s.config, the next apply recovers the cluster config from the
+// leader, overrides included. The other controllers would then inherit them.
+func TestSpecHostK0sConfigRequiresClusterK0sConfig(t *testing.T) {
+	newSpec := func(k0s *K0s) *Spec {
+		return &Spec{
+			K0s: k0s,
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+				},
+			},
+		}
+	}
+
+	require.ErrorContains(t, newSpec(nil).validateHostK0sConfig(), "requires spec.k0s.config")
+	require.ErrorContains(t, newSpec(&K0s{}).validateHostK0sConfig(), "requires spec.k0s.config")
+	require.NoError(t, newSpec(&K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}).validateHostK0sConfig())
+}

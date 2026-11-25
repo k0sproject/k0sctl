@@ -417,3 +417,45 @@ func TestConfigForDynamicConfigKeepsClusterConfigUntouched(t *testing.T) {
 	}
 	require.Empty(t, clusterK0s.Config.DigString("spec", "api", "address"), "the cluster config must stay untouched")
 }
+
+func TestConfigForKeepsHostEtcdPeerAddress(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"type": "etcd"}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	parsed := make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Equal(t, "172.16.0.1", parsed.DigString("spec", "storage", "etcd", "peerAddress"))
+
+	other := testController("203.0.113.2", "10.0.0.2")
+	config, err = p.configFor(other, base.Dup())
+	require.NoError(t, err)
+	parsed = make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Equal(t, "10.0.0.2", parsed.DigString("spec", "storage", "etcd", "peerAddress"), "hosts without an override get the automatic peer address")
+}
+
+func TestConfigForHostNullClearsClusterValue(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"externalAddress": "k8s.example.com"}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"externalAddress": nil}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	parsed := make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Empty(t, parsed.DigString("spec", "api", "externalAddress"))
+	require.Equal(t, "k8s.example.com", base.DigString("spec", "api", "externalAddress"), "the cluster config must stay untouched")
+}

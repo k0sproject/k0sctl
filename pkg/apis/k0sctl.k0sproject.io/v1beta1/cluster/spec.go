@@ -90,11 +90,30 @@ func (s *Spec) K0sLeader() *Host {
 }
 
 func (s *Spec) Validate() error {
-	return validation.ValidateStruct(s,
+	if err := validation.ValidateStruct(s,
 		validation.Field(&s.Hosts, validation.Required),
 		validation.Field(&s.Hosts),
 		validation.Field(&s.K0s),
-	)
+	); err != nil {
+		return err
+	}
+	return s.validateHostK0sConfig()
+}
+
+// validateHostK0sConfig requires spec.k0s.config when a host sets k0s.config.
+// Without it, k0sctl recovers the cluster config from the leader on the next
+// apply. That config includes the leader's host overrides, which would then
+// reach the other controllers.
+func (s *Spec) validateHostK0sConfig() error {
+	if s.K0s != nil && len(s.K0s.Config) > 0 {
+		return nil
+	}
+	for _, h := range s.Hosts {
+		if h.K0s != nil && len(h.K0s.Config) > 0 {
+			return fmt.Errorf("%s: k0s.config requires spec.k0s.config to be set", h)
+		}
+	}
+	return nil
 }
 
 // ResolveUploadFilePaths resolves all host file sources relative to baseDir.
