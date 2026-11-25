@@ -7,6 +7,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"github.com/k0sproject/dig"
 	"gopkg.in/yaml.v2"
 )
 
@@ -100,17 +101,37 @@ func (s *Spec) Validate() error {
 	return s.validateHostK0sConfig()
 }
 
-// validateHostK0sConfig requires spec.k0s.config when a host sets k0s.config.
-// Without it, k0sctl recovers the cluster config from the leader on the next
-// apply. That config includes the leader's host overrides, which would then
-// reach the other controllers.
+// clusterWideAPIKeys are k0s config keys that k0sctl reads from
+// spec.k0s.config to build the kubeconfig and join token URLs. A host value
+// would be ignored there, so hosts can't set them.
+var clusterWideAPIKeys = []string{"externalAddress", "port"}
+
+// validateHostK0sConfig checks the host k0s.config overrides against the
+// cluster config.
+//
+// Without spec.k0s.config, k0sctl recovers the cluster config from the leader
+// on the next apply. That config includes the leader's host overrides, which
+// would then reach the other controllers.
+//
+// With dynamic config, the leader's first config seeds the cluster wide
+// ClusterConfig, so the leader's overrides would apply to the whole cluster.
 func (s *Spec) validateHostK0sConfig() error {
-	if s.K0s != nil && len(s.K0s.Config) > 0 {
-		return nil
-	}
 	for _, h := range s.Hosts {
-		if h.K0s != nil && len(h.K0s.Config) > 0 {
+		if h.K0s == nil || len(h.K0s.Config) == 0 {
+			continue
+		}
+		if s.K0s == nil || len(s.K0s.Config) == 0 {
 			return fmt.Errorf("%s: k0s.config requires spec.k0s.config to be set", h)
+		}
+		if s.K0s.DynamicConfig {
+			return fmt.Errorf("%s: k0s.config can't be used with spec.k0s.dynamicConfig", h)
+		}
+		if api, ok := h.K0s.Config.Dig("spec", "api").(dig.Mapping); ok {
+			for _, key := range clusterWideAPIKeys {
+				if api.HasKey(key) {
+					return fmt.Errorf("%s: k0s.config can't set spec.api.%s, set it in spec.k0s.config instead", h, key)
+				}
+			}
 		}
 	}
 	return nil

@@ -443,19 +443,19 @@ func TestConfigForKeepsHostEtcdPeerAddress(t *testing.T) {
 }
 
 func TestConfigForHostNullClearsClusterValue(t *testing.T) {
-	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"externalAddress": "k8s.example.com"}}}
+	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"extraArgs": dig.Mapping{"v": "2"}}}}
 	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
 	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
 
 	h := testController("203.0.113.1", "")
 	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
-		"spec": dig.Mapping{"api": dig.Mapping{"externalAddress": nil}},
+		"spec": dig.Mapping{"api": dig.Mapping{"extraArgs": nil}},
 	}}
 
 	config, err := p.configFor(h, base.Dup())
 	require.NoError(t, err)
 	parsed := make(dig.Mapping)
 	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
-	require.Empty(t, parsed.DigString("spec", "api", "externalAddress"))
-	require.Equal(t, "k8s.example.com", base.DigString("spec", "api", "externalAddress"), "the cluster config must stay untouched")
+	require.Nil(t, parsed.Dig("spec", "api", "extraArgs"))
+	require.Equal(t, "2", base.DigString("spec", "api", "extraArgs", "v"), "the cluster config must stay untouched")
 }

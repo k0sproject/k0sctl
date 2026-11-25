@@ -309,3 +309,39 @@ func TestSpecHostK0sConfigRequiresClusterK0sConfig(t *testing.T) {
 	require.ErrorContains(t, newSpec(&K0s{}).validateHostK0sConfig(), "requires spec.k0s.config")
 	require.NoError(t, newSpec(&K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}).validateHostK0sConfig())
 }
+
+// With dynamic config, the leader's first config seeds the cluster wide
+// ClusterConfig, so the leader's overrides would reach the whole cluster.
+func TestSpecHostK0sConfigRejectsDynamicConfig(t *testing.T) {
+	spec := &Spec{
+		K0s: &K0s{DynamicConfig: true, Config: dig.Mapping{"spec": dig.Mapping{}}},
+		Hosts: Hosts{
+			&Host{
+				Role:            "controller",
+				CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+				K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+			},
+		},
+	}
+	require.ErrorContains(t, spec.validateHostK0sConfig(), "can't be used with spec.k0s.dynamicConfig")
+}
+
+// The kubeconfig and join token URLs come from the cluster config, so a host
+// value for these keys would be ignored there.
+func TestSpecHostK0sConfigRejectsClusterWideAPIKeys(t *testing.T) {
+	for key, value := range map[string]any{"externalAddress": "k8s.example.com", "port": 6444} {
+		for _, v := range []any{value, nil} {
+			spec := &Spec{
+				K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+				Hosts: Hosts{
+					&Host{
+						Role:            "controller",
+						CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+						K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{key: v}}}},
+					},
+				},
+			}
+			require.ErrorContains(t, spec.validateHostK0sConfig(), "can't set spec.api."+key)
+		}
+	}
+}
