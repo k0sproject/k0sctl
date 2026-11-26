@@ -481,15 +481,17 @@ func TestConfigForHostUnsetEtcdPeerAddress(t *testing.T) {
 		require.Equal(t, "10.0.0.1", h.EtcdPeerAddress(), value)
 	}
 	// Without a private address, config generation uses the connection
-	// address for an empty value. EtcdPeerAddress must agree.
-	h := testController("203.0.113.1", "")
-	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
-		"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": ""}}},
-	}}
-	config, err := p.configFor(h, base.Dup())
-	require.NoError(t, err)
-	parsed := make(dig.Mapping)
-	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
-	require.Equal(t, "203.0.113.1", parsed.DigString("spec", "storage", "etcd", "peerAddress"))
-	require.Equal(t, "203.0.113.1", h.EtcdPeerAddress())
+	// address for a null or empty value. EtcdPeerAddress must agree.
+	for _, value := range []any{nil, ""} {
+		h := testController("203.0.113.1", "")
+		h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+			"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": value}}},
+		}}
+		config, err := p.configFor(h, base.Dup())
+		require.NoError(t, err)
+		parsed := make(dig.Mapping)
+		require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+		require.Equal(t, "203.0.113.1", parsed.DigString("spec", "storage", "etcd", "peerAddress"), value)
+		require.Equal(t, "203.0.113.1", h.EtcdPeerAddress(), value)
+	}
 }
