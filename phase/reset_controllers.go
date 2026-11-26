@@ -169,7 +169,8 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 // installedEtcdPeerAddress returns the etcd peer address from the k0s config
 // installed on the host. A reset host is not reconfigured, so a changed
 // peerAddress in its host k0s config has not been applied yet. Without an
-// installed peerAddress, it falls back to the private address.
+// installed peerAddress, it falls back to the private address, or the
+// connection address when there is no private address.
 func installedEtcdPeerAddress(h *cluster.Host) string {
 	if h.Metadata.K0sExistingConfig != "" {
 		cfg := make(dig.Mapping)
@@ -179,5 +180,8 @@ func installedEtcdPeerAddress(h *cluster.Host) string {
 			return addr
 		}
 	}
-	return h.PrivateAddress
+	if h.PrivateAddress != "" {
+		return h.PrivateAddress
+	}
+	return h.Address()
 }

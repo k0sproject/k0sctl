@@ -1035,14 +1035,18 @@ type HostK0s struct {
 
 // EtcdPeerAddress returns the address the host uses as its etcd peer
 // address. A spec.storage.etcd.peerAddress in the host k0s config takes
-// precedence over the private address.
+// precedence. Without it, it returns the private address, or the connection
+// address when there is no private address, like the generated k0s config.
 func (h *Host) EtcdPeerAddress() string {
 	if h.K0s != nil {
 		if addr := h.K0s.Config.DigString("spec", "storage", "etcd", "peerAddress"); addr != "" {
 			return addr
 		}
 	}
-	return h.PrivateAddress
+	if h.PrivateAddress != "" {
+		return h.PrivateAddress
+	}
+	return h.Address()
 }
 
 // hostK0sConfigMustBeEmpty rejects a host k0s config on workers, which don't

@@ -21,4 +21,6 @@ func TestInstalledEtcdPeerAddress(t *testing.T) {
 
 	h.Metadata.K0sExistingConfig = "spec:\n  api:\n    port: 6443\n"
 	require.Equal(t, "10.0.0.1", installedEtcdPeerAddress(h), "without an installed peerAddress, use the private address")
+	h.PrivateAddress = ""
+	require.Equal(t, "203.0.113.1", installedEtcdPeerAddress(h), "without a private address, use the connection address")
 }

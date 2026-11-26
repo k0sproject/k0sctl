@@ -210,4 +210,10 @@ func TestHostEtcdPeerAddress(t *testing.T) {
 
 	h.K0s.Config["spec"].(dig.Mapping)["storage"] = dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}
 	require.Equal(t, "172.16.0.1", h.EtcdPeerAddress())
+	// The generated k0s config uses the connection address when there is no
+	// private address, so this must too.
+	h = Host{CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "203.0.113.1"}}}
+	require.Equal(t, "203.0.113.1", h.EtcdPeerAddress())
+	h.K0s = &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": ""}}}}}
+	require.Equal(t, "203.0.113.1", h.EtcdPeerAddress())
 }
