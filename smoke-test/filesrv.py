@@ -9,6 +9,9 @@ Two knobs make the interesting cases reachable from a shell script:
 
   - a path under /noetag/ is served without an ETag, which is what makes k0sctl
     fall back to comparing Last-Modified
+  - a path under /weak/ is served with a weak ETag and no Last-Modified, like
+    the GitHub API does. k0sctl can't tell from that whether the file changed,
+    so it downloads it on every apply
   - a <file>.drop marker beside a served file cuts the next transfer of that
     file short and closes the connection, which is what an interrupted download
     looks like to curl. The marker is consumed by the transfer that trips over
@@ -77,13 +80,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
     def resolve(self):
-        """Return the path on disk for the request and whether it gets an ETag,
-        or (None, ...) when the request is not for a served file."""
+        """Return the path on disk for the request and the validators it gets:
+        "strong", "none" or "weak". The path is None when the request is not
+        for a served file."""
         path = self.path.split("?", 1)[0]
-        etag = True
+        etag = "strong"
         if path.startswith("/noetag/"):
             path = path[len("/noetag/"):]
-            etag = False
+            etag = "none"
+        elif path.startswith("/weak/"):
+            path = path[len("/weak/"):]
+            etag = "weak"
         elif path.startswith("/files/"):
             path = path[len("/files/"):]
         else:
@@ -101,7 +108,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.serve(with_body=True)
 
     def serve(self, with_body):
-        name, with_etag = self.resolve()
+        name, validators = self.resolve()
         if name is None or not os.path.isfile(name):
             self.respond(404)
             return
@@ -124,9 +131,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/octet-stream")
         self.send_header("Content-Length", str(length))
         self.send_header("Accept-Ranges", "bytes")
-        self.send_header("Last-Modified", email.utils.formatdate(stat.st_mtime, usegmt=True))
-        if with_etag:
-            self.send_header("ETag", '"%x-%x"' % (int(stat.st_mtime), stat.st_size))
+        tag = '"%x-%x"' % (int(stat.st_mtime), stat.st_size)
+        if validators == "weak":
+            self.send_header("ETag", "W/" + tag)
+        else:
+            self.send_header("Last-Modified", email.utils.formatdate(stat.st_mtime, usegmt=True))
+        if validators == "strong":
+            self.send_header("ETag", tag)
         if status == 206:
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start, stat.st_size - 1, stat.st_size))
         self.end_headers()
