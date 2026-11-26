@@ -512,7 +512,10 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 		}
 	}
 
-	if p.Config.StorageType() == "etcd" && !hostSetsK0sConfigKey(h, "spec", "storage", "etcd", "peerAddress") {
+	// A host peerAddress is kept as is. A null one counts as unset, so it
+	// gets the same address as Host.EtcdPeerAddress returns.
+	hostPeerAddress := h.K0s != nil && h.K0s.Config.Dig("spec", "storage", "etcd", "peerAddress") != nil
+	if p.Config.StorageType() == "etcd" && !hostPeerAddress {
 		if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 			cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 		}
@@ -531,21 +534,4 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 		return "", err
 	}
 	return fmt.Sprintf("# generated-by-k0sctl %s\n%s", time.Now().Format(time.RFC3339), c), nil
-}
-
-// hostSetsK0sConfigKey reports whether the host k0s config sets the key at
-// the given path, even when the value is null.
-func hostSetsK0sConfigKey(h *cluster.Host, path ...string) bool {
-	if h.K0s == nil || len(path) == 0 {
-		return false
-	}
-	parent := h.K0s.Config
-	if len(path) > 1 {
-		m, ok := h.K0s.Config.Dig(path[:len(path)-1]...).(dig.Mapping)
-		if !ok {
-			return false
-		}
-		parent = m
-	}
-	return parent.HasKey(path[len(path)-1])
 }
