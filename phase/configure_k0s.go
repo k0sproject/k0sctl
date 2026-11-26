@@ -488,7 +488,21 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 		log.Debugf("%s: merging host k0s config over the cluster k0s config", h)
 		// WithNillify lets an explicit null in the host config clear a
 		// cluster value.
+		baseSans := sansFrom(cfg)
 		cfg.Merge(h.K0s.Config, dig.WithOverwrite(), dig.WithNillify())
+		// The merge replaces lists. Add the host sans to the computed ones
+		// instead, so the host keeps its own addresses. A null still clears
+		// them.
+		switch h.K0s.Config.Dig("spec", "api", "sans").(type) {
+		case []any, []string:
+			sans := baseSans
+			for _, s := range sansFrom(h.K0s.Config) {
+				if !slices.Contains(sans, s) {
+					sans = append(sans, s)
+				}
+			}
+			cfg.DigMapping("spec", "api")["sans"] = sans
+		}
 	}
 
 	var addr string

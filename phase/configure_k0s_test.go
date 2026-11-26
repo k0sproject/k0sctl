@@ -495,3 +495,30 @@ func TestConfigForHostUnsetEtcdPeerAddress(t *testing.T) {
 		require.Equal(t, "203.0.113.1", h.EtcdPeerAddress(), value)
 	}
 }
+
+// A host sans list adds to the computed sans instead of replacing them.
+func TestConfigForAddsHostSans(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"sans": []any{"vpn.example.com", "10.0.0.1"}}},
+	}}
+
+	hostBaseConfig := base.Dup()
+	hostBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans([]string{"lb.example.com"}, h)
+
+	config, err := p.configFor(h, hostBaseConfig)
+	require.NoError(t, err)
+	require.Equal(t, []string{"lb.example.com", "203.0.113.1", "10.0.0.1", "vpn.example.com"}, sansFromConfig(t, config))
+
+	// A null clears them.
+	h.K0s.Config["spec"].(dig.Mapping)["api"] = dig.Mapping{"sans": nil}
+	hostBaseConfig = base.Dup()
+	hostBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans([]string{"lb.example.com"}, h)
+	config, err = p.configFor(h, hostBaseConfig)
+	require.NoError(t, err)
+	require.Empty(t, sansFromConfig(t, config))
+}

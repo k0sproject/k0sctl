@@ -1,8 +1,11 @@
 package cluster
 
 import (
+	"errors"
 	"fmt"
+	"maps"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -101,10 +104,15 @@ func (s *Spec) Validate() error {
 	return s.ValidateHostK0sConfig()
 }
 
-// clusterWideAPIKeys are k0s config keys that k0sctl reads from
-// spec.k0s.config to build the kubeconfig and join token URLs. A host value
-// would be ignored there, so hosts can't set them.
-var clusterWideAPIKeys = []string{"externalAddress", "port"}
+// clusterWideKeys are k0s config keys that k0sctl reads only from
+// spec.k0s.config, keyed by their section under spec. k0sctl builds the
+// kubeconfig and join token URLs from the api keys, and the storage type
+// decides how it handles etcd. A host value would disagree with what k0sctl
+// does, so hosts can't set them.
+var clusterWideKeys = map[string][]string{
+	"api":     {"externalAddress", "port"},
+	"storage": {"type"},
+}
 
 // ValidateHostK0sConfig checks the host k0s.config overrides against the
 // cluster config. Run it again after gathering facts, because k0sctl also
@@ -127,7 +135,7 @@ func (s *Spec) ValidateHostK0sConfig() error {
 		if s.dynamicConfigEnabled() {
 			return fmt.Errorf("%s: k0s.config can't be used with dynamic config", h)
 		}
-		if err := validateHostAPIKeys(h.K0s.Config); err != nil {
+		if err := validateHostClusterWideKeys(h.K0s.Config); err != nil {
 			return fmt.Errorf("%s: %w", h, err)
 		}
 	}
@@ -149,24 +157,29 @@ func (s *Spec) dynamicConfigEnabled() bool {
 	return false
 }
 
-// validateHostAPIKeys rejects host values for clusterWideAPIKeys. A null or
-// non-mapping spec or spec.api would clear them in the merge, so it rejects
+// validateHostClusterWideKeys rejects host values for clusterWideKeys. A null
+// or non-mapping spec or section would clear them in the merge, so it rejects
 // those too.
-func validateHostAPIKeys(config dig.Mapping) error {
-	parent := config
-	for _, key := range []string{"spec", "api"} {
-		if !parent.HasKey(key) {
-			return nil
-		}
-		m, ok := parent[key].(dig.Mapping)
-		if !ok {
-			return fmt.Errorf("k0s.config can't replace %s, it must be a mapping", key)
-		}
-		parent = m
+func validateHostClusterWideKeys(config dig.Mapping) error {
+	if !config.HasKey("spec") {
+		return nil
 	}
-	for _, key := range clusterWideAPIKeys {
-		if parent.HasKey(key) {
-			return fmt.Errorf("k0s.config can't set spec.api.%s, set it in spec.k0s.config instead", key)
+	spec, ok := config["spec"].(dig.Mapping)
+	if !ok {
+		return errors.New("k0s.config can't replace spec, it must be a mapping")
+	}
+	for _, section := range slices.Sorted(maps.Keys(clusterWideKeys)) {
+		if !spec.HasKey(section) {
+			continue
+		}
+		m, ok := spec[section].(dig.Mapping)
+		if !ok {
+			return fmt.Errorf("k0s.config can't replace spec.%s, it must be a mapping", section)
+		}
+		for _, key := range clusterWideKeys[section] {
+			if m.HasKey(key) {
+				return fmt.Errorf("k0s.config can't set spec.%s.%s, set it in spec.k0s.config instead", section, key)
+			}
 		}
 	}
 	return nil

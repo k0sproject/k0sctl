@@ -326,10 +326,15 @@ func TestSpecHostK0sConfigRejectsDynamicConfig(t *testing.T) {
 	require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't be used with dynamic config")
 }
 
-// The kubeconfig and join token URLs come from the cluster config, so a host
-// value for these keys would be ignored there.
+// k0sctl reads these keys only from the cluster config, so a host value
+// would disagree with what k0sctl does.
 func TestSpecHostK0sConfigRejectsClusterWideAPIKeys(t *testing.T) {
-	for key, value := range map[string]any{"externalAddress": "k8s.example.com", "port": 6444} {
+	for path, value := range map[[2]string]any{
+		{"api", "externalAddress"}: "k8s.example.com",
+		{"api", "port"}:            6444,
+		{"storage", "type"}:        "kine",
+	} {
+		section, key := path[0], path[1]
 		for _, v := range []any{value, nil} {
 			spec := &Spec{
 				K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
@@ -337,11 +342,11 @@ func TestSpecHostK0sConfigRejectsClusterWideAPIKeys(t *testing.T) {
 					&Host{
 						Role:            "controller",
 						CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
-						K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{key: v}}}},
+						K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{section: dig.Mapping{key: v}}}},
 					},
 				},
 			}
-			require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set spec.api."+key)
+			require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set spec."+section+"."+key)
 		}
 	}
 }
@@ -362,14 +367,16 @@ func TestSpecHostK0sConfigRejectsDynamicConfigInstallFlag(t *testing.T) {
 	require.NoError(t, spec.ValidateHostK0sConfig())
 }
 
-// A null or scalar spec or spec.api would clear the cluster wide API keys in
-// the merge.
+// A null or scalar spec, spec.api or spec.storage would clear the cluster
+// wide keys in the merge.
 func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
 	for _, config := range []dig.Mapping{
 		{"spec": nil},
 		{"spec": "x"},
 		{"spec": dig.Mapping{"api": nil}},
 		{"spec": dig.Mapping{"api": "x"}},
+		{"spec": dig.Mapping{"storage": nil}},
+		{"spec": dig.Mapping{"storage": "x"}},
 	} {
 		spec := &Spec{
 			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
@@ -383,4 +390,18 @@ func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
 		}
 		require.ErrorContains(t, spec.ValidateHostK0sConfig(), "must be a mapping", config)
 	}
+}
+
+func TestSpecHostK0sConfigAllowsEtcdPeerAddress(t *testing.T) {
+	spec := &Spec{
+		K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+		Hosts: Hosts{
+			&Host{
+				Role:            "controller",
+				CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+				K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}}}},
+			},
+		},
+	}
+	require.NoError(t, spec.ValidateHostK0sConfig())
 }
