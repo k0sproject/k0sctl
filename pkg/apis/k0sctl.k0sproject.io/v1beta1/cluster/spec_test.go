@@ -305,9 +305,9 @@ func TestSpecHostK0sConfigRequiresClusterK0sConfig(t *testing.T) {
 		}
 	}
 
-	require.ErrorContains(t, newSpec(nil).validateHostK0sConfig(), "requires spec.k0s.config")
-	require.ErrorContains(t, newSpec(&K0s{}).validateHostK0sConfig(), "requires spec.k0s.config")
-	require.NoError(t, newSpec(&K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}).validateHostK0sConfig())
+	require.ErrorContains(t, newSpec(nil).ValidateHostK0sConfig(), "requires spec.k0s.config")
+	require.ErrorContains(t, newSpec(&K0s{}).ValidateHostK0sConfig(), "requires spec.k0s.config")
+	require.NoError(t, newSpec(&K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}).ValidateHostK0sConfig())
 }
 
 // With dynamic config, the leader's first config seeds the cluster wide
@@ -323,7 +323,7 @@ func TestSpecHostK0sConfigRejectsDynamicConfig(t *testing.T) {
 			},
 		},
 	}
-	require.ErrorContains(t, spec.validateHostK0sConfig(), "can't be used with spec.k0s.dynamicConfig")
+	require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't be used with dynamic config")
 }
 
 // The kubeconfig and join token URLs come from the cluster config, so a host
@@ -341,7 +341,46 @@ func TestSpecHostK0sConfigRejectsClusterWideAPIKeys(t *testing.T) {
 					},
 				},
 			}
-			require.ErrorContains(t, spec.validateHostK0sConfig(), "can't set spec.api."+key)
+			require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set spec.api."+key)
 		}
+	}
+}
+
+func TestSpecHostK0sConfigRejectsDynamicConfigInstallFlag(t *testing.T) {
+	h := &Host{
+		Role:            "controller",
+		CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+		K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+	}
+	spec := &Spec{K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}, Hosts: Hosts{h}}
+	require.NoError(t, spec.ValidateHostK0sConfig())
+
+	h.InstallFlags.Add("--enable-dynamic-config")
+	require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't be used with dynamic config")
+
+	h.InstallFlags = Flags{"--enable-dynamic-config=false"}
+	require.NoError(t, spec.ValidateHostK0sConfig())
+}
+
+// A null or scalar spec or spec.api would clear the cluster wide API keys in
+// the merge.
+func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
+	for _, config := range []dig.Mapping{
+		{"spec": nil},
+		{"spec": "x"},
+		{"spec": dig.Mapping{"api": nil}},
+		{"spec": dig.Mapping{"api": "x"}},
+	} {
+		spec := &Spec{
+			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: config},
+				},
+			},
+		}
+		require.ErrorContains(t, spec.ValidateHostK0sConfig(), "must be a mapping", config)
 	}
 }

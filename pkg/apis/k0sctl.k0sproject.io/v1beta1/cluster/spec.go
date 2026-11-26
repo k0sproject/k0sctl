@@ -98,7 +98,7 @@ func (s *Spec) Validate() error {
 	); err != nil {
 		return err
 	}
-	return s.validateHostK0sConfig()
+	return s.ValidateHostK0sConfig()
 }
 
 // clusterWideAPIKeys are k0s config keys that k0sctl reads from
@@ -106,8 +106,9 @@ func (s *Spec) Validate() error {
 // would be ignored there, so hosts can't set them.
 var clusterWideAPIKeys = []string{"externalAddress", "port"}
 
-// validateHostK0sConfig checks the host k0s.config overrides against the
-// cluster config.
+// ValidateHostK0sConfig checks the host k0s.config overrides against the
+// cluster config. Run it again after gathering facts, because k0sctl also
+// enables dynamic config when the running cluster uses it.
 //
 // Without spec.k0s.config, k0sctl recovers the cluster config from the leader
 // on the next apply. That config includes the leader's host overrides, which
@@ -115,7 +116,7 @@ var clusterWideAPIKeys = []string{"externalAddress", "port"}
 //
 // With dynamic config, the leader's first config seeds the cluster wide
 // ClusterConfig, so the leader's overrides would apply to the whole cluster.
-func (s *Spec) validateHostK0sConfig() error {
+func (s *Spec) ValidateHostK0sConfig() error {
 	for _, h := range s.Hosts {
 		if h.K0s == nil || len(h.K0s.Config) == 0 {
 			continue
@@ -123,15 +124,49 @@ func (s *Spec) validateHostK0sConfig() error {
 		if s.K0s == nil || len(s.K0s.Config) == 0 {
 			return fmt.Errorf("%s: k0s.config requires spec.k0s.config to be set", h)
 		}
-		if s.K0s.DynamicConfig {
-			return fmt.Errorf("%s: k0s.config can't be used with spec.k0s.dynamicConfig", h)
+		if s.dynamicConfigEnabled() {
+			return fmt.Errorf("%s: k0s.config can't be used with dynamic config", h)
 		}
-		if api, ok := h.K0s.Config.Dig("spec", "api").(dig.Mapping); ok {
-			for _, key := range clusterWideAPIKeys {
-				if api.HasKey(key) {
-					return fmt.Errorf("%s: k0s.config can't set spec.api.%s, set it in spec.k0s.config instead", h, key)
-				}
-			}
+		if err := validateHostAPIKeys(h.K0s.Config); err != nil {
+			return fmt.Errorf("%s: %w", h, err)
+		}
+	}
+	return nil
+}
+
+// dynamicConfigEnabled reports whether k0s runs with dynamic config. Like
+// InitializeK0s, it also counts --enable-dynamic-config in the controller
+// install flags.
+func (s *Spec) dynamicConfigEnabled() bool {
+	if s.K0s != nil && s.K0s.DynamicConfig {
+		return true
+	}
+	for _, h := range s.Hosts.Controllers() {
+		if h.InstallFlags.Include("--enable-dynamic-config") && h.InstallFlags.GetValue("--enable-dynamic-config") != "false" {
+			return true
+		}
+	}
+	return false
+}
+
+// validateHostAPIKeys rejects host values for clusterWideAPIKeys. A null or
+// non-mapping spec or spec.api would clear them in the merge, so it rejects
+// those too.
+func validateHostAPIKeys(config dig.Mapping) error {
+	parent := config
+	for _, key := range []string{"spec", "api"} {
+		if !parent.HasKey(key) {
+			return nil
+		}
+		m, ok := parent[key].(dig.Mapping)
+		if !ok {
+			return fmt.Errorf("k0s.config can't replace %s, it must be a mapping", key)
+		}
+		parent = m
+	}
+	for _, key := range clusterWideAPIKeys {
+		if parent.HasKey(key) {
+			return fmt.Errorf("k0s.config can't set spec.api.%s, set it in spec.k0s.config instead", key)
 		}
 	}
 	return nil
