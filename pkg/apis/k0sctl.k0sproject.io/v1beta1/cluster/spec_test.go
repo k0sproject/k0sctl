@@ -328,26 +328,30 @@ func TestSpecHostK0sConfigRejectsDynamicConfig(t *testing.T) {
 
 // k0sctl reads these keys only from the cluster config, so a host value
 // would disagree with what k0sctl does.
-func TestSpecHostK0sConfigRejectsClusterWideAPIKeys(t *testing.T) {
-	for path, value := range map[[2]string]any{
-		{"api", "externalAddress"}: "k8s.example.com",
-		{"api", "port"}:            6444,
-		{"storage", "type"}:        "kine",
+func TestSpecHostK0sConfigRejectsClusterWideKeys(t *testing.T) {
+	for _, tc := range []struct {
+		config dig.Mapping
+		key    string
+	}{
+		{dig.Mapping{"api": dig.Mapping{"externalAddress": "k8s.example.com"}}, "spec.api.externalAddress"},
+		{dig.Mapping{"api": dig.Mapping{"port": 6444}}, "spec.api.port"},
+		{dig.Mapping{"storage": dig.Mapping{"type": "kine"}}, "spec.storage.type"},
+		{dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"externalCluster": dig.Mapping{}}}}, "spec.storage.etcd.externalCluster"},
+		{dig.Mapping{"network": dig.Mapping{"controlPlaneLoadBalancing": dig.Mapping{"enabled": true}}}, "spec.network.controlPlaneLoadBalancing"},
+		{dig.Mapping{"network": dig.Mapping{"nodeLocalLoadBalancing": dig.Mapping{"enabled": true}}}, "spec.network.nodeLocalLoadBalancing"},
+		{dig.Mapping{"api": dig.Mapping{"port": nil}}, "spec.api.port"},
 	} {
-		section, key := path[0], path[1]
-		for _, v := range []any{value, nil} {
-			spec := &Spec{
-				K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
-				Hosts: Hosts{
-					&Host{
-						Role:            "controller",
-						CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
-						K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{section: dig.Mapping{key: v}}}},
-					},
+		spec := &Spec{
+			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: dig.Mapping{"spec": tc.config}},
 				},
-			}
-			require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set spec."+section+"."+key)
+			},
 		}
+		require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set "+tc.key, tc.key)
 	}
 }
 
@@ -367,8 +371,7 @@ func TestSpecHostK0sConfigRejectsDynamicConfigInstallFlag(t *testing.T) {
 	require.NoError(t, spec.ValidateHostK0sConfig())
 }
 
-// A null or scalar spec, spec.api or spec.storage would clear the cluster
-// wide keys in the merge.
+// A null or scalar parent of a cluster wide key would clear it in the merge.
 func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
 	for _, config := range []dig.Mapping{
 		{"spec": nil},
@@ -377,6 +380,8 @@ func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
 		{"spec": dig.Mapping{"api": "x"}},
 		{"spec": dig.Mapping{"storage": nil}},
 		{"spec": dig.Mapping{"storage": "x"}},
+		{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": nil}}},
+		{"spec": dig.Mapping{"network": nil}},
 	} {
 		spec := &Spec{
 			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},

@@ -1,11 +1,8 @@
 package cluster
 
 import (
-	"errors"
 	"fmt"
-	"maps"
 	"net"
-	"slices"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -105,13 +102,18 @@ func (s *Spec) Validate() error {
 }
 
 // clusterWideKeys are k0s config keys that k0sctl reads only from
-// spec.k0s.config, keyed by their section under spec. k0sctl builds the
-// kubeconfig and join token URLs from the api keys, and the storage type
-// decides how it handles etcd. A host value would disagree with what k0sctl
-// does, so hosts can't set them.
-var clusterWideKeys = map[string][]string{
-	"api":     {"externalAddress", "port"},
-	"storage": {"type"},
+// spec.k0s.config. k0sctl builds the kubeconfig and join token URLs from the
+// api keys and the control plane load balancing, the storage keys decide how
+// it handles etcd, and the node local load balancing is checked against the
+// host roles. A host value would disagree with what k0sctl does, so hosts
+// can't set them.
+var clusterWideKeys = [][]string{
+	{"spec", "api", "externalAddress"},
+	{"spec", "api", "port"},
+	{"spec", "storage", "type"},
+	{"spec", "storage", "etcd", "externalCluster"},
+	{"spec", "network", "controlPlaneLoadBalancing"},
+	{"spec", "network", "nodeLocalLoadBalancing"},
 }
 
 // ValidateHostK0sConfig checks the host k0s.config overrides against the
@@ -158,28 +160,24 @@ func (s *Spec) dynamicConfigEnabled() bool {
 }
 
 // validateHostClusterWideKeys rejects host values for clusterWideKeys. A null
-// or non-mapping spec or section would clear them in the merge, so it rejects
-// those too.
+// or non-mapping parent of one of them would clear it in the merge, so it
+// rejects those too.
 func validateHostClusterWideKeys(config dig.Mapping) error {
-	if !config.HasKey("spec") {
-		return nil
-	}
-	spec, ok := config["spec"].(dig.Mapping)
-	if !ok {
-		return errors.New("k0s.config can't replace spec, it must be a mapping")
-	}
-	for _, section := range slices.Sorted(maps.Keys(clusterWideKeys)) {
-		if !spec.HasKey(section) {
-			continue
-		}
-		m, ok := spec[section].(dig.Mapping)
-		if !ok {
-			return fmt.Errorf("k0s.config can't replace spec.%s, it must be a mapping", section)
-		}
-		for _, key := range clusterWideKeys[section] {
-			if m.HasKey(key) {
-				return fmt.Errorf("k0s.config can't set spec.%s.%s, set it in spec.k0s.config instead", section, key)
+	for _, path := range clusterWideKeys {
+		parent := config
+		for i, key := range path {
+			if !parent.HasKey(key) {
+				break
 			}
+			name := strings.Join(path[:i+1], ".")
+			if i == len(path)-1 {
+				return fmt.Errorf("k0s.config can't set %s, set it in spec.k0s.config instead", name)
+			}
+			m, ok := parent[key].(dig.Mapping)
+			if !ok {
+				return fmt.Errorf("k0s.config can't replace %s, it must be a mapping", name)
+			}
+			parent = m
 		}
 	}
 	return nil
