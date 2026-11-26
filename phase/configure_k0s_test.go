@@ -361,3 +361,164 @@ func TestConfigureControllersNamesTheHostThatFailedToRestart(t *testing.T) {
 	require.ErrorContains(t, err, "wait for k0s service start")
 	require.ErrorContains(t, err, "10.0.0.1", "the error should identify the controller that failed")
 }
+
+func TestConfigForMergesHostK0sConfig(t *testing.T) {
+	base := dig.Mapping{
+		"spec": dig.Mapping{
+			"api": dig.Mapping{
+				"address": "k8s.example.com",
+				"port":    6443,
+			},
+		},
+	}
+
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	require.Equal(t, "10.0.0.1", apiAddressFromConfig(t, config))
+	require.Contains(t, config, "port: 6443", "keys the host config doesn't set come from the cluster config")
+	require.Equal(t, "k8s.example.com", base.DigString("spec", "api", "address"), "the cluster config must stay untouched")
+
+	other := testController("203.0.113.2", "10.0.0.2")
+	config, err = p.configFor(other, base.Dup())
+	require.NoError(t, err)
+	require.Equal(t, "k8s.example.com", apiAddressFromConfig(t, config), "hosts without a k0s config use the cluster one")
+}
+
+func TestConfigForDynamicConfigKeepsClusterConfigUntouched(t *testing.T) {
+	clusterK0s := &cluster.K0s{
+		DynamicConfig: true,
+		Config: dig.Mapping{
+			"spec": dig.Mapping{
+				"api": dig.Mapping{"onlyBindToAddress": true},
+			},
+		},
+	}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: clusterK0s}}
+
+	leader := testController("203.0.113.1", "10.0.0.1")
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, leader: leader, newBaseConfig: clusterK0s.Config}
+
+	// Neither of these is the leader, so both get the stripped down node config.
+	for _, h := range []*cluster.Host{
+		testController("203.0.113.2", "10.0.0.2"),
+		testController("203.0.113.3", "10.0.0.3"),
+	} {
+		config, err := p.configFor(h, clusterK0s.Config.Dup())
+		require.NoError(t, err)
+		require.Equal(t, h.PrivateAddress, apiAddressFromConfig(t, config))
+	}
+	require.Empty(t, clusterK0s.Config.DigString("spec", "api", "address"), "the cluster config must stay untouched")
+}
+
+func TestConfigForKeepsHostEtcdPeerAddress(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"type": "etcd"}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	parsed := make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Equal(t, "172.16.0.1", parsed.DigString("spec", "storage", "etcd", "peerAddress"))
+
+	other := testController("203.0.113.2", "10.0.0.2")
+	config, err = p.configFor(other, base.Dup())
+	require.NoError(t, err)
+	parsed = make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Equal(t, "10.0.0.2", parsed.DigString("spec", "storage", "etcd", "peerAddress"), "hosts without an override get the automatic peer address")
+}
+
+func TestConfigForHostNullClearsClusterValue(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"extraArgs": dig.Mapping{"v": "2"}}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"extraArgs": nil}},
+	}}
+
+	config, err := p.configFor(h, base.Dup())
+	require.NoError(t, err)
+	parsed := make(dig.Mapping)
+	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+	require.Nil(t, parsed.Dig("spec", "api", "extraArgs"))
+	require.Equal(t, "2", base.DigString("spec", "api", "extraArgs", "v"), "the cluster config must stay untouched")
+}
+
+// A null or empty host peerAddress must give the address that reset and
+// the controller swap check use for etcd leave.
+func TestConfigForHostUnsetEtcdPeerAddress(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"type": "etcd"}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	for _, value := range []any{nil, ""} {
+		h := testController("203.0.113.1", "10.0.0.1")
+		h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+			"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": value}}},
+		}}
+
+		config, err := p.configFor(h, base.Dup())
+		require.NoError(t, err)
+		parsed := make(dig.Mapping)
+		require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+		require.Equal(t, h.EtcdPeerAddress(), parsed.DigString("spec", "storage", "etcd", "peerAddress"), value)
+		require.Equal(t, "10.0.0.1", h.EtcdPeerAddress(), value)
+	}
+	// Without a private address, config generation uses the connection
+	// address for a null or empty value. EtcdPeerAddress must agree.
+	for _, value := range []any{nil, ""} {
+		h := testController("203.0.113.1", "")
+		h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+			"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": value}}},
+		}}
+		config, err := p.configFor(h, base.Dup())
+		require.NoError(t, err)
+		parsed := make(dig.Mapping)
+		require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+		require.Equal(t, "203.0.113.1", parsed.DigString("spec", "storage", "etcd", "peerAddress"), value)
+		require.Equal(t, "203.0.113.1", h.EtcdPeerAddress(), value)
+	}
+}
+
+// A host sans list adds to the computed sans instead of replacing them.
+func TestConfigForAddsHostSans(t *testing.T) {
+	base := dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{}}}
+	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
+	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
+
+	h := testController("203.0.113.1", "10.0.0.1")
+	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+		"spec": dig.Mapping{"api": dig.Mapping{"sans": []any{"vpn.example.com", "10.0.0.1"}}},
+	}}
+
+	hostBaseConfig := base.Dup()
+	hostBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans([]string{"lb.example.com"}, h)
+
+	config, err := p.configFor(h, hostBaseConfig)
+	require.NoError(t, err)
+	require.Equal(t, []string{"lb.example.com", "203.0.113.1", "10.0.0.1", "vpn.example.com"}, sansFromConfig(t, config))
+
+	// A null clears them.
+	h.K0s.Config["spec"].(dig.Mapping)["api"] = dig.Mapping{"sans": nil}
+	hostBaseConfig = base.Dup()
+	hostBaseConfig.DigMapping("spec", "api")["sans"] = hostsSans([]string{"lb.example.com"}, h)
+	config, err = p.configFor(h, hostBaseConfig)
+	require.NoError(t, err)
+	require.Empty(t, sansFromConfig(t, config))
+}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/creasty/defaults"
 	"github.com/jellydator/validation"
+	"github.com/k0sproject/dig"
 	"gopkg.in/yaml.v2"
 )
 
@@ -90,11 +91,96 @@ func (s *Spec) K0sLeader() *Host {
 }
 
 func (s *Spec) Validate() error {
-	return validation.ValidateStruct(s,
+	if err := validation.ValidateStruct(s,
 		validation.Field(&s.Hosts, validation.Required),
 		validation.Field(&s.Hosts),
 		validation.Field(&s.K0s),
-	)
+	); err != nil {
+		return err
+	}
+	return s.ValidateHostK0sConfig()
+}
+
+// clusterWideKeys are k0s config keys that k0sctl reads only from
+// spec.k0s.config. k0sctl builds the kubeconfig and join token URLs from the
+// api keys and the control plane load balancing, the storage keys decide how
+// it handles etcd, and the node local load balancing is checked against the
+// host roles. A host value would disagree with what k0sctl does, so hosts
+// can't set them.
+var clusterWideKeys = [][]string{
+	{"spec", "api", "externalAddress"},
+	{"spec", "api", "port"},
+	{"spec", "storage", "type"},
+	{"spec", "storage", "etcd", "externalCluster"},
+	{"spec", "network", "controlPlaneLoadBalancing"},
+	{"spec", "network", "nodeLocalLoadBalancing"},
+}
+
+// ValidateHostK0sConfig checks the host k0s.config overrides against the
+// cluster config. Run it again after gathering facts, because k0sctl also
+// enables dynamic config when the running cluster uses it.
+//
+// Without spec.k0s.config, k0sctl recovers the cluster config from the leader
+// on the next apply. That config includes the leader's host overrides, which
+// would then reach the other controllers.
+//
+// With dynamic config, the leader's first config seeds the cluster wide
+// ClusterConfig, so the leader's overrides would apply to the whole cluster.
+func (s *Spec) ValidateHostK0sConfig() error {
+	for _, h := range s.Hosts {
+		if h.K0s == nil || len(h.K0s.Config) == 0 {
+			continue
+		}
+		if s.K0s == nil || len(s.K0s.Config) == 0 {
+			return fmt.Errorf("%s: k0s.config requires spec.k0s.config to be set", h)
+		}
+		if s.dynamicConfigEnabled() {
+			return fmt.Errorf("%s: k0s.config can't be used with dynamic config", h)
+		}
+		if err := validateHostClusterWideKeys(h.K0s.Config); err != nil {
+			return fmt.Errorf("%s: %w", h, err)
+		}
+	}
+	return nil
+}
+
+// dynamicConfigEnabled reports whether k0s runs with dynamic config. Like
+// InitializeK0s, it also counts --enable-dynamic-config in the controller
+// install flags.
+func (s *Spec) dynamicConfigEnabled() bool {
+	if s.K0s != nil && s.K0s.DynamicConfig {
+		return true
+	}
+	for _, h := range s.Hosts.Controllers() {
+		if h.InstallFlags.Include("--enable-dynamic-config") && h.InstallFlags.GetValue("--enable-dynamic-config") != "false" {
+			return true
+		}
+	}
+	return false
+}
+
+// validateHostClusterWideKeys rejects host values for clusterWideKeys. A null
+// or non-mapping parent of one of them would clear it in the merge, so it
+// rejects those too.
+func validateHostClusterWideKeys(config dig.Mapping) error {
+	for _, path := range clusterWideKeys {
+		parent := config
+		for i, key := range path {
+			if !parent.HasKey(key) {
+				break
+			}
+			name := strings.Join(path[:i+1], ".")
+			if i == len(path)-1 {
+				return fmt.Errorf("k0s.config can't set %s, set it in spec.k0s.config instead", name)
+			}
+			m, ok := parent[key].(dig.Mapping)
+			if !ok {
+				return fmt.Errorf("k0s.config can't replace %s, it must be a mapping", name)
+			}
+			parent = m
+		}
+	}
+	return nil
 }
 
 // ResolveUploadFilePaths resolves all host file sources relative to baseDir.

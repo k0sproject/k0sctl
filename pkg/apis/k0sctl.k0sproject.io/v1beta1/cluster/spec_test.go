@@ -343,3 +343,125 @@ func TestCPLBVIPs(t *testing.T) {
 		})
 	}
 }
+
+// Without spec.k0s.config, the next apply recovers the cluster config from the
+// leader, overrides included. The other controllers would then inherit them.
+func TestSpecHostK0sConfigRequiresClusterK0sConfig(t *testing.T) {
+	newSpec := func(k0s *K0s) *Spec {
+		return &Spec{
+			K0s: k0s,
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+				},
+			},
+		}
+	}
+
+	require.ErrorContains(t, newSpec(nil).ValidateHostK0sConfig(), "requires spec.k0s.config")
+	require.ErrorContains(t, newSpec(&K0s{}).ValidateHostK0sConfig(), "requires spec.k0s.config")
+	require.NoError(t, newSpec(&K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}).ValidateHostK0sConfig())
+}
+
+// With dynamic config, the leader's first config seeds the cluster wide
+// ClusterConfig, so the leader's overrides would reach the whole cluster.
+func TestSpecHostK0sConfigRejectsDynamicConfig(t *testing.T) {
+	spec := &Spec{
+		K0s: &K0s{DynamicConfig: true, Config: dig.Mapping{"spec": dig.Mapping{}}},
+		Hosts: Hosts{
+			&Host{
+				Role:            "controller",
+				CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+				K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+			},
+		},
+	}
+	require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't be used with dynamic config")
+}
+
+// k0sctl reads these keys only from the cluster config, so a host value
+// would disagree with what k0sctl does.
+func TestSpecHostK0sConfigRejectsClusterWideKeys(t *testing.T) {
+	for _, tc := range []struct {
+		config dig.Mapping
+		key    string
+	}{
+		{dig.Mapping{"api": dig.Mapping{"externalAddress": "k8s.example.com"}}, "spec.api.externalAddress"},
+		{dig.Mapping{"api": dig.Mapping{"port": 6444}}, "spec.api.port"},
+		{dig.Mapping{"storage": dig.Mapping{"type": "kine"}}, "spec.storage.type"},
+		{dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"externalCluster": dig.Mapping{}}}}, "spec.storage.etcd.externalCluster"},
+		{dig.Mapping{"network": dig.Mapping{"controlPlaneLoadBalancing": dig.Mapping{"enabled": true}}}, "spec.network.controlPlaneLoadBalancing"},
+		{dig.Mapping{"network": dig.Mapping{"nodeLocalLoadBalancing": dig.Mapping{"enabled": true}}}, "spec.network.nodeLocalLoadBalancing"},
+		{dig.Mapping{"api": dig.Mapping{"port": nil}}, "spec.api.port"},
+	} {
+		spec := &Spec{
+			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: dig.Mapping{"spec": tc.config}},
+				},
+			},
+		}
+		require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't set "+tc.key, tc.key)
+	}
+}
+
+func TestSpecHostK0sConfigRejectsDynamicConfigInstallFlag(t *testing.T) {
+	h := &Host{
+		Role:            "controller",
+		CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+		K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}},
+	}
+	spec := &Spec{K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}}, Hosts: Hosts{h}}
+	require.NoError(t, spec.ValidateHostK0sConfig())
+
+	h.InstallFlags.Add("--enable-dynamic-config")
+	require.ErrorContains(t, spec.ValidateHostK0sConfig(), "can't be used with dynamic config")
+
+	h.InstallFlags = Flags{"--enable-dynamic-config=false"}
+	require.NoError(t, spec.ValidateHostK0sConfig())
+}
+
+// A null or scalar parent of a cluster wide key would clear it in the merge.
+func TestSpecHostK0sConfigRejectsReplacedAPIParent(t *testing.T) {
+	for _, config := range []dig.Mapping{
+		{"spec": nil},
+		{"spec": "x"},
+		{"spec": dig.Mapping{"api": nil}},
+		{"spec": dig.Mapping{"api": "x"}},
+		{"spec": dig.Mapping{"storage": nil}},
+		{"spec": dig.Mapping{"storage": "x"}},
+		{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": nil}}},
+		{"spec": dig.Mapping{"network": nil}},
+	} {
+		spec := &Spec{
+			K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+			Hosts: Hosts{
+				&Host{
+					Role:            "controller",
+					CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+					K0s:             &HostK0s{Config: config},
+				},
+			},
+		}
+		require.ErrorContains(t, spec.ValidateHostK0sConfig(), "must be a mapping", config)
+	}
+}
+
+func TestSpecHostK0sConfigAllowsEtcdPeerAddress(t *testing.T) {
+	spec := &Spec{
+		K0s: &K0s{Config: dig.Mapping{"spec": dig.Mapping{}}},
+		Hosts: Hosts{
+			&Host{
+				Role:            "controller",
+				CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "10.0.0.1"}},
+				K0s:             &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}}}},
+			},
+		},
+	}
+	require.NoError(t, spec.ValidateHostK0sConfig())
+}

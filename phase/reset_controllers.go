@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/k0sproject/dig"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1"
 	"github.com/k0sproject/k0sctl/pkg/apis/k0sctl.k0sproject.io/v1beta1/cluster"
 	"github.com/k0sproject/k0sctl/pkg/node"
 	"github.com/k0sproject/k0sctl/pkg/retry"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 // ResetControllers phase removes controllers marked for reset from the kubernetes and etcd clusters
@@ -119,7 +121,7 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		if !p.NoLeave {
 			log.Debugf("%s: leaving etcd...", h)
 
-			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", h.PrivateAddress, h.K0sDataDir())); err != nil {
+			if err := h.Sudo().Exec(h.Configurer.K0sCmdf("etcd leave --peer-address %s --datadir %s", installedEtcdPeerAddress(h), h.K0sDataDir())); err != nil {
 				log.Warnf("%s: failed to leave etcd: %s", h, err.Error())
 			}
 			log.Debugf("%s: leaving etcd completed", h)
@@ -162,4 +164,24 @@ func (p *ResetControllers) Run(ctx context.Context) error {
 		log.Infof("%s: reset", h)
 	}
 	return nil
+}
+
+// installedEtcdPeerAddress returns the etcd peer address from the k0s config
+// installed on the host. A reset host is not reconfigured, so a changed
+// peerAddress in its host k0s config has not been applied yet. Without an
+// installed peerAddress, it falls back to the private address, or the
+// connection address when there is no private address.
+func installedEtcdPeerAddress(h *cluster.Host) string {
+	if h.Metadata.K0sExistingConfig != "" {
+		cfg := make(dig.Mapping)
+		if err := yaml.Unmarshal([]byte(h.Metadata.K0sExistingConfig), &cfg); err != nil {
+			log.Debugf("%s: failed to parse existing k0s config for the etcd peer address: %v", h, err)
+		} else if addr := cfg.DigString("spec", "storage", "etcd", "peerAddress"); addr != "" {
+			return addr
+		}
+	}
+	if h.PrivateAddress != "" {
+		return h.PrivateAddress
+	}
+	return h.Address()
 }

@@ -51,6 +51,12 @@ func (p *ValidateFacts) Run(_ context.Context) error {
 		return err
 	}
 
+	// GatherK0sFacts enables dynamic config when the running cluster uses it,
+	// which the config validation could not see.
+	if err := p.Config.Spec.ValidateHostK0sConfig(); err != nil {
+		return err
+	}
+
 	p.warnMultipleControllersWithoutLoadBalancer()
 
 	return nil

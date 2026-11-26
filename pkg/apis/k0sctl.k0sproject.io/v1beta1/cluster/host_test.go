@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/k0sproject/dig"
 	cfg "github.com/k0sproject/k0sctl/configurer"
 	"github.com/k0sproject/k0sctl/configurer/linux"
 	rig "github.com/k0sproject/rig/v2"
@@ -183,4 +184,36 @@ func TestHost_ConnectLeavesRetryingToCaller(t *testing.T) {
 	defer cancel()
 	require.Error(t, h.Connect(ctx))
 	require.Equal(t, int32(1), accepted.Load())
+}
+
+func TestHostK0sConfigOnlyForControllers(t *testing.T) {
+	k0sConfig := &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}}
+
+	for _, role := range []string{"controller", "controller+worker", "single"} {
+		h := Host{Role: role, K0s: k0sConfig}
+		require.NoError(t, h.Validate(), role)
+	}
+
+	h := Host{Role: "worker", K0s: k0sConfig}
+	require.ErrorContains(t, h.Validate(), "k0s.config can only be set for hosts with a controller role")
+
+	h = Host{Role: "worker", K0s: &HostK0s{}}
+	require.NoError(t, h.Validate(), "an empty k0s mapping is fine on workers")
+}
+
+func TestHostEtcdPeerAddress(t *testing.T) {
+	h := Host{PrivateAddress: "10.0.0.1"}
+	require.Equal(t, "10.0.0.1", h.EtcdPeerAddress())
+
+	h.K0s = &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"api": dig.Mapping{"address": "10.0.0.1"}}}}
+	require.Equal(t, "10.0.0.1", h.EtcdPeerAddress(), "falls back to the private address without a peerAddress override")
+
+	h.K0s.Config["spec"].(dig.Mapping)["storage"] = dig.Mapping{"etcd": dig.Mapping{"peerAddress": "172.16.0.1"}}
+	require.Equal(t, "172.16.0.1", h.EtcdPeerAddress())
+	// The generated k0s config uses the connection address when there is no
+	// private address, so this must too.
+	h = Host{CompositeConfig: rig.CompositeConfig{SSH: &ssh.Config{Address: "203.0.113.1"}}}
+	require.Equal(t, "203.0.113.1", h.EtcdPeerAddress())
+	h.K0s = &HostK0s{Config: dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": ""}}}}}
+	require.Equal(t, "203.0.113.1", h.EtcdPeerAddress())
 }

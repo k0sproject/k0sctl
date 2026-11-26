@@ -475,10 +475,34 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 			cfg = hostBaseConfig
 		} else {
 			log.Debugf("%s: using a stripped down config for dynamic config", h)
-			cfg = p.Config.Spec.K0s.NodeConfig()
+			// NodeConfig shares its mappings with spec.k0s.config, so copy it
+			// before changing it for this host.
+			nodeConfig := p.Config.Spec.K0s.NodeConfig()
+			cfg = nodeConfig.Dup()
 		}
 	} else {
 		cfg = hostBaseConfig
+	}
+
+	if h.K0s != nil && len(h.K0s.Config) > 0 {
+		log.Debugf("%s: merging host k0s config over the cluster k0s config", h)
+		// WithNillify lets an explicit null in the host config clear a
+		// cluster value.
+		baseSans := sansFrom(cfg)
+		cfg.Merge(h.K0s.Config, dig.WithOverwrite(), dig.WithNillify())
+		// The merge replaces lists. Add the host sans to the computed ones
+		// instead, so the host keeps its own addresses. A null still clears
+		// them.
+		switch h.K0s.Config.Dig("spec", "api", "sans").(type) {
+		case []any, []string:
+			sans := baseSans
+			for _, s := range sansFrom(h.K0s.Config) {
+				if !slices.Contains(sans, s) {
+					sans = append(sans, s)
+				}
+			}
+			cfg.DigMapping("spec", "api")["sans"] = sans
+		}
 	}
 
 	var addr string
@@ -503,7 +527,17 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 	}
 
 	if p.Config.StorageType() == "etcd" {
-		if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
+		// A host peerAddress is kept as is. A null or empty one asks for the
+		// automatic address, the same one Host.EtcdPeerAddress returns.
+		var hostPeerAddress any
+		hostPeerAddressSet := false
+		if h.K0s != nil {
+			if etcd, ok := h.K0s.Config.Dig("spec", "storage", "etcd").(dig.Mapping); ok {
+				hostPeerAddress, hostPeerAddressSet = etcd["peerAddress"]
+			}
+		}
+		keepHostPeerAddress := hostPeerAddressSet && hostPeerAddress != nil && hostPeerAddress != ""
+		if !keepHostPeerAddress && (hostPeerAddressSet || cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "") {
 			cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr
 		}
 	}
