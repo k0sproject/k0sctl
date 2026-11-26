@@ -512,9 +512,9 @@ func (p *ConfigureK0s) configFor(h *cluster.Host, hostBaseConfig dig.Mapping) (s
 		}
 	}
 
-	// A host peerAddress is kept as is. A null one counts as unset, so it
-	// gets the same address as Host.EtcdPeerAddress returns.
-	hostPeerAddress := h.K0s != nil && h.K0s.Config.Dig("spec", "storage", "etcd", "peerAddress") != nil
+	// A host peerAddress is kept as is. A null or empty one counts as unset,
+	// so it gets the same address as Host.EtcdPeerAddress returns.
+	hostPeerAddress := h.K0s != nil && h.K0s.Config.DigString("spec", "storage", "etcd", "peerAddress") != ""
 	if p.Config.StorageType() == "etcd" && !hostPeerAddress {
 		if cfg.Dig("spec", "storage", "etcd", "peerAddress") != nil || h.PrivateAddress != "" {
 			cfg.DigMapping("spec", "storage", "etcd")["peerAddress"] = addr

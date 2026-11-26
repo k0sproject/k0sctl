@@ -460,22 +460,24 @@ func TestConfigForHostNullClearsClusterValue(t *testing.T) {
 	require.Equal(t, "2", base.DigString("spec", "api", "extraArgs", "v"), "the cluster config must stay untouched")
 }
 
-// A null host peerAddress must give the address that reset and the
-// controller swap check use for etcd leave.
-func TestConfigForHostNullEtcdPeerAddress(t *testing.T) {
+// A null or empty host peerAddress must give the address that reset and
+// the controller swap check use for etcd leave.
+func TestConfigForHostUnsetEtcdPeerAddress(t *testing.T) {
 	base := dig.Mapping{"spec": dig.Mapping{"storage": dig.Mapping{"type": "etcd"}}}
 	clusterConfig := &v1beta1.Cluster{Spec: &cluster.Spec{K0s: &cluster.K0s{Config: base}}}
 	p := &ConfigureK0s{GenericPhase: GenericPhase{Config: clusterConfig}, newBaseConfig: base}
 
-	h := testController("203.0.113.1", "10.0.0.1")
-	h.K0s = &cluster.HostK0s{Config: dig.Mapping{
-		"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": nil}}},
-	}}
+	for _, value := range []any{nil, ""} {
+		h := testController("203.0.113.1", "10.0.0.1")
+		h.K0s = &cluster.HostK0s{Config: dig.Mapping{
+			"spec": dig.Mapping{"storage": dig.Mapping{"etcd": dig.Mapping{"peerAddress": value}}},
+		}}
 
-	config, err := p.configFor(h, base.Dup())
-	require.NoError(t, err)
-	parsed := make(dig.Mapping)
-	require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
-	require.Equal(t, h.EtcdPeerAddress(), parsed.DigString("spec", "storage", "etcd", "peerAddress"))
-	require.Equal(t, "10.0.0.1", h.EtcdPeerAddress())
+		config, err := p.configFor(h, base.Dup())
+		require.NoError(t, err)
+		parsed := make(dig.Mapping)
+		require.NoError(t, yaml.Unmarshal([]byte(config), &parsed))
+		require.Equal(t, h.EtcdPeerAddress(), parsed.DigString("spec", "storage", "etcd", "peerAddress"), value)
+		require.Equal(t, "10.0.0.1", h.EtcdPeerAddress(), value)
+	}
 }
