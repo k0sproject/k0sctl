@@ -25,7 +25,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/text v0.44.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/apimachinery v0.37.2
+	k8s.io/apimachinery v0.37.3
 	k8s.io/client-go v0.37.2
 )
 
