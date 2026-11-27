@@ -28,7 +28,7 @@ We prefer GitHub private vulnerability reporting. It gives a private channel
 where the reporter and the maintainers can coordinate the fix and the
 disclosure.
 
-We try to acknowledge reports within a few working days. If you get no
+We try to acknowledge reports within 3 working days. If you get no
 response, contact the maintainers by email to confirm that we received the
 report.
 
@@ -62,6 +62,7 @@ reporter to keep to the agreed dates.
 ## Public disclosure
 
 When the fix is released, we publish a GitHub [security advisory] and mention
-the issue in the release notes of the fixed version.
+the issue in the release notes of the fixed version. We request a CVE ID for the
+advisory through GitHub and include it in the advisory and the release notes.
 
 [security advisory]: https://docs.github.com/en/code-security/security-advisories/about-security-advisories
