@@ -2,7 +2,7 @@ module github.com/k0sproject/k0sctl
 
 go 1.27.0
 
-toolchain go1.27.1
+toolchain go1.27.4
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
