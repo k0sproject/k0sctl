@@ -2,14 +2,9 @@
 
 ## Supported versions
 
-k0sctl is released from the `main` branch. Only the latest minor release
-receives security fixes. Upgrade to the latest release before you report an
-issue, if you can.
-
-| Version   | Supported |
-|-----------|-----------|
-| v0.33.x   | Yes       |
-| < v0.33.x | No        |
+k0sctl is released from the `main` branch. Security fixes go into the next
+release. We backport fixes to older releases only on request. Upgrade to the
+latest release before you report an issue, if you can.
 
 k0sctl installs and manages k0s. Report vulnerabilities in k0s itself to the
 [k0s project](https://github.com/k0sproject/k0s/security/policy).
