@@ -95,6 +95,7 @@ type Host struct {
 	OSIDOverride           string            `yaml:"os,omitempty"`
 	HostnameOverride       string            `yaml:"hostname,omitempty"`
 	NoTaints               bool              `yaml:"noTaints,omitempty"`
+	Profile                string            `yaml:"profile,omitempty"`
 	NodeLabels             NodeLabels        `yaml:"labels,omitempty"`
 	NodeTaints             NodeTaints        `yaml:"taints,omitempty"`
 	K0s                    *HostK0s          `yaml:"k0s,omitempty"`
@@ -267,6 +268,10 @@ func (h *Host) Validate() error {
 		validation.Field(&h.PrivateAddress, is.IP),
 		validation.Field(&h.Files),
 		validation.Field(&h.NoTaints, validation.When(h.Role != "controller+worker", validation.NotIn(true).Error("noTaints can only be true for controller+worker role"))),
+		validation.Field(&h.Profile,
+			validation.Empty.When(h.Role == "controller").Error("profile can not be set for the controller role, which runs no worker"),
+			validation.Empty.When(h.InstallFlags.Include("--profile")).Error("profile can not be set when installFlags contains --profile"),
+		),
 		validation.Field(&h.NodeLabels, validation.When(h.Role == "controller", validation.By(mustBeEmpty("labels")))),
 		validation.Field(&h.NodeTaints,
 			validation.When(h.Role == "controller", validation.By(mustBeEmpty("taints"))),
@@ -549,6 +554,10 @@ func (h *Host) K0sInstallFlags() (Flags, error) {
 		}
 	case "single":
 		flags.AddUnlessExist("--single=true")
+	}
+
+	if h.Profile != "" {
+		flags.AddUnlessExist(fmt.Sprintf("--profile=%s", quote(h.FS(), h.Profile)))
 	}
 
 	if !h.Metadata.IsK0sLeader {
