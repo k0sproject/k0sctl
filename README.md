@@ -373,6 +373,28 @@ One of:
 
 When `true` and used in conjuction with the `controller+worker` role, the default taints are disabled making regular workloads schedulable on the node. By default, k0s sets a `node-role.kubernetes.io/control-plane:NoSchedule` taint (`node-role.kubernetes.io/master:NoSchedule` before k0s v1.33.1) on controller+worker nodes and only workloads with toleration for it will be scheduled.
 
+###### `spec.hosts[*].profile` &lt;string&gt; (optional)
+
+Name of the [worker profile](https://docs.k0sproject.io/stable/worker-node-config/#worker-profiles) to use for the host's kubelet. k0sctl passes it to `k0s install` as `--profile`. The profile must be defined in `spec.k0s.config.spec.workerProfiles`, unless it is one of the profiles built into k0s (`default` and `default-windows`). When not set, k0s uses its default profile. Changing it on an existing host reinstalls k0s on the host with the new profile. Not available for the `controller` role, which runs no worker, and can't be combined with `--profile` in `installFlags`.
+
+Example:
+
+```yaml
+spec:
+  hosts:
+    - role: worker
+      ssh:
+        address: 10.0.0.2
+      profile: custom
+  k0s:
+    config:
+      spec:
+        workerProfiles:
+          - name: custom
+            values:
+              maxPods: 200
+```
+
 ###### `spec.hosts[*].labels` &lt;mapping&gt; (optional)
 
 Labels to set on or remove from the host's Kubernetes node. k0sctl sets them through the Kubernetes API once the node has joined the cluster, and checks them again on every `apply`, so it also works for existing nodes and for labels that a kubelet is not allowed to set on itself, such as `node-role.kubernetes.io/*`. Not available for the `controller` role, which has no Kubernetes node.

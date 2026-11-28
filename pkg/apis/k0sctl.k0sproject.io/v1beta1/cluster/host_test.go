@@ -100,6 +100,21 @@ func TestValidation(t *testing.T) {
 		h.K0sDownloadURLOverride = ""
 		require.NoError(t, h.Validate())
 	})
+	t.Run("profile", func(t *testing.T) {
+		for _, role := range []string{"worker", "controller+worker", "single"} {
+			h := Host{Role: role, Profile: "custom"}
+			require.NoError(t, h.Validate(), role)
+		}
+
+		h := Host{Role: "controller", Profile: "custom"}
+		require.ErrorContains(t, h.Validate(), "profile can not be set for the controller role")
+
+		h = Host{Role: "worker", Profile: "custom", InstallFlags: []string{"--profile=other"}}
+		require.ErrorContains(t, h.Validate(), "profile can not be set when installFlags contains --profile")
+
+		h = Host{Role: "worker", InstallFlags: []string{"--profile=other"}}
+		require.NoError(t, h.Validate())
+	})
 }
 
 func TestBinaryPath(t *testing.T) {

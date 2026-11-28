@@ -61,6 +61,19 @@ func TestK0sInstallCommand(t *testing.T) {
 	cmd, err = h.K0sInstallCommand()
 	require.NoError(t, err)
 	require.Equal(t, `k0s install worker --enable-cloud-provider=true --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --token-file=from-configurer`, cmd)
+
+	h.InstallFlags = nil
+	h.PrivateAddress = ""
+	h.Profile = "custom"
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install worker --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --profile=custom --token-file=from-configurer`, cmd)
+
+	h.Role = "controller+worker"
+	h.Metadata.IsK0sLeader = true
+	cmd, err = h.K0sInstallCommand()
+	require.NoError(t, err)
+	require.Equal(t, `k0s install controller --data-dir=/tmp/k0s --kubelet-root-dir=/tmp/kubelet --enable-worker=true --profile=custom --config=from-configurer`, cmd)
 }
 
 func TestK0sResetCommand(t *testing.T) {
@@ -90,6 +103,24 @@ func TestFlagsChanged(t *testing.T) {
 		_ = h.Connect(context.Background())
 		require.False(t, h.FlagsChanged())
 		h.InstallFlags = []string{"--bar"}
+		require.True(t, h.FlagsChanged())
+	})
+	t.Run("profile", func(t *testing.T) {
+		h := Host{
+			CompositeConfig: rig.CompositeConfig{Localhost: rig.LocalhostConfig(true)},
+			Configurer:      mc,
+			DataDir:         "/tmp/data",
+			Role:            "worker",
+			Profile:         "custom",
+			Metadata: HostMetadata{
+				K0sStatusArgs: []string{"--profile=custom", "--data-dir=/tmp/data", "--token-file=/tmp/token"},
+			},
+		}
+		_ = h.Connect(context.Background())
+		require.False(t, h.FlagsChanged())
+		h.Profile = "other"
+		require.True(t, h.FlagsChanged())
+		h.Profile = ""
 		require.True(t, h.FlagsChanged())
 	})
 	t.Run("quoted values", func(t *testing.T) {
